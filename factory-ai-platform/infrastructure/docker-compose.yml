@@ -98,7 +98,13 @@ services:
       - ANTIGRAVITY_BRIDGE_URL=http://host.docker.internal:8081
       - DOCUMENT_SERVICE_URL=http://document-service:8082
       - REPORT_SERVICE_URL=http://report-service:8083
-      - JWT_SECRET=factory-jwt-secret-key-1234-long-enough-32bytes
+      - BACKEND_URL=http://host.docker.internal:5000
+      - LLM_API_URL=http://host.docker.internal:7000/v1
+      - LLM_API_KEY=${LLM_API_KEY:-your-api-key}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+      - AI_SERVICE_USER=${AI_SERVICE_USER:-ai_service}
+      - AI_SERVICE_PASSWORD=${AI_SERVICE_PASSWORD:-change-me-ai-service-password}
+      - JWT_SECRET=${JWT_SECRET:-factory-jwt-secret-key-1234-long-enough-32bytes}
     networks:
       - factory-net
       - db-net
@@ -148,6 +154,13 @@ services:
       dockerfile: Dockerfile
     container_name: document-service
     restart: always
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=factory_db
+      - POSTGRES_USER=factory_user
+      - POSTGRES_PASSWORD=factory_secure_password_9988
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
     networks:
       - factory-net
       - db-net
@@ -166,8 +179,16 @@ services:
       dockerfile: Dockerfile
     container_name: report-service
     restart: always
+    environment:
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ROOT_USER=minio_admin
+      - MINIO_ROOT_PASSWORD=minio_secure_password_7788
+      - MINIO_SECURE=false
     networks:
       - factory-net
+    depends_on:
+      minio:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
       interval: 15s

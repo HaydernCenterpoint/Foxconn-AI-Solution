@@ -309,6 +309,17 @@ namespace backend.Services
                     cmdInsert.ExecuteNonQuery();
                 }
 
+                using (var cmdAiUser = new NpgsqlCommand(@"
+                    INSERT INTO users (username, password, role)
+                    VALUES (@aiUser, @aiPass, 'GUEST')
+                    ON CONFLICT (username) DO NOTHING;", conn))
+                {
+                    cmdAiUser.Parameters.AddWithValue("aiUser", "ai_service");
+                    cmdAiUser.Parameters.AddWithValue("aiPass", Security.PasswordHasher.HashPassword(
+                        Environment.GetEnvironmentVariable("AI_SERVICE_PASSWORD") ?? "change-me-ai-service-password"));
+                    cmdAiUser.ExecuteNonQuery();
+                }
+
                 // Auto-create simulation configs for machines and enable them by default
                 string seedSimConfigsSql = @"
                     INSERT INTO simulation_configs (machine_id, enabled, temperature_min, temperature_max, pressure_min, pressure_max, speed_min, speed_max, production_rate, error_probability)

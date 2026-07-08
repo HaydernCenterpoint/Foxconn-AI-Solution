@@ -14,7 +14,7 @@ async def export_report(
     chart_data: List[Dict[str, Any]],
     alarms: List[Dict[str, Any]],
     report_text: str,
-    fmt: str = "pdf",
+    fmt: str = "docx",
 ) -> Optional[str]:
     payload = {
         "title": title,

@@ -13,11 +13,15 @@ Dữ liệu thực tế từ hệ thống được cung cấp trong thẻ <data>
 
 
 def _extract_line_code(message: str) -> str:
-    """Extract a line code from message, e.g. 'LS18', 'LINE_A', 'dây chuyền A'."""
-    # Match explicit line codes like LS18, LINE_A, LINE-B
-    m = re.search(r'\b(LS\d+|LINE[_-]?\w+)\b', message, re.IGNORECASE)
+    """Extract a line code from message, e.g. 'LS18', 'LINE_A', 'dây chuyền A'.
+
+    Recognised patterns (case-insensitive):
+      - LS12, LS1234   (2–4 digits)
+      - LINE 3, LINE-3, LINE_3, LINE_A, LINE3
+    """
+    m = re.search(r"(?i)\b(LS\d{2,4}|LINE[\s_-]?\w+)\b", message)
     if m:
-        return m.group(1).upper()
+        return m.group(1).upper().replace(" ", "").replace("-", "").replace("_", "")
     return ""
 
 

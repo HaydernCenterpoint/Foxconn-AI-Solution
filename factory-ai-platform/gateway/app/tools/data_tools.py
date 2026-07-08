@@ -1,7 +1,23 @@
+"""
+data_tools.py
+
+Schema-driven toolset that proxies user requests to the .NET backend.
+Replaces the previous hardcoded MOCK_PRODUCTION_DATA / MOCK_ALARMS — now
+all real data comes from backend_client (HTTP → ASP.NET Core REST API).
+"""
 from typing import Dict, Any, List, Optional
 from app.services import backend_client
 
 DATA_TOOLS_SCHEMA = [
+    {
+        "name": "resolve_line_code",
+        "description": "Resolve a line code (e.g. 'LS18') to the backend's UUID for that line.",
+        "parameters": {
+            "type": "object",
+            "properties": {"lineCode": {"type": "string"}},
+            "required": ["lineCode"],
+        },
+    },
     {
         "name": "get_production_history",
         "description": "Lấy lịch sử sản lượng của một dây chuyền trong khoảng thời gian",
@@ -9,11 +25,8 @@ DATA_TOOLS_SCHEMA = [
             "type": "object",
             "properties": {
                 "lineCode": {"type": "string"},
-                "startTime": {"type": "string", "format": "date-time"},
-                "endTime": {"type": "string", "format": "date-time"},
-                "interval": {"type": "string", "enum": ["minute", "hour", "shift", "day"]},
+                "interval": {"type": "string", "enum": ["minute", "hour", "shift", "day", "7d", "30d", "week", "month"]},
             },
-            "required": ["lineCode", "startTime", "endTime"],
         },
     },
     {
@@ -33,7 +46,6 @@ DATA_TOOLS_SCHEMA = [
         "parameters": {
             "type": "object",
             "properties": {"lineCode": {"type": "string"}},
-            "required": ["lineCode"],
         },
     },
     {
@@ -44,14 +56,23 @@ DATA_TOOLS_SCHEMA = [
 ]
 
 
+# Map LLM-facing interval → backend's timeRange query parameter.
+# The .NET ReportsController recognises: today, shift_morning, shift_night,
+# last_7_days, month. Anything else falls back to "today".
+_INTERVAL_TO_TIMERANGE = {
+    "shift": "shift_morning",
+    "day": "today",
+    "hour": "today",
+    "minute": "today",
+    "7d": "last_7_days",
+    "week": "last_7_days",
+    "30d": "month",
+    "month": "month",
+}
+
+
 def _map_interval_to_timerange(interval: Optional[str]) -> str:
-    mapping = {
-        "shift": "shift_morning",
-        "day": "today",
-        "hour": "today",
-        "minute": "today",
-    }
-    return mapping.get(interval or "hour", "today")
+    return _INTERVAL_TO_TIMERANGE.get((interval or "hour").lower(), "today")
 
 
 async def execute_tool(
@@ -69,6 +90,16 @@ async def execute_tool(
             }
 
     try:
+        if name == "resolve_line_code":
+            if not line_code:
+                return {"error": "MISSING_ARGUMENT", "message": "lineCode is required"}
+            line_uuid = await backend_client.resolve_line_id(line_code)
+            return {
+                "lineCode": line_code.upper(),
+                "lineId": line_uuid,
+                "resolved": line_uuid is not None,
+            }
+
         if name == "get_dashboard_summary":
             return await backend_client.get_dashboard_summary()
 
@@ -77,8 +108,9 @@ async def execute_tool(
             if line_code:
                 resolved = await backend_client.resolve_line_id(line_code)
                 line_uuid = resolved or "all"
-            interval = args.get("interval", "hour")
-            group_by = "day" if interval == "day" else "hour"
+            interval = (args.get("interval") or "hour").lower()
+            # Daily grouping makes sense for multi-day windows; otherwise hourly.
+            group_by = "day" if interval in {"day", "7d", "week", "30d", "month"} else "hour"
             time_range = _map_interval_to_timerange(interval)
             return await backend_client.get_production_report(
                 time_range=time_range,
@@ -93,7 +125,7 @@ async def execute_tool(
                 lc_lower = line_code.lower()
                 alarms = [
                     a for a in alarms
-                    if lc_lower in a.get("machineName", "").lower()
+                    if lc_lower in (a.get("machineName") or "").lower()
                 ]
             return {
                 "alarms": alarms,
@@ -105,36 +137,50 @@ async def execute_tool(
             if not snapshots:
                 return {"error": "NO_DATA", "message": "Không có dữ liệu telemetry live"}
 
-            # Filter by line if provided
+            # Filter by line if provided (line_code may appear in machineName)
             if line_code:
                 lc_lower = line_code.lower()
                 snapshots = [
                     s for s in snapshots
-                    if lc_lower in s.get("machineName", "").lower()
+                    if lc_lower in (s.get("machineName") or "").lower()
                 ]
 
-            # Find machine with highest cycle time or lowest OEE
+            # Score each snapshot. Higher = worse.
+            # Prefer cycle_time when present; fall back to (status != RUNNING) + low OEE.
             best: Dict[str, Any] = {}
-            worst_oee = 999.0
+            best_score: float = -1.0
             for snap in snapshots:
                 payload = snap.get("payload") or {}
-                prod = payload.get("production", {}) if isinstance(payload, dict) else {}
-                oee = prod.get("oee", 100.0) if isinstance(prod, dict) else 100.0
-                if oee < worst_oee:
-                    worst_oee = oee
+                if not isinstance(payload, dict):
+                    payload = {}
+                prod = payload.get("production") or {}
+                if not isinstance(prod, dict):
+                    prod = {}
+
+                cycle_time = float(prod.get("time") or prod.get("cycleTime") or 0)
+                oee = float(prod.get("oee", 100.0))
+                status = (snap.get("payload") or {}).get("status") if isinstance(snap.get("payload"), dict) else None
+                status_norm = (status or prod.get("status") or "").upper()
+
+                # Score: combine cycle time and penalise non-RUNNING status
+                penalty = 0.0 if status_norm in {"RUNNING", "ĐANG CHẠY"} else 50.0
+                score = cycle_time + (100 - oee) + penalty
+                if score > best_score:
+                    best_score = score
                     best = snap
 
             if not best:
                 return {"message": "Không tìm thấy dữ liệu bottleneck"}
 
             payload = best.get("payload") or {}
-            prod = payload.get("production", {}) if isinstance(payload, dict) else {}
+            prod = (payload.get("production") or {}) if isinstance(payload, dict) else {}
+            status_val = payload.get("status") if isinstance(payload, dict) else None
             return {
                 "lineCode": line_code,
                 "bottleneckMachine": best.get("machineName", "unknown"),
-                "oee": worst_oee,
+                "oee": float(prod.get("oee", 0)) if isinstance(prod, dict) else 0,
                 "cycleTimeSeconds": prod.get("time") if isinstance(prod, dict) else None,
-                "status": best.get("payload", {}).get("status") if isinstance(best.get("payload"), dict) else None,
+                "status": status_val,
                 "snapshot": best,
             }
 
