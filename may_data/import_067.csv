@@ -1,0 +1,27 @@
+address,type,error_name
+M60,Bool,Băng tảibáo động kẹt liệu (Conveyorconveyor jam alarm) - 流水线连料报警
+M61,Bool,Băng tải到料异常báo động (Conveyor到料异常alarm) - 流水线到料异常报警
+M62,Bool,Băng tảiquá thời gian ra liệu (Conveyordischarge timeout) - 流水线出料超时
+M65,Bool,推送上下光电检查异常báo động (推送上下光电检查异常alarm) - 推送上下光电检查异常报警
+M66,Bool,推送上下光电检测hết liệubáo động (推送上下光电检测emptyalarm) - 推送上下光电检测无料报警
+M70,Bool,Báo động chế độ nhận bản mạch lớp đầu tiên có liệu (Board receiving mode first layer occupied alarm) - 收板模式首层有料报警
+M71,Bool,Lỗi chế độ nhận bản mạch JOG đi lên tìm bản mạch (Board receiving mode JOG upward board search anomaly) - 收板模式JOG上升找板异常
+M100,Bool,Trục nâng hạbáo động bộ điều khiển (driver) (Lifting axisdriver alarm) - 升降轴驱动器报警
+M101,Bool,Trục nâng hạchưa kích hoạt (enable) (Lifting axisnot enabled) - 升降轴未使能
+M102,Bool,Trục nâng hạbáo lỗi (Lifting axiserror) - 升降轴报错
+M103,Bool,Trục nâng hạchưa về vị trí gốc (Lifting axisnot homed) - 升降轴未归零
+M110,Bool,Trục đẩybáo động bộ điều khiển (driver) (Pushing axisdriver alarm) - 推送轴驱动器报警
+M111,Bool,Trục đẩychưa kích hoạt (enable)báo động (Pushing axisnot enabledalarm) - 推送轴未使能报警
+M112,Bool,Trục đẩybáo lỗi (Pushing axiserror) - 推送轴报错
+M113,Bool,Trục đẩychưa về vị trí gốc (Pushing axisnot homed) - 推送轴未归零
+M120,Bool,Xi lanh định vị sản phẩmđang chạy thủ công (Product positioning cylindermanual running) - 产品定位气缸手动中
+M121,Bool,Xi lanh định vị sản phẩmvị trí gốcbáo động (Product positioning cylinderhomealarm) - 产品定位气缸原位报警
+M122,Bool,Xi lanh định vị sản phẩmvị trí làm việcbáo động (Product positioning cylinderworkalarm) - 产品定位气缸出位报警
+M125,Bool,Xi lanh nâng hạđang chạy thủ công (Lifting cylindermanual running) - 升降气缸手动中
+M126,Bool,Xi lanh nâng hạvị trí gốcbáo động (Lifting cylinderhomealarm) - 升降气缸原位报警
+M127,Bool,Xi lanh nâng hạvị trí làm việcbáo động (Lifting cylinderworkalarm) - 升降气缸出位报警
+M130,Bool,Xe đẩy (trolley)xi lanh định vịđang chạy thủ công (Trolleypositioning cylindermanual running) - 台车定位气缸手动中
+M131,Bool,Xe đẩy (trolley)xi lanh định vịvị trí gốcbáo động (Trolleypositioning cylinderhomealarm) - 台车定位气缸原位报警
+M132,Bool,Xe đẩy (trolley)xi lanh định vị伸出báo động (Trolleypositioning cylinder伸出alarm) - 台车定位气缸伸出报警
+M135,Bool,Băng tảiđộng cơđang chạy thủ công (Conveyormotormanual running) - 流水线电机手动中
+M150,Bool,Dừng khẩn cấpbáo động (E-stopalarm) - 急停报警

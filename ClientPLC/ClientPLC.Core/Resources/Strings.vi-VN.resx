@@ -1,0 +1,1341 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="ActiveRead" xml:space="preserve">
+    <value>Kích hoạt đọc &amp; hiển thị</value>
+  </data>
+  <data name="Address" xml:space="preserve">
+    <value>Địa chỉ Register</value>
+  </data>
+  <data name="Alias" xml:space="preserve">
+    <value>Tên Alias (Nhãn)</value>
+  </data>
+  <data name="AliasName" xml:space="preserve">
+    <value>Tên gợi nhớ (Alias):</value>
+  </data>
+  <data name="AppSettings" xml:space="preserve">
+    <value>Cài đặt ứng dụng</value>
+  </data>
+  <data name="ApplyError" xml:space="preserve">
+    <value>Lỗi khi áp dụng cấu hình:</value>
+  </data>
+  <data name="ApplySuccess" xml:space="preserve">
+    <value>Đã áp dụng cấu hình và tái kết nối PLC thành công!</value>
+  </data>
+  <data name="ApplySuccessTitle" xml:space="preserve">
+    <value>Áp dụng thành công</value>
+  </data>
+  <data name="AutoScroll" xml:space="preserve">
+    <value>Tự động cuộn</value>
+  </data>
+  <data name="AvailabilityLabel" xml:space="preserve">
+    <value>Sẵn sàng (A)</value>
+  </data>
+  <data name="AvgSpeedLabel" xml:space="preserve">
+    <value>Vận tốc trung bình ca:</value>
+  </data>
+  <data name="BtnAdd" xml:space="preserve">
+    <value>Thêm Mới</value>
+  </data>
+  <data name="BtnApplyText" xml:space="preserve">
+    <value>Áp dụng</value>
+  </data>
+  <data name="BtnCancel" xml:space="preserve">
+    <value>Hủy bỏ</value>
+  </data>
+  <data name="BtnDelete" xml:space="preserve">
+    <value>Xóa Địa Chỉ</value>
+  </data>
+  <data name="BtnRefreshText" xml:space="preserve">
+    <value>Tải Lại Cấu Hình</value>
+  </data>
+  <data name="BtnSave" xml:space="preserve">
+    <value>Lưu cài đặt</value>
+  </data>
+  <data name="BtnSaveConfig" xml:space="preserve">
+    <value>LƯU CẤU HÌNH ĐỌC</value>
+  </data>
+  <data name="BtnTestReadText" xml:space="preserve">
+    <value>Đọc thử</value>
+  </data>
+  <data name="BtnUpdate" xml:space="preserve">
+    <value>Cập Nhật</value>
+  </data>
+  <data name="BẢNG GIÁM SÁT HIỆU SUẤT TRỰC TUYẾN" xml:space="preserve">
+    <value>BẢNG GIÁM SÁT HIỆU SUẤT TRỰC TUYẾN</value>
+  </data>
+  <data name="CboItemDay" xml:space="preserve">
+    <value>Ca Sáng (07:30 - 19:30)</value>
+  </data>
+  <data name="CboItemNight" xml:space="preserve">
+    <value>Ca Tối (19:30 - 07:30)</value>
+  </data>
+  <data name="CfgAlarmsHelp" xml:space="preserve">
+    <value>Danh sách các địa chỉ báo động lỗi</value>
+  </data>
+  <data name="CfgBtnAdd" xml:space="preserve">
+    <value>Thêm</value>
+  </data>
+  <data name="CfgBtnDelete" xml:space="preserve">
+    <value>Xóa</value>
+  </data>
+  <data name="CfgBtnDownloadTemplate" xml:space="preserve">
+    <value>Tải mẫu Excel</value>
+  </data>
+  <data name="CfgBtnExportAlarm" xml:space="preserve">
+    <value>Xuất CSV</value>
+  </data>
+  <data name="CfgBtnImportAlarm" xml:space="preserve">
+    <value>Nhập Excel</value>
+  </data>
+  <data name="CfgMnuClose" xml:space="preserve">
+    <value>Đóng cửa sổ</value>
+  </data>
+  <data name="CfgMnuExportCsv" xml:space="preserve">
+    <value>Xuất Excel/CSV...</value>
+  </data>
+  <data name="CfgMnuFile" xml:space="preserve">
+    <value>_Tệp</value>
+  </data>
+  <data name="CfgMnuImportExcel" xml:space="preserve">
+    <value>Nhập từ Excel...</value>
+  </data>
+  <data name="CfgMnuNew" xml:space="preserve">
+    <value>_Tạo mới (_N)</value>
+  </data>
+  <data name="CfgMnuOpen" xml:space="preserve">
+    <value>_Mở cấu hình (_O)...</value>
+  </data>
+  <data name="CfgMnuSave" xml:space="preserve">
+    <value>_Lưu cấu hình (_S)</value>
+  </data>
+  <data name="CfgMnuSaveAs" xml:space="preserve">
+    <value>Lưu cấu hình _dưới tên (_A)...</value>
+  </data>
+  <data name="CfgOthersHelp" xml:space="preserve">
+    <value>Các tham số khác (Gửi lên máy chủ)</value>
+  </data>
+  <data name="CfgProductsHelp" xml:space="preserve">
+    <value>[BẮT BUỘC] Địa chỉ sản lượng: Quantity (sản lượng tức thời) và Cycle Time (thời gian chu kỳ). Thiếu các địa chỉ này sẽ khiến biểu đồ OEE và sản lượng không hoạt động.</value>
+  </data>
+  <data name="CfgStatusHelp" xml:space="preserve">
+    <value>[BẮT BUỘC] 3 địa chỉ trạng thái máy (Start/Stop/Error). Hệ thống dùng để xác định trạng thái dây chuyền trên dashboard.</value>
+  </data>
+  <data name="CfgQualityHelp" xml:space="preserve">
+    <value>[BẮT BUỘC] Địa chỉ lỗi chất lượng (bit Bool): Stud NG (lỗi đai ốc vít) và Spring Screw NG (lỗi vít lò xo). Dùng để tính tỉ lệ FPY và NG trên dashboard.</value>
+  </data>
+  <data name="ClearLog" xml:space="preserve">
+    <value>Xóa Nhật ký</value>
+  </data>
+  <data name="ColAlarmName" xml:space="preserve">
+    <value>Tên báo động (Error Name)</value>
+  </data>
+  <data name="ColCurrentValue" xml:space="preserve">
+    <value>Giá trị hiện tại</value>
+  </data>
+  <data name="ColDataType" xml:space="preserve">
+    <value>Kiểu dữ liệu</value>
+  </data>
+  <data name="ColOtherParamName" xml:space="preserve">
+    <value>Tên tham số</value>
+  </data>
+  <data name="ColParamName" xml:space="preserve">
+    <value>Tham số</value>
+  </data>
+  <data name="ColPlcAddr" xml:space="preserve">
+    <value>Địa chỉ PLC</value>
+  </data>
+  <data name="ComputerInfo" xml:space="preserve">
+    <value>Thông số máy tính</value>
+  </data>
+  <data name="ConfigStatusActive" xml:space="preserve">
+    <value>Trạng thái cấu hình: Đang hoạt động</value>
+  </data>
+  <data name="ConnectionConfig" xml:space="preserve">
+    <value>Cấu hình chung</value>
+  </data>
+  <data name="DataTableTitle" xml:space="preserve">
+    <value>Bảng Dữ Liệu PLC Đọc</value>
+  </data>
+  <data name="DataType" xml:space="preserve">
+    <value>Kiểu dữ liệu:</value>
+  </data>
+  <data name="Disconnected" xml:space="preserve">
+    <value>Mất kết nối</value>
+  </data>
+  <data name="Enabled" xml:space="preserve">
+    <value>Bật</value>
+  </data>
+  <data name="ErrorOpenExcelImport" xml:space="preserve">
+    <value>Lỗi mở trình nhập Excel:</value>
+  </data>
+  <data name="ErrorReadConfig" xml:space="preserve">
+    <value>Lỗi đọc file cấu hình:</value>
+  </data>
+  <data name="ExpectedSpeed" xml:space="preserve">
+    <value>Vận tốc định mức target:</value>
+  </data>
+  <data name="GeneralInfo" xml:space="preserve">
+    <value>Thông số cơ bản</value>
+  </data>
+  <data name="LabelBrands" xml:space="preserve">
+    <value>Hãng PLC hiển thị ở menu trái:</value>
+  </data>
+  <data name="LabelFontSize" xml:space="preserve">
+    <value>Cỡ chữ giao diện:</value>
+  </data>
+  <data name="LabelLang" xml:space="preserve">
+    <value>Ngôn ngữ hệ thống:</value>
+  </data>
+  <data name="LabelMode" xml:space="preserve">
+    <value>Chế độ hoạt động:</value>
+  </data>
+  <data name="LabelStart" xml:space="preserve">
+    <value>Khởi chạy cùng Windows:</value>
+  </data>
+  <data name="LabelTheme" xml:space="preserve">
+    <value>Màu sắc giao diện (Theme):</value>
+  </data>
+  <data name="Large" xml:space="preserve">
+    <value>Lớn (13pt)</value>
+  </data>
+  <data name="LastSignalPrefix" xml:space="preserve">
+    <value>Tín hiệu cuối:</value>
+  </data>
+  <data name="LastUpdate" xml:space="preserve">
+    <value>Cập nhật lúc</value>
+  </data>
+  <data name="LineIdLabel" xml:space="preserve">
+    <value>ID Chuyền (Line ID):</value>
+  </data>
+  <data name="LineNameLabel" xml:space="preserve">
+    <value>Tên Chuyền (Line Name):</value>
+  </data>
+  <data name="LineOrderLabel" xml:space="preserve">
+    <value>Thứ tự chuyền (Order):</value>
+  </data>
+  <data name="LoadedAddresses" xml:space="preserve">
+    <value>Đã tải {0} địa chỉ từ cấu hình.</value>
+  </data>
+  <data name="LocalWebServerLabel" xml:space="preserve">
+    <value>Cổng HTTP Server:</value>
+  </data>
+  <data name="LogTitle" xml:space="preserve">
+    <value>Nhật Ký Hệ Thống (Log)</value>
+  </data>
+  <data name="MachineIdLabel" xml:space="preserve">
+    <value>Machine ID (Định danh):</value>
+  </data>
+  <data name="MachineNameLabel" xml:space="preserve">
+    <value>Tên máy (Machine Name):</value>
+  </data>
+  <data name="Medium" xml:space="preserve">
+    <value>Trung bình (11pt)</value>
+  </data>
+  <data name="Never" xml:space="preserve">
+    <value>Never</value>
+  </data>
+  <data name="NewConfig" xml:space="preserve">
+    <value>Cấu hình mới</value>
+  </data>
+  <data name="NoConfigAddresses" xml:space="preserve">
+    <value>Chưa cấu hình địa chỉ đọc.</value>
+  </data>
+  <data name="Notice" xml:space="preserve">
+    <value>Thông báo</value>
+  </data>
+  <data name="OeeLabel" xml:space="preserve">
+    <value>Hiệu suất OEE đạt:</value>
+  </data>
+  <data name="OeeRateTitle" xml:space="preserve">
+    <value>Hiệu Suất OEE</value>
+  </data>
+  <data name="OpenConfigSuccess" xml:space="preserve">
+    <value>Mở file cấu hình .cplc thành công! Hãy nhấn ' Áp dụng' để nạp vào hệ thống.</value>
+  </data>
+  <data name="OpenConfigSuccessTitle" xml:space="preserve">
+    <value>Mở thành công</value>
+  </data>
+  <data name="OpenConfigTitle" xml:space="preserve">
+    <value>Mở file cấu hình .cplc</value>
+  </data>
+  <data name="PerformanceLabel" xml:space="preserve">
+    <value>Hiệu suất (P)</value>
+  </data>
+  <data name="PlcAddrConfigTitle" xml:space="preserve">
+    <value>Cấu Hình Địa Chỉ PLC</value>
+  </data>
+  <data name="PlcAddress" xml:space="preserve">
+    <value>Địa chỉ PLC:</value>
+  </data>
+  <data name="PlcBrand" xml:space="preserve">
+    <value>Hãng sản xuất PLC (Brand):</value>
+  </data>
+  <data name="PlcBrandLabel" xml:space="preserve">
+    <value>Hãng PLC / Giao thức:</value>
+  </data>
+  <data name="PlcConfig" xml:space="preserve">
+    <value>Cấu hình PLC</value>
+  </data>
+  <data name="PlcGroupTitle" xml:space="preserve">
+    <value>CÁC HÃNG PLC HỖ TRỢ</value>
+  </data>
+  <data name="PlcIp" xml:space="preserve">
+    <value>Địa chỉ IP (Hoặc Serial Port):</value>
+  </data>
+  <data name="PlcIpLabel" xml:space="preserve">
+    <value>IP Address PLC:</value>
+  </data>
+  <data name="PlcPort" xml:space="preserve">
+    <value>Cổng (Hoặc BaudRate):</value>
+  </data>
+  <data name="PlcPortLabel" xml:space="preserve">
+    <value>Cổng kết nối (Port):</value>
+  </data>
+  <data name="PlcProtocol" xml:space="preserve">
+    <value>Kiểu kết nối / Driver (Protocol):</value>
+  </data>
+  <data name="PlcStatusConnected" xml:space="preserve">
+    <value>PLC: Đã kết nối</value>
+  </data>
+  <data name="PlcStatusError" xml:space="preserve">
+    <value>PLC: Lỗi kết nối (Rê chuột xem)</value>
+  </data>
+  <data name="PlcStatusNotConnected" xml:space="preserve">
+    <value>PLC: Chưa kết nối</value>
+  </data>
+  <data name="PlcUptimeLabel" xml:space="preserve">
+    <value>Thời gian chạy máy:</value>
+  </data>
+  <data name="PromptNewConfig" xml:space="preserve">
+    <value>Cấu hình hiện hành đã thay đổi. Bạn có muốn lưu trước khi tạo mới?</value>
+  </data>
+  <data name="PromptOpenConfig" xml:space="preserve">
+    <value>Cấu hình hiện hành đã thay đổi. Bạn có muốn lưu trước khi mở file khác?</value>
+  </data>
+  <data name="QueryBtn" xml:space="preserve">
+    <value>Tra Cứu</value>
+  </data>
+  <data name="ReadError" xml:space="preserve">
+    <value>Lỗi đọc</value>
+  </data>
+  <data name="ReadInterval" xml:space="preserve">
+    <value>Chu kỳ đọc liên tục (ms):</value>
+  </data>
+  <data name="ReadIntervalLabel" xml:space="preserve">
+    <value>Chu kỳ đọc (Interval Ms):</value>
+  </data>
+  <data name="RefreshConfig" xml:space="preserve">
+    <value>Tải Lại Cấu Hình</value>
+  </data>
+  <data name="Reload" xml:space="preserve">
+    <value>Làm mới</value>
+  </data>
+  <data name="ReloadedConfig" xml:space="preserve">
+    <value>Đã tải lại cấu hình từ file hiện hành.</value>
+  </data>
+  <data name="STT" xml:space="preserve">
+    <value>STT</value>
+  </data>
+  <data name="SaveChangesTitle" xml:space="preserve">
+    <value>Lưu thay đổi</value>
+  </data>
+  <data name="SaveConfig" xml:space="preserve">
+    <value>Lưu Cấu Hình</value>
+  </data>
+  <data name="UseMockDataText" xml:space="preserve">
+    <value>Sử dụng dữ liệu ảo (Demo Mode)</value>
+  </data>
+  <data name="SaveFileError" xml:space="preserve">
+    <value>Lỗi khi ghi file:</value>
+  </data>
+  <data name="SelectAlarmDelete" xml:space="preserve">
+    <value>Chọn một dòng báo động để xóa!</value>
+  </data>
+  <data name="SelectDateError" xml:space="preserve">
+    <value>Vui lòng chọn ngày để tra cứu!</value>
+  </data>
+  <data name="SelectDateLabel" xml:space="preserve">
+    <value>Chọn ngày:</value>
+  </data>
+  <data name="SelectShiftLabel" xml:space="preserve">
+    <value>Chọn ca:</value>
+  </data>
+  <data name="ServerConfig" xml:space="preserve">
+    <value>Kết nối Server</value>
+  </data>
+  <data name="ServerHost" xml:space="preserve">
+    <value>Địa chỉ IP / Host của MQTT Broker:</value>
+  </data>
+  <data name="ServerHostLabel" xml:space="preserve">
+    <value>Địa chỉ Server Host:</value>
+  </data>
+  <data name="ServerPort" xml:space="preserve">
+    <value>Cổng dịch vụ MQTT Broker:</value>
+  </data>
+  <data name="ServerPortLabel" xml:space="preserve">
+    <value>Cổng Server Port:</value>
+  </data>
+  <data name="ServerStatusConnected" xml:space="preserve">
+    <value>Server: Đã kết nối</value>
+  </data>
+  <data name="ServerStatusConnecting" xml:space="preserve">
+    <value>Server: Kết nối...</value>
+  </data>
+  <data name="ServerStatusDisconnected" xml:space="preserve">
+    <value>Server: Mất kết nối</value>
+  </data>
+  <data name="SetupTitle" xml:space="preserve">
+    <value>CẤU HÌNH ĐỊA CHỈ ĐỌC</value>
+  </data>
+  <data name="ShiftAvgSpeed" xml:space="preserve">
+    <value>Vận tốc trung bình ca:</value>
+  </data>
+  <data name="ShiftDateLabel" xml:space="preserve">
+    <value>Ngày làm việc:</value>
+  </data>
+  <data name="ShiftName" xml:space="preserve">
+    <value>Ca:</value>
+  </data>
+  <data name="ShiftNameLabel" xml:space="preserve">
+    <value>Ca làm việc:</value>
+  </data>
+  <data name="Small" xml:space="preserve">
+    <value>Nhỏ (9pt)</value>
+  </data>
+  <data name="StatusUpdating" xml:space="preserve">
+    <value>Đang cập nhật định kỳ từ Server...</value>
+  </data>
+  <data name="Success" xml:space="preserve">
+    <value>Thành công</value>
+  </data>
+  <data name="SuccessSave" xml:space="preserve">
+    <value>Cài đặt hệ thống đã được cập nhật thành công!</value>
+  </data>
+  <data name="SuccessSaveConfig" xml:space="preserve">
+    <value>Đã lưu cấu hình kết nối thành công!</value>
+  </data>
+  <data name="SummaryTitle" xml:space="preserve">
+    <value>CHI TIẾT HIỆU SUẤT VẬN HÀNH</value>
+  </data>
+  <data name="SysDashboard" xml:space="preserve">
+    <value>Giám sát hiệu suất</value>
+  </data>
+  <data name="SysDataTable" xml:space="preserve">
+    <value>Bảng dữ liệu PLC</value>
+  </data>
+  <data name="SysHistoryQuery" xml:space="preserve">
+    <value>Tra cứu lịch sử</value>
+  </data>
+  <data name="SysLiveErrors" xml:space="preserve">
+    <value>Danh sách lỗi</value>
+  </data>
+  <data name="SysLiveStatus" xml:space="preserve">
+    <value>Chi tiết trạng thái</value>
+  </data>
+  <data name="SysLog" xml:space="preserve">
+    <value>Nhật ký hệ thống</value>
+  </data>
+  <data name="SysSettings" xml:space="preserve">
+    <value>Cài đặt ứng dụng</value>
+  </data>
+  <data name="TabAlarmsText" xml:space="preserve">
+    <value>Thông báo</value>
+  </data>
+  <data name="TabOthersText" xml:space="preserve">
+    <value>Khác</value>
+  </data>
+  <data name="TabProductsText" xml:space="preserve">
+    <value>Sản phẩm</value>
+  </data>
+  <data name="TabStatusText" xml:space="preserve">
+    <value>Trạng thái</value>
+  </data>
+  <data name="TabQualityText" xml:space="preserve">
+    <value>Chất lượng</value>
+  </data>
+  <data name="TargetProgressPattern" xml:space="preserve">
+    <value>Mục tiêu: {0} | Tiến độ sản lượng: {1}%</value>
+  </data>
+  <data name="TelemetryCpuCores" xml:space="preserve">
+    <value>Số nhân CPU: {0} Cores</value>
+  </data>
+  <data name="TelemetryCpuUsage" xml:space="preserve">
+    <value>Tải CPU hiện tại: {0:F1}%</value>
+  </data>
+  <data name="TelemetryOS" xml:space="preserve">
+    <value>Hệ điều hành: {0} ({1})</value>
+  </data>
+  <data name="TelemetryRamUsage" xml:space="preserve">
+    <value>RAM đang dùng (App): {0:F2} MB</value>
+  </data>
+  <data name="TelemetryUptime" xml:space="preserve">
+    <value>Thời gian máy hoạt động: {0} ngày {1} giờ {2} phút</value>
+  </data>
+  <data name="TestConnection" xml:space="preserve">
+    <value>Kiểm tra kết nối Server</value>
+  </data>
+  <data name="TitleAppConfig" xml:space="preserve">
+    <value>Cấu Hình Kết Nối Client &amp; Thiết Bị PLC</value>
+  </data>
+  <data name="TitleAppSettings" xml:space="preserve">
+    <value>Cài Đặt Hệ Thống Client</value>
+  </data>
+  <data name="TotalQtyLabel" xml:space="preserve">
+    <value>Tổng sản lượng ca:</value>
+  </data>
+  <data name="Type" xml:space="preserve">
+    <value>Kiểu dữ liệu</value>
+  </data>
+  <data name="UnsavedChangesPrompt" xml:space="preserve">
+    <value>Cấu hình đã thay đổi. Bạn có muốn lưu trước khi đóng cửa sổ này không?</value>
+  </data>
+  <data name="UpdatedTime" xml:space="preserve">
+    <value>Cập nhật lúc: {0}</value>
+  </data>
+  <data name="Value" xml:space="preserve">
+    <value>Giá trị hiện tại</value>
+  </data>
+  <data name="Version" xml:space="preserve">
+    <value>Fii ClientPLC v1.0</value>
+  </data>
+  <data name="WaitingRead" xml:space="preserve">
+    <value>Chờ đọc...</value>
+  </data>
+  <data name="activeContinuous" xml:space="preserve">
+    <value>hoạt động liên tục</value>
+  </data>
+  <data name="cumulativeConnection" xml:space="preserve">
+    <value>kết nối tích lũy</value>
+  </data>
+  <data name="hourlyChartTitle" xml:space="preserve">
+    <value>BIỂU ĐỒ SẢN LƯỢNG TỪNG GIỜ TRONG CA</value>
+  </data>
+  <data name="plcRuntimeLabel" xml:space="preserve">
+    <value>Thời Gian PLC Chạy</value>
+  </data>
+  <data name="productionQty" xml:space="preserve">
+    <value>Sản lượng ca</value>
+  </data>
+  <data name="unitProducts" xml:space="preserve">
+    <value>sản phẩm</value>
+  </data>
+  <data name="⚙ HỆ THỐNG CLIENT" xml:space="preserve">
+    <value>HỆ THỐNG CLIENT</value>
+  </data>
+  <data name="Status.NoPlcSignal" xml:space="preserve">
+    <value>Không nhận được tín hiệu PLC</value>
+  </data>
+  <data name="ExcelImport.Title" xml:space="preserve">
+    <value>Nhập Cấu Hình Excel - Máy: {0}</value>
+  </data>
+  <data name="ExcelImport.Header" xml:space="preserve">
+    <value>NHẬP CẤU HÌNH EXCEL</value>
+  </data>
+  <data name="ExcelImport.SelectFile" xml:space="preserve">
+    <value>Chọn file Excel...</value>
+  </data>
+  <data name="ExcelImport.NoFileSelected" xml:space="preserve">
+    <value>Chưa chọn file...</value>
+  </data>
+  <data name="ExcelImport.SelectSheet" xml:space="preserve">
+    <value>Chọn Sheet:</value>
+  </data>
+  <data name="ExcelImport.HeaderRow" xml:space="preserve">
+    <value>Dòng tiêu đề (0-indexed):</value>
+  </data>
+  <data name="ExcelImport.FirstRowHeader" xml:space="preserve">
+    <value>Dòng đầu tiên là tiêu đề</value>
+  </data>
+  <data name="ExcelImport.SkipEmptyRows" xml:space="preserve">
+    <value>Bỏ qua dòng trống</value>
+  </data>
+  <data name="ExcelImport.TabularMode" xml:space="preserve">
+    <value>Dạng bảng chuẩn (Mỗi cột là 1 thuộc tính)</value>
+  </data>
+  <data name="ExcelImport.PairMode" xml:space="preserve">
+    <value>Dạng ghép cặp nhiều cột (Địa chỉ + Tên)</value>
+  </data>
+  <data name="ExcelImport.PreviewHeader" xml:space="preserve">
+    <value>XEM TRƯỚC DỮ LIỆU EXCEL</value>
+  </data>
+  <data name="ExcelImport.MappingHeader" xml:space="preserve">
+    <value>ÁNH XẠ CỘT DỮ LIỆU</value>
+  </data>
+  <data name="ExcelImport.SummaryTotal" xml:space="preserve">
+    <value>Tổng số dòng: {0}</value>
+  </data>
+  <data name="ExcelImport.SummaryValid" xml:space="preserve">
+    <value>Hợp lệ: {0}</value>
+  </data>
+  <data name="ExcelImport.SummaryInvalid" xml:space="preserve">
+    <value>Không hợp lệ: {0}</value>
+  </data>
+  <data name="ExcelImport.SummaryDuplicate" xml:space="preserve">
+    <value>Trùng lặp: {0}</value>
+  </data>
+  <data name="ExcelImport.ApplyMode" xml:space="preserve">
+    <value>Chế độ áp dụng vào máy:</value>
+  </data>
+  <data name="ExcelImport.ApplyMerge" xml:space="preserve">
+    <value>Thêm mới &amp; Ghi đè dòng trùng</value>
+  </data>
+  <data name="ExcelImport.ApplyReplace" xml:space="preserve">
+    <value>Thay thế toàn bộ cấu hình máy</value>
+  </data>
+  <data name="BtnYes" xml:space="preserve">
+    <value>Có</value>
+  </data>
+  <data name="BtnNo" xml:space="preserve">
+    <value>Không</value>
+  </data>
+  <data name="BtnOK" xml:space="preserve">
+    <value>Đồng ý</value>
+  </data>
+  <data name="BtnRead" xml:space="preserve">
+    <value>ĐỌC DỮ LIỆU</value>
+  </data>
+  <data name="BtnWrite" xml:space="preserve">
+    <value>GHI DỮ LIỆU</value>
+  </data>
+  <data name="Card.ComputerRuntime" xml:space="preserve">
+    <value>Thời gian máy tính</value>
+  </data>
+  <data name="Card.MachineStatus" xml:space="preserve">
+    <value>Trạng thái máy</value>
+  </data>
+  <data name="Card.OeePerformance" xml:space="preserve">
+    <value>Hiệu suất OEE</value>
+  </data>
+  <data name="Card.PlcRuntime" xml:space="preserve">
+    <value>Thời gian PLC chạy</value>
+  </data>
+  <data name="Card.ShiftProduction" xml:space="preserve">
+    <value>Sản lượng ca</value>
+  </data>
+  <data name="Chart.HourlyProduction" xml:space="preserve">
+    <value>Sản lượng theo giờ trong ca</value>
+  </data>
+  <data name="Chart.NoProductionData" xml:space="preserve">
+    <value>Chưa có dữ liệu sản lượng</value>
+  </data>
+  <data name="Chart.NoProductionDataDescription" xml:space="preserve">
+    <value>Chưa đủ dữ liệu để tính toán. Chỉ số sẽ được cập nhật sau khi PLC kết nối và có sản phẩm đầu tiên.</value>
+  </data>
+  <data name="Chart.Target" xml:space="preserve">
+    <value>Mục tiêu: {0} sp/giờ</value>
+  </data>
+  <data name="ColAddress" xml:space="preserve">
+    <value>Địa chỉ</value>
+  </data>
+  <data name="ColDuration" xml:space="preserve">
+    <value>Thời lượng</value>
+  </data>
+  <data name="ColEndedAt" xml:space="preserve">
+    <value>Kết thúc lúc</value>
+  </data>
+  <data name="ColErrorCode" xml:space="preserve">
+    <value>Mã lỗi</value>
+  </data>
+  <data name="ColErrorName" xml:space="preserve">
+    <value>Tên lỗi</value>
+  </data>
+  <data name="ColIndex" xml:space="preserve">
+    <value>STT</value>
+  </data>
+  <data name="ColMachineId" xml:space="preserve">
+    <value>Máy</value>
+  </data>
+  <data name="ColSeverity" xml:space="preserve">
+    <value>Mức độ</value>
+  </data>
+  <data name="ColStartedAt" xml:space="preserve">
+    <value>Bắt đầu lúc</value>
+  </data>
+  <data name="ColStatus" xml:space="preserve">
+    <value>Trạng thái</value>
+  </data>
+  <data name="ConnectPlcBtn" xml:space="preserve">
+    <value>Kết nối PLC</value>
+  </data>
+  <data name="DisconnectPlcBtn" xml:space="preserve">
+    <value>Ngắt kết nối</value>
+  </data>
+  <data name="Dashboard.Date" xml:space="preserve">
+    <value>Ngày: {0}</value>
+  </data>
+  <data name="Dashboard.Machine" xml:space="preserve">
+    <value>Máy: {0}</value>
+  </data>
+  <data name="Dashboard.ReadCycle" xml:space="preserve">
+    <value>Chu kỳ: {0} ms</value>
+  </data>
+  <data name="Dashboard.Shift" xml:space="preserve">
+    <value>Ca: {0}</value>
+  </data>
+  <data name="Dashboard.Title" xml:space="preserve">
+    <value>Giám sát hiệu suất trực tuyến</value>
+  </data>
+  <data name="Error.NoDataToExport" xml:space="preserve">
+    <value>Không có dữ liệu để xuất!</value>
+  </data>
+  <data name="ExportSuccess" xml:space="preserve">
+    <value>Xuất file thành công tại: {0}</value>
+  </data>
+  <data name="Filter.All" xml:space="preserve">
+    <value>Tất cả</value>
+  </data>
+  <data name="Footer.Cpu" xml:space="preserve">
+    <value>CPU: {0:F1}%</value>
+  </data>
+  <data name="Footer.LastUpdated" xml:space="preserve">
+    <value>Cập nhật: {0}</value>
+  </data>
+  <data name="Footer.Ram" xml:space="preserve">
+    <value>RAM: {0}</value>
+  </data>
+  <data name="Footer.Uptime" xml:space="preserve">
+    <value>Thời gian hoạt động: {0}</value>
+  </data>
+  <data name="Footer.Version" xml:space="preserve">
+    <value>Phiên bản: {0}</value>
+  </data>
+  <data name="FormatPcsPerHour" xml:space="preserve">
+    <value>{0} sp/giờ</value>
+  </data>
+  <data name="Group" xml:space="preserve">
+    <value>Nhóm</value>
+  </data>
+  <data name="GroupName" xml:space="preserve">
+    <value>Tên nhóm</value>
+  </data>
+  <data name="LabelErrorCode" xml:space="preserve">
+    <value>Mã lỗi:</value>
+  </data>
+  <data name="LabelFromDate" xml:space="preserve">
+    <value>Từ ngày:</value>
+  </data>
+  <data name="LabelMachine" xml:space="preserve">
+    <value>Máy:</value>
+  </data>
+  <data name="LabelStatus" xml:space="preserve">
+    <value>Trạng thái:</value>
+  </data>
+  <data name="LabelToDate" xml:space="preserve">
+    <value>Đến ngày:</value>
+  </data>
+  <data name="LiveErrors.ColError" xml:space="preserve">
+    <value>Lỗi</value>
+  </data>
+  <data name="LiveErrors.ColTime" xml:space="preserve">
+    <value>Thời gian</value>
+  </data>
+  <data name="LiveErrors.EmptyDesc" xml:space="preserve">
+    <value>Hệ thống chưa ghi nhận lỗi PLC trong thời gian hiện tại.</value>
+  </data>
+  <data name="LiveErrors.EmptyTitle" xml:space="preserve">
+    <value>Không có lỗi hoặc cảnh báo</value>
+  </data>
+  <data name="LiveErrors.ErrorPrefix" xml:space="preserve">
+    <value>Lỗi:</value>
+  </data>
+  <data name="LiveErrors.Subtitle" xml:space="preserve">
+    <value>Giám sát các tín hiệu báo động và lỗi hệ thống từ PLC</value>
+  </data>
+  <data name="LiveErrors.Title" xml:space="preserve">
+    <value>Danh sách lỗi &amp; cảnh báo PLC</value>
+  </data>
+  <data name="LiveStatus.ColAddress" xml:space="preserve">
+    <value>Địa chỉ</value>
+  </data>
+  <data name="LiveStatus.ColAlias" xml:space="preserve">
+    <value>Tên / Alias</value>
+  </data>
+  <data name="LiveStatus.ColType" xml:space="preserve">
+    <value>Kiểu dữ liệu</value>
+  </data>
+  <data name="LiveStatus.ColValue" xml:space="preserve">
+    <value>Dữ liệu đọc được</value>
+  </data>
+  <data name="LiveStatus.Subtitle" xml:space="preserve">
+    <value>Giám sát trực quan dữ liệu đọc thời gian thực từ PLC</value>
+  </data>
+  <data name="LiveStatus.Title" xml:space="preserve">
+    <value>Chi tiết trạng thái thanh ghi PLC</value>
+  </data>
+  <data name="Menu.About" xml:space="preserve">
+    <value>Giới thiệu</value>
+  </data>
+  <data name="Menu.AboutClient" xml:space="preserve">
+    <value>Giới thiệu về Fii Client PLC</value>
+  </data>
+  <data name="Menu.ApplicationSettings" xml:space="preserve">
+    <value>Cài đặt ứng dụng</value>
+  </data>
+  <data name="Menu.ClearLocalCache" xml:space="preserve">
+    <value>Xóa bộ nhớ cache cục bộ</value>
+  </data>
+  <data name="Menu.CloseFile" xml:space="preserve">
+    <value>Đóng</value>
+  </data>
+  <data name="Menu.Copy" xml:space="preserve">
+    <value>Sao chép</value>
+  </data>
+  <data name="Menu.Cut" xml:space="preserve">
+    <value>Cắt</value>
+  </data>
+  <data name="Menu.Delete" xml:space="preserve">
+    <value>Xóa</value>
+  </data>
+  <data name="Menu.Edit" xml:space="preserve">
+    <value>_Sửa</value>
+  </data>
+  <data name="Menu.Exit" xml:space="preserve">
+    <value>Thoát</value>
+  </data>
+  <data name="Menu.ExportExcel" xml:space="preserve">
+    <value>Xuất ra Excel...</value>
+  </data>
+  <data name="Menu.File" xml:space="preserve">
+    <value>_Tệp</value>
+  </data>
+  <data name="Menu.Find" xml:space="preserve">
+    <value>Tìm kiếm...</value>
+  </data>
+  <data name="Menu.FindNext" xml:space="preserve">
+    <value>Tìm tiếp</value>
+  </data>
+  <data name="Menu.ImportExcel" xml:space="preserve">
+    <value>Nhập từ Excel...</value>
+  </data>
+  <data name="Menu.ImportMappingSettings" xml:space="preserve">
+    <value>Nhập cấu hình ánh xạ...</value>
+  </data>
+  <data name="Menu.Logging" xml:space="preserve">
+    <value>_Nhật ký</value>
+  </data>
+  <data name="Menu.New" xml:space="preserve">
+    <value>Mới</value>
+  </data>
+  <data name="Menu.Open" xml:space="preserve">
+    <value>Mở...</value>
+  </data>
+  <data name="Menu.OpenLogFolder" xml:space="preserve">
+    <value>Mở thư mục nhật ký</value>
+  </data>
+  <data name="Menu.Paste" xml:space="preserve">
+    <value>Dán</value>
+  </data>
+  <data name="Menu.PlcConnectionTest" xml:space="preserve">
+    <value>Kiểm tra kết nối PLC</value>
+  </data>
+  <data name="Menu.ReadSelectedRegister" xml:space="preserve">
+    <value>Đọc thanh ghi đã chọn</value>
+  </data>
+  <data name="Menu.Redo" xml:space="preserve">
+    <value>Làm lại</value>
+  </data>
+  <data name="Menu.ReloadConfiguration" xml:space="preserve">
+    <value>Tải lại cấu hình</value>
+  </data>
+  <data name="Menu.Save" xml:space="preserve">
+    <value>Lưu</value>
+  </data>
+  <data name="Menu.SaveAs" xml:space="preserve">
+    <value>Lưu thành...</value>
+  </data>
+  <data name="Menu.SelectAll" xml:space="preserve">
+    <value>Chọn tất cả</value>
+  </data>
+  <data name="Menu.SystemInfo" xml:space="preserve">
+    <value>Thông tin hệ thống</value>
+  </data>
+  <data name="Menu.Tools" xml:space="preserve">
+    <value>_Công cụ</value>
+  </data>
+  <data name="Menu.Undo" xml:space="preserve">
+    <value>Hoàn tác</value>
+  </data>
+  <data name="Menu.VersionInfo" xml:space="preserve">
+    <value>Thông tin phiên bản</value>
+  </data>
+  <data name="Menu.Window" xml:space="preserve">
+    <value>_Cửa sổ</value>
+  </data>
+  <data name="Menu.WndAlarmConfiguration" xml:space="preserve">
+    <value>Cấu hình báo lỗi</value>
+  </data>
+  <data name="Menu.WndAlarmHistory" xml:space="preserve">
+    <value>Lịch sử báo lỗi</value>
+  </data>
+  <data name="Menu.WndConnectionLog" xml:space="preserve">
+    <value>Nhật ký kết nối</value>
+  </data>
+  <data name="Menu.WndDataConfiguration" xml:space="preserve">
+    <value>Cấu hình dữ liệu</value>
+  </data>
+  <data name="Menu.WndMachineList" xml:space="preserve">
+    <value>Danh sách máy</value>
+  </data>
+  <data name="Menu.WndMinimize" xml:space="preserve">
+    <value>Thu nhỏ xuống khay</value>
+  </data>
+  <data name="Menu.WndPendingData" xml:space="preserve">
+    <value>Hàng chờ dữ liệu</value>
+  </data>
+  <data name="Performance.Availability" xml:space="preserve">
+    <value>Sẵn sàng (A)</value>
+  </data>
+  <data name="Performance.AverageSpeed" xml:space="preserve">
+    <value>Vận tốc TB:</value>
+  </data>
+  <data name="Performance.Performance" xml:space="preserve">
+    <value>Hiệu suất (P)</value>
+  </data>
+  <data name="Performance.RatedSpeed" xml:space="preserve">
+    <value>Định mức:</value>
+  </data>
+  <data name="Performance.Title" xml:space="preserve">
+    <value>Chi tiết hiệu suất vận hành</value>
+  </data>
+  <data name="Plc.Brand" xml:space="preserve">
+    <value>Hãng PLC:</value>
+  </data>
+  <data name="Plc.HttpPort" xml:space="preserve">
+    <value>Cổng HTTP:</value>
+  </data>
+  <data name="Plc.IpAddress" xml:space="preserve">
+    <value>IP PLC:</value>
+  </data>
+  <data name="Plc.LastReceived" xml:space="preserve">
+    <value>Nhận gần nhất:</value>
+  </data>
+  <data name="Plc.Port" xml:space="preserve">
+    <value>Cổng PLC:</value>
+  </data>
+  <data name="Plc.Protocol" xml:space="preserve">
+    <value>Giao thức:</value>
+  </data>
+  <data name="Plc.ReadCycle" xml:space="preserve">
+    <value>Chu kỳ đọc:</value>
+  </data>
+  <data name="Plc.ResponseLabel" xml:space="preserve">
+    <value>Phản hồi PLC:</value>
+  </data>
+  <data name="PlcExecutionResult" xml:space="preserve">
+    <value>KẾT QUẢ THỰC THI</value>
+  </data>
+  <data name="PlcOperationConfig" xml:space="preserve">
+    <value>CẤU HÌNH THAO TÁC</value>
+  </data>
+  <data name="PlcRegisterAddress" xml:space="preserve">
+    <value>Địa chỉ thanh ghi:</value>
+  </data>
+  <data name="PlcWriteValueLabel" xml:space="preserve">
+    <value>Giá trị cần ghi (nếu có):</value>
+  </data>
+  <data name="SendToServer" xml:space="preserve">
+    <value>Gửi lên Server</value>
+  </data>
+  <data name="Server.Label" xml:space="preserve">
+    <value>Server</value>
+  </data>
+  <data name="Server.Status" xml:space="preserve">
+    <value>Server</value>
+  </data>
+  <data name="TestDataTitle" xml:space="preserve">
+    <value>Dữ liệu Test Telemetry JSON:</value>
+  </data>
+  <data name="ViewJsonData" xml:space="preserve">
+    <value>Xem Dữ Liệu JSON</value>
+  </data>
+  <data name="Status.Active" xml:space="preserve">
+    <value>Đang hoạt động</value>
+  </data>
+  <data name="Status.Connected" xml:space="preserve">
+    <value>Đã kết nối</value>
+  </data>
+  <data name="Status.Connecting" xml:space="preserve">
+    <value>Đang kết nối...</value>
+  </data>
+  <data name="Status.Disconnected" xml:space="preserve">
+    <value>Mất kết nối</value>
+  </data>
+  <data name="Status.Error" xml:space="preserve">
+    <value>LỖI</value>
+  </data>
+  <data name="Status.Idle" xml:space="preserve">
+    <value>CHỜ</value>
+  </data>
+  <data name="Status.Maintenance" xml:space="preserve">
+    <value>BẢO TRÌ</value>
+  </data>
+  <data name="Status.Offline" xml:space="preserve">
+    <value>Ngoại tuyến</value>
+  </data>
+  <data name="Status.Recovered" xml:space="preserve">
+    <value>Đã phục hồi</value>
+  </data>
+  <data name="Status.Running" xml:space="preserve">
+    <value>ĐANG CHẠY</value>
+  </data>
+  <data name="Status.Stopped" xml:space="preserve">
+    <value>ĐÃ DỪNG</value>
+  </data>
+  <data name="TabErrorHistory" xml:space="preserve">
+    <value>Lịch sử lỗi</value>
+  </data>
+  <data name="TabOeePerformance" xml:space="preserve">
+    <value>Hiệu suất OEE</value>
+  </data>
+  <data name="Dashboard.ShiftProgress" xml:space="preserve">
+    <value>Thời gian ca đã qua: {0}%</value>
+  </data>
+  <data name="Chart.HourTooltip" xml:space="preserve">
+    <value>Giờ {0}: {1} sp</value>
+  </data>
+  <data name="Sidebar.Navigation" xml:space="preserve">
+    <value>ĐIỀU HƯỚNG</value>
+  </data>
+  <data name="Sidebar.PlcBrands" xml:space="preserve">
+    <value>CÁC HÃNG PLC HỖ TRỢ</value>
+  </data>
+  <data name="Sidebar.TooltipCollapse" xml:space="preserve">
+    <value>Thu gọn điều hướng</value>
+  </data>
+  <data name="Sidebar.TooltipExpand" xml:space="preserve">
+    <value>Mở rộng điều hướng</value>
+  </data>
+  <data name="Footer.PlcResponse" xml:space="preserve">
+    <value>Phản hồi PLC: {0}</value>
+  </data>
+  <data name="Card.ComputerUptime" xml:space="preserve">
+    <value>Thời gian hoạt động</value>
+  </data>
+  <data name="Card.UptimeSubtext" xml:space="preserve">
+    <value>thời gian hệ thống hoạt động liên tục</value>
+  </data>
+  <data name="Card.PlcConnectionTime" xml:space="preserve">
+    <value>Thời gian kết nối PLC</value>
+  </data>
+  <data name="Card.PlcConnectionSubtext" xml:space="preserve">
+    <value>thời gian kết nối tích lũy</value>
+  </data>
+  <data name="Menu.Help" xml:space="preserve">
+    <value>_Trợ giúp</value>
+  </data>
+  <data name="Menu.UserGuide" xml:space="preserve">
+    <value>Hướng dẫn sử dụng</value>
+  </data>
+  <data name="Dashboard.ShiftBadge" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="Shift.DayLabel" xml:space="preserve">
+    <value>Ca sáng</value>
+  </data>
+  <data name="Shift.NightLabel" xml:space="preserve">
+    <value>Ca tối</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecMcNet" xml:space="preserve">
+    <value>MC Protocol TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecMcAsciiNet" xml:space="preserve">
+    <value>MC Protocol ASCII TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecMcUdp" xml:space="preserve">
+    <value>MC Protocol UDP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecMcAsciiUdp" xml:space="preserve">
+    <value>MC Protocol ASCII UDP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecA1ENet" xml:space="preserve">
+    <value>A1E Protocol TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecA1EUdp" xml:space="preserve">
+    <value>A1E Protocol UDP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.SiemensS7Net_S1200" xml:space="preserve">
+    <value>Siemens S7 (S1200)</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.SiemensS7Net_S1500" xml:space="preserve">
+    <value>Siemens S7 (S1500)</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.SiemensS7Net_S300" xml:space="preserve">
+    <value>Siemens S7 (S300)</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.SiemensS7Net_S400" xml:space="preserve">
+    <value>Siemens S7 (S400)</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.ModbusTcpNet" xml:space="preserve">
+    <value>Modbus TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.ModbusUdpNet" xml:space="preserve">
+    <value>Modbus UDP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.ModbusRtuOverTcp" xml:space="preserve">
+    <value>Modbus RTU over TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.OmronFinsNet" xml:space="preserve">
+    <value>OMRON FINS TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.OmronFinsUdp" xml:space="preserve">
+    <value>OMRON FINS UDP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.KeyenceMcNet" xml:space="preserve">
+    <value>Keyence MC Protocol TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.BeckhoffAdsNet" xml:space="preserve">
+    <value>Beckhoff ADS/AMS</value>
+  </data>
+  <data name="Performance.Availability2" xml:space="preserve">
+    <value>Độ sẵn sàng (A)</value>
+  </data>
+  <data name="Performance.AverageSpeed2" xml:space="preserve">
+    <value>Tốc độ trung bình:</value>
+  </data>
+  <data name="Performance.RatedSpeed2" xml:space="preserve">
+    <value>Tốc độ định mức:</value>
+  </data>
+  <data name="Footer.Server" xml:space="preserve">
+    <value>Server: {0}</value>
+  </data>
+  <data name="Card.FirstPassYield" xml:space="preserve">
+    <value>FPY lần đầu</value>
+  </data>
+  <data name="Card.FpySubtext" xml:space="preserve">
+    <value>Tỷ lệ chất lượng sản phẩm</value>
+  </data>
+  <data name="Card.OeeQuality" xml:space="preserve">
+    <value>Chất lượng (Q)</value>
+  </data>
+  <data name="Status.NotConfigured" xml:space="preserve">
+    <value>Chưa cấu hình</value>
+  </data>
+  <data name="Status.NoResponse" xml:space="preserve">
+    <value>Không phản hồi</value>
+  </data>
+  <data name="Status.ConfigError" xml:space="preserve">
+    <value>Lỗi cấu hình</value>
+  </data>
+  <data name="Menu.Monitor" xml:space="preserve">
+    <value>Giám sát</value>
+  </data>
+  <data name="Menu.PLC" xml:space="preserve">
+    <value>PLC</value>
+  </data>
+  <data name="Menu.ErrorsLogs" xml:space="preserve">
+    <value>Lỗi &amp; Nhật ký</value>
+  </data>
+  <data name="Menu.Settings" xml:space="preserve">
+    <value>Cài đặt</value>
+  </data>
+  <data name="Menu.UnitHistory" xml:space="preserve">
+    <value>Lịch làm hàng</value>
+  </data>
+  <data name="Menu.Product" xml:space="preserve">
+    <value>Sản phẩm</value>
+  </data>
+  <data name="UnitHistory.Title" xml:space="preserve">
+    <value>LỊCH SỬ SẢN XUẤT TỪNG SẢN PHẨM</value>
+  </data>
+  <data name="UnitHistory.FilterSection" xml:space="preserve">
+    <value>Bộ lọc</value>
+  </data>
+  <data name="UnitHistory.FromDate" xml:space="preserve">
+    <value>Từ ngày:</value>
+  </data>
+  <data name="UnitHistory.ToDate" xml:space="preserve">
+    <value>Đến ngày:</value>
+  </data>
+  <data name="UnitHistory.Status" xml:space="preserve">
+    <value>Trạng thái:</value>
+  </data>
+  <data name="UnitHistory.StatusAll" xml:space="preserve">
+    <value>Tất cả</value>
+  </data>
+  <data name="UnitHistory.StatusOK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="UnitHistory.StatusNG" xml:space="preserve">
+    <value>NG</value>
+  </data>
+  <data name="UnitHistory.BtnSearch" xml:space="preserve">
+    <value>Tìm kiếm</value>
+  </data>
+  <data name="UnitHistory.ColID" xml:space="preserve">
+    <value>ID</value>
+  </data>
+  <data name="UnitHistory.ColStartTime" xml:space="preserve">
+    <value>Thời gian bắt đầu</value>
+  </data>
+  <data name="UnitHistory.ColEndTime" xml:space="preserve">
+    <value>Thời gian kết thúc</value>
+  </data>
+  <data name="UnitHistory.ColCycleTime" xml:space="preserve">
+    <value>Thời gian chu kỳ (s)</value>
+  </data>
+  <data name="UnitHistory.ColErrorCount" xml:space="preserve">
+    <value>Số lỗi</value>
+  </data>
+  <data name="UnitHistory.ColStatus" xml:space="preserve">
+    <value>Trạng thái</value>
+  </data>
+  <data name="UnitHistory.ColShift" xml:space="preserve">
+    <value>Ca làm</value>
+  </data>
+  <data name="UnitHistory.ColDate" xml:space="preserve">
+    <value>Ngày</value>
+  </data>
+  <data name="UnitHistory.StatTotal" xml:space="preserve">
+    <value>Tổng: {0}</value>
+  </data>
+  <data name="UnitHistory.StatOK" xml:space="preserve">
+    <value>OK: {0}</value>
+  </data>
+  <data name="UnitHistory.StatNG" xml:space="preserve">
+    <value>NG: {0}</value>
+  </data>
+  <data name="UnitHistory.DetailTitle" xml:space="preserve">
+    <value>CHI TIẾT SẢN PHẨM</value>
+  </data>
+  <data name="UnitHistory.DetailID" xml:space="preserve">
+    <value>ID: {0}</value>
+  </data>
+  <data name="UnitHistory.DetailTime" xml:space="preserve">
+    <value>Thời gian: {0}</value>
+  </data>
+  <data name="UnitHistory.DetailCycle" xml:space="preserve">
+    <value>Chu kỳ: {0}s</value>
+  </data>
+  <data name="UnitHistory.DetailErrorCount" xml:space="preserve">
+    <value>Số lỗi: {0}</value>
+  </data>
+  <data name="UnitHistory.DetailStudNG" xml:space="preserve">
+    <value>• Lỗi trụ (M402)</value>
+  </data>
+  <data name="UnitHistory.DetailStudOK" xml:space="preserve">
+    <value>• Trụ OK</value>
+  </data>
+  <data name="UnitHistory.DetailSpringNG" xml:space="preserve">
+    <value>• Lỗi vít đàn hồi (M405)</value>
+  </data>
+  <data name="UnitHistory.DetailSpringOK" xml:space="preserve">
+    <value>• Vít đàn hồi OK</value>
+  </data>
+  <data name="UnitHistory.DetailFrontRobot" xml:space="preserve">
+    <value>Robot trước: {0}</value>
+  </data>
+  <data name="UnitHistory.DetailRearRobot" xml:space="preserve">
+    <value>Robot sau: {0}</value>
+  </data>
+  <data name="UnitHistory.DetailNA" xml:space="preserve">
+    <value>N/A</value>
+  </data>
+  <data name="Production.Title" xml:space="preserve">
+    <value>GIÁM SÁT SẢN XUẤT TRỰC TUYẾN</value>
+  </data>
+  <data name="Production.StatusProducing" xml:space="preserve">
+    <value>Đang sản xuất</value>
+  </data>
+  <data name="Production.StatusWaiting" xml:space="preserve">
+    <value>Chờ sản phẩm</value>
+  </data>
+  <data name="Production.Time" xml:space="preserve">
+    <value>Thời gian: {0}</value>
+  </data>
+  <data name="Production.NoProduct" xml:space="preserve">
+    <value>Chưa có sản phẩm</value>
+  </data>
+  <data name="Production.Errors" xml:space="preserve">
+    <value>{0} lỗi</value>
+  </data>
+  <data name="Production.TargetCycle" xml:space="preserve">
+    <value>Mục tiêu: {0}s</value>
+  </data>
+  <data name="Production.ActualCycle" xml:space="preserve">
+    <value>Thực tế: {0}s</value>
+  </data>
+  <data name="Production.ProgressTitle" xml:space="preserve">
+    <value>Tiến độ sản xuất</value>
+  </data>
+  <data name="Production.FrontRobot" xml:space="preserve">
+    <value>Robot trước</value>
+  </data>
+  <data name="Production.RearRobot" xml:space="preserve">
+    <value>Robot sau</value>
+  </data>
+  <data name="Production.StatusAssembling" xml:space="preserve">
+    <value>Đang lắp ráp</value>
+  </data>
+  <data name="Production.StatusCompleted" xml:space="preserve">
+    <value>Hoàn thành</value>
+  </data>
+  <data name="Production.StatusWaitingShort" xml:space="preserve">
+    <value>Chờ</value>
+  </data>
+  <data name="Production.Count" xml:space="preserve">
+    <value>Số lượng: {0}</value>
+  </data>
+  <data name="Production.PLCDataTitle" xml:space="preserve">
+    <value>Chỉ số dữ liệu PLC</value>
+  </data>
+  <data name="Production.ProcessStatus" xml:space="preserve">
+    <value>Trạng thái quy trình</value>
+  </data>
+  <data name="Production.QualityStatus" xml:space="preserve">
+    <value>Trạng thái chất lượng</value>
+  </data>
+  <data name="Production.Metrics" xml:space="preserve">
+    <value>Số liệu sản xuất</value>
+  </data>
+  <data name="Production.ConveyorProduct" xml:space="preserve">
+    <value>Băng chuyền có sản phẩm (M1050)</value>
+  </data>
+  <data name="Production.FrontComplete" xml:space="preserve">
+    <value>Đầu ra trước hoàn thành (M1065)</value>
+  </data>
+  <data name="Production.RearComplete" xml:space="preserve">
+    <value>Đầu ra sau hoàn thành (M1068)</value>
+  </data>
+  <data name="Production.StudCheck" xml:space="preserve">
+    <value>Kiểm tra trụ (M402)</value>
+  </data>
+  <data name="Production.SpringScrewCheck" xml:space="preserve">
+    <value>Kiểm tra vít đàn hồi (M405)</value>
+  </data>
+  <data name="Production.CycleTime" xml:space="preserve">
+    <value>Thời gian chu kỳ (D1022)</value>
+  </data>
+  <data name="Production.ProductionQty" xml:space="preserve">
+    <value>Số lượng sản xuất (D2004)</value>
+  </data>
+  <data name="Production.YieldRate" xml:space="preserve">
+    <value>Tỷ lệ đạt</value>
+  </data>
+  <data name="Production.StatusLabel" xml:space="preserve">
+    <value>Trạng thái sản xuất</value>
+  </data>
+  <data name="Production.SerialLabel" xml:space="preserve">
+    <value>Mã sản phẩm</value>
+  </data>
+  <data name="Production.TargetCycleLabel" xml:space="preserve">
+    <value>Chu kỳ mục tiêu</value>
+  </data>
+  <data name="UnitHistory.DetailErrorSection" xml:space="preserve">
+    <value>Thông tin lỗi</value>
+  </data>
+  <data name="UnitHistory.DetailRobotSection" xml:space="preserve">
+    <value>Robot</value>
+  </data>
+</root>

@@ -1,0 +1,57 @@
+﻿<UserControl x:Class="PLC.Views.PlcIpPortConfigPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <Grid Margin="15">
+        <Border BorderThickness="1" Padding="20" CornerRadius="8"
+                BorderBrush="{DynamicResource BorderBrush}"
+                Background="{DynamicResource PanelBackground}"
+                MaxWidth="650" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <StackPanel>
+                <TextBlock Text="Cấu hình IP / Port PLC" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,20"/>
+
+                <Label Content="Hãng sản xuất PLC (Brand):" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                <ComboBox Name="CboBrand" Margin="0,0,0,15" Height="30"/>
+
+                <Label Content="Kiểu kết nối / Driver (Protocol):" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                <ComboBox Name="CboProtocol" Margin="0,0,0,15" Height="30"/>
+
+                <Label Content="Địa chỉ IP PLC (IP Address):" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                <TextBox Name="TxtPlcIp" Margin="0,0,0,15" Height="30" VerticalContentAlignment="Center"/>
+
+                <Label Content="Cổng dịch vụ (Port):" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,15"/>
+                <TextBox Name="TxtPlcPort" Margin="0,0,0,15" Height="30" VerticalContentAlignment="Center"/>
+
+                <StackPanel Name="PanelAdvanced" Visibility="Collapsed" Margin="0,0,0,15">
+                    <TextBlock Text="Thông số nâng cao" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,10,0,10"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Name="PanelRack" Margin="0,0,10,0">
+                            <Label Content="Rack:" Foreground="{DynamicResource TextSecondary}"/>
+                            <TextBox Name="TxtPlcRack" Height="30" VerticalContentAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Name="PanelSlot" Grid.Column="1" Margin="0,0,10,0">
+                            <Label Content="Slot:" Foreground="{DynamicResource TextSecondary}"/>
+                            <TextBox Name="TxtPlcSlot" Height="30" VerticalContentAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Name="PanelStation" Grid.Column="2">
+                            <Label Content="Station:" Foreground="{DynamicResource TextSecondary}"/>
+                            <TextBox Name="TxtPlcStation" Height="30" VerticalContentAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+
+                <WrapPanel Margin="0,10,0,25">
+                    <Button Name="BtnTest" Content="⚡ Kiểm tra kết nối PLC" Height="32" Width="180" Margin="0,0,15,0"/>
+                    <TextBlock Name="TxtConnStatus" Text="Trạng thái: Chưa kiểm tra" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                </WrapPanel>
+
+                <Button Name="BtnSave" Content="Lưu cấu hình" Height="35" Width="150" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

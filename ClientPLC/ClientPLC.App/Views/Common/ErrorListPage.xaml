@@ -1,0 +1,9 @@
+﻿<UserControl x:Class="PLC.Views.ErrorListPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:PLC.Views"
+             Background="Transparent">
+    <Grid>
+        <local:LiveErrorsView x:Name="ErrorsView"/>
+    </Grid>
+</UserControl>

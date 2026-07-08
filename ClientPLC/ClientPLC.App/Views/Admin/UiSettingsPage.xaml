@@ -1,0 +1,22 @@
+﻿<UserControl x:Class="PLC.Views.UiSettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <Grid Margin="15">
+        <Border BorderThickness="1" Padding="20" CornerRadius="8"
+                BorderBrush="{DynamicResource BorderBrush}"
+                Background="{DynamicResource PanelBackground}"
+                MaxWidth="800" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <StackPanel>
+                <TextBlock Text="Cài đặt giao diện" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,10"/>
+                <TextBlock Text="Chọn các hãng PLC muốn hiển thị trên danh mục:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,20"/>
+
+                <ScrollViewer MaxHeight="350" VerticalScrollBarVisibility="Auto" Margin="0,0,0,20">
+                    <WrapPanel Name="PanelBrandsCheckboxes" Orientation="Horizontal"/>
+                </ScrollViewer>
+
+                <Button Name="BtnSave" Content="Lưu cấu hình" Height="35" Width="150" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

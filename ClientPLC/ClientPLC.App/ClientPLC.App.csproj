@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>PLC</RootNamespace>
+    <StartupObject>PLC.Program</StartupObject>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>annotations</Nullable>
+    <NoWarn>$(NoWarn);WFO1000</NoWarn>
+    <Platforms>AnyCPU;x64</Platforms>
+    <SatelliteResourceLanguages>en;vi-VN;zh-CN</SatelliteResourceLanguages>
+    <AssemblyName>ClientPLC</AssemblyName>
+    <ApplicationIcon>Resources\app_icon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Exclude implicit usings from WinForms/Drawing to avoid conflict with WPF types -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ClientPLC.Core\ClientPLC.Core.csproj" />
+    <ProjectReference Include="..\ClientPLC.Infrastructure\ClientPLC.Infrastructure.csproj" />
+    <ProjectReference Include="..\ClientPLC.ViewModels\ClientPLC.ViewModels.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ExcelDataReader" Version="3.8.0" />
+    <PackageReference Include="ExcelDataReader.DataSet" Version="3.8.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\app_icon.png" />
+    <None Update="Resources\app_icon.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,207 @@
+# docker-compose.yml
+# Production deployment for MKZ Factory + Odysseus AI Workspace
+
+services:
+  # ==========================================
+  # MKZ Factory Backend (ASP.NET Core)
+  # ==========================================
+  mkz-backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: mkz-backend
+    ports:
+      - "5165:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=mkz-db;Port=5432;Database=plc_monitoring;Username=postgres;Password=${MKZ_DB_PASSWORD:-12345678}
+      - Jwt__Key=${JWT_SECRET:-SUPER_SECRET_KEY_FOR_PRODUCTION_CHANGE_ME}
+      - MqttServer__Port=1883
+    depends_on:
+      mkz-db:
+        condition: service_healthy
+    networks:
+      - mkz-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==========================================
+  # MKZ PostgreSQL Database
+  # ==========================================
+  mkz-db:
+    image: postgres:16-alpine
+    container_name: mkz-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${MKZ_DB_PASSWORD:-12345678}
+      - POSTGRES_DB=plc_monitoring
+    ports:
+      - "5432:5432"
+    volumes:
+      - mkz-db-data:/var/lib/postgresql/data
+      - ../backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - mkz-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # MQTT Broker (for PLCs)
+  # ==========================================
+  mkz-mqtt:
+    image: eclipse-mosquitto:2
+    container_name: mkz-mqtt
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - mkz-mqtt-data:/mosquitto/data
+      - mkz-mqtt-logs:/mosquitto/log
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    networks:
+      - mkz-network
+    restart: unless-stopped
+
+  # ==========================================
+  # Odysseus AI Workspace
+  # ==========================================
+  odysseus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: odysseus
+    ports:
+      - "7000:7000"
+    environment:
+      - AUTH_ENABLED=true
+      - APP_BIND=0.0.0.0
+      - APP_PORT=7000
+      - DATABASE_URL=sqlite:///./data/app.db
+      - CHROMADB_HOST=chromadb
+      - CHROMADB_PORT=8000
+      - SEARXNG_INSTANCE=http://searxng:8080
+      # MKZ Integration
+      - MKZ_DB_HOST=mkz-db
+      - MKZ_DB_PORT=5432
+      - MKZ_DB_NAME=plc_monitoring
+      - MKZ_DB_USER=postgres
+      - MKZ_DB_PASSWORD=${MKZ_DB_PASSWORD:-12345678}
+    volumes:
+      - odysseus-data:/app/data
+      - odysseus-logs:/app/logs
+    depends_on:
+      chromadb:
+        condition: service_healthy
+      searxng:
+        condition: service_started
+    networks:
+      - mkz-network
+      - odysseus-internal
+    restart: unless-stopped
+
+  # ==========================================
+  # ChromaDB (Vector Database for RAG)
+  # ==========================================
+  chromadb:
+    image: chromadb/chroma:0.5.5
+    container_name: chromadb
+    ports:
+      - "8100:8000"
+    volumes:
+      - chromadb-data:/chroma/chroma
+    networks:
+      - odysseus-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
+  # SearXNG (Privacy-respecting search)
+  # ==========================================
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config/searxng:/etc/searxng:ro
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080
+    networks:
+      - odysseus-internal
+    restart: unless-stopped
+
+  # ==========================================
+  # ntfy (Push notifications)
+  # ==========================================
+  ntfy:
+    image: binwiederhier/ntfy:v2.11.0
+    container_name: ntfy
+    ports:
+      - "8091:80"
+    volumes:
+      - ntfy-data:/data
+    environment:
+      - NTFY_BIND=:80
+      - NTFY_DISK_CACHE_SIZE=500M
+    networks:
+      - odysseus-internal
+    restart: unless-stopped
+
+  # ==========================================
+  # Sync Service (scheduled data sync)
+  # ==========================================
+  mkz-sync:
+    build:
+      context: .
+      dockerfile: Dockerfile.sync
+    container_name: mkz-sync
+    environment:
+      - MKZ_DB_HOST=mkz-db
+      - MKZ_DB_PORT=5432
+      - MKZ_DB_NAME=plc_monitoring
+      - MKZ_DB_USER=postgres
+      - MKZ_DB_PASSWORD=${MKZ_DB_PASSWORD:-12345678}
+      - ODYSSEUS_ROOT=/app
+      - SYNC_INTERVAL_HOURS=1
+      - SYNC_RETENTION_DAYS=30
+    volumes:
+      - odysseus-data:/app/data
+    depends_on:
+      - mkz-db
+    networks:
+      - mkz-network
+    restart: unless-stopped
+
+# ==========================================
+# Networks
+# ==========================================
+networks:
+  mkz-network:
+    driver: bridge
+  odysseus-internal:
+    driver: bridge
+
+# ==========================================
+# Volumes
+# ==========================================
+volumes:
+  mkz-db-data:
+  mkz-mqtt-data:
+  mkz-mqtt-logs:
+  chromadb-data:
+  odysseus-data:
+  odysseus-logs:
+  ntfy-data:

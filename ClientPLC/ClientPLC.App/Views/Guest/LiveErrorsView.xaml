@@ -1,0 +1,790 @@
+﻿<av:UserControl x:Class="PLC.Views.LiveErrorsView"
+    Background="#00FFFFFF"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:av="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    d:DesignHeight="700" d:DesignWidth="1100">
+
+    <av:UserControl.Resources>
+        <!-- Geometries for chevrons -->
+        <Geometry x:Key="IconChevronLeft">M 15,18 L 9,12 L 15,6</Geometry>
+        <Geometry x:Key="IconChevronRight">M 9,18 L 15,12 L 9,6</Geometry>
+
+        <!-- Custom Dark Calendar Styles (full override to fix white selection box) -->
+        <av:Style TargetType="av:CalendarDayButton">
+            <av:Setter Property="Foreground" Value="{av:DynamicResource TextPrimary}"/>
+            <av:Setter Property="Background" Value="Transparent"/>
+            <av:Setter Property="Margin" Value="1"/>
+            <av:Setter Property="FontSize" Value="11"/>
+            <av:Setter Property="Template">
+                <av:Setter.Value>
+                    <av:ControlTemplate TargetType="av:CalendarDayButton">
+                        <av:Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" BorderThickness="1" BorderBrush="Transparent">
+                            <av:ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </av:Border>
+                        <av:ControlTemplate.Triggers>
+                            <av:Trigger Property="IsMouseOver" Value="True">
+                                <av:Setter TargetName="Bd" Property="Background" Value="{av:DynamicResource SidebarBackground}"/>
+                                <av:Setter TargetName="Bd" Property="BorderBrush" Value="{av:DynamicResource AccentColor}"/>
+                            </av:Trigger>
+                            <av:Trigger Property="IsSelected" Value="True">
+                                <av:Setter TargetName="Bd" Property="Background" Value="{av:DynamicResource AccentColor}"/>
+                                <av:Setter TargetName="Bd" Property="BorderBrush" Value="{av:DynamicResource AccentColor}"/>
+                                <av:Setter Property="Foreground" Value="White"/>
+                            </av:Trigger>
+                            <av:MultiTrigger>
+                                <av:MultiTrigger.Conditions>
+                                    <av:Condition Property="IsToday" Value="True"/>
+                                    <av:Condition Property="IsSelected" Value="False"/>
+                                </av:MultiTrigger.Conditions>
+                                <av:Setter TargetName="Bd" Property="Background" Value="{av:DynamicResource SidebarMenuHeaderBackground}"/>
+                                <av:Setter TargetName="Bd" Property="BorderBrush" Value="{av:DynamicResource AccentColor}"/>
+                                <av:Setter Property="Foreground" Value="{av:DynamicResource AccentColor}"/>
+                            </av:MultiTrigger>
+                            <av:Trigger Property="IsEnabled" Value="False">
+                                <av:Setter Property="Foreground" Value="{av:DynamicResource TextMuted}"/>
+                            </av:Trigger>
+                        </av:ControlTemplate.Triggers>
+                    </av:ControlTemplate>
+                </av:Setter.Value>
+            </av:Setter>
+        </av:Style>
+
+        <av:Style TargetType="av:CalendarButton">
+            <av:Setter Property="Foreground" Value="{av:DynamicResource TextSecondary}"/>
+            <av:Setter Property="Background" Value="Transparent"/>
+            <av:Setter Property="FontSize" Value="11"/>
+            <av:Setter Property="Template">
+                <av:Setter.Value>
+                    <av:ControlTemplate TargetType="av:CalendarButton">
+                        <av:Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="3" BorderThickness="1" BorderBrush="Transparent">
+                            <av:ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </av:Border>
+                        <av:ControlTemplate.Triggers>
+                            <av:Trigger Property="IsMouseOver" Value="True">
+                                <av:Setter TargetName="Bd" Property="Background" Value="{av:DynamicResource SidebarBackground}"/>
+                            </av:Trigger>
+                            <av:Trigger Property="HasSelectedDays" Value="True">
+                                <av:Setter TargetName="Bd" Property="Background" Value="{av:DynamicResource AccentColor}"/>
+                                <av:Setter Property="Foreground" Value="White"/>
+                            </av:Trigger>
+                        </av:ControlTemplate.Triggers>
+                    </av:ControlTemplate>
+                </av:Setter.Value>
+            </av:Setter>
+        </av:Style>
+
+        <av:Style TargetType="av:CalendarItem">
+            <av:Setter Property="Margin" Value="0"/>
+            <av:Setter Property="Foreground" Value="{av:DynamicResource TextPrimary}"/>
+            <av:Setter Property="Background" Value="{av:DynamicResource PanelBackground}"/>
+            <av:Setter Property="Template">
+                <av:Setter.Value>
+                    <av:ControlTemplate TargetType="av:CalendarItem">
+                        <av:ControlTemplate.Resources>
+                            <!-- Day-of-week column header style -->
+                            <av:Style TargetType="av:CalendarDayButton" BasedOn="{StaticResource {x:Type av:CalendarDayButton}}"/>
+                            <av:DataTemplate x:Key="{x:Static av:CalendarItem.DayTitleTemplate}">
+                                <TextBlock Text="{Binding}" FontSize="10" FontWeight="SemiBold"
+                                           Foreground="#7183A8" HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" Margin="0,4,0,4"/>
+                            </av:DataTemplate>
+                        </av:ControlTemplate.Resources>
+                        <av:Border Background="{av:DynamicResource PanelBackground}" BorderBrush="{av:DynamicResource BorderBrush}" BorderThickness="0" CornerRadius="4">
+                            <av:Grid>
+                                <av:Grid.RowDefinitions>
+                                    <av:RowDefinition Height="Auto"/>
+                                    <av:RowDefinition Height="*"/>
+                                </av:Grid.RowDefinitions>
+
+                                <!-- Header: Prev / Title / Next -->
+                                <av:Grid Grid.Row="0" Background="{av:DynamicResource SidebarMenuHeaderBackground}" Margin="0,0,0,4">
+                                    <av:Grid.ColumnDefinitions>
+                                        <av:ColumnDefinition Width="Auto"/>
+                                        <av:ColumnDefinition Width="*"/>
+                                        <av:ColumnDefinition Width="Auto"/>
+                                    </av:Grid.ColumnDefinitions>
+
+                                    <!-- Previous button -->
+                                    <av:Button x:Name="PART_PreviousButton" Grid.Column="0"
+                                               Width="28" Height="28" Focusable="False"
+                                               Background="Transparent" BorderThickness="0">
+                                        <av:Button.Template>
+                                            <av:ControlTemplate TargetType="av:Button">
+                                                <av:Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="4">
+                                                    <av:Path Data="M 8,4 L 4,8 L 8,12" Stroke="#B7C8E8" StrokeThickness="1.8"
+                                                             Width="8" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </av:Border>
+                                                <av:ControlTemplate.Triggers>
+                                                    <av:Trigger Property="IsMouseOver" Value="True">
+                                                        <av:Setter TargetName="Bd" Property="Background" Value="{av:DynamicResource SidebarBackground}"/>
+                                                    </av:Trigger>
+                                                </av:ControlTemplate.Triggers>
+                                            </av:ControlTemplate>
+                                        </av:Button.Template>
+                                    </av:Button>
+
+                                    <!-- Header button (month/year label) -->
+                                    <av:Button x:Name="PART_HeaderButton" Grid.Column="1"
+                                               Foreground="{av:DynamicResource TextPrimary}" FontSize="12" FontWeight="SemiBold"
+                                               Background="Transparent" BorderThickness="0" HorizontalAlignment="Center">
+                                        <av:Button.Template>
+                                            <av:ControlTemplate TargetType="av:Button">
+                                                <av:Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="6,2">
+                                                    <av:ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </av:Border>
+                                                <av:ControlTemplate.Triggers>
+                                                    <av:Trigger Property="IsMouseOver" Value="True">
+                                                        <av:Setter TargetName="Bd" Property="Background" Value="{av:DynamicResource SidebarBackground}"/>
+                                                    </av:Trigger>
+                                                </av:ControlTemplate.Triggers>
+                                            </av:ControlTemplate>
+                                        </av:Button.Template>
+                                    </av:Button>
+
+                                    <!-- Next button -->
+                                    <av:Button x:Name="PART_NextButton" Grid.Column="2"
+                                               Width="28" Height="28" Focusable="False"
+                                               Background="Transparent" BorderThickness="0">
+                                        <av:Button.Template>
+                                            <av:ControlTemplate TargetType="av:Button">
+                                                <av:Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="4">
+                                                    <av:Path Data="M 4,4 L 8,8 L 4,12" Stroke="#B7C8E8" StrokeThickness="1.8"
+                                                             Width="8" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </av:Border>
+                                                <av:ControlTemplate.Triggers>
+                                                    <av:Trigger Property="IsMouseOver" Value="True">
+                                                        <av:Setter TargetName="Bd" Property="Background" Value="{av:DynamicResource SidebarBackground}"/>
+                                                    </av:Trigger>
+                                                </av:ControlTemplate.Triggers>
+                                            </av:ControlTemplate>
+                                        </av:Button.Template>
+                                    </av:Button>
+                                </av:Grid>
+
+                                <!-- Day grid (day-of-week + day buttons) -->
+                                <av:Grid x:Name="PART_MonthView" Grid.Row="1" Visibility="Visible" Margin="4,0,4,4"/>
+                                <av:Grid x:Name="PART_YearView"  Grid.Row="1" Visibility="Hidden"  Margin="4,0,4,4"/>
+                            </av:Grid>
+                        </av:Border>
+                    </av:ControlTemplate>
+                </av:Setter.Value>
+            </av:Setter>
+        </av:Style>
+
+        <av:Style TargetType="av:Calendar">
+            <av:Setter Property="Background" Value="{av:DynamicResource PanelBackground}"/>
+            <av:Setter Property="Foreground" Value="{av:DynamicResource TextPrimary}"/>
+            <av:Setter Property="BorderBrush" Value="{av:DynamicResource BorderBrush}"/>
+            <av:Setter Property="BorderThickness" Value="1"/>
+        </av:Style>
+
+        <!-- Custom Dark ComboBox Style (full template for dark background) -->
+        <av:Style TargetType="av:ComboBox" x:Key="DarkComboBoxStyle">
+            <av:Setter Property="Background" Value="{av:DynamicResource InputBackground}"/>
+            <av:Setter Property="Foreground" Value="{av:DynamicResource InputForeground}"/>
+            <av:Setter Property="BorderBrush" Value="{av:DynamicResource InputBorder}"/>
+            <av:Setter Property="BorderThickness" Value="1"/>
+            <av:Setter Property="Height" Value="28"/>
+            <av:Setter Property="Padding" Value="8,2,4,2"/>
+            <av:Setter Property="VerticalContentAlignment" Value="Center"/>
+            <av:Setter Property="Template">
+                <av:Setter.Value>
+                    <av:ControlTemplate TargetType="av:ComboBox">
+                        <av:Grid>
+                            <av:ToggleButton x:Name="ToggleButton"
+                                          Background="{TemplateBinding Background}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}"
+                                          Focusable="False"
+                                          IsChecked="{av:Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={av:RelativeSource TemplatedParent}}"
+                                          ClickMode="Press">
+                                <av:ToggleButton.Template>
+                                    <av:ControlTemplate TargetType="av:ToggleButton">
+                                        <av:Border x:Name="Bd" CornerRadius="4"
+                                                 Background="{TemplateBinding Background}"
+                                                 BorderBrush="{TemplateBinding BorderBrush}"
+                                                 BorderThickness="{TemplateBinding BorderThickness}">
+                                            <av:Grid>
+                                                <av:Grid.ColumnDefinitions>
+                                                    <av:ColumnDefinition Width="*"/>
+                                                    <av:ColumnDefinition Width="20"/>
+                                                </av:Grid.ColumnDefinitions>
+                                                <av:Path Name="Arrow" Grid.Column="1"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                       Fill="{av:DynamicResource TextSecondary}"
+                                                       Data="M 0 0 L 4 4 L 8 0 Z"/>
+                                            </av:Grid>
+                                        </av:Border>
+                                        <av:ControlTemplate.Triggers>
+                                            <av:Trigger Property="IsMouseOver" Value="True">
+                                                <av:Setter TargetName="Bd" Property="BorderBrush" Value="{av:DynamicResource AccentColor}"/>
+                                            </av:Trigger>
+                                            <av:Trigger Property="IsChecked" Value="True">
+                                                <av:Setter TargetName="Bd" Property="BorderBrush" Value="{av:DynamicResource AccentColor}"/>
+                                            </av:Trigger>
+                                        </av:ControlTemplate.Triggers>
+                                    </av:ControlTemplate>
+                                </av:ToggleButton.Template>
+                            </av:ToggleButton>
+
+                            <av:ContentPresenter x:Name="ContentSite"
+                                              IsHitTestVisible="False"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              Margin="8,0,24,0"
+                                              HorizontalAlignment="Left"
+                                              VerticalAlignment="Center">
+                                <av:ContentPresenter.Resources>
+                                    <av:Style TargetType="av:TextBlock">
+                                        <av:Setter Property="Foreground" Value="{av:DynamicResource InputForeground}"/>
+                                        <av:Setter Property="FontSize" Value="12"/>
+                                    </av:Style>
+                                </av:ContentPresenter.Resources>
+                            </av:ContentPresenter>
+
+                            <av:Popup x:Name="Popup" Placement="Bottom"
+                                    IsOpen="{TemplateBinding IsDropDownOpen}"
+                                    AllowsTransparency="True" Focusable="False"
+                                    PopupAnimation="Slide">
+                                <av:Grid x:Name="DropDown" SnapsToDevicePixels="True"
+                                       MinWidth="{TemplateBinding ActualWidth}"
+                                       MaxHeight="200">
+                                    <av:Border x:Name="DropDownBorder"
+                                             Background="{av:DynamicResource PanelBackground}"
+                                             BorderBrush="{av:DynamicResource BorderBrush}"
+                                             BorderThickness="1"
+                                             CornerRadius="4"
+                                             Margin="0,2,0,0">
+                                        <av:Border.Effect>
+                                            <av:DropShadowEffect BlurRadius="8" ShadowDepth="2" Color="#000000" Opacity="0.4"/>
+                                        </av:Border.Effect>
+                                        <av:ScrollViewer Margin="0,4,0,4" SnapsToDevicePixels="True"
+                                                      HorizontalScrollBarVisibility="Disabled"
+                                                      VerticalScrollBarVisibility="Auto">
+                                            <av:StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                        </av:ScrollViewer>
+                                    </av:Border>
+                                </av:Grid>
+                            </av:Popup>
+                        </av:Grid>
+                    </av:ControlTemplate>
+                </av:Setter.Value>
+            </av:Setter>
+        </av:Style>
+
+        <!-- Dark ComboBoxItem for DarkComboBoxStyle dropdowns -->
+        <av:Style TargetType="av:ComboBoxItem">
+            <av:Setter Property="Foreground" Value="{av:DynamicResource TextPrimary}"/>
+            <av:Setter Property="Background" Value="Transparent"/>
+            <av:Setter Property="Padding" Value="8,5,8,5"/>
+            <av:Setter Property="FontSize" Value="12"/>
+            <av:Setter Property="Template">
+                <av:Setter.Value>
+                    <av:ControlTemplate TargetType="av:ComboBoxItem">
+                        <av:Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <av:ContentPresenter/>
+                        </av:Border>
+                        <av:ControlTemplate.Triggers>
+                            <av:Trigger Property="IsMouseOver" Value="True">
+                                <av:Setter TargetName="Bd" Property="Background" Value="{av:DynamicResource SidebarBackground}"/>
+                            </av:Trigger>
+                            <av:Trigger Property="IsSelected" Value="True">
+                                <av:Setter TargetName="Bd" Property="Background" Value="{av:DynamicResource AccentColor}"/>
+                                <av:Setter Property="Foreground" Value="White"/>
+                            </av:Trigger>
+                        </av:ControlTemplate.Triggers>
+                    </av:ControlTemplate>
+                </av:Setter.Value>
+            </av:Setter>
+        </av:Style>
+
+        <!-- Custom style to remove default border from DatePickerTextBox -->
+        <av:Style TargetType="av:DatePickerTextBox">
+            <av:Setter Property="Background" Value="Transparent"/>
+            <av:Setter Property="BorderThickness" Value="0"/>
+            <av:Setter Property="Foreground" Value="{av:DynamicResource InputForeground}"/>
+            <av:Setter Property="SelectionBrush" Value="{av:DynamicResource AccentColor}"/>
+            <av:Setter Property="SelectionTextBrush" Value="White"/>
+            <av:Setter Property="CaretBrush" Value="{av:DynamicResource InputForeground}"/>
+            <av:Setter Property="VerticalContentAlignment" Value="Center"/>
+            <av:Setter Property="Template">
+                <av:Setter.Value>
+                    <av:ControlTemplate TargetType="av:DatePickerTextBox">
+                        <av:Border Background="Transparent" BorderThickness="0" Padding="0">
+                            <av:Grid>
+                                <av:ContentControl x:Name="PART_Watermark"
+                                                 Background="Transparent"
+                                                 Foreground="#64748B"
+                                                 VerticalContentAlignment="Center"
+                                                 HorizontalContentAlignment="Left"
+                                                 Focusable="False"
+                                                 IsHitTestVisible="False"
+                                                 Visibility="Collapsed"/>
+                                <av:ScrollViewer x:Name="PART_ContentHost"
+                                              Focusable="False"
+                                              HorizontalScrollBarVisibility="Hidden"
+                                              VerticalScrollBarVisibility="Hidden"
+                                              VerticalAlignment="Center"
+                                              Background="Transparent"/>
+                            </av:Grid>
+                        </av:Border>
+                    </av:ControlTemplate>
+                </av:Setter.Value>
+            </av:Setter>
+        </av:Style>
+
+        <!-- Custom Dark DatePicker Style -->
+        <av:Style TargetType="av:DatePicker" x:Key="DarkDatePickerStyle">
+            <av:Setter Property="Background" Value="{av:DynamicResource InputBackground}"/>
+            <av:Setter Property="Foreground" Value="{av:DynamicResource InputForeground}"/>
+            <av:Setter Property="BorderBrush" Value="{av:DynamicResource InputBorder}"/>
+            <av:Setter Property="BorderThickness" Value="1"/>
+            <av:Setter Property="Height" Value="28"/>
+            <av:Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <av:Setter Property="VerticalContentAlignment" Value="Center"/>
+            <av:Setter Property="Template">
+                <av:Setter.Value>
+                    <av:ControlTemplate TargetType="av:DatePicker">
+                        <av:Grid x:Name="DatePickerRoot">
+                            <av:Grid.ColumnDefinitions>
+                                <av:ColumnDefinition Width="*"/>
+                                <av:ColumnDefinition Width="Auto"/>
+                            </av:Grid.ColumnDefinitions>
+
+                            <av:Border x:Name="Border"
+                                    Grid.ColumnSpan="2"
+                                    CornerRadius="4"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"/>
+
+                            <av:DatePickerTextBox x:Name="PART_TextBox"
+                                               Grid.Column="0"
+                                               Focusable="{TemplateBinding Focusable}"
+                                               HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                               VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                               Background="Transparent"
+                                               Foreground="{TemplateBinding Foreground}"
+                                               BorderThickness="0"
+                                               Padding="6,1,6,1"/>
+
+                            <av:Button x:Name="PART_Button"
+                                    Grid.Column="1"
+                                    Width="26"
+                                    Height="26"
+                                    Margin="0,0,2,0"
+                                    Focusable="False"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+                                <av:Button.Template>
+                                    <av:ControlTemplate TargetType="av:Button">
+                                        <av:Border Background="Transparent" CornerRadius="3" Name="BtnBorder">
+                                            <av:Path Data="M3,5 H17 V17 H3 Z M3,8 H17 M6,3 V5 M14,3 V5"
+                                                  Stroke="{av:DynamicResource TextSecondary}"
+                                                  StrokeThickness="1.5"
+                                                  Width="12"
+                                                  Height="12"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                                        </av:Border>
+                                        <av:ControlTemplate.Triggers>
+                                            <av:Trigger Property="IsMouseOver" Value="True">
+                                                <av:Setter TargetName="BtnBorder" Property="Background" Value="{av:DynamicResource SidebarBackground}"/>
+                                            </av:Trigger>
+                                        </av:ControlTemplate.Triggers>
+                                    </av:ControlTemplate>
+                                </av:Button.Template>
+                            </av:Button>
+
+                            <av:Popup x:Name="PART_Popup"
+                                   AllowsTransparency="True"
+                                   Placement="Bottom"
+                                   PlacementTarget="{Binding ElementName=Border}"
+                                   StaysOpen="False">
+                                <av:Border Background="{av:DynamicResource PanelBackground}"
+                                        BorderBrush="{av:DynamicResource BorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="4"
+                                        Margin="0,2,0,0">
+                                    <av:Border.Effect>
+                                        <av:DropShadowEffect BlurRadius="10" ShadowDepth="2" Color="#000000" Opacity="0.3" />
+                                    </av:Border.Effect>
+                                    <av:Calendar x:Name="PART_Calendar"
+                                              Background="Transparent"
+                                              BorderThickness="0"
+                                              Foreground="{av:DynamicResource TextPrimary}"/>
+                                </av:Border>
+                            </av:Popup>
+                        </av:Grid>
+                        <av:ControlTemplate.Triggers>
+                            <av:Trigger Property="IsMouseOver" Value="True">
+                                <av:Setter TargetName="Border" Property="BorderBrush" Value="{av:DynamicResource AccentColor}"/>
+                            </av:Trigger>
+                            <av:Trigger Property="IsFocused" Value="True" SourceName="PART_TextBox">
+                                <av:Setter TargetName="Border" Property="BorderBrush" Value="#2F7BFF"/>
+                                <av:Setter TargetName="Border" Property="BorderThickness" Value="1.5"/>
+                            </av:Trigger>
+                        </av:ControlTemplate.Triggers>
+                    </av:ControlTemplate>
+                </av:Setter.Value>
+            </av:Setter>
+        </av:Style>
+    </av:UserControl.Resources>
+
+    <av:Grid Margin="14,10,14,10">
+        <av:Grid.RowDefinitions>
+            <av:RowDefinition Height="Auto"/> <!-- Row 0: Tabs & Actions -->
+            <av:RowDefinition Height="Auto"/> <!-- Row 1: KPI Cards -->
+            <av:RowDefinition Height="*"/>    <!-- Row 2: Grid & Pagination -->
+            <av:RowDefinition Height="200"/>  <!-- Row 3: Bottom Charts -->
+        </av:Grid.RowDefinitions>
+
+        <!-- ROW 0: Tabs and Actions -->
+        <av:Grid av:Grid.Row="0" Margin="0,0,0,10">
+            <av:Grid.ColumnDefinitions>
+                <av:ColumnDefinition Width="*"/>
+                <av:ColumnDefinition Width="Auto"/>
+            </av:Grid.ColumnDefinitions>
+
+            <!-- Tabs -->
+            <av:StackPanel Orientation="Horizontal" av:Grid.Column="0">
+                <av:Button Name="BtnTabCurrent" Content="Current Alarms" Click="BtnTabCurrent_Click"
+                           Background="Transparent" BorderBrush="#2F7BFF" BorderThickness="0,0,0,3"
+                           Foreground="{av:DynamicResource TextPrimary}" Padding="15,8,15,8" FontWeight="Bold" FontSize="13" Cursor="Hand"/>
+                <av:Button Name="BtnTabHistory" Content="Historical Alarms" Click="BtnTabHistory_Click"
+                           Background="Transparent" BorderBrush="Transparent" BorderThickness="0,0,0,3"
+                           Foreground="{av:DynamicResource TextSecondary}" Padding="15,8,15,8" FontWeight="Bold" FontSize="13" Cursor="Hand" Margin="10,0,0,0"/>
+            </av:StackPanel>
+
+            <!-- Actions -->
+            <av:StackPanel Orientation="Horizontal" av:Grid.Column="1" VerticalAlignment="Center">
+                <!-- Search Box -->
+                <av:Border BorderBrush="{av:DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="4" Background="{av:DynamicResource InputBackground}" Height="28" Width="180" Margin="0,0,10,0" VerticalAlignment="Center">
+                    <av:Grid>
+                        <av:Grid.ColumnDefinitions>
+                            <av:ColumnDefinition Width="Auto"/>
+                            <av:ColumnDefinition Width="*"/>
+                        </av:Grid.ColumnDefinitions>
+                        <av:Path Data="{av:StaticResource IconSearch}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Width="12" Height="12" Stretch="Uniform" Margin="6,0,4,0" VerticalAlignment="Center"/>
+                        <av:TextBox x:Name="TxtErrorSearch" Grid.Column="1" Background="Transparent" BorderThickness="0" Foreground="{av:DynamicResource TextPrimary}" FontSize="11.5" VerticalContentAlignment="Center" Padding="2,0,6,0" TextChanged="TxtErrorSearch_TextChanged"/>
+                    </av:Grid>
+                </av:Border>
+
+                <av:TextBlock Name="TxtLastUpdated" Text="Last Updated: --" Foreground="{av:DynamicResource TextSecondary}" FontSize="12" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                <av:Button Name="BtnRefresh" Click="BtnRefresh_Click" Background="#2F7BFF" BorderThickness="0" Height="28" VerticalAlignment="Center" Padding="12,0,12,0" Cursor="Hand">
+                    <av:Button.Resources>
+                        <av:Style TargetType="av:Border">
+                            <av:Setter Property="CornerRadius" Value="4" />
+                        </av:Style>
+                    </av:Button.Resources>
+                    <av:StackPanel Orientation="Horizontal">
+                        <av:Path Data="{av:StaticResource IconRefreshCw}" Stroke="#FFFFFF" StrokeThickness="1.5" Width="12" Height="12" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <av:TextBlock Name="TxtRefreshText" Text="Refresh" Foreground="#FFFFFF" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </av:StackPanel>
+                </av:Button>
+            </av:StackPanel>
+        </av:Grid>
+
+        <!-- ROW 1: KPI Cards or Query Panel -->
+        <av:Grid av:Grid.Row="1" Margin="0,0,0,12">
+            <!-- KPI Cards (Visible in Current mode) -->
+            <av:Grid Name="GridKpiCards" Visibility="Visible">
+                <av:Grid.ColumnDefinitions>
+                    <av:ColumnDefinition Width="*"/>
+                    <av:ColumnDefinition Width="*"/>
+                </av:Grid.ColumnDefinitions>
+
+                <!-- Current Alarm Count Card -->
+                <av:Border av:Grid.Column="0" Margin="0,0,6,0" BorderThickness="1" CornerRadius="8" BorderBrush="{av:DynamicResource BorderBrush}" Background="{av:DynamicResource PanelBackground}" Padding="16,12,16,12">
+                    <av:Border.Effect>
+                        <av:DropShadowEffect BlurRadius="8" ShadowDepth="1" Color="#000000" Opacity="0.06"/>
+                    </av:Border.Effect>
+                    <av:Grid>
+                        <av:Grid.ColumnDefinitions>
+                            <av:ColumnDefinition Width="Auto"/>
+                            <av:ColumnDefinition Width="*"/>
+                        </av:Grid.ColumnDefinitions>
+                        
+                        <av:Border Background="{av:DynamicResource AlarmActiveBackground}" Width="44" Height="44" CornerRadius="22" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <av:Path Data="M12,2A3,3 0 0,0 9,5V6.28C6.13,7.5 4,10.5 4,14V19L2,21V22H22V21L20,19V14C20,10.5 17.87,7.5 15,6.28V5A3,3 0 0,0 12,2M12,24A3,3 0 0,0 15,21H9A3,3 0 0,0 12,24Z" 
+                                     Fill="{av:DynamicResource AlarmActiveForeground}" Width="20" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </av:Border>
+                        
+                        <av:StackPanel av:Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                            <av:TextBlock Name="TxtKpiCurrentTitle" Text="Current Alarm Count" Foreground="{av:DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold"/>
+                            <av:TextBlock Name="TxtKpiCurrentVal" Text="0" Foreground="{av:DynamicResource AlarmActiveForeground}" FontSize="26" FontWeight="Bold"/>
+                        </av:StackPanel>
+                    </av:Grid>
+                </av:Border>
+
+                <!-- Today's Alarm Count Card -->
+                <av:Border av:Grid.Column="1" Margin="6,0,0,0" BorderThickness="1" CornerRadius="8" BorderBrush="{av:DynamicResource BorderBrush}" Background="{av:DynamicResource PanelBackground}" Padding="16,12,16,12">
+                    <av:Border.Effect>
+                        <av:DropShadowEffect BlurRadius="8" ShadowDepth="1" Color="#000000" Opacity="0.06"/>
+                    </av:Border.Effect>
+                    <av:Grid>
+                        <av:Grid.ColumnDefinitions>
+                            <av:ColumnDefinition Width="Auto"/>
+                            <av:ColumnDefinition Width="*"/>
+                        </av:Grid.ColumnDefinitions>
+                        
+                        <av:Border Background="{av:DynamicResource AlarmTodayBackground}" Width="44" Height="44" CornerRadius="22" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <av:Path Data="M12,2A3,3 0 0,0 9,5V6.28C6.13,7.5 4,10.5 4,14V19L2,21V22H22V21L20,19V14C20,10.5 17.87,7.5 15,6.28V5A3,3 0 0,0 12,2M12,24A3,3 0 0,0 15,21H9A3,3 0 0,0 12,24Z" 
+                                     Fill="{av:DynamicResource AlarmTodayForeground}" Width="20" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </av:Border>
+                        
+                        <av:StackPanel av:Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                            <av:TextBlock Name="TxtKpiTodayTitle" Text="Today's Alarm Count" Foreground="{av:DynamicResource TextSecondary}" FontSize="12" FontWeight="SemiBold"/>
+                            <av:TextBlock Name="TxtKpiTodayVal" Text="0" Foreground="{av:DynamicResource AlarmTodayForeground}" FontSize="26" FontWeight="Bold"/>
+                        </av:StackPanel>
+                    </av:Grid>
+                </av:Border>
+            </av:Grid>
+
+            <!-- Query Panel (Visible in History mode) -->
+            <av:Border Name="BorderQueryPanel" Visibility="Collapsed" BorderThickness="1" CornerRadius="8" BorderBrush="{av:DynamicResource BorderBrush}" Background="{av:DynamicResource PanelBackground}" Padding="16,8,16,8">
+                <av:StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <av:Path Data="{av:StaticResource IconCalendarDays}" Stroke="#2F7BFF" StrokeThickness="1.5" Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                    <av:TextBlock Name="TxtQueryDate" Text="Chọn ngày:" Foreground="{av:DynamicResource TextSecondary}" FontSize="12.5" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <av:DatePicker Name="DpDate" Style="{StaticResource DarkDatePickerStyle}" Width="130" Height="28" Margin="0,0,20,0"/>
+
+                    <av:Path Data="{av:StaticResource IconClock3}" Stroke="#2F7BFF" StrokeThickness="1.5" Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                    <av:TextBlock Name="TxtQueryHour" Text="Chọn giờ:" Foreground="{av:DynamicResource TextSecondary}" FontSize="12.5" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <av:ComboBox Name="CboHour" Style="{StaticResource DarkComboBoxStyle}" Width="110" Height="28" Margin="0,0,12,0">
+                        <av:ComboBoxItem Name="CboHourItemAll" Content="Tất cả giờ" Tag="-1" IsSelected="True"/>
+                        <av:ComboBoxItem Content="00:00 - 01:00" Tag="0"/>
+                        <av:ComboBoxItem Content="01:00 - 02:00" Tag="1"/>
+                        <av:ComboBoxItem Content="02:00 - 03:00" Tag="2"/>
+                        <av:ComboBoxItem Content="03:00 - 04:00" Tag="3"/>
+                        <av:ComboBoxItem Content="04:00 - 05:00" Tag="4"/>
+                        <av:ComboBoxItem Content="05:00 - 06:00" Tag="5"/>
+                        <av:ComboBoxItem Content="06:00 - 07:00" Tag="6"/>
+                        <av:ComboBoxItem Content="07:00 - 08:00" Tag="7"/>
+                        <av:ComboBoxItem Content="08:00 - 09:00" Tag="8"/>
+                        <av:ComboBoxItem Content="09:00 - 10:00" Tag="9"/>
+                        <av:ComboBoxItem Content="10:00 - 11:00" Tag="10"/>
+                        <av:ComboBoxItem Content="11:00 - 12:00" Tag="11"/>
+                        <av:ComboBoxItem Content="12:00 - 13:00" Tag="12"/>
+                        <av:ComboBoxItem Content="13:00 - 14:00" Tag="13"/>
+                        <av:ComboBoxItem Content="14:00 - 15:00" Tag="14"/>
+                        <av:ComboBoxItem Content="15:00 - 16:00" Tag="15"/>
+                        <av:ComboBoxItem Content="16:00 - 17:00" Tag="16"/>
+                        <av:ComboBoxItem Content="17:00 - 18:00" Tag="17"/>
+                        <av:ComboBoxItem Content="18:00 - 19:00" Tag="18"/>
+                        <av:ComboBoxItem Content="19:00 - 20:00" Tag="19"/>
+                        <av:ComboBoxItem Content="20:00 - 21:00" Tag="20"/>
+                        <av:ComboBoxItem Content="21:00 - 22:00" Tag="21"/>
+                        <av:ComboBoxItem Content="22:00 - 23:00" Tag="22"/>
+                        <av:ComboBoxItem Content="23:00 - 24:00" Tag="23"/>
+                    </av:ComboBox>
+
+                    <!-- Filter button: fixed size with clipping protection -->
+                    <av:Button Name="BtnFilter" Click="BtnFilter_Click"
+                               Width="32" Height="28"
+                               Background="#2F7BFF" BorderThickness="0" Cursor="Hand"
+                               Padding="0" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                        <av:Button.Template>
+                            <av:ControlTemplate TargetType="av:Button">
+                                <av:Border x:Name="BtnBd" CornerRadius="4"
+                                         Background="{TemplateBinding Background}">
+                                    <av:Path Data="{av:StaticResource IconSearch}"
+                                           Stroke="#FFFFFF" StrokeThickness="1.5"
+                                           Width="14" Height="14" Stretch="Uniform"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </av:Border>
+                                <av:ControlTemplate.Triggers>
+                                    <av:Trigger Property="IsMouseOver" Value="True">
+                                        <av:Setter TargetName="BtnBd" Property="Background" Value="#1E5FCC"/>
+                                    </av:Trigger>
+                                </av:ControlTemplate.Triggers>
+                            </av:ControlTemplate>
+                        </av:Button.Template>
+                    </av:Button>
+                </av:StackPanel>
+            </av:Border>
+        </av:Grid>
+
+        <!-- ROW 2: Alarm Data Table & Pagination -->
+        <av:Border av:Grid.Row="2" BorderThickness="1" CornerRadius="8" BorderBrush="{av:DynamicResource BorderBrush}" Background="{av:DynamicResource PanelBackground}" Padding="16,12,16,10" Margin="0,0,0,12">
+            <av:Border.Effect>
+                <av:DropShadowEffect BlurRadius="8" ShadowDepth="1" Color="#000000" Opacity="0.06"/>
+            </av:Border.Effect>
+            <av:Grid>
+                <av:Grid.RowDefinitions>
+                    <av:RowDefinition Height="*"/>
+                    <av:RowDefinition Height="Auto"/>
+                </av:Grid.RowDefinitions>
+
+                <!-- DataGrid -->
+                <av:DataGrid Name="GridAlarms" av:Grid.Row="0" GridLinesVisibility="None" RowHeaderWidth="0" IsReadOnly="True"
+                             SelectionMode="Single" AutoGenerateColumns="False" BorderThickness="0" Background="Transparent" Foreground="{av:DynamicResource TextPrimary}" FontSize="12.5" RowHeight="36">
+                    <av:DataGrid.Resources>
+                        <av:Style TargetType="av:DataGridColumnHeader">
+                            <av:Setter Property="Background" Value="{av:DynamicResource SidebarMenuHeaderBackground}" />
+                            <av:Setter Property="Foreground" Value="{av:DynamicResource TextSecondary}" />
+                            <av:Setter Property="FontWeight" Value="SemiBold" />
+                            <av:Setter Property="Padding" Value="10,6,10,6" />
+                            <av:Setter Property="BorderThickness" Value="0" />
+                        </av:Style>
+                        <av:Style TargetType="av:DataGridRow">
+                            <av:Setter Property="Background" Value="Transparent" />
+                            <av:Setter Property="BorderThickness" Value="0" />
+                            <av:Style.Triggers>
+                                <av:Trigger Property="IsMouseOver" Value="True">
+                                    <av:Setter Property="Background" Value="{av:DynamicResource SidebarBackground}" />
+                                </av:Trigger>
+                            </av:Style.Triggers>
+                        </av:Style>
+                        <av:Style TargetType="av:DataGridCell">
+                            <av:Setter Property="Padding" Value="10,0,10,0" />
+                            <av:Setter Property="Template">
+                                <av:Setter.Value>
+                                    <av:ControlTemplate TargetType="av:DataGridCell">
+                                        <av:Border Background="{av:TemplateBinding Background}" BorderBrush="{av:TemplateBinding BorderBrush}" BorderThickness="{av:TemplateBinding BorderThickness}" Padding="{av:TemplateBinding Padding}" SnapsToDevicePixels="True">
+                                            <av:ContentPresenter SnapsToDevicePixels="{av:TemplateBinding SnapsToDevicePixels}" VerticalAlignment="Center"/>
+                                        </av:Border>
+                                    </av:ControlTemplate>
+                                </av:Setter.Value>
+                            </av:Setter>
+                        </av:Style>
+                    </av:DataGrid.Resources>
+                    <av:DataGrid.Columns>
+                        <av:DataGridTextColumn Header="No." Binding="{av:Binding Index}" Width="50" />
+                        <av:DataGridTextColumn Header="Equipment ID" Binding="{av:Binding EquipmentId}" Width="150" />
+                        <av:DataGridTemplateColumn Header="Alarm Code" Width="100">
+                            <av:DataGridTemplateColumn.CellTemplate>
+                                <av:DataTemplate>
+                                    <av:TextBlock Text="{av:Binding AlarmCode}" Foreground="{av:Binding CodeColor}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </av:DataTemplate>
+                            </av:DataGridTemplateColumn.CellTemplate>
+                        </av:DataGridTemplateColumn>
+                        <av:DataGridTextColumn Header="Alarm Description" Binding="{av:Binding AlarmDescription}" Width="*" />
+                        <av:DataGridTextColumn Header="Start Time" Binding="{av:Binding StartTime}" Width="160" />
+                        <av:DataGridTextColumn Header="Duration" Binding="{av:Binding Duration}" Width="100" />
+                        
+                        <!-- Status Badge Column -->
+                        <av:DataGridTemplateColumn Header="Status" Width="100">
+                            <av:DataGridTemplateColumn.CellTemplate>
+                                <av:DataTemplate>
+                                    <av:Border Background="{av:Binding StatusBg}" BorderBrush="{av:Binding StatusColor}" BorderThickness="1" CornerRadius="4" Padding="6,2,6,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                        <av:TextBlock Text="{av:Binding StatusText}" Foreground="{av:Binding StatusColor}" FontSize="10.5" FontWeight="Bold"/>
+                                    </av:Border>
+                                </av:DataTemplate>
+                            </av:DataGridTemplateColumn.CellTemplate>
+                        </av:DataGridTemplateColumn>
+                        
+                        <!-- Action Button Column -->
+                        <av:DataGridTemplateColumn Header="Action" Width="110">
+                            <av:DataGridTemplateColumn.CellTemplate>
+                                <av:DataTemplate>
+                                    <av:Button Content="{av:Binding ActionText}" Click="BtnActionRow_Click" Tag="{av:Binding}" Height="24" Width="90" Padding="0" FontSize="11" FontWeight="Bold"
+                                               Foreground="{av:Binding ActionFg}" Background="{av:Binding ActionBg}" BorderBrush="{av:Binding ActionBorder}" BorderThickness="1" Cursor="Hand">
+                                        <av:Button.Resources>
+                                            <av:Style TargetType="av:Border">
+                                                <av:Setter Property="CornerRadius" Value="3" />
+                                            </av:Style>
+                                        </av:Button.Resources>
+                                    </av:Button>
+                                </av:DataTemplate>
+                            </av:DataGridTemplateColumn.CellTemplate>
+                        </av:DataGridTemplateColumn>
+                    </av:DataGrid.Columns>
+                </av:DataGrid>
+
+                <!-- DataGrid Empty State -->
+                <av:StackPanel Name="EmptyStateAlarms" av:Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed">
+                    <av:Path Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" 
+                             Fill="{DynamicResource TextMuted}" Width="32" Height="32" Stretch="Uniform" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                    <av:TextBlock Name="TxtEmptyStateAlarms" Text="Không có dữ liệu" Foreground="{DynamicResource TextMuted}" FontSize="13" HorizontalAlignment="Center"/>
+                </av:StackPanel>
+
+                <!-- Pagination Controls -->
+                <av:Grid av:Grid.Row="1" Margin="0,8,0,0">
+                    <av:Grid.ColumnDefinitions>
+                        <av:ColumnDefinition Width="*"/>
+                        <av:ColumnDefinition Width="Auto"/>
+                    </av:Grid.ColumnDefinitions>
+
+                    <av:TextBlock Name="TxtPaginationTotal" Text="Total 0 records" Foreground="{av:DynamicResource TextSecondary}" FontSize="12" VerticalAlignment="Center"/>
+
+                    <av:StackPanel Orientation="Horizontal" av:Grid.Column="1" VerticalAlignment="Center">
+                        <!-- Prev Page -->
+                        <av:Button Name="BtnPrevPage" Click="BtnPrevPage_Click" Width="26" Height="26" Background="{av:DynamicResource SidebarMenuHeaderBackground}" Foreground="{av:DynamicResource TextPrimary}" BorderThickness="0" Margin="0,0,4,0" Cursor="Hand">
+                            <av:Path Data="{StaticResource IconChevronLeft}" Stroke="{av:DynamicResource TextPrimary}" StrokeThickness="2" Width="10" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </av:Button>
+                        
+                        <!-- Dynamic page list container -->
+                        <av:StackPanel Name="PnlPageNumbers" Orientation="Horizontal"/>
+
+                        <!-- Next Page -->
+                        <av:Button Name="BtnNextPage" Click="BtnNextPage_Click" Width="26" Height="26" Background="{av:DynamicResource SidebarMenuHeaderBackground}" Foreground="{av:DynamicResource TextPrimary}" BorderThickness="0" Margin="4,0,8,0" Cursor="Hand">
+                            <av:Path Data="{StaticResource IconChevronRight}" Stroke="{av:DynamicResource TextPrimary}" StrokeThickness="2" Width="10" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </av:Button>
+
+                        <!-- Page Size Selector -->
+                        <av:ComboBox Name="CboPageSize" Width="100" Height="26" Style="{StaticResource DarkComboBoxStyle}" SelectionChanged="CboPageSize_SelectionChanged">
+                            <av:ComboBoxItem Name="CboItemPage5" Content="5 / page" Tag="5"/>
+                            <av:ComboBoxItem Name="CboItemPage10" Content="10 / page" Tag="10" IsSelected="True"/>
+                            <av:ComboBoxItem Name="CboItemPage20" Content="20 / page" Tag="20"/>
+                        </av:ComboBox>
+                    </av:StackPanel>
+                </av:Grid>
+            </av:Grid>
+        </av:Border>
+
+        <!-- ROW 3: Bottom Charts Panel -->
+        <av:Grid av:Grid.Row="3">
+            <av:Grid.ColumnDefinitions>
+                <av:ColumnDefinition Name="ColChartLeft" Width="*"/> <!-- Left Chart: Frequency Trend -->
+                <av:ColumnDefinition Name="ColChartRight" Width="*"/> <!-- Right Chart: Top 10 codes -->
+            </av:Grid.ColumnDefinitions>
+
+            <!-- Alarm Frequency Trend Chart -->
+            <av:Border av:Grid.Column="0" Margin="0,0,6,0" BorderThickness="1" CornerRadius="8" BorderBrush="{av:DynamicResource BorderBrush}" Background="{av:DynamicResource PanelBackground}" Padding="14,10,14,10">
+                <av:Grid>
+                    <av:Grid.RowDefinitions>
+                        <av:RowDefinition Height="Auto"/>
+                        <av:RowDefinition Height="*"/>
+                    </av:Grid.RowDefinitions>
+
+                    <av:Grid av:Grid.Row="0" Margin="0,0,0,8">
+                        <av:Grid.ColumnDefinitions>
+                            <av:ColumnDefinition Width="*"/>
+                            <av:ColumnDefinition Width="Auto"/>
+                        </av:Grid.ColumnDefinitions>
+                        <av:TextBlock Name="TxtAlarmFreqTitle" Text="Alarm Frequency Trend" Foreground="{av:DynamicResource TextPrimary}" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
+                        
+                        <!-- Legends -->
+                        <av:StackPanel Orientation="Horizontal" av:Grid.Column="1" VerticalAlignment="Center">
+                            <av:Ellipse Width="8" Height="8" Fill="#FF5C6C" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <av:TextBlock Name="TxtLegendAlarms" Text="Alarms" Foreground="{av:DynamicResource TextSecondary}" FontSize="11" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <av:Line X1="0" Y1="4" X2="12" Y2="4" Stroke="#2F7BFF" StrokeThickness="1.5" StrokeDashArray="2 2" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <av:TextBlock Name="TxtLegendAvg" Text="7-day Average" Foreground="{av:DynamicResource TextSecondary}" FontSize="11" VerticalAlignment="Center"/>
+                        </av:StackPanel>
+                    </av:Grid>
+
+                    <av:Canvas Name="CanvasFrequency" av:Grid.Row="1" Background="Transparent" SizeChanged="CanvasFrequency_SizeChanged"/>
+                </av:Grid>
+            </av:Border>
+
+            <!-- TOP 10 Alarm Codes Chart -->
+            <av:Border Name="BorderChartRight" av:Grid.Column="1" Margin="6,0,0,0" BorderThickness="1" CornerRadius="8" BorderBrush="{av:DynamicResource BorderBrush}" Background="{av:DynamicResource PanelBackground}" Padding="14,10,14,10">
+                <av:Grid>
+                    <av:Grid.RowDefinitions>
+                        <av:RowDefinition Height="Auto"/>
+                        <av:RowDefinition Height="*"/>
+                    </av:Grid.RowDefinitions>
+                    
+                    <av:TextBlock Name="TxtTop10Title" av:Grid.Row="0" Text="TOP 10 Alarm Codes" Foreground="{av:DynamicResource TextPrimary}" FontWeight="Bold" FontSize="13" Margin="0,0,0,8"/>
+                    
+                    <av:Canvas Name="CanvasTopCodes" av:Grid.Row="1" Background="Transparent" SizeChanged="CanvasTopCodes_SizeChanged"/>
+                </av:Grid>
+            </av:Border>
+        </av:Grid>
+    </av:Grid>
+</av:UserControl>

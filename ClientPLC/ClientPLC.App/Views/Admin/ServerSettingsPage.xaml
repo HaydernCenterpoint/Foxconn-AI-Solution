@@ -1,0 +1,35 @@
+﻿<UserControl x:Class="PLC.Views.ServerSettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <Grid Margin="15">
+        <Border BorderThickness="1" Padding="20" CornerRadius="8"
+                BorderBrush="{DynamicResource BorderBrush}"
+                Background="{DynamicResource PanelBackground}"
+                MaxWidth="650" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <StackPanel>
+                <TextBlock Text="Cấu hình kết nối Server" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,20"/>
+
+                <Label Content="Địa chỉ IP / Host của MQTT Broker:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                <TextBox Name="TxtServerHost" Margin="0,0,0,15" Height="30" VerticalContentAlignment="Center"/>
+
+                <Label Content="Cổng dịch vụ (Port):" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                <TextBox Name="TxtServerPort" Margin="0,0,0,15" Height="30" VerticalContentAlignment="Center"/>
+
+                <Label Content="Token xác thực (nếu có):" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                <TextBox Name="TxtServerToken" Margin="0,0,0,20" Height="30" VerticalContentAlignment="Center"/>
+
+                <WrapPanel Margin="0,0,0,20">
+                    <Button Name="BtnTestConnection" Content="⚡ Kiểm tra kết nối" Height="32" Width="150" Margin="0,0,10,0"/>
+                    <Button Name="BtnViewJson" Content="Xem JSON gửi đi" Height="32" Width="130" Margin="0,0,10,0"/>
+                    <Button Name="BtnSendTest" Content="Gửi thử gói dữ liệu" Height="32" Width="150"/>
+                </WrapPanel>
+
+                <TextBlock Text="Dữ liệu JSON Telemetry mẫu:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                <TextBox Name="TxtJsonPreview" Height="150" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" IsReadOnly="True" Background="#0A0F1F" Foreground="#FF00ADB5" FontFamily="Consolas" FontSize="11" Padding="10" Margin="0,0,0,20"/>
+
+                <Button Name="BtnSave" Content="Lưu cấu hình" Height="35" Width="150" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

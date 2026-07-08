@@ -1,0 +1,175 @@
+version: '3.8'
+
+networks:
+  factory-net:
+    driver: bridge
+    internal: false  # Allows downloading updates and calling external APIs if needed
+  db-net:
+    driver: bridge
+    internal: true   # Database only accessible inside internal network for high security
+
+volumes:
+  postgres_data:
+  minio_data:
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.7.0-pg16
+    container_name: factory-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: factory_db
+      POSTGRES_USER: factory_user
+      POSTGRES_PASSWORD: factory_secure_password_9988
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - db-net
+    ports:
+      - "5432:5432"  # Local debugging, can be closed for production security
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U factory_user -d factory_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: factory-redis
+    restart: always
+    networks:
+      - factory-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  minio:
+    image: minio/minio:RELEASE.2024-03-03T20-28-49Z
+    container_name: factory-minio
+    restart: always
+    environment:
+      MINIO_ROOT_USER: minio_admin
+      MINIO_ROOT_PASSWORD: minio_secure_password_7788
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - factory-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  factory-ai-gateway:
+    build:
+      context: ../gateway
+      dockerfile: Dockerfile
+    container_name: factory-ai-gateway
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - ANTIGRAVITY_BRIDGE_URL=http://host.docker.internal:8081
+      - DOCUMENT_SERVICE_URL=http://document-service:8082
+      - REPORT_SERVICE_URL=http://report-service:8083
+      - JWT_SECRET=factory-jwt-secret-key-1234-long-enough-32bytes
+    networks:
+      - factory-net
+      - db-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  antigravity-bridge:
+    build:
+      context: ../antigravity-bridge
+      dockerfile: Dockerfile
+    container_name: antigravity-bridge
+    restart: always
+    environment:
+      - MOCK_ANTIGRAVITY=true  # Set to false to run actual agy CLI
+    volumes:
+      # Mount the codebase to analyze/work on in a sandboxed, restricted manner
+      - d:/nhnhnhnhnh:/workspace
+    networks:
+      - factory-net
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  document-service:
+    build:
+      context: ../document-service
+      dockerfile: Dockerfile
+    container_name: document-service
+    restart: always
+    networks:
+      - factory-net
+      - db-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  report-service:
+    build:
+      context: ../report-service
+      dockerfile: Dockerfile
+    container_name: report-service
+    restart: always
+    networks:
+      - factory-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3

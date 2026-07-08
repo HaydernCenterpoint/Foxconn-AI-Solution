@@ -1,0 +1,36 @@
+address,type,error_name
+M60,Bool,Báo động kẹt liệu băng tải vào (Inlet Conveyor Jam) - 入料流水线连料报警
+M61,Bool,Quá thời gian băng tải vào (Inlet Conveyor Timeout) - 入料流水线到位超时
+M62,Bool,Bất thường ra liệu băng tải vào (Inlet Conveyor Discharge Anomaly) - 入料流水线出料到料异常报警
+M63,Bool,Quá thời gian băng tải ra (Outlet Conveyor Timeout) - 出料流水线到位超时报警
+M64,Bool,Bất thường ra liệu băng tải ra (Outlet Conveyor Discharge Anomaly) - 出料流水线出料异常报警
+M65,Bool,Chưa lấy vít ra (Stud Not Removed) - 螺柱未取走报警
+M100,Bool,Robot trước hút chân không thủ công (Front Robot Vacuum Manual) - 前机器人组装真空_手动中
+M101,Bool,Robot sau hút chân không thủ công (Rear Robot Vacuum Manual) - 后机器人组装真空_手动中
+M103,Bool,Xilanh chặn băng tải vào thủ công (Inlet Stopper Cylinder Manual) - 入料阻挡气缸_手动中
+M104,Bool,Xilanh đẩy bên băng tải vào thủ công (Inlet Pusher Cylinder Manual) - 入料侧推气缸_手动中
+M105,Bool,Xilanh nâng hạ chốt thủ công (Stud Up/Down Cylinder Manual) - 螺柱上下气缸_手动中
+M106,Bool,Xilanh đẩy chốt thủ công (Stud Pusher Cylinder Manual) - 螺柱推送气缸_手动中
+M107,Bool,Xilanh cấp chốt thủ công (Stud Feeder Cylinder Manual) - 螺柱送料气缸_手动中
+M111,Bool,Vị trí chờ chụp ảnh bên phải Robot (Robot Right Camera Wait) - 机器人右边拍照等待位
+M112,Bool,Vị trí chờ chụp ảnh bên trái Robot (Robot Left Camera Wait) - 机器人左边拍照等待位
+M120,Bool,Lỗi xilanh chặn băng tải vào ở gốc (Inlet Stopper Cylinder Home Alarm) - 入料阻挡气缸原位_报警
+M121,Bool,Lỗi xilanh chặn băng tải vào ra vị trí (Inlet Stopper Cylinder Work Alarm) - 入料阻挡气缸出位_报警
+M122,Bool,Lỗi xilanh đẩy bên băng tải vào ở gốc (Inlet Pusher Cylinder Home Alarm) - 入料侧推气缸原位_报警
+M123,Bool,Lỗi xilanh đẩy bên băng tải vào ra vị trí (Inlet Pusher Cylinder Work Alarm) - 入料侧推气缸出位_报警
+M124,Bool,Lỗi xilanh nâng hạ chốt ở gốc (Stud Up/Down Cylinder Home Alarm) - 螺柱上下气缸原位_报警
+M125,Bool,Lỗi xilanh nâng hạ chốt ra vị trí (Stud Up/Down Cylinder Work Alarm) - 螺柱上下气缸出位_报警
+M126,Bool,Lỗi xilanh đẩy chốt ở gốc (Stud Pusher Cylinder Home Alarm) - 螺柱推送气缸原位_报警
+M127,Bool,Lỗi xilanh đẩy chốt ra vị trí (Stud Pusher Cylinder Work Alarm) - 螺柱推送气缸出位_报警
+M128,Bool,Lỗi xilanh cấp chốt ở gốc (Stud Feeder Cylinder Home Alarm) - 螺柱送料气缸原位_报警
+M129,Bool,Lỗi xilanh cấp chốt ra vị trí (Stud Feeder Cylinder Work Alarm) - 螺柱送料气缸出位_报警
+M138,Bool,Báo động cửa an toàn (Access Guard Alarm) - 门禁报警
+M139,Bool,Báo động dừng khẩn cấp (E-Stop Alarm) - 急停报警
+M150,Bool,Báo động lỗi camera Robot quá lớn (Robot Vision Error Too Large) - 机器人视觉误差过大报警
+M160,Bool,Dừng khẩn Robot trước (Front Robot E-Stop) - 前机器人急停
+M161,Bool,Lỗi hệ thống Robot trước (Front Robot System Fault) - 前机器人系统故障
+M165,Bool,Dừng khẩn Robot sau (Rear Robot E-Stop) - 后机器人急停
+M166,Bool,Lỗi hệ thống Robot sau (Rear Robot System Fault) - 后机器人系统故障
+M180,Bool,Robot trước không chạy (Front Robot Not Running) - 前机器人未运行
+M181,Bool,Robot sau không chạy (Rear Robot Not Running) - 后机器人未运行
+M190,Bool,Báo động quét mã NG (Scan NG Alarm) - 扫码NG报警

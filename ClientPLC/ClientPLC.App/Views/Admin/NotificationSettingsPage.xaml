@@ -1,0 +1,24 @@
+﻿<UserControl x:Class="PLC.Views.NotificationSettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <Grid Margin="15">
+        <Border BorderThickness="1" Padding="20" CornerRadius="8"
+                BorderBrush="{DynamicResource BorderBrush}"
+                Background="{DynamicResource PanelBackground}"
+                MaxWidth="600" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <StackPanel>
+                <TextBlock Name="TxtTitle" Text="Cài đặt thông báo &amp; Cảnh báo" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,20"/>
+ 
+                 <CheckBox Name="ChkEnableSound" Content="Kích hoạt âm thanh cảnh báo khi có lỗi phát sinh" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,15" Height="25"/>
+                 <CheckBox Name="ChkEnableEmail" Content="Gửi email thông báo cho kỹ sư bảo trì khi máy dừng > 10 phút" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,15" Height="25"/>
+                 <CheckBox Name="ChkEnablePopup" Content="Hiển thị thông báo nổi (Toast Notification) trên màn hình nền" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,25" Height="25"/>
+ 
+                 <Label Name="LblEmail" Content="Email người nhận thông báo lỗi:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                <TextBox Name="TxtNotifyEmail" Margin="0,0,0,25" Height="30" VerticalContentAlignment="Center"/>
+
+                <Button Name="BtnSave" Content="Lưu cấu hình" Height="35" Width="150" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

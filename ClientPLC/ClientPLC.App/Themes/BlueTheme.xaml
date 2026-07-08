@@ -1,0 +1,116 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- Base Backgrounds -->
+    <SolidColorBrush x:Key="WindowBackground"           Color="#F0F4F8"/>
+    <SolidColorBrush x:Key="PanelBackground"            Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="SidebarBackground"          Color="#DBEAFE"/>
+    <SolidColorBrush x:Key="SidebarHeaderBackground"    Color="#CBD5E1"/>
+    <SolidColorBrush x:Key="SidebarMenuBackground"      Color="#F8FAFC"/>
+    <SolidColorBrush x:Key="SidebarMenuHeaderBackground" Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="SidebarBrandForeground"     Color="#1E293B"/>
+
+    <!-- Borders -->
+    <SolidColorBrush x:Key="BorderBrush"                Color="#E2E8F0"/>
+    <SolidColorBrush x:Key="BorderLight"                Color="#E2E8F0"/>
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="TextPrimary"                Color="#1E293B"/>
+    <SolidColorBrush x:Key="TextSecondary"              Color="#475569"/>
+    <SolidColorBrush x:Key="TextMuted"                  Color="#94A3B8"/>
+    <SolidColorBrush x:Key="SidebarText"                Color="#475569"/>
+    <SolidColorBrush x:Key="SidebarTextActive"          Color="#2563EB"/>
+
+    <!-- Accent — Vibrant Blue -->
+    <SolidColorBrush x:Key="AccentColor"                Color="#2563EB"/>
+    <Color x:Key="AccentColorVal">#2563EB</Color>
+    <SolidColorBrush x:Key="AccentHover"                Color="#3B82F6"/>
+    <SolidColorBrush x:Key="AccentPressed"              Color="#1D4ED8"/>
+    <SolidColorBrush x:Key="AccentLight"                Color="#E8F0FE"/>
+
+    <!-- Inputs -->
+    <SolidColorBrush x:Key="InputBackground"            Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="InputBorder"                Color="#CBD5E1"/>
+    <SolidColorBrush x:Key="InputForeground"            Color="#1E293B"/>
+    <SolidColorBrush x:Key="InputSelection"             Color="#BFDBFE"/>
+
+    <!-- Status Bar -->
+    <SolidColorBrush x:Key="StatusBarBackground"        Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="StatusBarForeground"        Color="#1E293B"/>
+
+    <!-- Semantic Status Colors -->
+    <SolidColorBrush x:Key="SuccessColor"               Color="#10B981"/>
+    <SolidColorBrush x:Key="SuccessLight"               Color="#D1FAE5"/>
+    <SolidColorBrush x:Key="WarningColor"               Color="#F59E0B"/>
+    <SolidColorBrush x:Key="WarningLight"               Color="#FEF3C7"/>
+    <SolidColorBrush x:Key="DangerColor"                Color="#EF4444"/>
+    <SolidColorBrush x:Key="DangerLight"                Color="#FEE2E2"/>
+    <SolidColorBrush x:Key="InfoColor"                  Color="#3B82F6"/>
+    <SolidColorBrush x:Key="InfoLight"                  Color="#DBEAFE"/>
+
+    <!-- Chart Colors -->
+    <SolidColorBrush x:Key="Chart1"                     Color="#2563EB"/>
+    <SolidColorBrush x:Key="Chart2"                     Color="#10B981"/>
+    <SolidColorBrush x:Key="Chart3"                     Color="#8B5CF6"/>
+    <SolidColorBrush x:Key="Chart4"                     Color="#06B6D4"/>
+    <SolidColorBrush x:Key="Chart5"                     Color="#F59E0B"/>
+
+    <!-- Menu Colors -->
+    <SolidColorBrush x:Key="MenuBackground"             Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="MenuText"                   Color="#1F2937"/>
+    <SolidColorBrush x:Key="MenuBorder"                 Color="#D6DCE5"/>
+    <SolidColorBrush x:Key="MenuHoverBackground"        Color="#E8F0FE"/>
+    <SolidColorBrush x:Key="MenuPressedBackground"      Color="#D2E3FC"/>
+    <SolidColorBrush x:Key="MenuSeparator"              Color="#E2E8F0"/>
+    <SolidColorBrush x:Key="MenuShortcutText"           Color="#64748B"/>
+    <SolidColorBrush x:Key="MenuDisabledText"           Color="#A0A8B4"/>
+
+    <!-- Alarm Colors -->
+    <SolidColorBrush x:Key="AlarmActiveBackground"      Color="#FEE2E2"/>
+    <SolidColorBrush x:Key="AlarmActiveForeground"      Color="#EF4444"/>
+    <SolidColorBrush x:Key="AlarmTodayBackground"       Color="#FEF3C7"/>
+    <SolidColorBrush x:Key="AlarmTodayForeground"       Color="#D97706"/>
+
+    <!-- Header Colors -->
+    <SolidColorBrush x:Key="HeaderBackground"           Color="#2563EB"/>
+    <SolidColorBrush x:Key="HeaderForeground"           Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="HeaderMenuText"             Color="#93C5FD"/>
+    <SolidColorBrush x:Key="HeaderMenuTextActive"       Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="HeaderBorder"               Color="#1D4ED8"/>
+    <SolidColorBrush x:Key="HeaderBadgeBackground"      Color="#1AFFFFFF"/>
+    <SolidColorBrush x:Key="HeaderBadgeBorder"          Color="#26FFFFFF"/>
+    <SolidColorBrush x:Key="HeaderBadgeText"            Color="#BFDBFE"/>
+    <SolidColorBrush x:Key="HeaderBtnHoverBackground"   Color="#26FFFFFF"/>
+
+    <!-- KPI Card Semantic Colors -->
+    <SolidColorBrush x:Key="KpiProductionColor"         Color="#2563EB"/>
+    <Color x:Key="KpiProductionColorVal">#2563EB</Color>
+    <SolidColorBrush x:Key="KpiProductionGradientEnd"   Color="#06B6D4"/>
+    <Color x:Key="KpiProductionGradientEndVal">#06B6D4</Color>
+
+    <SolidColorBrush x:Key="KpiYieldColor"              Color="#10B981"/>
+    <Color x:Key="KpiYieldColorVal">#10B981</Color>
+    <SolidColorBrush x:Key="KpiYieldGradientEnd"        Color="#059669"/>
+    <Color x:Key="KpiYieldGradientEndVal">#059669</Color>
+
+    <SolidColorBrush x:Key="KpiUphColor"                Color="#8B5CF6"/>
+    <Color x:Key="KpiUphColorVal">#8B5CF6</Color>
+    <SolidColorBrush x:Key="KpiUphGradientEnd"          Color="#7C3AED"/>
+    <Color x:Key="KpiUphGradientEndVal">#7C3AED</Color>
+
+    <SolidColorBrush x:Key="KpiOeeColor"                Color="#F59E0B"/>
+    <Color x:Key="KpiOeeColorVal">#F59E0B</Color>
+    <SolidColorBrush x:Key="KpiOeeGradientEnd"          Color="#D97706"/>
+    <Color x:Key="KpiOeeGradientEndVal">#D97706</Color>
+
+    <SolidColorBrush x:Key="KpiAlarmColor"              Color="#EF4444"/>
+    <Color x:Key="KpiAlarmColorVal">#EF4444</Color>
+    <SolidColorBrush x:Key="KpiAlarmGradientEnd"        Color="#DC2626"/>
+    <Color x:Key="KpiAlarmGradientEndVal">#DC2626</Color>
+
+    <!-- Font Sizes -->
+    <sys:Double x:Key="BaseFontSize">13</sys:Double>
+    <sys:Double x:Key="HeaderFontSize">15</sys:Double>
+    <sys:Double x:Key="TitleFontSize">19</sys:Double>
+</ResourceDictionary>

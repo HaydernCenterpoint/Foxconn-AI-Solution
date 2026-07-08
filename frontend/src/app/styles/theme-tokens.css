@@ -1,0 +1,101 @@
+@theme {
+  /* Primary Colors - Corporate FII Cobalt Blue */
+  --color-primary: #1C64F2;
+  --color-primary-hover: #3F83F8;
+  --color-primary-light: rgba(28, 100, 242, 0.15);
+  --color-on-primary: #FFFFFF;
+
+  /* Secondary Colors - FII Crimson Red */
+  --color-secondary: #D00B27;
+  --color-secondary-hover: #E52E46;
+  --color-on-secondary: #FFFFFF;
+
+  /* Surface Colors */
+  --color-surface: #0A1129;
+  --color-surface-dim: #0A1129;
+  --color-surface-container-lowest: #040812;
+  --color-surface-container-low: #0A1129;
+  --color-surface-container: #0A1129;
+  --color-surface-container-high: #0A1129;
+  --color-surface-container-highest: #14356a;
+
+  /* Background */
+  --color-background: #060a16;
+  --color-background-secondary: #0A1129;
+
+  /* Text Colors */
+  --color-on-surface: #EEEEEE;
+  --color-on-surface-variant: #9CA3AF;
+  --color-text-primary: #EEEEEE;
+  --color-text-secondary: #9CA3AF;
+  --color-text-muted: #9CA3AF;
+  --color-outline: #14356a;
+  --color-outline-variant: #00ADB5;
+  --color-edge: #00ADB5;
+  --color-edge-selected: #38BDF8;
+
+  /* Status Colors */
+  --color-running: #00E676;
+  --color-running-container: rgba(0, 230, 118, 0.15);
+  --color-success: #00E676;
+  --color-success-container: rgba(0, 230, 118, 0.15);
+  --color-error: #EF4444;
+  --color-error-container: rgba(239, 68, 68, 0.15);
+  --color-warn: #F59E0B;
+  --color-warn-container: rgba(245, 158, 11, 0.15);
+  --color-idle: #38BDF8;
+  --color-idle-container: rgba(56, 189, 248, 0.15);
+  --color-offline: #9CA3AF;
+  --color-offline-container: rgba(156, 163, 175, 0.15);
+  --color-information: #38BDF8;
+  --color-information-container: rgba(56, 189, 248, 0.15);
+  --color-maintenance: #8B5CF6;
+  --color-maintenance-container: rgba(139, 92, 246, 0.15);
+
+  /* Accent */
+  --color-accent: #00ADB5;
+  --color-accent-container: rgba(0, 173, 181, 0.15);
+
+  /* Shadows - Corporate Subtle Glows */
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-2: 0 4px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-3: 0 10px 15px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-4: 0 20px 25px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-5: 0 25px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  /* Typography */
+  --font-family-sans: 'Google Sans', 'Product Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-family-mono: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-sans: 'Google Sans', 'Product Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  /* Border Radius */
+  --radius-extra-small: 2px;
+  --radius-small: 4px;
+  --radius-medium: 6px;
+  --radius-large: 8px;
+  --radius-extra-large: 12px;
+
+  /* Spacing Base Unit */
+  --spacing: 0.2rem;
+
+  /* Spacing Tokens */
+  --spacing-xs: 4.8px;
+  --spacing-sm: 9.6px;
+  --spacing-md: 19.2px;
+  --spacing-lg: 28.8px;
+  --spacing-xl: 38.4px;
+  --spacing-2xl: 57.6px;
+
+  /* Typography Font Sizes */
+  --text-xs: 0.9375rem;
+  --text-sm: 1.09375rem;
+  --text-base: 1.25rem;
+  --text-lg: 1.40625rem;
+  --text-xl: 1.5625rem;
+  --text-2xl: 1.875rem;
+  --text-3xl: 2.34375rem;
+  --text-4xl: 2.8125rem;
+  --text-5xl: 3.75rem;
+  --text-6xl: 4.6875rem;
+}

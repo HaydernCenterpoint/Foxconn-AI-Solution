@@ -1,0 +1,71 @@
+{
+  "name": "MKZ Factory PLC",
+  "description": "MCP server for querying MKZ Factory PLC monitoring database. Provides access to machines, production lines, alarms, telemetry, and production reports.",
+  "command": "python",
+  "args": ["mcp_servers/plc_mcp_server.py"],
+  "env": {
+    "MKZ_DB_HOST": "localhost",
+    "MKZ_DB_PORT": "5432",
+    "MKZ_DB_NAME": "plc_monitoring",
+    "MKZ_DB_USER": "postgres",
+    "MKZ_DB_PASSWORD": "12345678"
+  },
+  "tools": [
+    {
+      "name": "mkz_get_machines",
+      "description": "Get all machines from the MKZ factory system",
+      "read_only": true
+    },
+    {
+      "name": "mkz_get_production_lines",
+      "description": "Get all production lines",
+      "read_only": true
+    },
+    {
+      "name": "mkz_get_alarms",
+      "description": "Get active alarms",
+      "read_only": true
+    },
+    {
+      "name": "mkz_get_dashboard_summary",
+      "description": "Get factory dashboard summary with KPIs",
+      "read_only": true
+    },
+    {
+      "name": "mkz_get_production_report",
+      "description": "Generate production reports",
+      "read_only": true
+    },
+    {
+      "name": "mkz_get_telemetry",
+      "description": "Get live telemetry data",
+      "read_only": true
+    },
+    {
+      "name": "mkz_get_hourly_production",
+      "description": "Get hourly production history",
+      "read_only": true
+    },
+    {
+      "name": "mkz_get_audit_logs",
+      "description": "Get audit log entries",
+      "read_only": true
+    },
+    {
+      "name": "mkz_execute_sql",
+      "description": "Execute raw SQL queries (SELECT only)",
+      "read_only": true
+    },
+    {
+      "name": "mkz_get_system_info",
+      "description": "Get database schema info",
+      "read_only": true
+    }
+  ],
+  "setup_instructions": [
+    "1. Ensure MKZ PostgreSQL database is running",
+    "2. Copy this config to Odysseus MCP settings",
+    "3. Update environment variables for your database connection",
+    "4. Save and reconnect"
+  ]
+}

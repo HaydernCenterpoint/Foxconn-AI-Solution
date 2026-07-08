@@ -1,0 +1,352 @@
+﻿#define DEBUG
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Microsoft.Win32;
+using System.Net.NetworkInformation;
+using System.Security.Cryptography;
+using System.Text;
+using System.Linq;
+
+namespace PLC.Config;
+
+public interface IConfigStorage
+{
+	string GetConfigValue(string key);
+	void SaveConfigValue(string key, string value);
+}
+
+public class AppConfig
+{
+	public static IConfigStorage Storage { get; set; }
+
+	private static AppConfig _current;
+
+	private static readonly object _lock = new object();
+
+	private static readonly JsonSerializerOptions _jsonOpts = new JsonSerializerOptions
+	{
+		WriteIndented = true,
+		PropertyNameCaseInsensitive = true
+	};
+
+	public static AppConfig Current
+	{
+		get
+		{
+			if (_current == null)
+			{
+				lock (_lock)
+				{
+					if (_current == null)
+					{
+						_current = Load();
+					}
+				}
+			}
+			return _current;
+		}
+	}
+
+
+
+	private string _machineId = string.Empty;
+
+	[JsonPropertyName("machineId")]
+	public string MachineId
+	{
+		get
+		{
+			if (string.IsNullOrEmpty(_machineId))
+			{
+				_machineId = GetSystemUniqueId();
+			}
+			return _machineId;
+		}
+		set
+		{
+			_machineId = string.IsNullOrEmpty(value) ? GetSystemUniqueId() : value;
+		}
+	}
+
+	[JsonPropertyName("machineName")]
+	public string MachineName { get; set; } = "May 01";
+
+	[JsonPropertyName("lineId")]
+	public string LineId { get; set; } = "line-01";
+
+	[JsonPropertyName("lineName")]
+	public string LineName { get; set; } = "Chuyen A";
+
+	[JsonPropertyName("lineOrder")]
+	public int LineOrder { get; set; } = 1;
+
+	[JsonPropertyName("plcBrand")]
+	public string PlcBrand { get; set; } = "MelsecMcNet";
+
+	[JsonPropertyName("plcIp")]
+	public string PlcIp { get; set; } = "192.168.1.100";
+
+	[JsonPropertyName("plcPort")]
+	public int PlcPort { get; set; } = 6000;
+
+	[JsonPropertyName("plcRack")]
+	public int PlcRack { get; set; } = 0;
+
+	[JsonPropertyName("plcSlot")]
+	public int PlcSlot { get; set; } = 0;
+
+	[JsonPropertyName("plcStation")]
+	public int PlcStation { get; set; } = 1;
+
+	[JsonPropertyName("readIntervalMs")]
+	public int ReadIntervalMs { get; set; } = 5000;
+
+	[JsonPropertyName("serverHost")]
+	public string ServerHost { get; set; } = "127.0.0.1";
+
+	[JsonPropertyName("serverPort")]
+	public int ServerPort { get; set; } = 7001;
+
+	[JsonPropertyName("readAddresses")]
+	public string ReadAddresses { get; set; } = "M100:Bool:Start:1,M180:Bool:Stop:1,M139:Bool:Error:1,M1050:Bool:Conveyor Has Product:1,M1065:Bool:Front Robot Complete:1,M1068:Bool:Rear Robot Complete:1,M402:Bool:Stud NG:1,M405:Bool:Spring Screw NG:1,R0:Int16:Front Robot Count:1,R10:Int16:Rear Robot Count:1,M60:Bool:Jam Alarm (M60):1,M61:Bool:Conveyor Timeout (M61):1,M62:Bool:Inlet Anomaly (M62):1,M63:Bool:Conveyor Out Timeout (M63):1,M64:Bool:Outlet Anomaly (M64):1,M65:Bool:Stud Not Removed (M65):1,M101:Bool:Robot 2 Manual (M101):1,M103:Bool:Inlet Block Cylinder (M103):1,M104:Bool:Inlet Push Cylinder (M104):1,M105:Bool:Stud Up/Down Cylinder (M105):1,M106:Bool:Stud Push Cylinder (M106):1,M107:Bool:Stud Feed Cylinder (M107):1,M111:Bool:Robot Right Photo Wait (M111):1,M112:Bool:Robot Left Photo Wait (M112):1,M120:Bool:Inlet Block Cyl Home Alarm (M120):1,M121:Bool:Inlet Block Cyl Work Alarm (M121):1,M122:Bool:Inlet Push Cyl Home Alarm (M122):1,M123:Bool:Inlet Push Cyl Work Alarm (M123):1,M124:Bool:Stud Cyl Home Alarm (M124):1,M125:Bool:Stud Cyl Work Alarm (M125):1,M126:Bool:Stud Push Home Alarm (M126):1,M127:Bool:Stud Push Work Alarm (M127):1,M128:Bool:Stud Feed Home Alarm (M128):1,M129:Bool:Stud Feed Work Alarm (M129):1,M138:Bool:Access Guard Alarm (M138):1,M150:Bool:Vision Error Alarm (M150):1,M160:Bool:Robot 1 E-Stop (M160):1,M161:Bool:Robot 1 Fault (M161):1,M165:Bool:Robot 2 E-Stop (M165):1,M166:Bool:Robot 2 Fault (M166):1,M180:Bool:Robot 1 Not Running (M180):1,M181:Bool:Robot 2 Not Running (M181):1,M190:Bool:Scan NG Alarm (M190):1,D1022:Int16:Machine CT (D1022):1,D1030:Int16:Screwdriver Count (D1030):1,D1033:Int16:Heatsinks Count (D1033):1,D1034:Int16:Current Heatsink No (D1034):1,D1035:Int16:Photo Screw Count (D1035):1,D1036:Int16:Photo Count (D1036):1,D1037:Int16:Robot Photo Pos (D1037):1,D1038:Int16:Current Screw Count (D1038):1,D1039:Int16:Current Screw No (D1039):1,D1040:Int16:Pre-lock Count (D1040):1";
+
+	[JsonPropertyName("serverToken")]
+	public string ServerToken { get; set; } = "";
+
+	[JsonPropertyName("targetSpeed")]
+	public int TargetSpeed { get; set; } = 60;
+
+	[JsonPropertyName("localWebPort")]
+	public int LocalWebPort { get; set; } = 8080;
+
+	public static AppConfig Load()
+	{
+		try
+		{
+			AppConfig appConfig = null;
+			string dbJson = Storage?.GetConfigValue("app_config_json");
+			if (!string.IsNullOrEmpty(dbJson))
+			{
+				appConfig = JsonSerializer.Deserialize<AppConfig>(dbJson, _jsonOpts);
+			}
+
+			if (appConfig == null)
+			{
+				appConfig = new AppConfig();
+			}
+			appConfig.EnsureDefaultAddresses();
+			return appConfig;
+		}
+		catch (Exception ex)
+		{
+			Debug.WriteLine("[AppConfig] Load error: " + ex.Message);
+		}
+		AppConfig appConfig2 = new AppConfig();
+		appConfig2.EnsureDefaultAddresses();
+		return appConfig2;
+	}
+
+	public void EnsureDefaultAddresses()
+	{
+		List<string> existingAliases = new List<string>();
+		List<string> oldDelimitedList = new List<string>();
+		bool isJson = false;
+		
+		string readAddresses = (ReadAddresses ?? "").Trim();
+		if (!string.IsNullOrWhiteSpace(readAddresses))
+		{
+			if (readAddresses.StartsWith("["))
+			{
+				isJson = true;
+				try
+				{
+					using var doc = System.Text.Json.JsonDocument.Parse(readAddresses);
+					foreach (var elem in doc.RootElement.EnumerateArray())
+					{
+						if (elem.TryGetProperty("Alias", out var aliasProp))
+						{
+							existingAliases.Add(aliasProp.GetString()?.Trim() ?? "");
+						}
+					}
+				}
+				catch
+				{
+					isJson = false;
+				}
+			}
+			
+			if (!isJson)
+			{
+				string[] array = readAddresses.Split(',', StringSplitOptions.RemoveEmptyEntries);
+				foreach (string text in array)
+				{
+					string[] array3 = text.Split(':');
+					if (array3.Length > 2)
+					{
+						existingAliases.Add(array3[2].Trim());
+					}
+					oldDelimitedList.Add(text.Trim());
+				}
+			}
+		}
+
+		List<(string, string)> allDefaults = new List<(string, string)>
+		{
+			("Start", "M100:Bool:Start:1:Nhóm trạng thái"),
+			("Stop", "M180:Bool:Stop:1:Nhóm trạng thái"),
+			("Error", "M139:Bool:Error:1:Nhóm trạng thái"),
+			("Conveyor Has Product", "M1050:Bool:Conveyor Has Product:1:Nhóm sản phẩm"),
+			("Front Robot Complete", "M1065:Bool:Front Robot Complete:1:Nhóm sản phẩm"),
+			("Rear Robot Complete", "M1068:Bool:Rear Robot Complete:1:Nhóm sản phẩm"),
+			("Quantity", "D1026:Int16:Quantity:1:Nhóm sản phẩm"),
+			("Cycle Time", "D1022:Int16:Cycle Time:1:Nhóm sản phẩm"),
+			("Front Robot Count", "R0:Int16:Front Robot Count:1:Nhóm sản phẩm"),
+			("Rear Robot Count", "R10:Int16:Rear Robot Count:1:Nhóm sản phẩm"),
+			("Stud NG", "M402:Bool:Stud NG:1:Nhóm chất lượng"),
+			("Spring Screw NG", "M405:Bool:Spring Screw NG:1:Nhóm chất lượng"),
+			("Screwdriver Count", "D1030:Int16:Screwdriver Count:1:Nhóm sản phẩm"),
+			("Heatsinks Count", "D1033:Int16:Heatsinks Count:1:Nhóm sản phẩm"),
+			("Current Heatsink No", "D1034:Int16:Current Heatsink No:1:Nhóm sản phẩm"),
+			("Photo Screw Count", "D1035:Int16:Photo Screw Count:1:Nhóm sản phẩm"),
+			("Photo Count", "D1036:Int16:Photo Count:1:Nhóm sản phẩm"),
+			("Robot Photo Pos", "D1037:Int16:Robot Photo Pos:1:Nhóm sản phẩm"),
+			("Current Screw Count", "D1038:Int16:Current Screw Count:1:Nhóm sản phẩm"),
+			("Current Screw No", "D1039:Int16:Current Screw No:1:Nhóm sản phẩm"),
+			("Pre-lock Count", "D1040:Int16:Pre-lock Count:1:Nhóm sản phẩm")
+		};
+
+		bool isFreshInit = existingAliases.Count == 0;
+		List<(string, string)> defaultsToMerge;
+
+		if (isFreshInit)
+		{
+			defaultsToMerge = allDefaults;
+		}
+		else
+		{
+			// Only merge mandatory status aliases: Start, Stop, Error
+			defaultsToMerge = allDefaults.Where(d => 
+				d.Item1.Equals("Start", StringComparison.OrdinalIgnoreCase) ||
+				d.Item1.Equals("Stop", StringComparison.OrdinalIgnoreCase) ||
+				d.Item1.Equals("Error", StringComparison.OrdinalIgnoreCase)
+			).ToList();
+		}
+
+		if (isJson)
+		{
+			try
+			{
+				var items = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.Nodes.JsonObject>>(readAddresses) ?? new List<System.Text.Json.Nodes.JsonObject>();
+				foreach (var d in defaultsToMerge)
+				{
+					if (!existingAliases.Any(a => a.Equals(d.Item1, StringComparison.OrdinalIgnoreCase)))
+					{
+						string[] parts = d.Item2.Split(':');
+						var obj = new System.Text.Json.Nodes.JsonObject
+						{
+							["Address"] = parts[0],
+							["Type"] = parts[1],
+							["Alias"] = parts[2],
+							["Enabled"] = parts[3] == "1",
+							["Group"] = parts.Length > 4 ? parts[4] : "",
+							["ActiveValue"] = "true",
+							["Severity"] = "Medium"
+						};
+						items.Add(obj);
+					}
+				}
+				ReadAddresses = System.Text.Json.JsonSerializer.Serialize(items);
+			}
+			catch
+			{
+				ReadAddresses = string.Join(",", oldDelimitedList);
+			}
+		}
+		else
+		{
+			foreach (var d in defaultsToMerge)
+			{
+				if (!existingAliases.Any(a => a.Equals(d.Item1, StringComparison.OrdinalIgnoreCase)))
+				{
+					oldDelimitedList.Add(d.Item2);
+				}
+			}
+			ReadAddresses = string.Join(",", oldDelimitedList);
+		}
+	}
+
+	public void Save()
+	{
+		try
+		{
+			string contents = JsonSerializer.Serialize(this, _jsonOpts);
+			Storage?.SaveConfigValue("app_config_json", contents);
+			_current = this;
+		}
+		catch (Exception ex)
+		{
+			Debug.WriteLine("[AppConfig] Save error: " + ex.Message);
+		}
+	}
+
+	public static void Reload()
+	{
+		lock (_lock)
+		{
+			_current = Load();
+		}
+	}
+
+	private static string GetSystemUniqueId()
+	{
+		try
+		{
+			using (var key = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+			{
+				using (var subkey = key.OpenSubKey(@"SOFTWARE\Microsoft\Cryptography"))
+				{
+					if (subkey != null)
+					{
+						object val = subkey.GetValue("MachineGuid");
+						if (val != null)
+						{
+							return val.ToString();
+						}
+					}
+				}
+			}
+		}
+		catch
+		{
+		}
+
+		try
+		{
+			var interfaces = NetworkInterface.GetAllNetworkInterfaces();
+			foreach (var ni in interfaces)
+			{
+				if (ni.OperationalStatus == OperationalStatus.Up)
+				{
+					string mac = ni.GetPhysicalAddress().ToString();
+					if (!string.IsNullOrEmpty(mac))
+					{
+						using (var md5 = MD5.Create())
+						{
+							byte[] hash = md5.ComputeHash(Encoding.UTF8.GetBytes(mac));
+							return new Guid(hash).ToString();
+						}
+					}
+				}
+			}
+		}
+		catch
+		{
+		}
+
+		return "00000000-0000-0000-0000-000000000001";
+	}
+}

@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@import url('https://fonts.cdnfonts.com/css/google-sans');
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=Roboto+Mono:wght@400;500;700&display=swap');
+@import "@xyflow/react/dist/style.css";
+@import './app/styles/theme-tokens.css';
+@import './app/styles/themes/dark.css';
+@import './app/styles/themes/light.css';
+@import './app/styles/animations.css';
+@import './app/styles/globals.css';
+@import './app/styles/utilities.css';

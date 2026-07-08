@@ -1,0 +1,57 @@
+address,type,error_name
+M60,Bool,Băng tải tầng trênbáo động kẹt liệu (Upper conveyorconveyor jam alarm) - 上层流水线连料报警
+M61,Bool,Băng tải tầng trênquá thời gian đến vị trí (Upper conveyorarrival timeout) - 上层流水线到位超时
+M62,Bool,Băng tải tầng trên出料到料异常báo động (Upper conveyor出料到料异常alarm) - 上层流水线出料到料异常报警
+M63,Bool,Băng tải tầng trêndòng liệu chảy rabáo động (Upper conveyormaterial outflowalarm) - 上层流水线物料流出报警
+M66,Bool,Băng tải tầng dướibáo động kẹt liệu (Lower conveyorconveyor jam alarm) - 下层流水线连料报警
+M67,Bool,Băng tải tầng dướiquá thời gian đến liệubáo động (Lower conveyorarrival timeoutalarm) - 下层流水线到料超时报警
+M70,Bool,Robot trướctua vít điệnbáo động (Front robotscrewdriveralarm) - 前机器人电批报警
+M72,Bool,Robot sautua vít điệnbáo động (Rear robotscrewdriveralarm) - 后机器人电批报警
+M75,Bool,Băng tải tầng dưới出料异常báo động (Lower conveyor出料异常alarm) - 下层流水线出料异常报警
+M77,Bool,Robot trước长螺丝hết liệubáo động (Front robot长螺丝emptyalarm) - 前机器人长螺丝无料报警
+M78,Bool,Robot trước短螺丝hết liệubáo động (Front robot短螺丝emptyalarm) - 前机器人短螺丝无料报警
+M79,Bool,Robot trước长螺丝chưa được lấy đibáo động (Front robot长螺丝not removedalarm) - 前机器人长螺丝未取走报警
+M80,Bool,Robot trước短螺丝chưa được lấy đibáo động (Front robot短螺丝not removedalarm) - 前机器人短螺丝未取走报警
+M87,Bool,Robot sau长螺丝hết liệubáo động (Rear robot长螺丝emptyalarm) - 后机器人长螺丝无料报警
+M88,Bool,Robot sau短螺丝hết liệubáo động (Rear robot短螺丝emptyalarm) - 后机器人短螺丝无料报警
+M89,Bool,Robot sau长螺丝chưa được lấy đibáo động (Rear robot长螺丝not removedalarm) - 后机器人长螺丝未取走报警
+M90,Bool,Robot sau短螺丝chưa được lấy đibáo động (Rear robot短螺丝not removedalarm) - 后机器人短螺丝未取走报警
+M100,Bool,Robot trước组装真空_đang chạy thủ công (Front robot组装真空_manual running) - 前机器人组装真空_手动中
+M101,Bool,Robot sau组装真空_đang chạy thủ công (Rear robot组装真空_manual running) - 后机器人组装真空_手动中
+M103,Bool,Xi lanh chặn trái tầng trên_đang chạy thủ công (Upper left stopper cylinder_manual running) - 上层左阻挡气缸_手动中
+M104,Bool,Xi lanh đẩy bên phía trước tầng trên_đang chạy thủ công (Upper front side pusher cylinder_manual running) - 上层前侧推气缸_手动中
+M105,Bool,Xi lanh chặn phải tầng trên_đang chạy thủ công (Upper right stopper cylinder_manual running) - 上层右阻挡气缸_手动中
+M106,Bool,Xi lanh đẩy bên phía sau tầng trên_đang chạy thủ công (Upper rear side pusher cylinder_manual running) - 上层后侧推气缸_手动中
+M108,Bool,Xi lanh lắp ráp Robot trước_đang chạy thủ công (Front robot assembly cylinder_manual running) - 前机器人组装气缸_手动中
+M109,Bool,Xi lanh lắp ráp Robot sau_đang chạy thủ công (Rear robot assembly cylinder_manual running) - 后机器人组装气缸_手动中
+M111,Bool,Băng tải tầng trên_đang chạy thủ công (Upper conveyor_manual running) - 上层流水线_手动中
+M113,Bool,Băng tải tầng dưới_đang chạy thủ công (Lower conveyor_manual running) - 下层流水线_手动中
+M117,Bool,Robot trước组装真空báo động (Front robot组装真空alarm) - 前机器人组装真空报警
+M118,Bool,Robot sau组装真空báo động (Rear robot组装真空alarm) - 后机器人组装真空报警
+M120,Bool,Xi lanh chặn trái tầng trênvị trí gốc_báo động (Upper left stopper cylinderhome_alarm) - 上层左阻挡气缸原位_报警
+M121,Bool,Xi lanh chặn trái tầng trênvị trí làm việc_báo động (Upper left stopper cylinderwork_alarm) - 上层左阻挡气缸出位_报警
+M122,Bool,Xi lanh đẩy bên phía trước tầng trênvị trí gốc_báo động (Upper front side pusher cylinderhome_alarm) - 上层前侧推气缸原位_报警
+M123,Bool,Xi lanh đẩy bên phía trước tầng trênvị trí làm việc_báo động (Upper front side pusher cylinderwork_alarm) - 上层前侧推气缸出位_报警
+M124,Bool,Xi lanh chặn phải tầng trênvị trí gốc_báo động (Upper right stopper cylinderhome_alarm) - 上层右阻挡气缸原位_报警
+M125,Bool,Xi lanh chặn phải tầng trênvị trí làm việc_báo động (Upper right stopper cylinderwork_alarm) - 上层右阻挡气缸出位_报警
+M126,Bool,Xi lanh đẩy bên phía sau tầng trênvị trí gốc_báo động (Upper rear side pusher cylinderhome_alarm) - 上层后侧推气缸原位_报警
+M127,Bool,Xi lanh đẩy bên phía sau tầng trênvị trí làm việc_báo động (Upper rear side pusher cylinderwork_alarm) - 上层后侧推气缸出位_报警
+M130,Bool,Xi lanh lắp ráp Robot trướcvị trí gốc_báo động（靠屏） (Front robot assembly cylinderhome_alarm（靠屏）) - 前机器人组装气缸原位_报警（靠屏）
+M131,Bool,Xi lanh lắp ráp Robot trướcvị trí làm việc_báo động（靠屏） (Front robot assembly cylinderwork_alarm（靠屏）) - 前机器人组装气缸出位_报警（靠屏）
+M132,Bool,Xi lanh lắp ráp Robot sauvị trí gốc_báo động (Rear robot assembly cylinderhome_alarm) - 后机器人组装气缸原位_报警
+M133,Bool,Xi lanh lắp ráp Robot sauvị trí làm việc_báo động (Rear robot assembly cylinderwork_alarm) - 后机器人组装气缸出位_报警
+M138,Bool,Cửa an toànbáo động (Safety gatealarm) - 门禁报警
+M139,Bool,Dừng khẩn cấpbáo động (E-stopalarm) - 急停报警
+M160,Bool,Robot trướcdừng khẩn cấp (Front robotE-stop) - 前机器人急停
+M161,Bool,Robot trước系统sự cố (Front robot系统fault) - 前机器人系统故障
+M162,Bool,Robot trướckhi đang chạychuyển tay gạt sang thủ công (Front robotduring runninghandle switch to manual) - 前机器人运行时手柄切手动
+M165,Bool,Robot saudừng khẩn cấp (Rear robotE-stop) - 后机器人急停
+M166,Bool,Robot sau系统sự cố (Rear robot系统fault) - 后机器人系统故障
+M167,Bool,Robot saukhi đang chạychuyển tay gạt sang thủ công (Rear robotduring runninghandle switch to manual) - 后机器人运行时手柄切手动
+M181,Bool,扫码超时báo động (扫码超时alarm) - 扫码超时报警
+M190,Bool,前BOT对比视觉sai lệch quá lớn (前BOT对比视觉deviation too large) - 前BOT对比视觉偏差过大
+M191,Bool,后BOT对比视觉sai lệch quá lớn (后BOT对比视觉deviation too large) - 后BOT对比视觉偏差过大
+M195,Bool,Lắp ráp ốc vít phẳng trướcchụp ảnh lỗi (NG) (Front flat assembly screwvision NG) - 前平面组装螺丝拍照NG
+M196,Bool,Lắp ráp ốc vít bên trướcchụp ảnh lỗi (NG) (Front side assembly screwvision NG) - 前侧面组装螺丝拍照NG
+M197,Bool,Lắp ráp ốc vít phẳng sauchụp ảnh lỗi (NG) (Rear flat assembly screwvision NG) - 后平面组装螺丝拍照NG
+M198,Bool,Lắp ráp ốc vít bên sauchụp ảnh lỗi (NG) (Rear side assembly screwvision NG) - 后侧面组装螺丝拍照NG

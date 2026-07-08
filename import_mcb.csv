@@ -1,0 +1,94 @@
+address,type,error_name
+M60,Bool,Báo động kẹt liệu băng tải tầng trên (Upper Conveyor Jam Alarm) - 上层流水线连料报警
+M61,Bool,Quá thời gian băng tải tầng trên (Upper Conveyor Timeout) - 上层流水线到位超时
+M62,Bool,Báo động bất thường ra/vào liệu băng tải tầng trên (Upper Conveyor In/Out Anomaly Alarm) - 上层流水线出料到料异常报警
+M63,Bool,Báo động bất thường ra liệu băng tải tầng trên (Upper Conveyor Out Anomaly Alarm) - 上层流水线出料异常报警
+M64,Bool,Báo động kẹt liệu bộ cấp vít dài (Long Stud Feeder Jam Alarm) - 长螺柱供料器卡料报警
+M65,Bool,Báo động bất thường cấp liệu bộ cấp vít dài (Long Stud Feeder Arrival Anomaly Alarm) - 长螺柱供料器到料异常报警
+M66,Bool,Báo động kẹt liệu băng tải tầng dưới (Lower Conveyor Jam Alarm) - 下层流水线连料报警
+M67,Bool,Quá thời gian băng tải tầng dưới (Lower Conveyor Timeout Alarm) - 下层流水线到料超时报警
+M68,Bool,Báo động kẹt liệu bộ cấp vít ngắn (Short Stud Feeder Jam Alarm) - 短螺柱供料器卡料报警
+M69,Bool,Báo động bất thường cấp liệu bộ cấp vít ngắn (Short Stud Feeder Arrival Anomaly Alarm) - 短螺柱供料器到料异常报警
+M70,Bool,Báo động thiếu liệu bộ cấp ốc vít (Screw Feeder Empty Alarm) - 螺丝供料器缺料报警
+M71,Bool,Báo động tua vít điện bắt vít (Screw Electric Screwdriver Alarm) - 螺丝电批报警
+M72,Bool,Báo động tua vít điện bắt trụ ren (Stud Electric Screwdriver Alarm) - 螺柱电批报警
+M73,Bool,Báo động gắp vít dài (Pick Long Stud Alarm) - 取长螺柱报警
+M74,Bool,Báo động gắp vít ngắn (Pick Short Stud Alarm) - 取短螺柱报警
+M75,Bool,Báo động bất thường ra liệu băng tải tầng dưới (Lower Conveyor Out Anomaly Alarm) - 下层流水线出料异常报警
+M100,Bool,Xi lanh lắp ráp ốc vít đang chạy thủ công (Screw Assembly Cylinder Manual) - 组装螺丝气缸_手动中
+M101,Bool,Xi lanh chặn băng tải đang chạy thủ công (Conveyor Stopper Cylinder Manual) - 流水线阻挡气缸_手动中
+M102,Bool,Xi lanh định vị băng tải đang chạy thủ công (Conveyor Positioning Cylinder Manual) - 流水线定位气缸_手动中
+M103,Bool,Xi lanh nâng hạ vít dài đang chạy thủ công (Long Stud Up/Down Cylinder Manual) - 长螺柱上下气缸_手动中
+M104,Bool,Xi lanh đẩy vít dài đang chạy thủ công (Long Stud Pusher Cylinder Manual) - 长螺柱推送气缸_手动中
+M105,Bool,Xi lanh cấp vít dài đang chạy thủ công (Long Stud Feeding Cylinder Manual) - 长螺柱送料气缸_手动中
+M106,Bool,Xi lanh nâng hạ vít ngắn đang chạy thủ công (Short Stud Up/Down Cylinder Manual) - 短螺柱上下气缸_手动中
+M107,Bool,Xi lanh đẩy vít ngắn đang chạy thủ công (Short Stud Pusher Cylinder Manual) - 短螺柱推送气缸_手动中
+M108,Bool,Xi lanh cấp vít ngắn đang chạy thủ công (Short Stud Feeding Cylinder Manual) - 短螺柱送料气缸_手动中
+M109,Bool,Băng tải tầng trên đang chạy thủ công (Upper Conveyor Running Manual) - 上层流水线运转_手动中
+M110,Bool,Băng tải tầng dưới đang chạy thủ công (Lower Conveyor Running Manual) - 下层流水线运转_手动中
+M111,Bool,Hút chân không tua vít điện bắt vít đang chạy thủ công (Screw Screwdriver Vacuum Pick Manual) - 螺丝电批真空吸料_手动中
+M112,Bool,Động cơ tầng trên đang chạy thủ công (Upper Motor Manual) - 上层电机_手动中
+M113,Bool,Động cơ tầng dưới đang chạy thủ công (Lower Motor Manual) - 下层电机_手动中
+M114,Bool,Quét mã NG (Barcode Scan NG) - 扫码NG
+M119,Bool,Báo động chân không tua vít điện bắt vít (Screw Screwdriver Vacuum Alarm) - 螺丝电批真空_报警
+M120,Bool,Lỗi vị trí gốc xi lanh lắp ráp ốc vít (Screw Assembly Cylinder Home Alarm) - 组装螺丝气缸原位_报警
+M121,Bool,Lỗi vị trí ra xi lanh lắp ráp ốc vít (Screw Assembly Cylinder Work Alarm) - 组装螺丝气缸出位_报警
+M122,Bool,Lỗi vị trí gốc xi lanh chặn băng tải (Conveyor Stopper Cylinder Home Alarm) - 流水线阻挡气缸原位_报警
+M123,Bool,Lỗi vị trí ra xi lanh chặn băng tải (Conveyor Stopper Cylinder Work Alarm) - 流水线阻挡气缸出位_报警
+M124,Bool,Lỗi vị trí gốc xi lanh định vị băng tải (Conveyor Positioning Cylinder Home Alarm) - 流水线定位气缸原位_报警
+M125,Bool,Lỗi vị trí ra xi lanh định vị băng tải (Conveyor Positioning Cylinder Work Alarm) - 流水线定位气缸出位_报警
+M126,Bool,Lỗi vị trí gốc xi lanh nâng hạ vít dài (Long Stud Up/Down Cylinder Home Alarm) - 长螺柱上下气缸原位_报警
+M127,Bool,Lỗi vị trí ra xi lanh nâng hạ vít dài (Long Stud Up/Down Cylinder Work Alarm) - 长螺柱上下气缸出位_报警
+M128,Bool,Lỗi vị trí gốc xi lanh đẩy vít dài (Long Stud Pusher Cylinder Home Alarm) - 长螺柱推送气缸原位_报警
+M129,Bool,Lỗi vị trí ra xi lanh đẩy vít dài (Long Stud Pusher Cylinder Work Alarm) - 长螺柱推送气缸出位_报警
+M130,Bool,Lỗi vị trí gốc xi lanh cấp vít dài (Long Stud Feeding Cylinder Home Alarm) - 长螺柱送料气缸原位_报警
+M131,Bool,Lỗi vị trí ra xi lanh cấp vít dài (Long Stud Feeding Cylinder Work Alarm) - 长螺柱送料气缸出位_报警
+M132,Bool,Lỗi vị trí gốc xi lanh nâng hạ vít ngắn (Short Stud Up/Down Cylinder Home Alarm) - 短螺柱上下气缸原位_报警
+M133,Bool,Lỗi vị trí ra xi lanh nâng hạ vít ngắn (Short Stud Up/Down Cylinder Work Alarm) - 短螺柱上下气缸出位_报警
+M134,Bool,Lỗi vị trí gốc xi lanh đẩy vít ngắn (Short Stud Pusher Cylinder Home Alarm) - 短螺柱推送气缸原位_报警
+M135,Bool,Lỗi vị trí ra xi lanh đẩy vít ngắn (Short Stud Pusher Cylinder Work Alarm) - 短螺柱推送气缸出位_报警
+M136,Bool,Lỗi vị trí gốc xi lanh cấp vít ngắn (Short Stud Feeding Cylinder Home Alarm) - 短螺柱送料气缸原位_报警
+M137,Bool,Lỗi vị trí ra xi lanh cấp vít ngắn (Short Stud Feeding Cylinder Work Alarm) - 短螺柱送料气缸出位_报警
+M138,Bool,Báo động cửa an toàn (Access Gate Alarm) - 门禁报警
+M139,Bool,Báo động dừng khẩn cấp (Emergency Stop Alarm) - 急停报警
+M140,Bool,Báo động driver trục Z camera (Camera Z-axis Driver Alarm) - 相机Z轴驱动器报警
+M141,Bool,Báo động nới lỏng trục Z camera (Camera Z-axis Release Alarm) - 相机Z轴放松报警
+M142,Bool,Lỗi servo trục Z camera (Camera Z-axis Servo Error) - 相机Z轴伺服报错
+M143,Bool,Báo động trục Z camera chưa về gốc (Camera Z-axis Not Homed Alarm) - 相机Z轴未归零报警
+M145,Bool,Báo động driver trục Z tua vít điện bắt trụ (Stud Screwdriver Z-axis Driver Alarm) - 螺柱电批Z轴驱动器报警
+M146,Bool,Báo động nới lỏng trục Z tua vít điện bắt trụ (Stud Screwdriver Z-axis Release Alarm) - 螺柱电批Z轴放松报警
+M147,Bool,Lỗi servo trục Z tua vít điện bắt trụ (Stud Screwdriver Z-axis Servo Error) - 螺柱电批Z轴伺服报错
+M148,Bool,Báo động trục Z tua vít điện bắt trụ chưa về gốc (Stud Screwdriver Z-axis Not Homed Alarm) - 螺柱电批Z轴未归零报警
+M150,Bool,Báo động driver trục Z tua vít điện bắt vít (Screw Screwdriver Z-axis Driver Alarm) - 螺丝电批Z轴驱动器报警
+M151,Bool,Báo động nới lỏng trục Z tua vít điện bắt vít (Screw Screwdriver Z-axis Release Alarm) - 螺丝电批Z轴放松报警
+M152,Bool,Lỗi servo trục Z tua vít điện bắt vít (Screw Screwdriver Z-axis Servo Error) - 螺丝电批Z轴伺服报错
+M153,Bool,Báo động trục Z tua vít điện bắt vít chưa về gốc (Screw Screwdriver Z-axis Not Homed Alarm) - 螺丝电批Z轴未归零报警
+M155,Bool,Báo động driver trục Z áp lực (Pressure Z-axis Driver Alarm) - 压力Z轴驱动器报警
+M156,Bool,Báo động nới lỏng trục Z áp lực (Pressure Z-axis Release Alarm) - 压力Z轴放松报警
+M157,Bool,Lỗi servo trục Z áp lực (Pressure Z-axis Servo Error) - 压力Z轴伺服报错
+M158,Bool,Báo động trục Z áp lực chưa về gốc (Pressure Z-axis Not Homed Alarm) - 压力Z轴未归零报警
+M160,Bool,Báo động driver trục Y bắt trụ (Stud Y-axis Driver Alarm) - 螺柱Y轴驱动器报警
+M161,Bool,Báo động nới lỏng trục Y bắt trụ (Stud Y-axis Release Alarm) - 螺柱Y轴放松报警
+M162,Bool,Lỗi servo trục Y bắt trụ (Stud Y-axis Servo Error) - 螺柱Y轴伺服报错
+M163,Bool,Báo động trục Y bắt trụ chưa về gốc (Stud Y-axis Not Homed Alarm) - 螺柱Y轴未归零报警
+M165,Bool,Báo động driver trục Y bắt vít (Screw Y-axis Driver Alarm) - 螺丝Y轴驱动器报警
+M166,Bool,Báo động nới lỏng trục Y bắt vít (Screw Y-axis Release Alarm) - 螺丝Y轴放松报警
+M167,Bool,Lỗi servo trục Y bắt vít (Screw Y-axis Servo Error) - 螺丝Y轴伺服报错
+M168,Bool,Báo động trục Y bắt vít chưa về gốc (Screw Y-axis Not Homed Alarm) - 螺丝Y轴未归零报警
+M170,Bool,Báo động driver trục X (X-axis Driver Alarm) - X轴驱动器报警
+M171,Bool,Báo động nới lỏng trục X (X-axis Release Alarm) - X轴放松报警
+M172,Bool,Lỗi servo trục X (X-axis Servo Error) - X轴伺服报错
+M173,Bool,Báo động trục X chưa về gốc (X-axis Not Homed Alarm) - X轴未归零报警
+M180,Bool,Báo động vượt giới hạn bù trục X Gantry (Gantry X-axis Compensation Limit Alarm) - 龙门X轴补偿超限
+M181,Bool,Báo động vượt giới hạn bù trục Y bắt vít (Screw Y-axis Compensation Limit Alarm) - 螺丝Y轴补偿超限
+M182,Bool,Báo động vượt giới hạn bù trục Y bắt trụ (Stud Y-axis Compensation Limit Alarm) - 螺柱Y轴补偿超限
+M183,Bool,Bỏ qua chụp ảnh gợi ý lấy vít ra (Ignore Picture Prompt to Remove Screw) - 忽略拍照提示取走螺丝
+M184,Bool,Bỏ qua chụp ảnh gợi ý lấy vít dài ra (Ignore Picture Prompt to Remove Long Stud) - 忽略拍照提示取走长螺柱
+M185,Bool,Bỏ qua chụp ảnh gợi ý lấy vít ngắn ra (Ignore Picture Prompt to Remove Short Stud) - 忽略拍照提示取走短螺柱
+M186,Bool,Báo động có sản phẩm bên trong máy khi khởi tạo (Initialization Alarm Product Inside Equipment) - 初始化设备内有产品报警
+M187,Bool,Báo động trục Z không ở vị trí an toàn trục XY không thể di chuyển (Z-axis Not in Safe Position XY-axis Stationary) - Z轴不在安全位XY轴不可动
+M195,Bool,Lỗi chụp ảnh camera gắp vít NG (Pick Screw Camera Vision NG) - 取螺丝相机拍照NG
+M196,Bool,Lỗi chụp ảnh lắp ráp ốc vít NG (Screw Assembly Vision NG) - 组装螺丝拍照NG
+M197,Bool,Lỗi chụp ảnh gắp vít dài NG (Pick Long Stud Vision NG) - 取长螺柱拍照NG
+M198,Bool,Lỗi chụp ảnh gắp vít ngắn NG (Pick Short Stud Vision NG) - 取短螺柱拍照NG
+M199,Bool,Lỗi chụp ảnh lắp ráp trụ ren NG (Stud Assembly Vision NG) - 组装螺柱拍照NG

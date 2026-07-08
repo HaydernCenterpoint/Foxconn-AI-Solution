@@ -1,0 +1,52 @@
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  /* Page background */
+  --color-background: #F8FAFC;
+  --color-background-secondary: #F1F5F9;
+
+  /* Surfaces */
+  --color-surface: #FFFFFF;
+  --color-surface-dim: #F8FAFC;
+  --color-surface-container-lowest: #FFFFFF;
+  --color-surface-container-low: #F8FAFC;
+  --color-surface-container: #F1F5F9;
+  --color-surface-container-high: #E2E8F0;
+  --color-surface-container-highest: #CBD5E1;
+
+  /* Borders */
+  --color-outline: rgba(0, 45, 114, 0.15);
+  --color-outline-variant: rgba(0, 45, 114, 0.08);
+
+  /* Text */
+  --color-on-surface: #0F172A;
+  --color-on-surface-variant: #475569;
+
+  /* Accent - Corporate Navy Blue (#002D72) */
+  --color-primary: #002D72;
+  --color-primary-hover: #001C46;
+  --color-primary-light: rgba(0, 45, 114, 0.08);
+  --color-accent: #002D72;
+  --color-accent-container: rgba(0, 45, 114, 0.08);
+
+  /* Secondary Accent - FII Crimson Red */
+  --color-secondary: #D00B27;
+  --color-secondary-hover: #A0081E;
+
+  /* Shadows */
+  --shadow-1: 0 1px 2px rgba(0, 45, 114, 0.05);
+  --shadow-2: 0 2px 4px rgba(0, 45, 114, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-3: 0 4px 12px rgba(0, 45, 114, 0.10), 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-4: 0 12px 24px rgba(0, 45, 114, 0.12), 0 4px 8px rgba(0, 0, 0, 0.05);
+  --shadow-5: 0 20px 32px rgba(0, 45, 114, 0.15), 0 8px 16px rgba(0, 0, 0, 0.05);
+
+  /* Status containers */
+  --color-running-container: rgba(16, 185, 129, 0.12);
+  --color-success-container: rgba(16, 185, 129, 0.12);
+  --color-error-container: rgba(208, 11, 39, 0.12);
+  --color-warn-container: rgba(245, 158, 11, 0.12);
+  --color-idle-container: rgba(59, 130, 246, 0.12);
+  --color-offline-container: rgba(100, 116, 139, 0.12);
+  --color-information-container: rgba(59, 130, 246, 0.12);
+  --color-maintenance-container: rgba(139, 92, 246, 0.12);
+}

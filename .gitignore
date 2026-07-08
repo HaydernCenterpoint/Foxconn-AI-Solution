@@ -1,0 +1,36 @@
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Bb]in/
+[Oo]bj/
+[Pp]ublish/
+[Tt]est[Rr]esults/
+
+# Node/JS build and dependencies
+node_modules/
+dist/
+dist-app-v2/
+.stitch/
+
+# IDE/Tooling
+.vs/
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sw?
+.DS_Store
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+
+# Other temp files or backups
+may_data.rar

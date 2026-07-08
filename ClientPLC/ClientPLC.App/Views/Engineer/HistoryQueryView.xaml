@@ -1,0 +1,784 @@
+<av:UserControl xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="PLC.Views.HistoryQueryView"
+    Background="#00FFFFFF"
+    xmlns="clr-namespace:PLC.Views;assembly=ClientPLC"
+    xmlns:av="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:s="clr-namespace:System;assembly=mscorlib">
+    <av:UserControl.Resources>
+        <!-- Dark Industrial TabControl Style -->
+        <av:Style TargetType="av:TabControl" x:Key="DarkTabControlStyle">
+            <av:Setter Property="av:Panel.Background" Value="Transparent"/>
+            <av:Setter Property="av:Border.BorderThickness" Value="0"/>
+            <av:Setter Property="av:Control.Padding" Value="0"/>
+        </av:Style>
+
+        <!-- Dark Industrial TabItem Style -->
+        <av:Style TargetType="av:TabItem" x:Key="DarkTabItemStyle">
+            <av:Setter Property="av:TextElement.FontFamily" Value="Segoe UI, Inter, Roboto, Arial"/>
+            <av:Setter Property="av:TextElement.FontSize" Value="{av:DynamicResource BaseFontSize}"/>
+            <av:Setter Property="av:TextElement.Foreground" Value="{av:DynamicResource TextSecondary}"/>
+            <av:Setter Property="av:Panel.Background" Value="Transparent"/>
+            <av:Setter Property="av:Border.BorderThickness" Value="0"/>
+            <av:Setter Property="av:Control.Padding" Value="14,8,14,8"/>
+            <av:Setter Property="av:FrameworkElement.Cursor" Value="Hand"/>
+            <av:Setter Property="av:Control.Template">
+                <av:Setter.Value>
+                    <av:ControlTemplate TargetType="av:TabItem">
+                        <av:Border x:Name="TabBorder"
+                                   Background="Transparent"
+                                   BorderThickness="0,0,0,2"
+                                   BorderBrush="Transparent"
+                                   Padding="{av:TemplateBinding av:Control.Padding}"
+                                   Margin="0,0,4,0">
+                            <av:ContentPresenter x:Name="TabHeader"
+                                                 ContentSource="Header"
+                                                 HorizontalAlignment="Center"
+                                                 VerticalAlignment="Center"/>
+                        </av:Border>
+                        <av:ControlTemplate.Triggers>
+                            <av:Trigger Property="av:TabItem.IsSelected" Value="True">
+                                <av:Setter TargetName="TabBorder" Property="av:Border.BorderBrush" Value="{av:DynamicResource AccentColor}"/>
+                                <av:Setter TargetName="TabBorder" Property="av:Panel.Background" Value="#1A08B6C3"/>
+                                <av:Setter Property="av:TextElement.Foreground" Value="{av:DynamicResource AccentColor}"/>
+                            </av:Trigger>
+                            <av:Trigger Property="av:UIElement.IsMouseOver" Value="True">
+                                <av:Setter TargetName="TabBorder" Property="av:Panel.Background" Value="#0F08B6C3"/>
+                                <av:Setter Property="av:TextElement.Foreground" Value="{av:DynamicResource TextPrimary}"/>
+                            </av:Trigger>
+                        </av:ControlTemplate.Triggers>
+                    </av:ControlTemplate>
+                </av:Setter.Value>
+            </av:Setter>
+        </av:Style>
+    </av:UserControl.Resources>
+
+    <av:Grid Margin="15,15,15,15">
+        <av:Grid.RowDefinitions>
+            <av:RowDefinition Height="Auto" />
+            <av:RowDefinition Height="*" />
+        </av:Grid.RowDefinitions>
+
+        <av:StackPanel av:Grid.Row="0" x:Name="PnlTitle" Orientation="Horizontal" Margin="0,0,0,15" VerticalAlignment="Center" Visibility="Collapsed">
+            <av:Path Data="{av:StaticResource IconSearch}" Stroke="#2563EB" StrokeThickness="2" Width="22" Height="22" Margin="0,0,10,0" VerticalAlignment="Center" Stretch="Uniform"/>
+            <av:TextBlock Name="TxtTitle" Text="Tra cứu lịch sử hiệu suất" FontWeight="Bold" FontSize="{av:DynamicResource TitleFontSize}" Foreground="{av:DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+        </av:StackPanel>
+
+        <av:TabControl Style="{av:StaticResource DarkTabControlStyle}" av:Grid.Row="1">
+            <av:TabItem Style="{av:StaticResource DarkTabItemStyle}">
+                <av:TabItem.Header>
+                    <av:StackPanel Orientation="Horizontal">
+                        <av:Path Data="{av:StaticResource IconGauge}" Stroke="{av:Binding Foreground, RelativeSource={av:RelativeSource AncestorType=av:TabItem}}" StrokeThickness="1.8" Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                        <av:TextBlock Name="TxtTabOeePerformance" Text="Hiệu suất OEE" VerticalAlignment="Center"/>
+                    </av:StackPanel>
+                </av:TabItem.Header>
+                <av:Grid Margin="0,10,0,0">
+                    <av:Grid.RowDefinitions>
+                        <av:RowDefinition Height="Auto" />
+                        <av:RowDefinition Height="*" />
+                    </av:Grid.RowDefinitions>
+                    
+                    <av:Border
+                        BorderThickness="1,1,1,1"
+                        Padding="15,15,15,15"
+                        CornerRadius="4,4,4,4"
+                        BorderBrush="{av:DynamicResource BorderBrush}"
+                        Background="{av:DynamicResource PanelBackground}"
+                        Margin="0,0,0,15"
+                        av:Grid.Row="0">
+                        <av:StackPanel
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                            <av:TextBlock
+                                Text="Chọn ngày:"
+                                FontSize="{av:DynamicResource BaseFontSize}"
+                                Foreground="{av:DynamicResource TextSecondary}"
+                                Name="LblSelectDate"
+                                Margin="0,0,10,0"
+                                VerticalAlignment="Center" />
+                            <av:DatePicker
+                                DisplayDate="2026-06-10T00:00+07:00"
+                                Name="DpDate"
+                                Width="150"
+                                Height="28"
+                                Margin="0,0,20,0" />
+                            <av:TextBlock
+                                Text="Chọn ca:"
+                                FontSize="{av:DynamicResource BaseFontSize}"
+                                Foreground="{av:DynamicResource TextSecondary}"
+                                Name="LblSelectShift"
+                                Margin="0,0,10,0"
+                                VerticalAlignment="Center" />
+                            <av:ComboBox
+                                Text="Ca Sáng (07:30 - 19:30)"
+                                Name="CboShift"
+                                Width="180"
+                                Height="28"
+                                Margin="0,0,25,0">
+                                <av:ComboBoxItem
+                                    IsSelected="True"
+                                    Name="CboItemDay"
+                                    Tag="Day">Ca Sáng (07:30 - 19:30)</av:ComboBoxItem>
+                                <av:ComboBoxItem
+                                    Name="CboItemNight"
+                                    Tag="Night">Ca Tối (19:30 - 07:30)</av:ComboBoxItem>
+                            </av:ComboBox>
+                            <av:Button
+                                Name="BtnQuery"
+                                Width="130"
+                                Height="30">
+                                <av:Button.Style>
+                                    <av:Style
+                                        TargetType="av:Button">
+                                        <av:Style.BasedOn>
+                                            <av:Style
+                                                TargetType="av:Button">
+                                                <av:Style.Resources>
+                                                    <av:ResourceDictionary />
+                                                </av:Style.Resources>
+                                                <av:Setter
+                                                    Property="av:TextElement.FontFamily">
+                                                    <av:Setter.Value>
+                                                        <av:FontFamily>Segoe UI, Inter, Roboto, Arial</av:FontFamily>
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:TextElement.FontSize">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="BaseFontSize" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Panel.Background">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="PanelBackground" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:TextElement.Foreground">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="TextPrimary" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Border.BorderBrush">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="BorderBrush" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Border.BorderThickness">
+                                                    <av:Setter.Value>
+                                                        <av:Thickness>1,1,1,1</av:Thickness>
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:FrameworkElement.Height">
+                                                    <av:Setter.Value>
+                                                        <s:Double>32</s:Double>
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Control.Padding">
+                                                    <av:Setter.Value>
+                                                        <av:Thickness>15,0,15,0</av:Thickness>
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:FrameworkElement.Cursor">
+                                                    <av:Setter.Value>
+                                                        <av:Cursor>Hand</av:Cursor>
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Control.Template">
+                                                    <av:Setter.Value>
+                                                        <av:ControlTemplate
+                                                            TargetType="av:Button">
+                                                            <av:Border
+                                                                BorderThickness="{av:TemplateBinding av:Border.BorderThickness}"
+                                                                CornerRadius="4,4,4,4"
+                                                                BorderBrush="{av:TemplateBinding av:Border.BorderBrush}"
+                                                                Background="{av:TemplateBinding av:Panel.Background}"
+                                                                Name="border">
+                                                                <av:ContentPresenter
+                                                                    Content="{av:TemplateBinding av:ContentControl.Content}"
+                                                                    ContentTemplate="{av:TemplateBinding av:ContentControl.ContentTemplate}"
+                                                                    ContentStringFormat="{av:TemplateBinding av:ContentControl.ContentStringFormat}"
+                                                                    Margin="{av:TemplateBinding av:Control.Padding}"
+                                                                    HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Center" />
+                                                            </av:Border>
+                                                            <av:ControlTemplate.Triggers>
+                                                                <av:Trigger
+                                                                    Property="av:UIElement.IsMouseOver">
+                                                                    <av:Setter
+                                                                        Property="av:Panel.Background">
+                                                                        <av:Setter.Value>
+                                                                            <av:DynamicResource
+                                                                                ResourceKey="SidebarBackground" />
+                                                                        </av:Setter.Value>
+                                                                    </av:Setter>
+                                                                    <av:Trigger.Value>
+                                                                        <s:Boolean>True</s:Boolean>
+                                                                    </av:Trigger.Value>
+                                                                </av:Trigger>
+                                                                <av:Trigger
+                                                                    Property="av:UIElement.IsEnabled">
+                                                                    <av:Setter
+                                                                        Property="av:UIElement.Opacity">
+                                                                        <av:Setter.Value>
+                                                                            <s:Double>0.5</s:Double>
+                                                                        </av:Setter.Value>
+                                                                    </av:Setter>
+                                                                    <av:Trigger.Value>
+                                                                        <s:Boolean>False</s:Boolean>
+                                                                    </av:Trigger.Value>
+                                                                </av:Trigger>
+                                                            </av:ControlTemplate.Triggers>
+                                                        </av:ControlTemplate>
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                            </av:Style>
+                                        </av:Style.BasedOn>
+                                        <av:Style.Resources>
+                                            <av:ResourceDictionary />
+                                        </av:Style.Resources>
+                                        <av:Setter
+                                            Property="av:Panel.Background">
+                                            <av:Setter.Value>
+                                                <av:DynamicResource
+                                                    ResourceKey="AccentColor" />
+                                            </av:Setter.Value>
+                                        </av:Setter>
+                                        <av:Setter
+                                            Property="av:TextElement.Foreground">
+                                            <av:Setter.Value>
+                                                <av:SolidColorBrush>#FFFFFFFF</av:SolidColorBrush>
+                                            </av:Setter.Value>
+                                        </av:Setter>
+                                        <av:Setter
+                                            Property="av:Border.BorderThickness">
+                                            <av:Setter.Value>
+                                                <av:Thickness>0,0,0,0</av:Thickness>
+                                            </av:Setter.Value>
+                                        </av:Setter>
+                                        <av:Setter
+                                            Property="av:TextElement.FontWeight">
+                                            <av:Setter.Value>
+                                                <av:FontWeight>SemiBold</av:FontWeight>
+                                            </av:Setter.Value>
+                                        </av:Setter>
+                                        <av:Setter
+                                            Property="av:Control.Template">
+                                            <av:Setter.Value>
+                                                <av:ControlTemplate
+                                                    TargetType="av:Button">
+                                                    <av:Border
+                                                        CornerRadius="4,4,4,4"
+                                                        Background="{av:TemplateBinding av:Panel.Background}"
+                                                        Name="border">
+                                                        <av:ContentPresenter
+                                                            Content="{av:TemplateBinding av:ContentControl.Content}"
+                                                            ContentTemplate="{av:TemplateBinding av:ContentControl.ContentTemplate}"
+                                                            ContentStringFormat="{av:TemplateBinding av:ContentControl.ContentStringFormat}"
+                                                            Margin="{av:TemplateBinding av:Control.Padding}"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center" />
+                                                    </av:Border>
+                                                    <av:ControlTemplate.Triggers>
+                                                        <av:Trigger
+                                                            Property="av:UIElement.IsMouseOver">
+                                                            <av:Setter
+                                                                Property="av:Panel.Background">
+                                                                <av:Setter.Value>
+                                                                    <av:DynamicResource
+                                                                        ResourceKey="AccentHover" />
+                                                                </av:Setter.Value>
+                                                            </av:Setter>
+                                                            <av:Trigger.Value>
+                                                                <s:Boolean>True</s:Boolean>
+                                                            </av:Trigger.Value>
+                                                        </av:Trigger>
+                                                        <av:Trigger
+                                                            Property="av:UIElement.IsEnabled">
+                                                            <av:Setter
+                                                                Property="av:UIElement.Opacity">
+                                                                <av:Setter.Value>
+                                                                    <s:Double>0.5</s:Double>
+                                                                </av:Setter.Value>
+                                                            </av:Setter>
+                                                            <av:Trigger.Value>
+                                                                <s:Boolean>False</s:Boolean>
+                                                            </av:Trigger.Value>
+                                                        </av:Trigger>
+                                                    </av:ControlTemplate.Triggers>
+                                                </av:ControlTemplate>
+                                            </av:Setter.Value>
+                                        </av:Setter>
+                                    </av:Style>
+                                </av:Button.Style>
+                                <av:StackPanel Orientation="Horizontal">
+                                    <av:Path Data="{av:StaticResource IconSearch}" Stroke="{av:Binding Foreground, RelativeSource={av:RelativeSource AncestorType=av:Button}}" StrokeThickness="1.8" Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                                    <av:TextBlock Text="Tra Cứu" VerticalAlignment="Center"/>
+                                </av:StackPanel>
+                            </av:Button>
+                        </av:StackPanel>
+                    </av:Border>
+                    
+                    <av:Grid
+                        Name="GridResults"
+                        Visibility="Collapsed"
+                        av:Grid.Row="1">
+                        <av:Grid.ColumnDefinitions>
+                            <av:ColumnDefinition
+                                Width="2*" />
+                            <av:ColumnDefinition
+                                Width="3*" />
+                        </av:Grid.ColumnDefinitions>
+                        <av:Border
+                            BorderThickness="1,1,1,1"
+                            Padding="15,15,15,15"
+                            CornerRadius="4,4,4,4"
+                            BorderBrush="{av:DynamicResource BorderBrush}"
+                            Background="{av:DynamicResource PanelBackground}"
+                            Margin="0,0,10,0"
+                            av:Grid.Column="0">
+                            <av:Grid>
+                                <av:Grid.RowDefinitions>
+                                    <av:RowDefinition
+                                        Height="Auto" />
+                                    <av:RowDefinition
+                                        Height="*" />
+                                </av:Grid.RowDefinitions>
+                                <av:StackPanel Orientation="Horizontal" Margin="0,0,0,15" av:Grid.Row="0">
+                                    <av:Path Data="{av:StaticResource IconClipboardList}" Stroke="{av:DynamicResource TextPrimary}" StrokeThickness="1.8" Width="18" Height="18" Margin="0,0,8,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                                    <av:TextBlock
+                                        Text="BÁO CÁO CHI TIẾT CA"
+                                        FontWeight="Bold"
+                                        FontSize="{av:DynamicResource HeaderFontSize}"
+                                        Foreground="{av:DynamicResource TextPrimary}"
+                                        Name="TxtSummaryTitle"
+                                        VerticalAlignment="Center" />
+                                </av:StackPanel>
+                                <av:StackPanel
+                                    av:Grid.Row="1">
+                                    <av:Grid
+                                        Margin="0,5,0,15">
+                                        <av:Grid.ColumnDefinitions>
+                                            <av:ColumnDefinition
+                                                Width="*" />
+                                            <av:ColumnDefinition
+                                                Width="*" />
+                                        </av:Grid.ColumnDefinitions>
+                                        <av:StackPanel
+                                            HorizontalAlignment="Center"
+                                            av:Grid.Column="0">
+                                            <av:Grid
+                                                Width="60"
+                                                Height="60">
+                                                <av:Ellipse
+                                                    Stroke="{av:DynamicResource BorderBrush}"
+                                                    StrokeThickness="5"
+                                                    Width="56"
+                                                    Height="56" />
+                                                <av:Ellipse
+                                                    Stroke="#FF10B981"
+                                                    StrokeThickness="5"
+                                                    StrokeStartLineCap="Round"
+                                                    StrokeEndLineCap="Round"
+                                                    Name="GaugeAvailability"
+                                                    Width="56"
+                                                    Height="56"
+                                                    RenderTransformOrigin="0.5,0.5">
+                                                    <av:Ellipse.RenderTransform>
+                                                        <av:RotateTransform
+                                                            Angle="-90" />
+                                                    </av:Ellipse.RenderTransform>
+                                                </av:Ellipse>
+                                            </av:Grid>
+                                            <av:TextBlock
+                                                Text="Sẵn sàng (A)"
+                                                FontSize="11"
+                                                Foreground="{av:DynamicResource TextSecondary}"
+                                                Name="LblAvailability"
+                                                Margin="0,5,0,0"
+                                                HorizontalAlignment="Center" />
+                                            <av:TextBlock
+                                                Text="0.0%"
+                                                FontWeight="Bold"
+                                                FontSize="13"
+                                                Foreground="#FF10B981"
+                                                Name="TxtAvailability"
+                                                HorizontalAlignment="Center" />
+                                        </av:StackPanel>
+                                        <av:StackPanel
+                                            HorizontalAlignment="Center"
+                                            av:Grid.Column="1">
+                                            <av:Grid
+                                                Width="60"
+                                                Height="60">
+                                                <av:Ellipse
+                                                    Stroke="{av:DynamicResource BorderBrush}"
+                                                    StrokeThickness="5"
+                                                    Width="56"
+                                                    Height="56" />
+                                                <av:Ellipse
+                                                    Stroke="#FF8B5CF6"
+                                                    StrokeThickness="5"
+                                                    StrokeStartLineCap="Round"
+                                                    StrokeEndLineCap="Round"
+                                                    Name="GaugePerformance"
+                                                    Width="56"
+                                                    Height="56"
+                                                    RenderTransformOrigin="0.5,0.5">
+                                                    <av:Ellipse.RenderTransform>
+                                                        <av:RotateTransform
+                                                            Angle="-90" />
+                                                    </av:Ellipse.RenderTransform>
+                                                </av:Ellipse>
+                                            </av:Grid>
+                                            <av:TextBlock
+                                                Text="Hiệu suất (P)"
+                                                FontSize="11"
+                                                Foreground="{av:DynamicResource TextSecondary}"
+                                                Name="LblPerformance"
+                                                Margin="0,5,0,0"
+                                                HorizontalAlignment="Center" />
+                                            <av:TextBlock
+                                                Text="0.0%"
+                                                FontWeight="Bold"
+                                                FontSize="13"
+                                                Foreground="#FF8B5CF6"
+                                                Name="TxtPerformance"
+                                                HorizontalAlignment="Center" />
+                                        </av:StackPanel>
+                                    </av:Grid>
+                                    <av:Border
+                                        BorderThickness="0,0,0,1"
+                                        BorderBrush="{av:DynamicResource BorderBrush}"
+                                        Margin="0,0,0,15" />
+                                    <av:Grid
+                                        Margin="0,0,0,10">
+                                        <av:Grid.ColumnDefinitions>
+                                            <av:ColumnDefinition
+                                                Width="*" />
+                                            <av:ColumnDefinition
+                                                Width="Auto" />
+                                        </av:Grid.ColumnDefinitions>
+                                        <av:TextBlock
+                                            Text="Ngày làm việc:"
+                                            Foreground="{av:DynamicResource TextSecondary}"
+                                            Name="LblShiftDateLabel" />
+                                        <av:TextBlock
+                                            Text="--"
+                                            FontWeight="Bold"
+                                            Foreground="{av:DynamicResource TextPrimary}"
+                                            Name="TxtShiftDate"
+                                            av:Grid.Column="1" />
+                                    </av:Grid>
+                                    <av:Grid
+                                        Margin="0,0,0,10">
+                                        <av:Grid.ColumnDefinitions>
+                                            <av:ColumnDefinition
+                                                Width="*" />
+                                            <av:ColumnDefinition
+                                                Width="Auto" />
+                                        </av:Grid.ColumnDefinitions>
+                                        <av:TextBlock
+                                            Text="Ca làm việc:"
+                                            Foreground="{av:DynamicResource TextSecondary}"
+                                            Name="LblShiftNameLabel" />
+                                        <av:TextBlock
+                                            Text="--"
+                                            FontWeight="Bold"
+                                            Foreground="{av:DynamicResource TextPrimary}"
+                                            Name="TxtShiftName"
+                                            av:Grid.Column="1" />
+                                    </av:Grid>
+                                    <av:Grid
+                                        Margin="0,0,0,10">
+                                        <av:Grid.ColumnDefinitions>
+                                            <av:ColumnDefinition
+                                                Width="*" />
+                                            <av:ColumnDefinition
+                                                Width="Auto" />
+                                        </av:Grid.ColumnDefinitions>
+                                        <av:TextBlock
+                                            Text="Tổng sản lượng ca:"
+                                            Foreground="{av:DynamicResource TextSecondary}"
+                                            Name="LblTotalQtyLabel" />
+                                        <av:TextBlock
+                                            Text="0 sp"
+                                            FontWeight="Bold"
+                                            Foreground="{av:DynamicResource TextPrimary}"
+                                            Name="TxtTotalQty"
+                                            av:Grid.Column="1" />
+                                    </av:Grid>
+                                    <av:Grid
+                                        Margin="0,0,0,10">
+                                        <av:Grid.ColumnDefinitions>
+                                            <av:ColumnDefinition
+                                                Width="*" />
+                                            <av:ColumnDefinition
+                                                Width="Auto" />
+                                        </av:Grid.ColumnDefinitions>
+                                        <av:TextBlock
+                                            Text="Hiệu suất OEE đạt:"
+                                            Foreground="{av:DynamicResource TextSecondary}"
+                                            Name="LblOeeLabel" />
+                                        <av:TextBlock
+                                            Text="0.0%"
+                                            FontWeight="Bold"
+                                            Foreground="{av:DynamicResource AccentColor}"
+                                            Name="TxtOeeVal"
+                                            av:Grid.Column="1" />
+                                    </av:Grid>
+                                    <av:Grid
+                                        Margin="0,0,0,10">
+                                        <av:Grid.ColumnDefinitions>
+                                            <av:ColumnDefinition
+                                                Width="*" />
+                                            <av:ColumnDefinition
+                                                Width="Auto" />
+                                        </av:Grid.ColumnDefinitions>
+                                        <av:TextBlock
+                                            Text="Thời gian chạy máy:"
+                                            Foreground="{av:DynamicResource TextSecondary}"
+                                            Name="LblPlcUptimeLabel" />
+                                        <av:TextBlock
+                                            Text="0 phút"
+                                            FontWeight="Bold"
+                                            Foreground="{av:DynamicResource TextPrimary}"
+                                            Name="TxtPlcUptime"
+                                            av:Grid.Column="1" />
+                                    </av:Grid>
+                                    <av:Grid
+                                        Margin="0,0,0,10">
+                                        <av:Grid.ColumnDefinitions>
+                                            <av:ColumnDefinition
+                                                Width="*" />
+                                            <av:ColumnDefinition
+                                                Width="Auto" />
+                                        </av:Grid.ColumnDefinitions>
+                                        <av:TextBlock
+                                            Text="Vận tốc trung bình ca:"
+                                            Foreground="{av:DynamicResource TextSecondary}"
+                                            Name="LblAvgSpeedLabel" />
+                                        <av:TextBlock
+                                            Text="0.0 sp/giờ"
+                                            FontWeight="Bold"
+                                            Foreground="#FF10B981"
+                                            Name="TxtAvgSpeed"
+                                            av:Grid.Column="1" />
+                                    </av:Grid>
+                                </av:StackPanel>
+                            </av:Grid>
+                        </av:Border>
+                        <av:Border
+                            BorderThickness="1,1,1,1"
+                            Padding="15,15,15,15"
+                            CornerRadius="4,4,4,4"
+                            BorderBrush="{av:DynamicResource BorderBrush}"
+                            Background="{av:DynamicResource PanelBackground}"
+                            Margin="10,0,0,0"
+                            av:Grid.Column="1">
+                            <av:Grid>
+                                <av:Grid.RowDefinitions>
+                                    <av:RowDefinition
+                                        Height="Auto" />
+                                    <av:RowDefinition
+                                        Height="*" />
+                                    <av:RowDefinition
+                                        Height="Auto" />
+                                </av:Grid.RowDefinitions>
+                                <av:StackPanel Orientation="Horizontal" Margin="0,0,0,15" av:Grid.Row="0">
+                                    <av:Path Data="{av:StaticResource IconChartColumn}" Stroke="{av:DynamicResource TextPrimary}" StrokeThickness="1.8" Width="18" Height="18" Margin="0,0,8,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                                    <av:TextBlock
+                                        Text="BIỂU ĐỒ VẬN HÀNH THEO GIỜ"
+                                        FontWeight="Bold"
+                                        FontSize="{av:DynamicResource HeaderFontSize}"
+                                        Foreground="{av:DynamicResource TextPrimary}"
+                                        Name="TxtChartTitle"
+                                        VerticalAlignment="Center"/>
+                                </av:StackPanel>
+                                <av:Canvas
+                                    Background="#00FFFFFF"
+                                    Name="ChartCanvas"
+                                    av:Grid.Row="1" />
+                                <av:UniformGrid
+                                    Columns="12"
+                                    Margin="30,8,10,0"
+                                    av:Grid.Row="2">
+                                    <av:TextBlock
+                                        Text="H1"
+                                        FontSize="10"
+                                        Foreground="{av:DynamicResource TextSecondary}"
+                                        HorizontalAlignment="Center" />
+                                    <av:TextBlock
+                                        Text="H2"
+                                        FontSize="10"
+                                        Foreground="{av:DynamicResource TextSecondary}"
+                                        HorizontalAlignment="Center" />
+                                    <av:TextBlock
+                                        Text="H3"
+                                        FontSize="10"
+                                        Foreground="{av:DynamicResource TextSecondary}"
+                                        HorizontalAlignment="Center" />
+                                    <av:TextBlock
+                                        Text="H4"
+                                        FontSize="10"
+                                        Foreground="{av:DynamicResource TextSecondary}"
+                                        HorizontalAlignment="Center" />
+                                    <av:TextBlock
+                                        Text="H5"
+                                        FontSize="10"
+                                        Foreground="{av:DynamicResource TextSecondary}"
+                                        HorizontalAlignment="Center" />
+                                    <av:TextBlock
+                                        Text="H6"
+                                        FontSize="10"
+                                        Foreground="{av:DynamicResource TextSecondary}"
+                                        HorizontalAlignment="Center" />
+                                    <av:TextBlock
+                                        Text="H7"
+                                        FontSize="10"
+                                        Foreground="{av:DynamicResource TextSecondary}"
+                                        HorizontalAlignment="Center" />
+                                    <av:TextBlock
+                                        Text="H8"
+                                        FontSize="10"
+                                        Foreground="{av:DynamicResource TextSecondary}"
+                                        HorizontalAlignment="Center" />
+                                    <av:TextBlock
+                                        Text="H9"
+                                        FontSize="10"
+                                        Foreground="{av:DynamicResource TextSecondary}"
+                                        HorizontalAlignment="Center" />
+                                    <av:TextBlock
+                                        Text="H10"
+                                        FontSize="10"
+                                        Foreground="{av:DynamicResource TextSecondary}"
+                                        HorizontalAlignment="Center" />
+                                    <av:TextBlock
+                                        Text="H11"
+                                        FontSize="10"
+                                        Foreground="{av:DynamicResource TextSecondary}"
+                                        HorizontalAlignment="Center" />
+                                    <av:TextBlock
+                                        Text="H12"
+                                        FontSize="10"
+                                        Foreground="{av:DynamicResource TextSecondary}"
+                                        HorizontalAlignment="Center" />
+                                </av:UniformGrid>
+                            </av:Grid>
+                        </av:Border>
+                    </av:Grid>
+                </av:Grid>
+            </av:TabItem>
+
+            <av:TabItem Style="{av:StaticResource DarkTabItemStyle}">
+                <av:TabItem.Header>
+                    <av:StackPanel Orientation="Horizontal">
+                        <av:Path Data="{av:StaticResource IconTriangleAlert}" Stroke="{av:Binding Foreground, RelativeSource={av:RelativeSource AncestorType=av:TabItem}}" StrokeThickness="1.8" Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                        <av:TextBlock Name="TxtTabErrorHistory" Text="Lịch sử lỗi" VerticalAlignment="Center"/>
+                    </av:StackPanel>
+                </av:TabItem.Header>
+                <av:Grid Margin="0,10,0,0">
+                    <av:Grid.RowDefinitions>
+                        <av:RowDefinition Height="Auto" />
+                        <av:RowDefinition Height="*" />
+                    </av:Grid.RowDefinitions>
+
+                    <!-- Filter panel -->
+                    <av:Border
+                        BorderThickness="1"
+                        Padding="15,15,15,15"
+                        CornerRadius="4"
+                        BorderBrush="{av:DynamicResource BorderBrush}"
+                        Background="{av:DynamicResource PanelBackground}"
+                        Margin="0,0,0,15"
+                        av:Grid.Row="0">
+                        <av:WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <av:StackPanel Orientation="Horizontal" Margin="0,0,20,5" VerticalAlignment="Center">
+                                <av:TextBlock Name="LblMachineFilter" Text="Máy:" Foreground="{av:DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <av:ComboBox Name="CboMachineFilter" Width="150" Height="28"/>
+                            </av:StackPanel>
+
+                            <av:StackPanel Orientation="Horizontal" Margin="0,0,20,5" VerticalAlignment="Center">
+                                <av:TextBlock Name="LblErrorCodeFilter" Text="Mã lỗi:" Foreground="{av:DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <av:TextBox Name="TxtErrorCodeFilter" Width="120" Height="28"/>
+                            </av:StackPanel>
+
+                            <av:StackPanel Orientation="Horizontal" Margin="0,0,20,5" VerticalAlignment="Center">
+                                <av:TextBlock Name="LblStatusFilter" Text="Trạng thái:" Foreground="{av:DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <av:ComboBox Name="CboStatusFilter" Width="120" Height="28">
+                                    <av:ComboBoxItem Name="CboItemAllStatus" Content="Tất cả" Tag="" IsSelected="True"/>
+                                    <av:ComboBoxItem Name="CboItemActiveStatus" Content="Hoạt động" Tag="Active"/>
+                                    <av:ComboBoxItem Name="CboItemResolvedStatus" Content="Đã khôi phục" Tag="Resolved"/>
+                                </av:ComboBox>
+                            </av:StackPanel>
+
+                            <av:StackPanel Orientation="Horizontal" Margin="0,0,20,5" VerticalAlignment="Center">
+                                <av:TextBlock Name="LblErrorShiftFilter" Text="Ca:" Foreground="{av:DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <av:ComboBox Name="CboErrorShiftFilter" Width="120" Height="28">
+                                    <av:ComboBoxItem Name="CboItemAllErrorShift" Content="Tất cả" Tag="" IsSelected="True"/>
+                                    <av:ComboBoxItem Name="CboItemDayErrorShift" Content="Ca sáng" Tag="Day"/>
+                                    <av:ComboBoxItem Name="CboItemNightErrorShift" Content="Ca tối" Tag="Night"/>
+                                </av:ComboBox>
+                            </av:StackPanel>
+
+                            <av:StackPanel Orientation="Horizontal" Margin="0,0,20,5" VerticalAlignment="Center">
+                                <av:TextBlock Name="LblFromDateFilter" Text="Từ ngày:" Foreground="{av:DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <av:DatePicker Name="DpFromDateFilter" Width="130" Height="28"/>
+                            </av:StackPanel>
+
+                            <av:StackPanel Orientation="Horizontal" Margin="0,0,20,5" VerticalAlignment="Center">
+                                <av:TextBlock Name="LblToDateFilter" Text="Đến ngày:" Foreground="{av:DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <av:DatePicker Name="DpToDateFilter" Width="130" Height="28"/>
+                            </av:StackPanel>
+
+                            <av:Button Name="BtnQueryErrorHistory" Width="120" Height="30" Margin="0,0,10,5">
+                                <av:StackPanel Orientation="Horizontal">
+                                    <av:Path Data="{av:StaticResource IconSearch}" Stroke="{av:Binding Foreground, RelativeSource={av:RelativeSource AncestorType=av:Button}}" StrokeThickness="1.8" Width="14" Height="14" Margin="0,0,8,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                                    <av:TextBlock Name="TxtBtnQueryErrorHistory" Text="Tra cứu" VerticalAlignment="Center"/>
+                                </av:StackPanel>
+                            </av:Button>
+                            <av:Button Name="BtnExportErrorHistory" Width="120" Height="30" Margin="0,0,0,5">
+                                <av:StackPanel Orientation="Horizontal">
+                                    <av:Path Data="{av:StaticResource IconLogOut}" Stroke="{av:Binding Foreground, RelativeSource={av:RelativeSource AncestorType=av:Button}}" StrokeThickness="1.8" Width="14" Height="14" Margin="0,0,8,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                                    <av:TextBlock Name="TxtBtnExportErrorHistory" Text="Xuất CSV" VerticalAlignment="Center"/>
+                                </av:StackPanel>
+                            </av:Button>
+                        </av:WrapPanel>
+                    </av:Border>
+
+                    <!-- Error History Grid -->
+                    <av:Border
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        BorderBrush="{av:DynamicResource BorderBrush}"
+                        Background="{av:DynamicResource PanelBackground}"
+                        av:Grid.Row="1">
+                        <av:DataGrid Name="DgErrorHistory" AutoGenerateColumns="False" IsReadOnly="True" av:ScrollViewer.VerticalScrollBarVisibility="Auto" av:ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                            <av:DataGrid.Columns>
+                                <av:DataGridTextColumn x:Name="ColIndex" Header="STT" Binding="{av:Binding Index}" Width="60"/>
+                                <av:DataGridTextColumn x:Name="ColMachineId" Header="Mã máy" Binding="{av:Binding MachineId}" Width="120"/>
+                                <av:DataGridTextColumn x:Name="ColErrorCode" Header="Mã lỗi" Binding="{av:Binding ErrorCode}" Width="100"/>
+                                <av:DataGridTextColumn x:Name="ColErrorName" Header="Tên lỗi" Binding="{av:Binding ErrorName}" Width="200"/>
+                                <av:DataGridTextColumn x:Name="ColAddress" Header="Địa chỉ PLC" Binding="{av:Binding Address}" Width="100"/>
+                                <av:DataGridTextColumn x:Name="ColSeverity" Header="Mức độ" Binding="{av:Binding Severity}" Width="100"/>
+                                <av:DataGridTextColumn x:Name="ColStartedAt" Header="Thời gian bắt đầu" Binding="{av:Binding StartedAt}" Width="150"/>
+                                <av:DataGridTextColumn x:Name="ColEndedAt" Header="Thời gian kết thúc" Binding="{av:Binding EndedAt}" Width="150"/>
+                                <av:DataGridTextColumn x:Name="ColDuration" Header="Tổng thời gian lỗi" Binding="{av:Binding DurationText}" Width="120"/>
+                                <av:DataGridTextColumn x:Name="ColStatus" Header="Trạng thái" Binding="{av:Binding StatusText}" Width="100"/>
+                            </av:DataGrid.Columns>
+                        </av:DataGrid>
+                    </av:Border>
+                </av:Grid>
+            </av:TabItem>
+        </av:TabControl>
+    </av:Grid>
+</av:UserControl>

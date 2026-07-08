@@ -1,0 +1,12 @@
+address,type,name
+M71,Bool,螺丝电批报警
+M72,Bool,螺柱电批报警
+M114,Bool,扫码NG
+M180,Bool,龙门X轴补偿超限
+M181,Bool,螺丝Y轴补偿超限
+M182,Bool,螺柱Y轴补偿超限
+M195,Bool,取螺丝相机拍照NG
+M196,Bool,组装螺丝拍照NG
+M197,Bool,取长螺柱拍照NG
+M198,Bool,取短螺柱拍照NG
+M199,Bool,组装螺柱拍照NG

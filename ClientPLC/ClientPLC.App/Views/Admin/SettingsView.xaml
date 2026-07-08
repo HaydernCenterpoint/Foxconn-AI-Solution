@@ -1,0 +1,1513 @@
+﻿<av:UserControl x:Class="PLC.Views.SettingsView"
+    Background="#00FFFFFF"
+    xmlns="clr-namespace:PLC.Views;assembly=ClientPLC"
+    xmlns:av="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:s="clr-namespace:System;assembly=mscorlib"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <av:UserControl.Resources>
+        <av:Style
+            TargetType="av:TabItem"
+            x:Key="TabHeaderStyle">
+            <av:Style.Resources>
+                <av:ResourceDictionary />
+            </av:Style.Resources>
+            <av:Setter
+                Property="av:TextElement.Foreground">
+                <av:Setter.Value>
+                    <av:DynamicResource
+                        ResourceKey="TextSecondary" />
+                </av:Setter.Value>
+            </av:Setter>
+            <av:Setter
+                Property="av:Panel.Background">
+                <av:Setter.Value>
+                    <av:DynamicResource
+                        ResourceKey="WindowBackground" />
+                </av:Setter.Value>
+            </av:Setter>
+            <av:Setter
+                Property="av:Control.Padding">
+                <av:Setter.Value>
+                    <av:Thickness>18,10,18,10</av:Thickness>
+                </av:Setter.Value>
+            </av:Setter>
+            <av:Setter
+                Property="av:TextElement.FontWeight">
+                <av:Setter.Value>
+                    <av:FontWeight>SemiBold</av:FontWeight>
+                </av:Setter.Value>
+            </av:Setter>
+            <av:Setter
+                Property="av:TextElement.FontSize">
+                <av:Setter.Value>
+                    <av:DynamicResource
+                        ResourceKey="BaseFontSize" />
+                </av:Setter.Value>
+            </av:Setter>
+            <av:Setter
+                Property="av:Control.Template">
+                <av:Setter.Value>
+                    <av:ControlTemplate
+                        TargetType="av:TabItem">
+                        <av:Border
+                            BorderThickness="0,0,0,3"
+                            CornerRadius="4,4,0,0"
+                            BorderBrush="#00FFFFFF"
+                            Background="{av:TemplateBinding av:Panel.Background}"
+                            Name="border"
+                            Margin="0,0,2,0">
+                            <av:ContentPresenter
+                                Content="{av:TemplateBinding av:HeaderedContentControl.Header}"
+                                ContentTemplate="{av:TemplateBinding av:HeaderedContentControl.HeaderTemplate}"
+                                ContentStringFormat="{av:TemplateBinding av:HeaderedContentControl.HeaderStringFormat}"
+                                ContentSource="Header"
+                                Margin="{av:TemplateBinding av:Control.Padding}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center" />
+                        </av:Border>
+                        <av:ControlTemplate.Triggers>
+                            <av:Trigger
+                                Property="av:UIElement.IsMouseOver">
+                                <av:Setter
+                                    Property="av:TextElement.Foreground">
+                                    <av:Setter.Value>
+                                        <av:DynamicResource
+                                            ResourceKey="TextPrimary" />
+                                    </av:Setter.Value>
+                                </av:Setter>
+                                <av:Setter
+                                    Property="av:Panel.Background">
+                                    <av:Setter.Value>
+                                        <av:DynamicResource
+                                            ResourceKey="SidebarBackground" />
+                                    </av:Setter.Value>
+                                </av:Setter>
+                                <av:Trigger.Value>
+                                    <s:Boolean>True</s:Boolean>
+                                </av:Trigger.Value>
+                            </av:Trigger>
+                            <av:Trigger
+                                Property="av:Selector.IsSelected">
+                                <av:Setter
+                                    Property="av:TextElement.Foreground">
+                                    <av:Setter.Value>
+                                        <av:DynamicResource
+                                            ResourceKey="AccentColor" />
+                                    </av:Setter.Value>
+                                </av:Setter>
+                                <av:Setter
+                                    Property="av:Border.BorderBrush"
+                                    TargetName="border">
+                                    <av:Setter.Value>
+                                        <av:DynamicResource
+                                            ResourceKey="AccentColor" />
+                                    </av:Setter.Value>
+                                </av:Setter>
+                                <av:Setter
+                                    Property="av:Panel.Background">
+                                    <av:Setter.Value>
+                                        <av:DynamicResource
+                                            ResourceKey="PanelBackground" />
+                                    </av:Setter.Value>
+                                </av:Setter>
+                                <av:Trigger.Value>
+                                    <s:Boolean>True</s:Boolean>
+                                </av:Trigger.Value>
+                            </av:Trigger>
+                        </av:ControlTemplate.Triggers>
+                    </av:ControlTemplate>
+                </av:Setter.Value>
+            </av:Setter>
+        </av:Style>
+    </av:UserControl.Resources>
+    <av:Grid
+        Margin="15,15,15,15">
+        <av:Grid.RowDefinitions>
+            <av:RowDefinition
+                Height="Auto" />
+            <av:RowDefinition
+                Height="*" />
+            <av:RowDefinition
+                Height="Auto" />
+        </av:Grid.RowDefinitions>
+        <av:TextBlock
+            Text="CẤU HÌNH HỆ THỐNG &amp; THIẾT BỊ"
+            FontWeight="Bold"
+            FontSize="{av:DynamicResource TitleFontSize}"
+            Foreground="{av:DynamicResource TextPrimary}"
+            Name="TxtTitle"
+            Margin="0,0,0,15"
+            Visibility="Collapsed"
+            av:Grid.Row="0" />
+        <av:Border
+            BorderThickness="1,1,1,1"
+            Padding="15,15,15,15"
+            CornerRadius="4,4,4,4"
+            BorderBrush="{av:DynamicResource BorderBrush}"
+            Background="{av:DynamicResource PanelBackground}"
+            av:Grid.Row="1">
+            <av:TabControl
+                BorderThickness="0,0,0,0"
+                Background="#00FFFFFF">
+                <av:TabItem
+                    Header="Cấu hình chung"
+                    Name="TabGeneral">
+                    <av:TabItem.Style>
+                        <av:Style
+                            TargetType="av:TabItem">
+                            <av:Style.Resources>
+                                <av:ResourceDictionary />
+                            </av:Style.Resources>
+                            <av:Setter
+                                Property="av:TextElement.Foreground">
+                                <av:Setter.Value>
+                                    <av:DynamicResource
+                                        ResourceKey="TextSecondary" />
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:Panel.Background">
+                                <av:Setter.Value>
+                                    <av:DynamicResource
+                                        ResourceKey="WindowBackground" />
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:Control.Padding">
+                                <av:Setter.Value>
+                                    <av:Thickness>18,10,18,10</av:Thickness>
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:TextElement.FontWeight">
+                                <av:Setter.Value>
+                                    <av:FontWeight>SemiBold</av:FontWeight>
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:TextElement.FontSize">
+                                <av:Setter.Value>
+                                    <av:DynamicResource
+                                        ResourceKey="BaseFontSize" />
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:Control.Template">
+                                <av:Setter.Value>
+                                    <av:ControlTemplate
+                                        TargetType="av:TabItem">
+                                        <av:Border
+                                            BorderThickness="0,0,0,3"
+                                            CornerRadius="4,4,0,0"
+                                            BorderBrush="#00FFFFFF"
+                                            Background="{av:TemplateBinding av:Panel.Background}"
+                                            Name="border"
+                                            Margin="0,0,2,0">
+                                            <av:ContentPresenter
+                                                Content="{av:TemplateBinding av:HeaderedContentControl.Header}"
+                                                ContentTemplate="{av:TemplateBinding av:HeaderedContentControl.HeaderTemplate}"
+                                                ContentStringFormat="{av:TemplateBinding av:HeaderedContentControl.HeaderStringFormat}"
+                                                ContentSource="Header"
+                                                Margin="{av:TemplateBinding av:Control.Padding}"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center" />
+                                        </av:Border>
+                                        <av:ControlTemplate.Triggers>
+                                            <av:Trigger
+                                                Property="av:UIElement.IsMouseOver">
+                                                <av:Setter
+                                                    Property="av:TextElement.Foreground">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="TextPrimary" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Panel.Background">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="SidebarBackground" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Trigger.Value>
+                                                    <s:Boolean>True</s:Boolean>
+                                                </av:Trigger.Value>
+                                            </av:Trigger>
+                                            <av:Trigger
+                                                Property="av:Selector.IsSelected">
+                                                <av:Setter
+                                                    Property="av:TextElement.Foreground">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="AccentColor" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Border.BorderBrush"
+                                                    TargetName="border">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="AccentColor" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Panel.Background">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="PanelBackground" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Trigger.Value>
+                                                    <s:Boolean>True</s:Boolean>
+                                                </av:Trigger.Value>
+                                            </av:Trigger>
+                                        </av:ControlTemplate.Triggers>
+                                    </av:ControlTemplate>
+                                </av:Setter.Value>
+                            </av:Setter>
+                        </av:Style>
+                    </av:TabItem.Style>
+                    <av:ScrollViewer
+                        VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled">
+                        <av:Grid
+                            Margin="15,15,15,15">
+                            <av:StackPanel
+                                MaxWidth="500"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top">
+                                <av:Label Name="LblTheme">Chủ đề hiển thị (Theme):</av:Label>
+                                <av:ComboBox
+                                    Name="CboTheme"
+                                    Margin="0,0,0,15">
+                                    <av:ComboBoxItem
+                                        Tag="light">Light</av:ComboBoxItem>
+                                    <av:ComboBoxItem
+                                        Tag="dark">Dark</av:ComboBoxItem>
+                                    <av:ComboBoxItem
+                                        Tag="blue">Blue</av:ComboBoxItem>
+                                </av:ComboBox>
+                                <av:Label Name="LblFontSize">Cỡ chữ hệ thống (Font Size):</av:Label>
+                                <av:Grid
+                                    Margin="0,0,0,15">
+                                    <av:Grid.ColumnDefinitions>
+                                        <av:ColumnDefinition
+                                            Width="*" />
+                                        <av:ColumnDefinition
+                                            Width="Auto" />
+                                    </av:Grid.ColumnDefinitions>
+                                    <av:Slider
+                                        IsSnapToTickEnabled="True"
+                                        TickFrequency="1"
+                                        Minimum="10"
+                                        Maximum="16"
+                                        Name="SldFontSize"
+                                        VerticalAlignment="Center" />
+                                    <av:TextBlock
+                                        Text="12 px"
+                                        FontWeight="Bold"
+                                        Foreground="{av:DynamicResource TextPrimary}"
+                                        Name="TxtFontSizeVal"
+                                        Margin="10,0,0,0"
+                                        VerticalAlignment="Center"
+                                        av:Grid.Column="1" />
+                                </av:Grid>
+                                <av:Label Name="LblLang">Ngôn ngữ giao diện:</av:Label>
+                                <av:ComboBox
+                                    Name="CboLanguage"
+                                    Margin="0,0,0,20">
+                                    <av:ComboBoxItem
+                                        Tag="vi">Tiếng Việt</av:ComboBoxItem>
+                                    <av:ComboBoxItem
+                                        Tag="en">English</av:ComboBoxItem>
+                                    <av:ComboBoxItem
+                                        Tag="zh">中文 (Chinese)</av:ComboBoxItem>
+                                </av:ComboBox>
+                                <av:Border
+                                    BorderThickness="0,1,0,0"
+                                    BorderBrush="{av:DynamicResource BorderBrush}"
+                                    Margin="0,10,0,15" />
+                                <av:Label Name="LblMachineName">Tên máy trạm (Machine Name):</av:Label>
+                                <av:TextBox
+                                    Name="TxtMachineName"
+                                    Margin="0,0,0,12"
+                                    xml:space="preserve" />
+                                <av:Grid>
+                                    <av:Grid.ColumnDefinitions>
+                                        <av:ColumnDefinition
+                                            Width="*" />
+                                        <av:ColumnDefinition
+                                            Width="*" />
+                                    </av:Grid.ColumnDefinitions>
+                                    <av:StackPanel
+                                        Margin="0,0,10,0">
+                                        <av:Label Name="LblLineId">Mã chuyền (Line ID):</av:Label>
+                                        <av:TextBox
+                                            Name="TxtLineId"
+                                            Margin="0,0,0,12"
+                                            xml:space="preserve" />
+                                    </av:StackPanel>
+                                    <av:StackPanel
+                                        Margin="10,0,0,0"
+                                        av:Grid.Column="1">
+                                        <av:Label Name="LblLineName">Tên chuyền (Line Name):</av:Label>
+                                        <av:TextBox
+                                            Name="TxtLineName"
+                                            Margin="0,0,0,12"
+                                            xml:space="preserve" />
+                                    </av:StackPanel>
+                                </av:Grid>
+                                <av:Grid>
+                                    <av:Grid.ColumnDefinitions>
+                                        <av:ColumnDefinition
+                                            Width="*" />
+                                        <av:ColumnDefinition
+                                            Width="*" />
+                                    </av:Grid.ColumnDefinitions>
+                                    <av:StackPanel
+                                        Margin="0,0,10,0">
+                                        <av:Label Name="LblLineOrder">Thứ tự máy:</av:Label>
+                                        <av:TextBox
+                                            Name="TxtLineOrder"
+                                            Margin="0,0,0,12"
+                                            xml:space="preserve" />
+                                    </av:StackPanel>
+                                    <av:StackPanel
+                                        Margin="10,0,0,0"
+                                        av:Grid.Column="1">
+                                        <av:Label Name="LblMachineId">ID máy (Chỉ đọc):</av:Label>
+                                        <av:TextBox
+                                            IsReadOnly="True"
+                                            Name="TxtMachineId"
+                                            Margin="0,0,0,12"
+                                            Opacity="0.6"
+                                            xml:space="preserve" />
+                                    </av:StackPanel>
+                                </av:Grid>
+                                <av:CheckBox
+                                    Name="ChkUseMockData"
+                                    Content="Sử dụng dữ liệu ảo (Demo Mode)"
+                                    Foreground="{av:DynamicResource TextPrimary}"
+                                    Margin="0,5,0,15"
+                                    Height="25"
+                                    VerticalContentAlignment="Center" />
+                            </av:StackPanel>
+                        </av:Grid>
+                    </av:ScrollViewer>
+                </av:TabItem>
+                <av:TabItem
+                    Header="Hiển thị hãng"
+                    Name="TabBrandVis">
+                    <av:TabItem.Style>
+                        <av:Style
+                            TargetType="av:TabItem">
+                            <av:Style.Resources>
+                                <av:ResourceDictionary />
+                            </av:Style.Resources>
+                            <av:Setter
+                                Property="av:TextElement.Foreground">
+                                <av:Setter.Value>
+                                    <av:DynamicResource
+                                        ResourceKey="TextSecondary" />
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:Panel.Background">
+                                <av:Setter.Value>
+                                    <av:DynamicResource
+                                        ResourceKey="WindowBackground" />
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:Control.Padding">
+                                <av:Setter.Value>
+                                    <av:Thickness>18,10,18,10</av:Thickness>
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:TextElement.FontWeight">
+                                <av:Setter.Value>
+                                    <av:FontWeight>SemiBold</av:FontWeight>
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:TextElement.FontSize">
+                                <av:Setter.Value>
+                                    <av:DynamicResource
+                                        ResourceKey="BaseFontSize" />
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:Control.Template">
+                                <av:Setter.Value>
+                                    <av:ControlTemplate
+                                        TargetType="av:TabItem">
+                                        <av:Border
+                                            BorderThickness="0,0,0,3"
+                                            CornerRadius="4,4,0,0"
+                                            BorderBrush="#00FFFFFF"
+                                            Background="{av:TemplateBinding av:Panel.Background}"
+                                            Name="border"
+                                            Margin="0,0,2,0">
+                                            <av:ContentPresenter
+                                                Content="{av:TemplateBinding av:HeaderedContentControl.Header}"
+                                                ContentTemplate="{av:TemplateBinding av:HeaderedContentControl.HeaderTemplate}"
+                                                ContentStringFormat="{av:TemplateBinding av:HeaderedContentControl.HeaderStringFormat}"
+                                                ContentSource="Header"
+                                                Margin="{av:TemplateBinding av:Control.Padding}"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center" />
+                                        </av:Border>
+                                        <av:ControlTemplate.Triggers>
+                                            <av:Trigger
+                                                Property="av:UIElement.IsMouseOver">
+                                                <av:Setter
+                                                    Property="av:TextElement.Foreground">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="TextPrimary" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Panel.Background">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="SidebarBackground" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Trigger.Value>
+                                                    <s:Boolean>True</s:Boolean>
+                                                </av:Trigger.Value>
+                                            </av:Trigger>
+                                            <av:Trigger
+                                                Property="av:Selector.IsSelected">
+                                                <av:Setter
+                                                    Property="av:TextElement.Foreground">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="AccentColor" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Border.BorderBrush"
+                                                    TargetName="border">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="AccentColor" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Panel.Background">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="PanelBackground" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Trigger.Value>
+                                                    <s:Boolean>True</s:Boolean>
+                                                </av:Trigger.Value>
+                                            </av:Trigger>
+                                        </av:ControlTemplate.Triggers>
+                                    </av:ControlTemplate>
+                                </av:Setter.Value>
+                            </av:Setter>
+                        </av:Style>
+                    </av:TabItem.Style>
+                    <av:Grid
+                        Margin="15,15,15,15">
+                        <av:Grid.RowDefinitions>
+                            <av:RowDefinition
+                                Height="Auto" />
+                            <av:RowDefinition
+                                Height="Auto" />
+                            <av:RowDefinition
+                                Height="*" />
+                        </av:Grid.RowDefinitions>
+                        <av:TextBlock
+                            Text="Chọn các hãng PLC muốn hiển thị trên danh mục Sidebar:"
+                            FontSize="{av:DynamicResource BaseFontSize}"
+                            Foreground="{av:DynamicResource TextSecondary}"
+                            Name="TxtBrandVisHelp"
+                            Margin="0,0,0,10"
+                            av:Grid.Row="0" />
+                        <av:StackPanel
+                            Orientation="Horizontal"
+                            Margin="0,0,0,15"
+                            av:Grid.Row="1">
+                            <av:Button
+                                Content="Bật tất cả"
+                                Name="BtnSelectAllBrands"
+                                Padding="15,0,15,0"
+                                Height="28"
+                                Margin="0,0,10,0"
+                                Click="BtnSelectAllBrands_Click" />
+                            <av:Button
+                                Content="Tắt tất cả"
+                                Name="BtnUnselectAllBrands"
+                                Padding="15,0,15,0"
+                                Height="28"
+                                Click="BtnUnselectAllBrands_Click" />
+                        </av:StackPanel>
+                        <av:ScrollViewer
+                            VerticalScrollBarVisibility="Auto"
+                            av:Grid.Row="2">
+                            <av:WrapPanel
+                                ItemWidth="200"
+                                Name="PanelBrandsCheckboxes"
+                                Margin="0,0,0,15" />
+                        </av:ScrollViewer>
+                    </av:Grid>
+                </av:TabItem>
+                <av:TabItem
+                    Header="Cấu hình PLC"
+                    Name="TabPlc">
+                    <av:TabItem.Style>
+                        <av:Style
+                            TargetType="av:TabItem">
+                            <av:Style.Resources>
+                                <av:ResourceDictionary />
+                            </av:Style.Resources>
+                            <av:Setter
+                                Property="av:TextElement.Foreground">
+                                <av:Setter.Value>
+                                    <av:DynamicResource
+                                        ResourceKey="TextSecondary" />
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:Panel.Background">
+                                <av:Setter.Value>
+                                    <av:DynamicResource
+                                        ResourceKey="WindowBackground" />
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:Control.Padding">
+                                <av:Setter.Value>
+                                    <av:Thickness>18,10,18,10</av:Thickness>
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:TextElement.FontWeight">
+                                <av:Setter.Value>
+                                    <av:FontWeight>SemiBold</av:FontWeight>
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:TextElement.FontSize">
+                                <av:Setter.Value>
+                                    <av:DynamicResource
+                                        ResourceKey="BaseFontSize" />
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:Control.Template">
+                                <av:Setter.Value>
+                                    <av:ControlTemplate
+                                        TargetType="av:TabItem">
+                                        <av:Border
+                                            BorderThickness="0,0,0,3"
+                                            CornerRadius="4,4,0,0"
+                                            BorderBrush="#00FFFFFF"
+                                            Background="{av:TemplateBinding av:Panel.Background}"
+                                            Name="border"
+                                            Margin="0,0,2,0">
+                                            <av:ContentPresenter
+                                                Content="{av:TemplateBinding av:HeaderedContentControl.Header}"
+                                                ContentTemplate="{av:TemplateBinding av:HeaderedContentControl.HeaderTemplate}"
+                                                ContentStringFormat="{av:TemplateBinding av:HeaderedContentControl.HeaderStringFormat}"
+                                                ContentSource="Header"
+                                                Margin="{av:TemplateBinding av:Control.Padding}"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center" />
+                                        </av:Border>
+                                        <av:ControlTemplate.Triggers>
+                                            <av:Trigger
+                                                Property="av:UIElement.IsMouseOver">
+                                                <av:Setter
+                                                    Property="av:TextElement.Foreground">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="TextPrimary" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Panel.Background">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="SidebarBackground" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Trigger.Value>
+                                                    <s:Boolean>True</s:Boolean>
+                                                </av:Trigger.Value>
+                                            </av:Trigger>
+                                            <av:Trigger
+                                                Property="av:Selector.IsSelected">
+                                                <av:Setter
+                                                    Property="av:TextElement.Foreground">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="AccentColor" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Border.BorderBrush"
+                                                    TargetName="border">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="AccentColor" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Panel.Background">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="PanelBackground" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Trigger.Value>
+                                                    <s:Boolean>True</s:Boolean>
+                                                </av:Trigger.Value>
+                                            </av:Trigger>
+                                        </av:ControlTemplate.Triggers>
+                                    </av:ControlTemplate>
+                                </av:Setter.Value>
+                            </av:Setter>
+                        </av:Style>
+                    </av:TabItem.Style>
+                    <av:ScrollViewer
+                        VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled">
+                        <av:Grid
+                            Margin="15,15,15,15">
+                            <av:StackPanel
+                                MaxWidth="500"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top">
+                                <av:Label Name="LblPlcBrand">Hãng sản xuất PLC (Brand):</av:Label>
+                                <av:ComboBox
+                                    Name="CboBrand"
+                                    Margin="0,0,0,12" />
+                                <av:Label Name="LblPlcProtocol">Kiểu kết nối / Driver (Protocol):</av:Label>
+                                <av:ComboBox
+                                    Name="CboProtocol"
+                                    Margin="0,0,0,12" />
+                                <av:Grid>
+                                    <av:Grid.ColumnDefinitions>
+                                        <av:ColumnDefinition
+                                            Width="2*" />
+                                        <av:ColumnDefinition
+                                            Width="*" />
+                                    </av:Grid.ColumnDefinitions>
+                                    <av:StackPanel
+                                        Margin="0,0,10,0">
+                                        <av:Label Name="LblPlcIp">Địa chỉ IP (Hoặc Serial Port):</av:Label>
+                                        <av:TextBox
+                                            Name="TxtPlcIp"
+                                            Margin="0,0,0,12"
+                                            xml:space="preserve" />
+                                    </av:StackPanel>
+                                    <av:StackPanel
+                                        Margin="10,0,0,0"
+                                        av:Grid.Column="1">
+                                        <av:Label Name="LblPlcPort">Cổng (Hoặc BaudRate):</av:Label>
+                                        <av:TextBox
+                                            Name="TxtPlcPort"
+                                            Margin="0,0,0,12"
+                                            xml:space="preserve" />
+                                    </av:StackPanel>
+                                </av:Grid>
+                                <av:StackPanel
+                                    Name="PanelAdvancedPlcOptions"
+                                    Margin="0,0,0,10"
+                                    Visibility="Collapsed">
+                                    <av:TextBlock
+                                        Text="Thông số nâng cao"
+                                        FontWeight="Bold"
+                                        Foreground="{av:DynamicResource TextSecondary}"
+                                        Name="TxtAdvancedTitle"
+                                        Margin="0,5,0,8" />
+                                    <av:Grid>
+                                        <av:Grid.ColumnDefinitions>
+                                            <av:ColumnDefinition
+                                                Width="*" />
+                                            <av:ColumnDefinition
+                                                Width="*" />
+                                            <av:ColumnDefinition
+                                                Width="*" />
+                                        </av:Grid.ColumnDefinitions>
+                                        <av:StackPanel
+                                            Name="PanelRack"
+                                            Margin="0,0,6,0">
+                                            <av:Label>Rack:</av:Label>
+                                            <av:TextBox
+                                                Name="TxtPlcRack"
+                                                Margin="0,0,0,12">0</av:TextBox>
+                                        </av:StackPanel>
+                                        <av:StackPanel
+                                            Name="PanelSlot"
+                                            Margin="6,0,6,0"
+                                            av:Grid.Column="1">
+                                            <av:Label>Slot:</av:Label>
+                                            <av:TextBox
+                                                Name="TxtPlcSlot"
+                                                Margin="0,0,0,12">0</av:TextBox>
+                                        </av:StackPanel>
+                                        <av:StackPanel
+                                            Name="PanelStation"
+                                            Margin="6,0,0,0"
+                                            av:Grid.Column="2">
+                                            <av:Label>Unit / Station ID:</av:Label>
+                                            <av:TextBox
+                                                Name="TxtPlcStation"
+                                                Margin="0,0,0,12">1</av:TextBox>
+                                        </av:StackPanel>
+                                    </av:Grid>
+                                </av:StackPanel>
+                                <av:Label Name="LblReadInterval">Chu kỳ đọc liên tục (ms):</av:Label>
+                                <av:TextBox
+                                    Name="TxtInterval"
+                                    Margin="0,0,0,15"
+                                    xml:space="preserve" />
+                            </av:StackPanel>
+                        </av:Grid>
+                    </av:ScrollViewer>
+                </av:TabItem>
+                <av:TabItem
+                    Header="Kết nối Server"
+                    Name="TabServer">
+                    <av:TabItem.Style>
+                        <av:Style
+                            TargetType="av:TabItem">
+                            <av:Style.Resources>
+                                <av:ResourceDictionary />
+                            </av:Style.Resources>
+                            <av:Setter
+                                Property="av:TextElement.Foreground">
+                                <av:Setter.Value>
+                                    <av:DynamicResource
+                                        ResourceKey="TextSecondary" />
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:Panel.Background">
+                                <av:Setter.Value>
+                                    <av:DynamicResource
+                                        ResourceKey="WindowBackground" />
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:Control.Padding">
+                                <av:Setter.Value>
+                                    <av:Thickness>18,10,18,10</av:Thickness>
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:TextElement.FontWeight">
+                                <av:Setter.Value>
+                                    <av:FontWeight>SemiBold</av:FontWeight>
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:TextElement.FontSize">
+                                <av:Setter.Value>
+                                    <av:DynamicResource
+                                        ResourceKey="BaseFontSize" />
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:Control.Template">
+                                <av:Setter.Value>
+                                    <av:ControlTemplate
+                                        TargetType="av:TabItem">
+                                        <av:Border
+                                            BorderThickness="0,0,0,3"
+                                            CornerRadius="4,4,0,0"
+                                            BorderBrush="#00FFFFFF"
+                                            Background="{av:TemplateBinding av:Panel.Background}"
+                                            Name="border"
+                                            Margin="0,0,2,0">
+                                            <av:ContentPresenter
+                                                Content="{av:TemplateBinding av:HeaderedContentControl.Header}"
+                                                ContentTemplate="{av:TemplateBinding av:HeaderedContentControl.HeaderTemplate}"
+                                                ContentStringFormat="{av:TemplateBinding av:HeaderedContentControl.HeaderStringFormat}"
+                                                ContentSource="Header"
+                                                Margin="{av:TemplateBinding av:Control.Padding}"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center" />
+                                        </av:Border>
+                                        <av:ControlTemplate.Triggers>
+                                            <av:Trigger
+                                                Property="av:UIElement.IsMouseOver">
+                                                <av:Setter
+                                                    Property="av:TextElement.Foreground">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="TextPrimary" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Panel.Background">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="SidebarBackground" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Trigger.Value>
+                                                    <s:Boolean>True</s:Boolean>
+                                                </av:Trigger.Value>
+                                            </av:Trigger>
+                                            <av:Trigger
+                                                Property="av:Selector.IsSelected">
+                                                <av:Setter
+                                                    Property="av:TextElement.Foreground">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="AccentColor" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Border.BorderBrush"
+                                                    TargetName="border">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="AccentColor" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Panel.Background">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="PanelBackground" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Trigger.Value>
+                                                    <s:Boolean>True</s:Boolean>
+                                                </av:Trigger.Value>
+                                            </av:Trigger>
+                                        </av:ControlTemplate.Triggers>
+                                    </av:ControlTemplate>
+                                </av:Setter.Value>
+                            </av:Setter>
+                        </av:Style>
+                    </av:TabItem.Style>
+                    <av:ScrollViewer
+                        VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled">
+                        <av:Grid
+                            Margin="15,15,15,15">
+                            <av:StackPanel
+                                MaxWidth="500"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top">
+                                <av:Label Name="LblServerHost">Địa chỉ IP / Host của MQTT Broker:</av:Label>
+                                <av:TextBox
+                                    Name="TxtServerHost"
+                                    Margin="0,0,0,12"
+                                    xml:space="preserve" />
+                                <av:Label Name="LblServerPort">Cổng dịch vụ MQTT Broker:</av:Label>
+                                <av:TextBox
+                                    Name="TxtServerPort"
+                                    Margin="0,0,0,25"
+                                    xml:space="preserve" />
+                                <av:Button
+                                    Name="btnTestConnection"
+                                    HorizontalAlignment="Left">
+                                    <av:Button.Style>
+                                        <av:Style
+                                            TargetType="av:Button">
+                                            <av:Style.Resources>
+                                                <av:ResourceDictionary />
+                                            </av:Style.Resources>
+                                            <av:Setter
+                                                Property="av:TextElement.FontFamily">
+                                                <av:Setter.Value>
+                                                    <av:FontFamily>Segoe UI, Inter, Roboto, Arial</av:FontFamily>
+                                                </av:Setter.Value>
+                                            </av:Setter>
+                                            <av:Setter
+                                                Property="av:TextElement.FontSize">
+                                                <av:Setter.Value>
+                                                    <av:DynamicResource
+                                                        ResourceKey="BaseFontSize" />
+                                                </av:Setter.Value>
+                                            </av:Setter>
+                                            <av:Setter
+                                                Property="av:Panel.Background">
+                                                <av:Setter.Value>
+                                                    <av:DynamicResource
+                                                        ResourceKey="PanelBackground" />
+                                                </av:Setter.Value>
+                                            </av:Setter>
+                                            <av:Setter
+                                                Property="av:TextElement.Foreground">
+                                                <av:Setter.Value>
+                                                    <av:DynamicResource
+                                                        ResourceKey="TextPrimary" />
+                                                </av:Setter.Value>
+                                            </av:Setter>
+                                            <av:Setter
+                                                Property="av:Border.BorderBrush">
+                                                <av:Setter.Value>
+                                                    <av:DynamicResource
+                                                        ResourceKey="BorderBrush" />
+                                                </av:Setter.Value>
+                                            </av:Setter>
+                                            <av:Setter
+                                                Property="av:Border.BorderThickness">
+                                                <av:Setter.Value>
+                                                    <av:Thickness>1,1,1,1</av:Thickness>
+                                                </av:Setter.Value>
+                                            </av:Setter>
+                                            <av:Setter
+                                                Property="av:FrameworkElement.Height">
+                                                <av:Setter.Value>
+                                                    <s:Double>32</s:Double>
+                                                </av:Setter.Value>
+                                            </av:Setter>
+                                            <av:Setter
+                                                Property="av:Control.Padding">
+                                                <av:Setter.Value>
+                                                    <av:Thickness>15,0,15,0</av:Thickness>
+                                                </av:Setter.Value>
+                                            </av:Setter>
+                                            <av:Setter
+                                                Property="av:FrameworkElement.Cursor">
+                                                <av:Setter.Value>
+                                                    <av:Cursor>Hand</av:Cursor>
+                                                </av:Setter.Value>
+                                            </av:Setter>
+                                            <av:Setter
+                                                Property="av:Control.Template">
+                                                <av:Setter.Value>
+                                                    <av:ControlTemplate
+                                                        TargetType="av:Button">
+                                                        <av:Border
+                                                            BorderThickness="{av:TemplateBinding av:Border.BorderThickness}"
+                                                            CornerRadius="4,4,4,4"
+                                                            BorderBrush="{av:TemplateBinding av:Border.BorderBrush}"
+                                                            Background="{av:TemplateBinding av:Panel.Background}"
+                                                            Name="border">
+                                                            <av:ContentPresenter
+                                                                Content="{av:TemplateBinding av:ContentControl.Content}"
+                                                                ContentTemplate="{av:TemplateBinding av:ContentControl.ContentTemplate}"
+                                                                ContentStringFormat="{av:TemplateBinding av:ContentControl.ContentStringFormat}"
+                                                                Margin="{av:TemplateBinding av:Control.Padding}"
+                                                                HorizontalAlignment="Center"
+                                                                VerticalAlignment="Center" />
+                                                        </av:Border>
+                                                        <av:ControlTemplate.Triggers>
+                                                            <av:Trigger
+                                                                Property="av:UIElement.IsMouseOver">
+                                                                <av:Setter
+                                                                    Property="av:Panel.Background">
+                                                                    <av:Setter.Value>
+                                                                        <av:DynamicResource
+                                                                            ResourceKey="SidebarBackground" />
+                                                                    </av:Setter.Value>
+                                                                </av:Setter>
+                                                                <av:Trigger.Value>
+                                                                    <s:Boolean>True</s:Boolean>
+                                                                </av:Trigger.Value>
+                                                            </av:Trigger>
+                                                            <av:Trigger
+                                                                Property="av:UIElement.IsEnabled">
+                                                                <av:Setter
+                                                                    Property="av:UIElement.Opacity">
+                                                                    <av:Setter.Value>
+                                                                        <s:Double>0.5</s:Double>
+                                                                    </av:Setter.Value>
+                                                                </av:Setter>
+                                                                <av:Trigger.Value>
+                                                                    <s:Boolean>False</s:Boolean>
+                                                                </av:Trigger.Value>
+                                                            </av:Trigger>
+                                                        </av:ControlTemplate.Triggers>
+                                                    </av:ControlTemplate>
+                                                </av:Setter.Value>
+                                            </av:Setter>
+                                        </av:Style>
+                                    </av:Button.Style>
+                                    <av:StackPanel Orientation="Horizontal">
+                                        <av:Path Data="{av:StaticResource IconRefreshCw}" Stroke="{av:Binding Foreground, RelativeSource={av:RelativeSource AncestorType=av:Button}}" StrokeThickness="1.8" Width="14" Height="14" Margin="0,0,8,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                                        <av:TextBlock Text="Kiểm Tra Kết Nối Server" VerticalAlignment="Center"/>
+                                    </av:StackPanel>
+                                </av:Button>
+                                <av:Border
+                                    BorderThickness="0,1,0,0"
+                                    BorderBrush="{av:DynamicResource BorderBrush}"
+                                    Margin="0,20,0,15" />
+                                <av:Label
+                                    Name="LblTestDataTitle"
+                                    FontWeight="Bold">Dữ liệu Test Telemetry JSON:</av:Label>
+                                <av:Grid
+                                    Margin="0,5,0,5">
+                                    <av:Grid.ColumnDefinitions>
+                                        <av:ColumnDefinition Width="*" />
+                                        <av:ColumnDefinition Width="*" />
+                                    </av:Grid.ColumnDefinitions>
+                                    <av:Button
+                                        Name="btnViewTestData"
+                                        Margin="0,0,5,0"
+                                        av:Grid.Column="0">
+                                        <av:Button.Style>
+                                            <av:Style TargetType="av:Button">
+                                                <av:Setter Property="av:TextElement.FontFamily" Value="Segoe UI, Inter, Roboto, Arial" />
+                                                <av:Setter Property="av:TextElement.FontSize" Value="{av:DynamicResource BaseFontSize}" />
+                                                <av:Setter Property="av:Panel.Background" Value="{av:DynamicResource PanelBackground}" />
+                                                <av:Setter Property="av:TextElement.Foreground" Value="{av:DynamicResource TextPrimary}" />
+                                                <av:Setter Property="av:Border.BorderBrush" Value="{av:DynamicResource BorderBrush}" />
+                                                <av:Setter Property="av:Border.BorderThickness" Value="1,1,1,1" />
+                                                <av:Setter Property="av:FrameworkElement.Height" Value="32" />
+                                                <av:Setter Property="av:Control.Padding" Value="15,0,15,0" />
+                                                <av:Setter Property="av:FrameworkElement.Cursor" Value="Hand" />
+                                                <av:Setter Property="av:Control.Template">
+                                                    <av:Setter.Value>
+                                                        <av:ControlTemplate TargetType="av:Button">
+                                                            <av:Border BorderThickness="{av:TemplateBinding av:Border.BorderThickness}" CornerRadius="4" BorderBrush="{av:TemplateBinding av:Border.BorderBrush}" Background="{av:TemplateBinding av:Panel.Background}" Name="border">
+                                                                <av:ContentPresenter Content="{av:TemplateBinding av:ContentControl.Content}" Margin="{av:TemplateBinding av:Control.Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                            </av:Border>
+                                                            <av:ControlTemplate.Triggers>
+                                                                <av:Trigger Property="av:UIElement.IsMouseOver" Value="True">
+                                                                    <av:Setter Property="av:Panel.Background" Value="{av:DynamicResource SidebarBackground}" />
+                                                                </av:Trigger>
+                                                                <av:Trigger Property="av:UIElement.IsEnabled" Value="False">
+                                                                    <av:Setter Property="av:UIElement.Opacity" Value="0.5" />
+                                                                </av:Trigger>
+                                                            </av:ControlTemplate.Triggers>
+                                                        </av:ControlTemplate>
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                            </av:Style>
+                                        </av:Button.Style>
+                                        <av:StackPanel Orientation="Horizontal">
+                                            <av:Path Data="{av:StaticResource IconEye}" Stroke="{av:Binding Foreground, RelativeSource={av:RelativeSource AncestorType=av:Button}}" StrokeThickness="1.8" Width="14" Height="14" Margin="0,0,8,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                                            <av:TextBlock Name="txtBtnViewTestData" Text="Xem Dữ Liệu JSON" VerticalAlignment="Center"/>
+                                        </av:StackPanel>
+                                    </av:Button>
+                                    <av:Button
+                                        Name="btnSendTestData"
+                                        Margin="5,0,0,0"
+                                        av:Grid.Column="1">
+                                        <av:Button.Style>
+                                            <av:Style TargetType="av:Button">
+                                                <av:Setter Property="av:TextElement.FontFamily" Value="Segoe UI, Inter, Roboto, Arial" />
+                                                <av:Setter Property="av:TextElement.FontSize" Value="{av:DynamicResource BaseFontSize}" />
+                                                <av:Setter Property="av:Panel.Background" Value="{av:DynamicResource PanelBackground}" />
+                                                <av:Setter Property="av:TextElement.Foreground" Value="{av:DynamicResource TextPrimary}" />
+                                                <av:Setter Property="av:Border.BorderBrush" Value="{av:DynamicResource BorderBrush}" />
+                                                <av:Setter Property="av:Border.BorderThickness" Value="1,1,1,1" />
+                                                <av:Setter Property="av:FrameworkElement.Height" Value="32" />
+                                                <av:Setter Property="av:Control.Padding" Value="15,0,15,0" />
+                                                <av:Setter Property="av:FrameworkElement.Cursor" Value="Hand" />
+                                                <av:Setter Property="av:Control.Template">
+                                                    <av:Setter.Value>
+                                                        <av:ControlTemplate TargetType="av:Button">
+                                                            <av:Border BorderThickness="{av:TemplateBinding av:Border.BorderThickness}" CornerRadius="4" BorderBrush="{av:TemplateBinding av:Border.BorderBrush}" Background="{av:TemplateBinding av:Panel.Background}" Name="border">
+                                                                <av:ContentPresenter Content="{av:TemplateBinding av:ContentControl.Content}" Margin="{av:TemplateBinding av:Control.Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                            </av:Border>
+                                                            <av:ControlTemplate.Triggers>
+                                                                <av:Trigger Property="av:UIElement.IsMouseOver" Value="True">
+                                                                    <av:Setter Property="av:Panel.Background" Value="{av:DynamicResource SidebarBackground}" />
+                                                                </av:Trigger>
+                                                                <av:Trigger Property="av:UIElement.IsEnabled" Value="False">
+                                                                    <av:Setter Property="av:UIElement.Opacity" Value="0.5" />
+                                                                </av:Trigger>
+                                                            </av:ControlTemplate.Triggers>
+                                                        </av:ControlTemplate>
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                            </av:Style>
+                                        </av:Button.Style>
+                                        <av:StackPanel Orientation="Horizontal">
+                                            <av:Path Data="{av:StaticResource IconSend}" Stroke="{av:Binding Foreground, RelativeSource={av:RelativeSource AncestorType=av:Button}}" StrokeThickness="1.8" Width="14" Height="14" Margin="0,0,8,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                                            <av:TextBlock Name="txtBtnSendTestData" Text="Gửi Lên Server" VerticalAlignment="Center"/>
+                                        </av:StackPanel>
+                                    </av:Button>
+                                </av:Grid>
+                                <av:TextBox
+                                    Name="txtTestDataJson"
+                                    Height="180"
+                                    AcceptsReturn="True"
+                                    TextWrapping="NoWrap"
+                                    IsReadOnly="True"
+                                    VerticalScrollBarVisibility="Auto"
+                                    HorizontalScrollBarVisibility="Auto"
+                                    FontFamily="Consolas, Courier New, monospace"
+                                    Background="{av:DynamicResource WindowBackground}"
+                                    Foreground="{av:DynamicResource TextPrimary}"
+                                    BorderBrush="{av:DynamicResource BorderBrush}"
+                                    BorderThickness="1"
+                                    Margin="0,10,0,10"
+                                    Padding="8" />
+                            </av:StackPanel>
+                        </av:Grid>
+                    </av:ScrollViewer>
+                </av:TabItem>
+                <av:TabItem
+                    Header="Tài nguyên PC"
+                    Name="TabTelemetry">
+                    <av:TabItem.Style>
+                        <av:Style
+                            TargetType="av:TabItem">
+                            <av:Style.Resources>
+                                <av:ResourceDictionary />
+                            </av:Style.Resources>
+                            <av:Setter
+                                Property="av:TextElement.Foreground">
+                                <av:Setter.Value>
+                                    <av:DynamicResource
+                                        ResourceKey="TextSecondary" />
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:Panel.Background">
+                                <av:Setter.Value>
+                                    <av:DynamicResource
+                                        ResourceKey="WindowBackground" />
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:Control.Padding">
+                                <av:Setter.Value>
+                                    <av:Thickness>18,10,18,10</av:Thickness>
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:TextElement.FontWeight">
+                                <av:Setter.Value>
+                                    <av:FontWeight>SemiBold</av:FontWeight>
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:TextElement.FontSize">
+                                <av:Setter.Value>
+                                    <av:DynamicResource
+                                        ResourceKey="BaseFontSize" />
+                                </av:Setter.Value>
+                            </av:Setter>
+                            <av:Setter
+                                Property="av:Control.Template">
+                                <av:Setter.Value>
+                                    <av:ControlTemplate
+                                        TargetType="av:TabItem">
+                                        <av:Border
+                                            BorderThickness="0,0,0,3"
+                                            CornerRadius="4,4,0,0"
+                                            BorderBrush="#00FFFFFF"
+                                            Background="{av:TemplateBinding av:Panel.Background}"
+                                            Name="border"
+                                            Margin="0,0,2,0">
+                                            <av:ContentPresenter
+                                                Content="{av:TemplateBinding av:HeaderedContentControl.Header}"
+                                                ContentTemplate="{av:TemplateBinding av:HeaderedContentControl.HeaderTemplate}"
+                                                ContentStringFormat="{av:TemplateBinding av:HeaderedContentControl.HeaderStringFormat}"
+                                                ContentSource="Header"
+                                                Margin="{av:TemplateBinding av:Control.Padding}"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center" />
+                                        </av:Border>
+                                        <av:ControlTemplate.Triggers>
+                                            <av:Trigger
+                                                Property="av:UIElement.IsMouseOver">
+                                                <av:Setter
+                                                    Property="av:TextElement.Foreground">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="TextPrimary" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Panel.Background">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="SidebarBackground" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Trigger.Value>
+                                                    <s:Boolean>True</s:Boolean>
+                                                </av:Trigger.Value>
+                                            </av:Trigger>
+                                            <av:Trigger
+                                                Property="av:Selector.IsSelected">
+                                                <av:Setter
+                                                    Property="av:TextElement.Foreground">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="AccentColor" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Border.BorderBrush"
+                                                    TargetName="border">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="AccentColor" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Setter
+                                                    Property="av:Panel.Background">
+                                                    <av:Setter.Value>
+                                                        <av:DynamicResource
+                                                            ResourceKey="PanelBackground" />
+                                                    </av:Setter.Value>
+                                                </av:Setter>
+                                                <av:Trigger.Value>
+                                                    <s:Boolean>True</s:Boolean>
+                                                </av:Trigger.Value>
+                                            </av:Trigger>
+                                        </av:ControlTemplate.Triggers>
+                                    </av:ControlTemplate>
+                                </av:Setter.Value>
+                            </av:Setter>
+                        </av:Style>
+                    </av:TabItem.Style>
+                    <av:ScrollViewer
+                        VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled">
+                        <av:Grid
+                            Margin="15,15,15,15">
+                            <av:StackPanel>
+                                <av:Label
+                                    FontSize="{av:DynamicResource BaseFontSize}"
+                                    Name="LblOS"
+                                    Margin="0,0,0,12">Hệ điều hành: --</av:Label>
+                                <av:Label
+                                    FontSize="{av:DynamicResource BaseFontSize}"
+                                    Name="LblCpuCores"
+                                    Margin="0,0,0,12">Số luồng CPU: --</av:Label>
+                                <av:Label
+                                    Foreground="{av:DynamicResource AccentColor}"
+                                    FontSize="{av:DynamicResource BaseFontSize}"
+                                    FontWeight="Bold"
+                                    Name="LblCpuUsage"
+                                    Margin="0,0,0,12">Sử dụng CPU: --%</av:Label>
+                                <av:Label
+                                    Foreground="{av:DynamicResource AccentColor}"
+                                    FontSize="{av:DynamicResource BaseFontSize}"
+                                    FontWeight="Bold"
+                                    Name="LblRamUsage"
+                                    Margin="0,0,0,12">Sử dụng RAM: -- MB</av:Label>
+                                <av:Label
+                                    FontSize="{av:DynamicResource BaseFontSize}"
+                                    Name="LblUptime"
+                                    Margin="0,0,0,12">Thời gian chạy PC: --</av:Label>
+                            </av:StackPanel>
+                        </av:Grid>
+                    </av:ScrollViewer>
+                </av:TabItem>
+            </av:TabControl>
+        </av:Border>
+        <av:StackPanel
+            Orientation="Horizontal"
+            Margin="0,15,0,0"
+            VerticalAlignment="Center"
+            av:Grid.Row="2">
+            <av:Button
+                Name="BtnSaveConfig"
+                Width="160"
+                Height="36">
+                <av:Button.Style>
+                    <av:Style
+                        TargetType="av:Button">
+                        <av:Style.BasedOn>
+                            <av:Style
+                                TargetType="av:Button">
+                                <av:Style.Resources>
+                                    <av:ResourceDictionary />
+                                </av:Style.Resources>
+                                <av:Setter
+                                    Property="av:TextElement.FontFamily">
+                                    <av:Setter.Value>
+                                        <av:FontFamily>Segoe UI, Inter, Roboto, Arial</av:FontFamily>
+                                    </av:Setter.Value>
+                                </av:Setter>
+                                <av:Setter
+                                    Property="av:TextElement.FontSize">
+                                    <av:Setter.Value>
+                                        <av:DynamicResource
+                                            ResourceKey="BaseFontSize" />
+                                    </av:Setter.Value>
+                                </av:Setter>
+                                <av:Setter
+                                    Property="av:Panel.Background">
+                                    <av:Setter.Value>
+                                        <av:DynamicResource
+                                            ResourceKey="PanelBackground" />
+                                    </av:Setter.Value>
+                                </av:Setter>
+                                <av:Setter
+                                    Property="av:TextElement.Foreground">
+                                    <av:Setter.Value>
+                                        <av:DynamicResource
+                                            ResourceKey="TextPrimary" />
+                                    </av:Setter.Value>
+                                </av:Setter>
+                                <av:Setter
+                                    Property="av:Border.BorderBrush">
+                                    <av:Setter.Value>
+                                        <av:DynamicResource
+                                            ResourceKey="BorderBrush" />
+                                    </av:Setter.Value>
+                                </av:Setter>
+                                <av:Setter
+                                    Property="av:Border.BorderThickness">
+                                    <av:Setter.Value>
+                                        <av:Thickness>1,1,1,1</av:Thickness>
+                                    </av:Setter.Value>
+                                </av:Setter>
+                                <av:Setter
+                                    Property="av:FrameworkElement.Height">
+                                    <av:Setter.Value>
+                                        <s:Double>32</s:Double>
+                                    </av:Setter.Value>
+                                </av:Setter>
+                                <av:Setter
+                                    Property="av:Control.Padding">
+                                    <av:Setter.Value>
+                                        <av:Thickness>15,0,15,0</av:Thickness>
+                                    </av:Setter.Value>
+                                </av:Setter>
+                                <av:Setter
+                                    Property="av:FrameworkElement.Cursor">
+                                    <av:Setter.Value>
+                                        <av:Cursor>Hand</av:Cursor>
+                                    </av:Setter.Value>
+                                </av:Setter>
+                                <av:Setter
+                                    Property="av:Control.Template">
+                                    <av:Setter.Value>
+                                        <av:ControlTemplate
+                                            TargetType="av:Button">
+                                            <av:Border
+                                                BorderThickness="{av:TemplateBinding av:Border.BorderThickness}"
+                                                CornerRadius="4,4,4,4"
+                                                BorderBrush="{av:TemplateBinding av:Border.BorderBrush}"
+                                                Background="{av:TemplateBinding av:Panel.Background}"
+                                                Name="border">
+                                                <av:ContentPresenter
+                                                    Content="{av:TemplateBinding av:ContentControl.Content}"
+                                                    ContentTemplate="{av:TemplateBinding av:ContentControl.ContentTemplate}"
+                                                    ContentStringFormat="{av:TemplateBinding av:ContentControl.ContentStringFormat}"
+                                                    Margin="{av:TemplateBinding av:Control.Padding}"
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center" />
+                                            </av:Border>
+                                            <av:ControlTemplate.Triggers>
+                                                <av:Trigger
+                                                    Property="av:UIElement.IsMouseOver">
+                                                    <av:Setter
+                                                        Property="av:Panel.Background">
+                                                        <av:Setter.Value>
+                                                            <av:DynamicResource
+                                                                ResourceKey="SidebarBackground" />
+                                                        </av:Setter.Value>
+                                                    </av:Setter>
+                                                    <av:Trigger.Value>
+                                                        <s:Boolean>True</s:Boolean>
+                                                    </av:Trigger.Value>
+                                                </av:Trigger>
+                                                <av:Trigger
+                                                    Property="av:UIElement.IsEnabled">
+                                                    <av:Setter
+                                                        Property="av:UIElement.Opacity">
+                                                        <av:Setter.Value>
+                                                            <s:Double>0.5</s:Double>
+                                                        </av:Setter.Value>
+                                                    </av:Setter>
+                                                    <av:Trigger.Value>
+                                                        <s:Boolean>False</s:Boolean>
+                                                    </av:Trigger.Value>
+                                                </av:Trigger>
+                                            </av:ControlTemplate.Triggers>
+                                        </av:ControlTemplate>
+                                    </av:Setter.Value>
+                                </av:Setter>
+                            </av:Style>
+                        </av:Style.BasedOn>
+                        <av:Style.Resources>
+                            <av:ResourceDictionary />
+                        </av:Style.Resources>
+                        <av:Setter
+                            Property="av:Panel.Background">
+                            <av:Setter.Value>
+                                <av:DynamicResource
+                                    ResourceKey="AccentColor" />
+                            </av:Setter.Value>
+                        </av:Setter>
+                        <av:Setter
+                            Property="av:TextElement.Foreground">
+                            <av:Setter.Value>
+                                <av:SolidColorBrush>#FFFFFFFF</av:SolidColorBrush>
+                            </av:Setter.Value>
+                        </av:Setter>
+                        <av:Setter
+                            Property="av:Border.BorderThickness">
+                            <av:Setter.Value>
+                                <av:Thickness>0,0,0,0</av:Thickness>
+                            </av:Setter.Value>
+                        </av:Setter>
+                        <av:Setter
+                            Property="av:TextElement.FontWeight">
+                            <av:Setter.Value>
+                                <av:FontWeight>SemiBold</av:FontWeight>
+                            </av:Setter.Value>
+                        </av:Setter>
+                        <av:Setter
+                            Property="av:Control.Template">
+                            <av:Setter.Value>
+                                <av:ControlTemplate
+                                    TargetType="av:Button">
+                                    <av:Border
+                                        CornerRadius="4,4,4,4"
+                                        Background="{av:TemplateBinding av:Panel.Background}"
+                                        Name="border">
+                                        <av:ContentPresenter
+                                            Content="{av:TemplateBinding av:ContentControl.Content}"
+                                            ContentTemplate="{av:TemplateBinding av:ContentControl.ContentTemplate}"
+                                            ContentStringFormat="{av:TemplateBinding av:ContentControl.ContentStringFormat}"
+                                            Margin="{av:TemplateBinding av:Control.Padding}"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center" />
+                                    </av:Border>
+                                    <av:ControlTemplate.Triggers>
+                                        <av:Trigger
+                                            Property="av:UIElement.IsMouseOver">
+                                            <av:Setter
+                                                Property="av:Panel.Background">
+                                                <av:Setter.Value>
+                                                    <av:DynamicResource
+                                                        ResourceKey="AccentHover" />
+                                                </av:Setter.Value>
+                                            </av:Setter>
+                                            <av:Trigger.Value>
+                                                <s:Boolean>True</s:Boolean>
+                                            </av:Trigger.Value>
+                                        </av:Trigger>
+                                        <av:Trigger
+                                            Property="av:UIElement.IsEnabled">
+                                            <av:Setter
+                                                Property="av:UIElement.Opacity">
+                                                <av:Setter.Value>
+                                                    <s:Double>0.5</s:Double>
+                                                </av:Setter.Value>
+                                            </av:Setter>
+                                            <av:Trigger.Value>
+                                                <s:Boolean>False</s:Boolean>
+                                            </av:Trigger.Value>
+                                        </av:Trigger>
+                                    </av:ControlTemplate.Triggers>
+                                </av:ControlTemplate>
+                            </av:Setter.Value>
+                        </av:Setter>
+                    </av:Style>
+                </av:Button.Style>
+                <av:StackPanel Orientation="Horizontal">
+                    <av:Path Data="{av:StaticResource IconSave}" Stroke="{av:Binding Foreground, RelativeSource={av:RelativeSource AncestorType=av:Button}}" StrokeThickness="1.8" Width="14" Height="14" Margin="0,0,8,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                    <av:TextBlock Text="LƯU CẤU HÌNH" VerticalAlignment="Center"/>
+                </av:StackPanel>
+            </av:Button>
+        </av:StackPanel>
+    </av:Grid>
+</av:UserControl>

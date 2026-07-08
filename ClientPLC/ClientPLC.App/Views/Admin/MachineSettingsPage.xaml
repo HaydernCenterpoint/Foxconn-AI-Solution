@@ -1,0 +1,32 @@
+﻿<UserControl x:Class="PLC.Views.MachineSettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <Grid Margin="15">
+        <Border BorderThickness="1" Padding="20" CornerRadius="8"
+                BorderBrush="{DynamicResource BorderBrush}"
+                Background="{DynamicResource PanelBackground}"
+                MaxWidth="600" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <StackPanel>
+                <TextBlock Text="Cấu hình trạm máy hiện tại" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,20"/>
+
+                <Label Content="ID máy (Chỉ đọc Guid):" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                <TextBox Name="TxtMachineId" Margin="0,0,0,15" Height="30" VerticalContentAlignment="Center" IsReadOnly="True" Opacity="0.6"/>
+
+                <Label Content="Tên trạm máy (Machine Name):" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                <TextBox Name="TxtMachineName" Margin="0,0,0,15" Height="30" VerticalContentAlignment="Center"/>
+
+                <Label Content="Mã chuyền sản xuất (Line ID):" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                <TextBox Name="TxtLineId" Margin="0,0,0,15" Height="30" VerticalContentAlignment="Center"/>
+
+                <Label Content="Tên chuyền sản xuất (Line Name):" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                <TextBox Name="TxtLineName" Margin="0,0,0,15" Height="30" VerticalContentAlignment="Center"/>
+
+                <Label Content="Thứ tự máy trong chuyền:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                <TextBox Name="TxtLineOrder" Margin="0,0,0,25" Height="30" VerticalContentAlignment="Center"/>
+
+                <Button Name="BtnSave" Content="Lưu cấu hình" Height="35" Width="150" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

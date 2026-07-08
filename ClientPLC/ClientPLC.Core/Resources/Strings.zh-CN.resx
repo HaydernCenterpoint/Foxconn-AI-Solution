@@ -1,0 +1,1341 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="ActiveRead" xml:space="preserve">
+    <value>启用读取和显示</value>
+  </data>
+  <data name="Address" xml:space="preserve">
+    <value>寄存器地址</value>
+  </data>
+  <data name="Alias" xml:space="preserve">
+    <value>别名(标签)</value>
+  </data>
+  <data name="AliasName" xml:space="preserve">
+    <value>别名 (标签):</value>
+  </data>
+  <data name="AppSettings" xml:space="preserve">
+    <value>应用程序设置</value>
+  </data>
+  <data name="ApplyError" xml:space="preserve">
+    <value>应用配置时错误:</value>
+  </data>
+  <data name="ApplySuccess" xml:space="preserve">
+    <value>已成功应用配置并重新连接 PLC！</value>
+  </data>
+  <data name="ApplySuccessTitle" xml:space="preserve">
+    <value>应用成功</value>
+  </data>
+  <data name="AutoScroll" xml:space="preserve">
+    <value>自动滚动</value>
+  </data>
+  <data name="AvailabilityLabel" xml:space="preserve">
+    <value>时间利用率 (A)</value>
+  </data>
+  <data name="AvgSpeedLabel" xml:space="preserve">
+    <value>班次平均速度:</value>
+  </data>
+  <data name="BtnAdd" xml:space="preserve">
+    <value>添加</value>
+  </data>
+  <data name="BtnApplyText" xml:space="preserve">
+    <value>应用</value>
+  </data>
+  <data name="BtnCancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="BtnDelete" xml:space="preserve">
+    <value>删除地址</value>
+  </data>
+  <data name="BtnRefreshText" xml:space="preserve">
+    <value>重新加载配置</value>
+  </data>
+  <data name="BtnSave" xml:space="preserve">
+    <value>保存设置</value>
+  </data>
+  <data name="BtnSaveConfig" xml:space="preserve">
+    <value>保存读取配置</value>
+  </data>
+  <data name="BtnTestReadText" xml:space="preserve">
+    <value>测试读取</value>
+  </data>
+  <data name="BtnUpdate" xml:space="preserve">
+    <value>更新</value>
+  </data>
+  <data name="BẢNG GIÁM SÁT HIỆU SUẤT TRỰC TUYẾN" xml:space="preserve">
+    <value>实时性能监控看板</value>
+  </data>
+  <data name="CboItemDay" xml:space="preserve">
+    <value>白班 (07:30 - 19:30)</value>
+  </data>
+  <data name="CboItemNight" xml:space="preserve">
+    <value>晚班 (19:30 - 07:30)</value>
+  </data>
+  <data name="CfgAlarmsHelp" xml:space="preserve">
+    <value>故障报警寄存器地址列表</value>
+  </data>
+  <data name="CfgBtnAdd" xml:space="preserve">
+    <value>添加</value>
+  </data>
+  <data name="CfgBtnDelete" xml:space="preserve">
+    <value>删除</value>
+  </data>
+  <data name="CfgBtnDownloadTemplate" xml:space="preserve">
+    <value>下载模板</value>
+  </data>
+  <data name="CfgBtnExportAlarm" xml:space="preserve">
+    <value>导出 CSV</value>
+  </data>
+  <data name="CfgBtnImportAlarm" xml:space="preserve">
+    <value>导入 Excel</value>
+  </data>
+  <data name="CfgMnuClose" xml:space="preserve">
+    <value>关闭窗口</value>
+  </data>
+  <data name="CfgMnuExportCsv" xml:space="preserve">
+    <value>导出 Excel/CSV...</value>
+  </data>
+  <data name="CfgMnuFile" xml:space="preserve">
+    <value>_文件</value>
+  </data>
+  <data name="CfgMnuImportExcel" xml:space="preserve">
+    <value>从 Excel 导入...</value>
+  </data>
+  <data name="CfgMnuNew" xml:space="preserve">
+    <value>_新建配置 (_N)</value>
+  </data>
+  <data name="CfgMnuOpen" xml:space="preserve">
+    <value>_打开配置 (_O)...</value>
+  </data>
+  <data name="CfgMnuSave" xml:space="preserve">
+    <value>_保存配置 (_S)</value>
+  </data>
+  <data name="CfgMnuSaveAs" xml:space="preserve">
+    <value>配置另存为 (_A)...</value>
+  </data>
+  <data name="CfgOthersHelp" xml:space="preserve">
+    <value>其他参数（发送至服务器）</value>
+  </data>
+  <data name="CfgProductsHelp" xml:space="preserve">
+    <value>[必填] 产量地址：数量（即时产量）和循环时间（周期时间）。若缺少这些，OEE和图表将无法运行。</value>
+  </data>
+  <data name="CfgStatusHelp" xml:space="preserve">
+    <value>[必填] 3个机器状态地址（启动/停止/故障）。系统用于在仪表板上确定产线状态。</value>
+  </data>
+  <data name="CfgQualityHelp" xml:space="preserve">
+    <value>[必填] 不良品质量地址（布尔型）：螺柱NG和弹簧螺钉NG。用于在仪表板上计算一次合格率（FPY）和不良率（NG）。</value>
+  </data>
+  <data name="ClearLog" xml:space="preserve">
+    <value>清除日志</value>
+  </data>
+  <data name="ColAlarmName" xml:space="preserve">
+    <value>报警名称 (Error Name)</value>
+  </data>
+  <data name="ColCurrentValue" xml:space="preserve">
+    <value>当前值</value>
+  </data>
+  <data name="ColDataType" xml:space="preserve">
+    <value>数据类型</value>
+  </data>
+  <data name="ColOtherParamName" xml:space="preserve">
+    <value>参数名称</value>
+  </data>
+  <data name="ColParamName" xml:space="preserve">
+    <value>参数</value>
+  </data>
+  <data name="ColPlcAddr" xml:space="preserve">
+    <value>PLC 地址</value>
+  </data>
+  <data name="ComputerInfo" xml:space="preserve">
+    <value>计算机信息</value>
+  </data>
+  <data name="ConfigStatusActive" xml:space="preserve">
+    <value>配置状态: 激活</value>
+  </data>
+  <data name="ConnectionConfig" xml:space="preserve">
+    <value>连接配置</value>
+  </data>
+  <data name="DataTableTitle" xml:space="preserve">
+    <value>PLC 读取数据表</value>
+  </data>
+  <data name="DataType" xml:space="preserve">
+    <value>数据类型:</value>
+  </data>
+  <data name="Disconnected" xml:space="preserve">
+    <value>连接断开</value>
+  </data>
+  <data name="Enabled" xml:space="preserve">
+    <value>启用</value>
+  </data>
+  <data name="ErrorOpenExcelImport" xml:space="preserve">
+    <value>打开 Excel 导入器错误:</value>
+  </data>
+  <data name="ErrorReadConfig" xml:space="preserve">
+    <value>读取配置文件错误:</value>
+  </data>
+  <data name="ExpectedSpeed" xml:space="preserve">
+    <value>理论额定速度:</value>
+  </data>
+  <data name="GeneralInfo" xml:space="preserve">
+    <value>基本参数</value>
+  </data>
+  <data name="LabelBrands" xml:space="preserve">
+    <value>显示 PLC 品牌:</value>
+  </data>
+  <data name="LabelFontSize" xml:space="preserve">
+    <value>字体大小:</value>
+  </data>
+  <data name="LabelLang" xml:space="preserve">
+    <value>系统语言:</value>
+  </data>
+  <data name="LabelMode" xml:space="preserve">
+    <value>运行模式:</value>
+  </data>
+  <data name="LabelStart" xml:space="preserve">
+    <value>开机自启(运行模式):</value>
+  </data>
+  <data name="LabelTheme" xml:space="preserve">
+    <value>界面颜色(主题):</value>
+  </data>
+  <data name="Large" xml:space="preserve">
+    <value>大 (13pt)</value>
+  </data>
+  <data name="LastSignalPrefix" xml:space="preserve">
+    <value>最近信号:</value>
+  </data>
+  <data name="LastUpdate" xml:space="preserve">
+    <value>更新时间</value>
+  </data>
+  <data name="LineIdLabel" xml:space="preserve">
+    <value>线别 ID (Line ID):</value>
+  </data>
+  <data name="LineNameLabel" xml:space="preserve">
+    <value>线别名称 (Line Name):</value>
+  </data>
+  <data name="LineOrderLabel" xml:space="preserve">
+    <value>线别顺序 (Order):</value>
+  </data>
+  <data name="LoadedAddresses" xml:space="preserve">
+    <value>已从配置加载 {0} 个地址。</value>
+  </data>
+  <data name="LocalWebServerLabel" xml:space="preserve">
+    <value>HTTP 本地服务端口:</value>
+  </data>
+  <data name="LogTitle" xml:space="preserve">
+    <value>系统日志</value>
+  </data>
+  <data name="MachineIdLabel" xml:space="preserve">
+    <value>Machine ID (标识):</value>
+  </data>
+  <data name="MachineNameLabel" xml:space="preserve">
+    <value>机器名称 (Machine Name):</value>
+  </data>
+  <data name="Medium" xml:space="preserve">
+    <value>中 (11pt)</value>
+  </data>
+  <data name="Never" xml:space="preserve">
+    <value>从不</value>
+  </data>
+  <data name="NewConfig" xml:space="preserve">
+    <value>新建配置</value>
+  </data>
+  <data name="NoConfigAddresses" xml:space="preserve">
+    <value>未配置读取地址。</value>
+  </data>
+  <data name="Notice" xml:space="preserve">
+    <value>通知</value>
+  </data>
+  <data name="OeeLabel" xml:space="preserve">
+    <value>OEE 设备综合效率:</value>
+  </data>
+  <data name="OeeRateTitle" xml:space="preserve">
+    <value>OEE 设备综合效率</value>
+  </data>
+  <data name="OpenConfigSuccess" xml:space="preserve">
+    <value>成功打开 .cplc 配置文件！请点击 ' 应用' 以将其加载到系统中。</value>
+  </data>
+  <data name="OpenConfigSuccessTitle" xml:space="preserve">
+    <value>打开成功</value>
+  </data>
+  <data name="OpenConfigTitle" xml:space="preserve">
+    <value>打开 .cplc 配置文件</value>
+  </data>
+  <data name="PerformanceLabel" xml:space="preserve">
+    <value>性能开动率 (P)</value>
+  </data>
+  <data name="PlcAddrConfigTitle" xml:space="preserve">
+    <value>PLC 地址配置</value>
+  </data>
+  <data name="PlcAddress" xml:space="preserve">
+    <value>PLC 寄存器地址:</value>
+  </data>
+  <data name="PlcBrand" xml:space="preserve">
+    <value>PLC 品牌 (Brand):</value>
+  </data>
+  <data name="PlcBrandLabel" xml:space="preserve">
+    <value>PLC 品牌 / 协议:</value>
+  </data>
+  <data name="PlcConfig" xml:space="preserve">
+    <value>PLC 配置</value>
+  </data>
+  <data name="PlcGroupTitle" xml:space="preserve">
+    <value>支持的 PLC 品牌</value>
+  </data>
+  <data name="PlcIp" xml:space="preserve">
+    <value>IP 地址 (或串口):</value>
+  </data>
+  <data name="PlcIpLabel" xml:space="preserve">
+    <value>IP Address PLC:</value>
+  </data>
+  <data name="PlcPort" xml:space="preserve">
+    <value>端口 (或波特率):</value>
+  </data>
+  <data name="PlcPortLabel" xml:space="preserve">
+    <value>连接端口 (Port):</value>
+  </data>
+  <data name="PlcProtocol" xml:space="preserve">
+    <value>连接类型/驱动 (Protocol):</value>
+  </data>
+  <data name="PlcStatusConnected" xml:space="preserve">
+    <value>PLC: 已连接</value>
+  </data>
+  <data name="PlcStatusError" xml:space="preserve">
+    <value>PLC: 连接错误 (悬停查看)</value>
+  </data>
+  <data name="PlcStatusNotConnected" xml:space="preserve">
+    <value>PLC: 未连接</value>
+  </data>
+  <data name="PlcUptimeLabel" xml:space="preserve">
+    <value>设备运行时间:</value>
+  </data>
+  <data name="PromptNewConfig" xml:space="preserve">
+    <value>当前配置已更改。您想在创建新配置前保存吗？</value>
+  </data>
+  <data name="PromptOpenConfig" xml:space="preserve">
+    <value>当前配置已更改。您想在打开其他文件前保存吗？</value>
+  </data>
+  <data name="QueryBtn" xml:space="preserve">
+    <value>开始查询</value>
+  </data>
+  <data name="ReadError" xml:space="preserve">
+    <value>读取错误</value>
+  </data>
+  <data name="ReadInterval" xml:space="preserve">
+    <value>读取周期 (ms):</value>
+  </data>
+  <data name="ReadIntervalLabel" xml:space="preserve">
+    <value>读取周期 (Interval Ms):</value>
+  </data>
+  <data name="RefreshConfig" xml:space="preserve">
+    <value>重新加载配置</value>
+  </data>
+  <data name="Reload" xml:space="preserve">
+    <value>刷新</value>
+  </data>
+  <data name="ReloadedConfig" xml:space="preserve">
+    <value>已从当前文件重新加载配置。</value>
+  </data>
+  <data name="STT" xml:space="preserve">
+    <value>序号</value>
+  </data>
+  <data name="SaveChangesTitle" xml:space="preserve">
+    <value>保存更改</value>
+  </data>
+  <data name="SaveConfig" xml:space="preserve">
+    <value>保存配置</value>
+  </data>
+  <data name="UseMockDataText" xml:space="preserve">
+    <value>使用虚拟数据 (演示模式)</value>
+  </data>
+  <data name="SaveFileError" xml:space="preserve">
+    <value>写入文件错误:</value>
+  </data>
+  <data name="SelectAlarmDelete" xml:space="preserve">
+    <value>请选择要删除的报警行！</value>
+  </data>
+  <data name="SelectDateError" xml:space="preserve">
+    <value>请选择需要查询的日期!</value>
+  </data>
+  <data name="SelectDateLabel" xml:space="preserve">
+    <value>选择日期:</value>
+  </data>
+  <data name="SelectShiftLabel" xml:space="preserve">
+    <value>选择班次:</value>
+  </data>
+  <data name="ServerConfig" xml:space="preserve">
+    <value>服务器连接</value>
+  </data>
+  <data name="ServerHost" xml:space="preserve">
+    <value>MQTT Broker IP/主机:</value>
+  </data>
+  <data name="ServerHostLabel" xml:space="preserve">
+    <value>服务器主机地址 (Host):</value>
+  </data>
+  <data name="ServerPort" xml:space="preserve">
+    <value>MQTT Broker 端口:</value>
+  </data>
+  <data name="ServerPortLabel" xml:space="preserve">
+    <value>服务器端口 (Port):</value>
+  </data>
+  <data name="ServerStatusConnected" xml:space="preserve">
+    <value>服务器: 已连接</value>
+  </data>
+  <data name="ServerStatusConnecting" xml:space="preserve">
+    <value>服务器: 连接中...</value>
+  </data>
+  <data name="ServerStatusDisconnected" xml:space="preserve">
+    <value>服务器: 连接断开</value>
+  </data>
+  <data name="SetupTitle" xml:space="preserve">
+    <value>配置读取地址</value>
+  </data>
+  <data name="ShiftAvgSpeed" xml:space="preserve">
+    <value>班次平均速度:</value>
+  </data>
+  <data name="ShiftDateLabel" xml:space="preserve">
+    <value>工作日期:</value>
+  </data>
+  <data name="ShiftName" xml:space="preserve">
+    <value>班次:</value>
+  </data>
+  <data name="ShiftNameLabel" xml:space="preserve">
+    <value>工作班次:</value>
+  </data>
+  <data name="Small" xml:space="preserve">
+    <value>小 (9pt)</value>
+  </data>
+  <data name="StatusUpdating" xml:space="preserve">
+    <value>正在从服务器更新...</value>
+  </data>
+  <data name="Success" xml:space="preserve">
+    <value>成功</value>
+  </data>
+  <data name="SuccessSave" xml:space="preserve">
+    <value>系统设置已更新成功！</value>
+  </data>
+  <data name="SuccessSaveConfig" xml:space="preserve">
+    <value>连接配置已保存成功！</value>
+  </data>
+  <data name="SummaryTitle" xml:space="preserve">
+    <value>设备运行性能详情</value>
+  </data>
+  <data name="SysDashboard" xml:space="preserve">
+    <value>运行效能监控</value>
+  </data>
+  <data name="SysDataTable" xml:space="preserve">
+    <value>PLC 数据表</value>
+  </data>
+  <data name="SysHistoryQuery" xml:space="preserve">
+    <value>历史性能数据查询</value>
+  </data>
+  <data name="SysLiveErrors" xml:space="preserve">
+    <value>活动报警列表</value>
+  </data>
+  <data name="SysLiveStatus" xml:space="preserve">
+    <value>寄存器状态详情</value>
+  </data>
+  <data name="SysLog" xml:space="preserve">
+    <value>系统日志</value>
+  </data>
+  <data name="SysSettings" xml:space="preserve">
+    <value>PLC &amp; 服务器配置</value>
+  </data>
+  <data name="TabAlarmsText" xml:space="preserve">
+    <value>报警</value>
+  </data>
+  <data name="TabOthersText" xml:space="preserve">
+    <value>其他</value>
+  </data>
+  <data name="TabProductsText" xml:space="preserve">
+    <value>产品</value>
+  </data>
+  <data name="TabStatusText" xml:space="preserve">
+    <value>状态</value>
+  </data>
+  <data name="TabQualityText" xml:space="preserve">
+    <value>质量</value>
+  </data>
+  <data name="TargetProgressPattern" xml:space="preserve">
+    <value>目标: {0} | 产量进度: {1}%</value>
+  </data>
+  <data name="TelemetryCpuCores" xml:space="preserve">
+    <value>CPU 核心数: {0} 核</value>
+  </data>
+  <data name="TelemetryCpuUsage" xml:space="preserve">
+    <value>当前 CPU 占用: {0:F1}%</value>
+  </data>
+  <data name="TelemetryOS" xml:space="preserve">
+    <value>操作系统: {0} ({1})</value>
+  </data>
+  <data name="TelemetryRamUsage" xml:space="preserve">
+    <value>程序内存占用: {0:F2} MB</value>
+  </data>
+  <data name="TelemetryUptime" xml:space="preserve">
+    <value>系统运行时间: {0} 天 {1} 小时 {2} 分钟</value>
+  </data>
+  <data name="TestConnection" xml:space="preserve">
+    <value>测试服务器连接</value>
+  </data>
+  <data name="TitleAppConfig" xml:space="preserve">
+    <value>客户端连接与 PLC 设备配置</value>
+  </data>
+  <data name="TitleAppSettings" xml:space="preserve">
+    <value>应用程序设置</value>
+  </data>
+  <data name="TotalQtyLabel" xml:space="preserve">
+    <value>班次总产量:</value>
+  </data>
+  <data name="Type" xml:space="preserve">
+    <value>数据类型</value>
+  </data>
+  <data name="UnsavedChangesPrompt" xml:space="preserve">
+    <value>配置已更改。您想在关闭此窗口前保存吗？</value>
+  </data>
+  <data name="UpdatedTime" xml:space="preserve">
+    <value>更新时间: {0}</value>
+  </data>
+  <data name="Value" xml:space="preserve">
+    <value>当前值</value>
+  </data>
+  <data name="Version" xml:space="preserve">
+    <value>Fii ClientPLC 版本 1.0</value>
+  </data>
+  <data name="WaitingRead" xml:space="preserve">
+    <value>等待读取...</value>
+  </data>
+  <data name="activeContinuous" xml:space="preserve">
+    <value>连续开机运行</value>
+  </data>
+  <data name="cumulativeConnection" xml:space="preserve">
+    <value>累计连接时间</value>
+  </data>
+  <data name="hourlyChartTitle" xml:space="preserve">
+    <value>当前班次逐小时产量图表</value>
+  </data>
+  <data name="plcRuntimeLabel" xml:space="preserve">
+    <value>PLC 运行时间</value>
+  </data>
+  <data name="productionQty" xml:space="preserve">
+    <value>班次产量</value>
+  </data>
+  <data name="unitProducts" xml:space="preserve">
+    <value>个产品</value>
+  </data>
+  <data name="⚙ HỆ THỐNG CLIENT" xml:space="preserve">
+    <value>客户端系统</value>
+  </data>
+  <data name="Status.NoPlcSignal" xml:space="preserve">
+    <value>未收到 PLC 信号</value>
+  </data>
+  <data name="ExcelImport.Title" xml:space="preserve">
+    <value>Excel 配置导入 - 设备: {0}</value>
+  </data>
+  <data name="ExcelImport.Header" xml:space="preserve">
+    <value>EXCEL 配置导入</value>
+  </data>
+  <data name="ExcelImport.SelectFile" xml:space="preserve">
+    <value>选择 Excel 文件...</value>
+  </data>
+  <data name="ExcelImport.NoFileSelected" xml:space="preserve">
+    <value>未选择文件...</value>
+  </data>
+  <data name="ExcelImport.SelectSheet" xml:space="preserve">
+    <value>选择工作表:</value>
+  </data>
+  <data name="ExcelImport.HeaderRow" xml:space="preserve">
+    <value>标题行 (从0开始):</value>
+  </data>
+  <data name="ExcelImport.FirstRowHeader" xml:space="preserve">
+    <value>首行为标题</value>
+  </data>
+  <data name="ExcelImport.SkipEmptyRows" xml:space="preserve">
+    <value>跳过空行</value>
+  </data>
+  <data name="ExcelImport.TabularMode" xml:space="preserve">
+    <value>标准表格格式 (每列为一个属性)</value>
+  </data>
+  <data name="ExcelImport.PairMode" xml:space="preserve">
+    <value>多列配对格式 (地址 + 名称)</value>
+  </data>
+  <data name="ExcelImport.PreviewHeader" xml:space="preserve">
+    <value>EXCEL 数据预览</value>
+  </data>
+  <data name="ExcelImport.MappingHeader" xml:space="preserve">
+    <value>数据列映射</value>
+  </data>
+  <data name="ExcelImport.SummaryTotal" xml:space="preserve">
+    <value>总行数: {0}</value>
+  </data>
+  <data name="ExcelImport.SummaryValid" xml:space="preserve">
+    <value>有效: {0}</value>
+  </data>
+  <data name="ExcelImport.SummaryInvalid" xml:space="preserve">
+    <value>无效: {0}</value>
+  </data>
+  <data name="ExcelImport.SummaryDuplicate" xml:space="preserve">
+    <value>重复: {0}</value>
+  </data>
+  <data name="ExcelImport.ApplyMode" xml:space="preserve">
+    <value>导入模式:</value>
+  </data>
+  <data name="ExcelImport.ApplyMerge" xml:space="preserve">
+    <value>合并并覆盖重复行</value>
+  </data>
+  <data name="ExcelImport.ApplyReplace" xml:space="preserve">
+    <value>替换整台设备配置</value>
+  </data>
+  <data name="BtnYes" xml:space="preserve">
+    <value>是</value>
+  </data>
+  <data name="BtnNo" xml:space="preserve">
+    <value>否</value>
+  </data>
+  <data name="BtnOK" xml:space="preserve">
+    <value>确定</value>
+  </data>
+  <data name="BtnRead" xml:space="preserve">
+    <value>读取数据</value>
+  </data>
+  <data name="BtnWrite" xml:space="preserve">
+    <value>写入数据</value>
+  </data>
+  <data name="Card.ComputerRuntime" xml:space="preserve">
+    <value>计算机运行时间</value>
+  </data>
+  <data name="Card.MachineStatus" xml:space="preserve">
+    <value>设备状态</value>
+  </data>
+  <data name="Card.OeePerformance" xml:space="preserve">
+    <value>OEE效率</value>
+  </data>
+  <data name="Card.PlcRuntime" xml:space="preserve">
+    <value>PLC运行时间</value>
+  </data>
+  <data name="Card.ShiftProduction" xml:space="preserve">
+    <value>班次产量</value>
+  </data>
+  <data name="Chart.HourlyProduction" xml:space="preserve">
+    <value>班次每小时产量图</value>
+  </data>
+  <data name="Chart.NoProductionData" xml:space="preserve">
+    <value>暂无生产数据</value>
+  </data>
+  <data name="Chart.NoProductionDataDescription" xml:space="preserve">
+    <value>计算数据不足。PLC连接并生产首件产品后，指标将进行更新。</value>
+  </data>
+  <data name="Chart.Target" xml:space="preserve">
+    <value>目标: {0} 件/时</value>
+  </data>
+  <data name="ColAddress" xml:space="preserve">
+    <value>地址</value>
+  </data>
+  <data name="ColDuration" xml:space="preserve">
+    <value>持续时间</value>
+  </data>
+  <data name="ColEndedAt" xml:space="preserve">
+    <value>结束时间</value>
+  </data>
+  <data name="ColErrorCode" xml:space="preserve">
+    <value>错误代码</value>
+  </data>
+  <data name="ColErrorName" xml:space="preserve">
+    <value>错误名称</value>
+  </data>
+  <data name="ColIndex" xml:space="preserve">
+    <value>序号</value>
+  </data>
+  <data name="ColMachineId" xml:space="preserve">
+    <value>机器ID</value>
+  </data>
+  <data name="ColSeverity" xml:space="preserve">
+    <value>严重级别</value>
+  </data>
+  <data name="ColStartedAt" xml:space="preserve">
+    <value>开始时间</value>
+  </data>
+  <data name="ColStatus" xml:space="preserve">
+    <value>状态</value>
+  </data>
+  <data name="ConnectPlcBtn" xml:space="preserve">
+    <value>连接PLC</value>
+  </data>
+  <data name="DisconnectPlcBtn" xml:space="preserve">
+    <value>断开连接</value>
+  </data>
+  <data name="Dashboard.Date" xml:space="preserve">
+    <value>日期: {0}</value>
+  </data>
+  <data name="Dashboard.Machine" xml:space="preserve">
+    <value>机器: {0}</value>
+  </data>
+  <data name="Dashboard.ReadCycle" xml:space="preserve">
+    <value>周期: {0} ms</value>
+  </data>
+  <data name="Dashboard.Shift" xml:space="preserve">
+    <value>班次: {0}</value>
+  </data>
+  <data name="Dashboard.Title" xml:space="preserve">
+    <value>实时性能监控</value>
+  </data>
+  <data name="Error.NoDataToExport" xml:space="preserve">
+    <value>没有可导出的数据！</value>
+  </data>
+  <data name="ExportSuccess" xml:space="preserve">
+    <value>成功导出至: {0}</value>
+  </data>
+  <data name="Filter.All" xml:space="preserve">
+    <value>全部</value>
+  </data>
+  <data name="Footer.Cpu" xml:space="preserve">
+    <value>CPU: {0:F1}%</value>
+  </data>
+  <data name="Footer.LastUpdated" xml:space="preserve">
+    <value>更新: {0}</value>
+  </data>
+  <data name="Footer.Ram" xml:space="preserve">
+    <value>内存: {0}</value>
+  </data>
+  <data name="Footer.Uptime" xml:space="preserve">
+    <value>运行时间: {0}</value>
+  </data>
+  <data name="Footer.Version" xml:space="preserve">
+    <value>版本: {0}</value>
+  </data>
+  <data name="FormatPcsPerHour" xml:space="preserve">
+    <value>{0} 件/时</value>
+  </data>
+  <data name="Group" xml:space="preserve">
+    <value>组</value>
+  </data>
+  <data name="GroupName" xml:space="preserve">
+    <value>组名</value>
+  </data>
+  <data name="LabelErrorCode" xml:space="preserve">
+    <value>错误代码:</value>
+  </data>
+  <data name="LabelFromDate" xml:space="preserve">
+    <value>开始日期:</value>
+  </data>
+  <data name="LabelMachine" xml:space="preserve">
+    <value>机器:</value>
+  </data>
+  <data name="LabelStatus" xml:space="preserve">
+    <value>状态:</value>
+  </data>
+  <data name="LabelToDate" xml:space="preserve">
+    <value>结束日期:</value>
+  </data>
+  <data name="LiveErrors.ColError" xml:space="preserve">
+    <value>错误</value>
+  </data>
+  <data name="LiveErrors.ColTime" xml:space="preserve">
+    <value>时间</value>
+  </data>
+  <data name="LiveErrors.EmptyDesc" xml:space="preserve">
+    <value>当前时间段未记录到PLC错误或警告。</value>
+  </data>
+  <data name="LiveErrors.EmptyTitle" xml:space="preserve">
+    <value>无错误或警告</value>
+  </data>
+  <data name="LiveErrors.ErrorPrefix" xml:space="preserve">
+    <value>错误:</value>
+  </data>
+  <data name="LiveErrors.Subtitle" xml:space="preserve">
+    <value>实时监控来自PLC的报警和错误信号</value>
+  </data>
+  <data name="LiveErrors.Title" xml:space="preserve">
+    <value>PLC错误与报警列表</value>
+  </data>
+  <data name="LiveStatus.ColAddress" xml:space="preserve">
+    <value>地址</value>
+  </data>
+  <data name="LiveStatus.ColAlias" xml:space="preserve">
+    <value>名称/别名</value>
+  </data>
+  <data name="LiveStatus.ColType" xml:space="preserve">
+    <value>数据类型</value>
+  </data>
+  <data name="LiveStatus.ColValue" xml:space="preserve">
+    <value>读取值</value>
+  </data>
+  <data name="LiveStatus.Subtitle" xml:space="preserve">
+    <value>实时PLC寄存器数据可视化</value>
+  </data>
+  <data name="LiveStatus.Title" xml:space="preserve">
+    <value>PLC寄存器状态详情</value>
+  </data>
+  <data name="Menu.About" xml:space="preserve">
+    <value>关于</value>
+  </data>
+  <data name="Menu.AboutClient" xml:space="preserve">
+    <value>关于 Fii Client PLC</value>
+  </data>
+  <data name="Menu.ApplicationSettings" xml:space="preserve">
+    <value>应用设置</value>
+  </data>
+  <data name="Menu.ClearLocalCache" xml:space="preserve">
+    <value>清除本地缓存</value>
+  </data>
+  <data name="Menu.CloseFile" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <data name="Menu.Copy" xml:space="preserve">
+    <value>复制</value>
+  </data>
+  <data name="Menu.Cut" xml:space="preserve">
+    <value>剪切</value>
+  </data>
+  <data name="Menu.Delete" xml:space="preserve">
+    <value>删除</value>
+  </data>
+  <data name="Menu.Edit" xml:space="preserve">
+    <value>编辑(_E)</value>
+  </data>
+  <data name="Menu.Exit" xml:space="preserve">
+    <value>退出</value>
+  </data>
+  <data name="Menu.ExportExcel" xml:space="preserve">
+    <value>导出到Excel...</value>
+  </data>
+  <data name="Menu.File" xml:space="preserve">
+    <value>文件(_F)</value>
+  </data>
+  <data name="Menu.Find" xml:space="preserve">
+    <value>查找...</value>
+  </data>
+  <data name="Menu.FindNext" xml:space="preserve">
+    <value>查找下一个</value>
+  </data>
+  <data name="Menu.ImportExcel" xml:space="preserve">
+    <value>从Excel导入...</value>
+  </data>
+  <data name="Menu.ImportMappingSettings" xml:space="preserve">
+    <value>导入映射设置...</value>
+  </data>
+  <data name="Menu.Logging" xml:space="preserve">
+    <value>日志(_L)</value>
+  </data>
+  <data name="Menu.New" xml:space="preserve">
+    <value>新建</value>
+  </data>
+  <data name="Menu.Open" xml:space="preserve">
+    <value>打开...</value>
+  </data>
+  <data name="Menu.OpenLogFolder" xml:space="preserve">
+    <value>打开日志文件夹</value>
+  </data>
+  <data name="Menu.Paste" xml:space="preserve">
+    <value>粘贴</value>
+  </data>
+  <data name="Menu.PlcConnectionTest" xml:space="preserve">
+    <value>PLC连接测试</value>
+  </data>
+  <data name="Menu.ReadSelectedRegister" xml:space="preserve">
+    <value>读取选中寄存器</value>
+  </data>
+  <data name="Menu.Redo" xml:space="preserve">
+    <value>重做</value>
+  </data>
+  <data name="Menu.ReloadConfiguration" xml:space="preserve">
+    <value>重新加载配置</value>
+  </data>
+  <data name="Menu.Save" xml:space="preserve">
+    <value>保存</value>
+  </data>
+  <data name="Menu.SaveAs" xml:space="preserve">
+    <value>另存为...</value>
+  </data>
+  <data name="Menu.SelectAll" xml:space="preserve">
+    <value>全选</value>
+  </data>
+  <data name="Menu.SystemInfo" xml:space="preserve">
+    <value>系统信息</value>
+  </data>
+  <data name="Menu.Tools" xml:space="preserve">
+    <value>工具(_T)</value>
+  </data>
+  <data name="Menu.Undo" xml:space="preserve">
+    <value>撤销</value>
+  </data>
+  <data name="Menu.VersionInfo" xml:space="preserve">
+    <value>版本信息</value>
+  </data>
+  <data name="Menu.Window" xml:space="preserve">
+    <value>窗口(_W)</value>
+  </data>
+  <data name="Menu.WndAlarmConfiguration" xml:space="preserve">
+    <value>报警配置</value>
+  </data>
+  <data name="Menu.WndAlarmHistory" xml:space="preserve">
+    <value>报警历史</value>
+  </data>
+  <data name="Menu.WndConnectionLog" xml:space="preserve">
+    <value>连接日志</value>
+  </data>
+  <data name="Menu.WndDataConfiguration" xml:space="preserve">
+    <value>数据配置</value>
+  </data>
+  <data name="Menu.WndMachineList" xml:space="preserve">
+    <value>机器列表</value>
+  </data>
+  <data name="Menu.WndMinimize" xml:space="preserve">
+    <value>最小化到托盘</value>
+  </data>
+  <data name="Menu.WndPendingData" xml:space="preserve">
+    <value>待处理数据队列</value>
+  </data>
+  <data name="Performance.Availability" xml:space="preserve">
+    <value>可用率 (A)</value>
+  </data>
+  <data name="Performance.AverageSpeed" xml:space="preserve">
+    <value>平均速度:</value>
+  </data>
+  <data name="Performance.Performance" xml:space="preserve">
+    <value>性能率 (P)</value>
+  </data>
+  <data name="Performance.RatedSpeed" xml:space="preserve">
+    <value>额定速度:</value>
+  </data>
+  <data name="Performance.Title" xml:space="preserve">
+    <value>运营绩效详情</value>
+  </data>
+  <data name="Plc.Brand" xml:space="preserve">
+    <value>PLC品牌:</value>
+  </data>
+  <data name="Plc.HttpPort" xml:space="preserve">
+    <value>HTTP端口:</value>
+  </data>
+  <data name="Plc.IpAddress" xml:space="preserve">
+    <value>IP地址:</value>
+  </data>
+  <data name="Plc.LastReceived" xml:space="preserve">
+    <value>最近接收:</value>
+  </data>
+  <data name="Plc.Port" xml:space="preserve">
+    <value>PLC端口:</value>
+  </data>
+  <data name="Plc.Protocol" xml:space="preserve">
+    <value>协议:</value>
+  </data>
+  <data name="Plc.ReadCycle" xml:space="preserve">
+    <value>读取周期:</value>
+  </data>
+  <data name="Plc.ResponseLabel" xml:space="preserve">
+    <value>PLC响应:</value>
+  </data>
+  <data name="PlcExecutionResult" xml:space="preserve">
+    <value>执行结果</value>
+  </data>
+  <data name="PlcOperationConfig" xml:space="preserve">
+    <value>操作配置</value>
+  </data>
+  <data name="PlcRegisterAddress" xml:space="preserve">
+    <value>寄存器地址:</value>
+  </data>
+  <data name="PlcWriteValueLabel" xml:space="preserve">
+    <value>写入值(如有):</value>
+  </data>
+  <data name="SendToServer" xml:space="preserve">
+    <value>发送到服务器</value>
+  </data>
+  <data name="Server.Label" xml:space="preserve">
+    <value>服务器</value>
+  </data>
+  <data name="Server.Status" xml:space="preserve">
+    <value>服务器</value>
+  </data>
+  <data name="TestDataTitle" xml:space="preserve">
+    <value>测试遥测JSON数据:</value>
+  </data>
+  <data name="ViewJsonData" xml:space="preserve">
+    <value>查看JSON数据</value>
+  </data>
+  <data name="Status.Active" xml:space="preserve">
+    <value>活动</value>
+  </data>
+  <data name="Status.Connected" xml:space="preserve">
+    <value>已连接</value>
+  </data>
+  <data name="Status.Connecting" xml:space="preserve">
+    <value>连接中...</value>
+  </data>
+  <data name="Status.Disconnected" xml:space="preserve">
+    <value>已断开</value>
+  </data>
+  <data name="Status.Error" xml:space="preserve">
+    <value>错误</value>
+  </data>
+  <data name="Status.Idle" xml:space="preserve">
+    <value>空闲</value>
+  </data>
+  <data name="Status.Maintenance" xml:space="preserve">
+    <value>维护</value>
+  </data>
+  <data name="Status.Offline" xml:space="preserve">
+    <value>离线</value>
+  </data>
+  <data name="Status.Recovered" xml:space="preserve">
+    <value>已恢复</value>
+  </data>
+  <data name="Status.Running" xml:space="preserve">
+    <value>运行中</value>
+  </data>
+  <data name="Status.Stopped" xml:space="preserve">
+    <value>已停止</value>
+  </data>
+  <data name="TabErrorHistory" xml:space="preserve">
+    <value>错误历史</value>
+  </data>
+  <data name="TabOeePerformance" xml:space="preserve">
+    <value>OEE效率</value>
+  </data>
+  <data name="Dashboard.ShiftProgress" xml:space="preserve">
+    <value>已过班次时间: {0}%</value>
+  </data>
+  <data name="Chart.HourTooltip" xml:space="preserve">
+    <value>{0}时: {1}件</value>
+  </data>
+  <data name="Sidebar.Navigation" xml:space="preserve">
+    <value>导航</value>
+  </data>
+  <data name="Sidebar.PlcBrands" xml:space="preserve">
+    <value>支持的PLC品牌</value>
+  </data>
+  <data name="Sidebar.TooltipCollapse" xml:space="preserve">
+    <value>收起侧边栏</value>
+  </data>
+  <data name="Sidebar.TooltipExpand" xml:space="preserve">
+    <value>展开侧边栏</value>
+  </data>
+  <data name="Footer.PlcResponse" xml:space="preserve">
+    <value>PLC响应: {0}</value>
+  </data>
+  <data name="Card.ComputerUptime" xml:space="preserve">
+    <value>系统运行时间</value>
+  </data>
+  <data name="Card.UptimeSubtext" xml:space="preserve">
+    <value>系统持续运行时间</value>
+  </data>
+  <data name="Card.PlcConnectionTime" xml:space="preserve">
+    <value>PLC连接时长</value>
+  </data>
+  <data name="Card.PlcConnectionSubtext" xml:space="preserve">
+    <value>累计连接运行时间</value>
+  </data>
+  <data name="Menu.Help" xml:space="preserve">
+    <value>帮助(_H)</value>
+  </data>
+  <data name="Menu.UserGuide" xml:space="preserve">
+    <value>用户指南</value>
+  </data>
+  <data name="Dashboard.ShiftBadge" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="Shift.DayLabel" xml:space="preserve">
+    <value>白班</value>
+  </data>
+  <data name="Shift.NightLabel" xml:space="preserve">
+    <value>夜班</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecMcNet" xml:space="preserve">
+    <value>MC协议TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecMcAsciiNet" xml:space="preserve">
+    <value>MC协议ASCII TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecMcUdp" xml:space="preserve">
+    <value>MC协议UDP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecMcAsciiUdp" xml:space="preserve">
+    <value>MC协议ASCII UDP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecA1ENet" xml:space="preserve">
+    <value>A1E协议TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecA1EUdp" xml:space="preserve">
+    <value>A1E协议UDP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.SiemensS7Net_S1200" xml:space="preserve">
+    <value>西门子S7 S1200</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.SiemensS7Net_S1500" xml:space="preserve">
+    <value>西门子S7 S1500</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.SiemensS7Net_S300" xml:space="preserve">
+    <value>西门子S7 S300</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.SiemensS7Net_S400" xml:space="preserve">
+    <value>西门子S7 S400</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.ModbusTcpNet" xml:space="preserve">
+    <value>Modbus TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.ModbusUdpNet" xml:space="preserve">
+    <value>Modbus UDP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.ModbusRtuOverTcp" xml:space="preserve">
+    <value>Modbus RTU串口TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.OmronFinsNet" xml:space="preserve">
+    <value>欧姆龙FINS TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.OmronFinsUdp" xml:space="preserve">
+    <value>欧姆龙FINS UDP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.KeyenceMcNet" xml:space="preserve">
+    <value>基恩士MC协议TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.BeckhoffAdsNet" xml:space="preserve">
+    <value>倍福ADS/AMS</value>
+  </data>
+  <data name="Performance.Availability2" xml:space="preserve">
+    <value>可用率 (A)</value>
+  </data>
+  <data name="Performance.AverageSpeed2" xml:space="preserve">
+    <value>平均速度:</value>
+  </data>
+  <data name="Performance.RatedSpeed2" xml:space="preserve">
+    <value>额定速度:</value>
+  </data>
+  <data name="Footer.Server" xml:space="preserve">
+    <value>服务器: {0}</value>
+  </data>
+  <data name="Card.FirstPassYield" xml:space="preserve">
+    <value>一次通过率 (FPY)</value>
+  </data>
+  <data name="Card.FpySubtext" xml:space="preserve">
+    <value>产品质量合格率</value>
+  </data>
+  <data name="Card.OeeQuality" xml:space="preserve">
+    <value>质量 (Q)</value>
+  </data>
+  <data name="Status.NotConfigured" xml:space="preserve">
+    <value>未配置</value>
+  </data>
+  <data name="Status.NoResponse" xml:space="preserve">
+    <value>无响应</value>
+  </data>
+  <data name="Status.ConfigError" xml:space="preserve">
+    <value>配置错误</value>
+  </data>
+  <data name="Menu.Monitor" xml:space="preserve">
+    <value>监控</value>
+  </data>
+  <data name="Menu.PLC" xml:space="preserve">
+    <value>PLC</value>
+  </data>
+  <data name="Menu.ErrorsLogs" xml:space="preserve">
+    <value>错误与日志</value>
+  </data>
+  <data name="Menu.Settings" xml:space="preserve">
+    <value>设置</value>
+  </data>
+  <data name="Menu.UnitHistory" xml:space="preserve">
+    <value>生产历史</value>
+  </data>
+  <data name="Menu.Product" xml:space="preserve">
+    <value>产品监控</value>
+  </data>
+  <data name="UnitHistory.Title" xml:space="preserve">
+    <value>单件产品生产历史</value>
+  </data>
+  <data name="UnitHistory.FilterSection" xml:space="preserve">
+    <value>筛选</value>
+  </data>
+  <data name="UnitHistory.FromDate" xml:space="preserve">
+    <value>起始日期：</value>
+  </data>
+  <data name="UnitHistory.ToDate" xml:space="preserve">
+    <value>结束日期：</value>
+  </data>
+  <data name="UnitHistory.Status" xml:space="preserve">
+    <value>状态：</value>
+  </data>
+  <data name="UnitHistory.StatusAll" xml:space="preserve">
+    <value>全部</value>
+  </data>
+  <data name="UnitHistory.StatusOK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="UnitHistory.StatusNG" xml:space="preserve">
+    <value>NG</value>
+  </data>
+  <data name="UnitHistory.BtnSearch" xml:space="preserve">
+    <value>搜索</value>
+  </data>
+  <data name="UnitHistory.ColID" xml:space="preserve">
+    <value>ID</value>
+  </data>
+  <data name="UnitHistory.ColStartTime" xml:space="preserve">
+    <value>开始时间</value>
+  </data>
+  <data name="UnitHistory.ColEndTime" xml:space="preserve">
+    <value>结束时间</value>
+  </data>
+  <data name="UnitHistory.ColCycleTime" xml:space="preserve">
+    <value>周期时间 (秒)</value>
+  </data>
+  <data name="UnitHistory.ColErrorCount" xml:space="preserve">
+    <value>错误数</value>
+  </data>
+  <data name="UnitHistory.ColStatus" xml:space="preserve">
+    <value>状态</value>
+  </data>
+  <data name="UnitHistory.ColShift" xml:space="preserve">
+    <value>班次</value>
+  </data>
+  <data name="UnitHistory.ColDate" xml:space="preserve">
+    <value>日期</value>
+  </data>
+  <data name="UnitHistory.StatTotal" xml:space="preserve">
+    <value>总计：{0}</value>
+  </data>
+  <data name="UnitHistory.StatOK" xml:space="preserve">
+    <value>OK：{0}</value>
+  </data>
+  <data name="UnitHistory.StatNG" xml:space="preserve">
+    <value>NG：{0}</value>
+  </data>
+  <data name="UnitHistory.DetailTitle" xml:space="preserve">
+    <value>产品详情</value>
+  </data>
+  <data name="UnitHistory.DetailID" xml:space="preserve">
+    <value>ID：{0}</value>
+  </data>
+  <data name="UnitHistory.DetailTime" xml:space="preserve">
+    <value>时间：{0}</value>
+  </data>
+  <data name="UnitHistory.DetailCycle" xml:space="preserve">
+    <value>周期：{0}秒</value>
+  </data>
+  <data name="UnitHistory.DetailErrorCount" xml:space="preserve">
+    <value>错误数：{0}</value>
+  </data>
+  <data name="UnitHistory.DetailStudNG" xml:space="preserve">
+    <value>• 螺柱错误 (M402)</value>
+  </data>
+  <data name="UnitHistory.DetailStudOK" xml:space="preserve">
+    <value>• 螺柱正常</value>
+  </data>
+  <data name="UnitHistory.DetailSpringNG" xml:space="preserve">
+    <value>• 弹簧螺丝错误 (M405)</value>
+  </data>
+  <data name="UnitHistory.DetailSpringOK" xml:space="preserve">
+    <value>• 弹簧螺丝正常</value>
+  </data>
+  <data name="UnitHistory.DetailFrontRobot" xml:space="preserve">
+    <value>前机器人：{0}</value>
+  </data>
+  <data name="UnitHistory.DetailRearRobot" xml:space="preserve">
+    <value>后机器人：{0}</value>
+  </data>
+  <data name="UnitHistory.DetailNA" xml:space="preserve">
+    <value>N/A</value>
+  </data>
+  <data name="Production.Title" xml:space="preserve">
+    <value>实时生产监控</value>
+  </data>
+  <data name="Production.StatusProducing" xml:space="preserve">
+    <value>生产中</value>
+  </data>
+  <data name="Production.StatusWaiting" xml:space="preserve">
+    <value>等待产品</value>
+  </data>
+  <data name="Production.Time" xml:space="preserve">
+    <value>时间：{0}</value>
+  </data>
+  <data name="Production.NoProduct" xml:space="preserve">
+    <value>无产品</value>
+  </data>
+  <data name="Production.Errors" xml:space="preserve">
+    <value>{0}个错误</value>
+  </data>
+  <data name="Production.TargetCycle" xml:space="preserve">
+    <value>目标：{0}秒</value>
+  </data>
+  <data name="Production.ActualCycle" xml:space="preserve">
+    <value>实际：{0}秒</value>
+  </data>
+  <data name="Production.ProgressTitle" xml:space="preserve">
+    <value>生产进度</value>
+  </data>
+  <data name="Production.FrontRobot" xml:space="preserve">
+    <value>前机器人</value>
+  </data>
+  <data name="Production.RearRobot" xml:space="preserve">
+    <value>后机器人</value>
+  </data>
+  <data name="Production.StatusAssembling" xml:space="preserve">
+    <value>装配中</value>
+  </data>
+  <data name="Production.StatusCompleted" xml:space="preserve">
+    <value>已完成</value>
+  </data>
+  <data name="Production.StatusWaitingShort" xml:space="preserve">
+    <value>等待</value>
+  </data>
+  <data name="Production.Count" xml:space="preserve">
+    <value>数量：{0}</value>
+  </data>
+  <data name="Production.PLCDataTitle" xml:space="preserve">
+    <value>PLC数据指标</value>
+  </data>
+  <data name="Production.ProcessStatus" xml:space="preserve">
+    <value>过程状态</value>
+  </data>
+  <data name="Production.QualityStatus" xml:space="preserve">
+    <value>质量状态</value>
+  </data>
+  <data name="Production.Metrics" xml:space="preserve">
+    <value>生产指标</value>
+  </data>
+  <data name="Production.ConveyorProduct" xml:space="preserve">
+    <value>传送带有产品 (M1050)</value>
+  </data>
+  <data name="Production.FrontComplete" xml:space="preserve">
+    <value>前输出完成 (M1065)</value>
+  </data>
+  <data name="Production.RearComplete" xml:space="preserve">
+    <value>后输出完成 (M1068)</value>
+  </data>
+  <data name="Production.StudCheck" xml:space="preserve">
+    <value>螺柱检查 (M402)</value>
+  </data>
+  <data name="Production.SpringScrewCheck" xml:space="preserve">
+    <value>弹簧螺丝检查 (M405)</value>
+  </data>
+  <data name="Production.CycleTime" xml:space="preserve">
+    <value>周期时间 (D1022)</value>
+  </data>
+  <data name="Production.ProductionQty" xml:space="preserve">
+    <value>生产数量 (D2004)</value>
+  </data>
+  <data name="Production.YieldRate" xml:space="preserve">
+    <value>合格率</value>
+  </data>
+  <data name="Production.StatusLabel" xml:space="preserve">
+    <value>生产状态</value>
+  </data>
+  <data name="Production.SerialLabel" xml:space="preserve">
+    <value>产品编号</value>
+  </data>
+  <data name="Production.TargetCycleLabel" xml:space="preserve">
+    <value>目标周期</value>
+  </data>
+  <data name="UnitHistory.DetailErrorSection" xml:space="preserve">
+    <value>错误信息</value>
+  </data>
+  <data name="UnitHistory.DetailRobotSection" xml:space="preserve">
+    <value>机器人</value>
+  </data>
+</root>

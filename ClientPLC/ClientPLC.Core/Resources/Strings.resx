@@ -1,0 +1,1341 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="ActiveRead" xml:space="preserve">
+    <value>Enable read &amp; display</value>
+  </data>
+  <data name="Address" xml:space="preserve">
+    <value>Register Address</value>
+  </data>
+  <data name="Alias" xml:space="preserve">
+    <value>Alias (Label)</value>
+  </data>
+  <data name="AliasName" xml:space="preserve">
+    <value>Alias / Custom Name:</value>
+  </data>
+  <data name="AppSettings" xml:space="preserve">
+    <value>Application Settings</value>
+  </data>
+  <data name="ApplyError" xml:space="preserve">
+    <value>Error applying configuration:</value>
+  </data>
+  <data name="ApplySuccess" xml:space="preserve">
+    <value>Applied configuration and reconnected to PLC successfully!</value>
+  </data>
+  <data name="ApplySuccessTitle" xml:space="preserve">
+    <value>Applied Successfully</value>
+  </data>
+  <data name="AutoScroll" xml:space="preserve">
+    <value>Auto Scroll</value>
+  </data>
+  <data name="AvailabilityLabel" xml:space="preserve">
+    <value>Availability (A)</value>
+  </data>
+  <data name="AvgSpeedLabel" xml:space="preserve">
+    <value>Shift Average Speed:</value>
+  </data>
+  <data name="BtnAdd" xml:space="preserve">
+    <value>Add New</value>
+  </data>
+  <data name="BtnApplyText" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="BtnCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="BtnDelete" xml:space="preserve">
+    <value>Delete Address</value>
+  </data>
+  <data name="BtnRefreshText" xml:space="preserve">
+    <value>Reload Config</value>
+  </data>
+  <data name="BtnSave" xml:space="preserve">
+    <value>Save Settings</value>
+  </data>
+  <data name="BtnSaveConfig" xml:space="preserve">
+    <value>SAVE CONFIGURATION</value>
+  </data>
+  <data name="BtnTestReadText" xml:space="preserve">
+    <value>Test Read</value>
+  </data>
+  <data name="BtnUpdate" xml:space="preserve">
+    <value>Update</value>
+  </data>
+  <data name="BẢNG GIÁM SÁT HIỆU SUẤT TRỰC TUYẾN" xml:space="preserve">
+    <value>REAL-TIME PERFORMANCE MONITORING DASHBOARD</value>
+  </data>
+  <data name="CboItemDay" xml:space="preserve">
+    <value>Day Shift (07:30 - 19:30)</value>
+  </data>
+  <data name="CboItemNight" xml:space="preserve">
+    <value>Night Shift (19:30 - 07:30)</value>
+  </data>
+  <data name="CfgAlarmsHelp" xml:space="preserve">
+    <value>List of alarm/error register addresses</value>
+  </data>
+  <data name="CfgBtnAdd" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="CfgBtnDelete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="CfgBtnDownloadTemplate" xml:space="preserve">
+    <value>Download Template</value>
+  </data>
+  <data name="CfgBtnExportAlarm" xml:space="preserve">
+    <value>Export CSV</value>
+  </data>
+  <data name="CfgBtnImportAlarm" xml:space="preserve">
+    <value>Import Excel</value>
+  </data>
+  <data name="CfgMnuClose" xml:space="preserve">
+    <value>Close Window</value>
+  </data>
+  <data name="CfgMnuExportCsv" xml:space="preserve">
+    <value>Export Excel/CSV...</value>
+  </data>
+  <data name="CfgMnuFile" xml:space="preserve">
+    <value>_File</value>
+  </data>
+  <data name="CfgMnuImportExcel" xml:space="preserve">
+    <value>Import from Excel...</value>
+  </data>
+  <data name="CfgMnuNew" xml:space="preserve">
+    <value>_New Config (_N)</value>
+  </data>
+  <data name="CfgMnuOpen" xml:space="preserve">
+    <value>_Open Config (_O)...</value>
+  </data>
+  <data name="CfgMnuSave" xml:space="preserve">
+    <value>_Save Config (_S)</value>
+  </data>
+  <data name="CfgMnuSaveAs" xml:space="preserve">
+    <value>Save Config _As (_A)...</value>
+  </data>
+  <data name="CfgOthersHelp" xml:space="preserve">
+    <value>Other parameters (Sent to server)</value>
+  </data>
+  <data name="CfgProductsHelp" xml:space="preserve">
+    <value>[MANDATORY] Production addresses: Quantity (instantaneous output) and Cycle Time. Without these, OEE and charts will not work.</value>
+  </data>
+  <data name="CfgStatusHelp" xml:space="preserve">
+    <value>[MANDATORY] 3 machine status addresses (Start/Stop/Error). Used by the system to determine line status on dashboards.</value>
+  </data>
+  <data name="CfgQualityHelp" xml:space="preserve">
+    <value>[MANDATORY] Defect quality addresses (Bool bits): Stud NG and Spring Screw NG. Used to calculate FPY and NG rates on the dashboard.</value>
+  </data>
+  <data name="ClearLog" xml:space="preserve">
+    <value>Clear Log</value>
+  </data>
+  <data name="ColAlarmName" xml:space="preserve">
+    <value>Alarm Name (Error Name)</value>
+  </data>
+  <data name="ColCurrentValue" xml:space="preserve">
+    <value>Current Value</value>
+  </data>
+  <data name="ColDataType" xml:space="preserve">
+    <value>Data Type</value>
+  </data>
+  <data name="ColOtherParamName" xml:space="preserve">
+    <value>Parameter Name</value>
+  </data>
+  <data name="ColParamName" xml:space="preserve">
+    <value>Parameter</value>
+  </data>
+  <data name="ColPlcAddr" xml:space="preserve">
+    <value>PLC Address</value>
+  </data>
+  <data name="ComputerInfo" xml:space="preserve">
+    <value>System Telemetry</value>
+  </data>
+  <data name="ConfigStatusActive" xml:space="preserve">
+    <value>Config status: Active</value>
+  </data>
+  <data name="ConnectionConfig" xml:space="preserve">
+    <value>Connection Config</value>
+  </data>
+  <data name="DataTableTitle" xml:space="preserve">
+    <value>PLC Data Read Table</value>
+  </data>
+  <data name="DataType" xml:space="preserve">
+    <value>Data Type:</value>
+  </data>
+  <data name="Disconnected" xml:space="preserve">
+    <value>Disconnected</value>
+  </data>
+  <data name="Enabled" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="ErrorOpenExcelImport" xml:space="preserve">
+    <value>Error opening Excel importer:</value>
+  </data>
+  <data name="ErrorReadConfig" xml:space="preserve">
+    <value>Error reading configuration file:</value>
+  </data>
+  <data name="ExpectedSpeed" xml:space="preserve">
+    <value>Theoretical Target Speed:</value>
+  </data>
+  <data name="GeneralInfo" xml:space="preserve">
+    <value>General Info</value>
+  </data>
+  <data name="LabelBrands" xml:space="preserve">
+    <value>Display PLC Brands:</value>
+  </data>
+  <data name="LabelFontSize" xml:space="preserve">
+    <value>Font Size:</value>
+  </data>
+  <data name="LabelLang" xml:space="preserve">
+    <value>System Language:</value>
+  </data>
+  <data name="LabelMode" xml:space="preserve">
+    <value>Operation Mode:</value>
+  </data>
+  <data name="LabelStart" xml:space="preserve">
+    <value>Run on Windows Startup:</value>
+  </data>
+  <data name="LabelTheme" xml:space="preserve">
+    <value>Theme Color:</value>
+  </data>
+  <data name="Large" xml:space="preserve">
+    <value>Large (13pt)</value>
+  </data>
+  <data name="LastSignalPrefix" xml:space="preserve">
+    <value>Last signal:</value>
+  </data>
+  <data name="LastUpdate" xml:space="preserve">
+    <value>Updated At</value>
+  </data>
+  <data name="LineIdLabel" xml:space="preserve">
+    <value>Line ID:</value>
+  </data>
+  <data name="LineNameLabel" xml:space="preserve">
+    <value>Line Name:</value>
+  </data>
+  <data name="LineOrderLabel" xml:space="preserve">
+    <value>Line Order:</value>
+  </data>
+  <data name="LoadedAddresses" xml:space="preserve">
+    <value>Loaded {0} addresses from config.</value>
+  </data>
+  <data name="LocalWebServerLabel" xml:space="preserve">
+    <value>HTTP Server Port:</value>
+  </data>
+  <data name="LogTitle" xml:space="preserve">
+    <value>System Log</value>
+  </data>
+  <data name="MachineIdLabel" xml:space="preserve">
+    <value>Machine ID:</value>
+  </data>
+  <data name="MachineNameLabel" xml:space="preserve">
+    <value>Machine Name:</value>
+  </data>
+  <data name="Medium" xml:space="preserve">
+    <value>Medium (11pt)</value>
+  </data>
+  <data name="Never" xml:space="preserve">
+    <value>Never</value>
+  </data>
+  <data name="NewConfig" xml:space="preserve">
+    <value>New Config</value>
+  </data>
+  <data name="NoConfigAddresses" xml:space="preserve">
+    <value>No read addresses configured.</value>
+  </data>
+  <data name="Notice" xml:space="preserve">
+    <value>Notice</value>
+  </data>
+  <data name="OeeLabel" xml:space="preserve">
+    <value>OEE Rating Achieved:</value>
+  </data>
+  <data name="OeeRateTitle" xml:space="preserve">
+    <value>Overall OEE Index</value>
+  </data>
+  <data name="OpenConfigSuccess" xml:space="preserve">
+    <value>Opened .cplc configuration file successfully! Please click ' Apply' to load it into the system.</value>
+  </data>
+  <data name="OpenConfigSuccessTitle" xml:space="preserve">
+    <value>Opened Successfully</value>
+  </data>
+  <data name="OpenConfigTitle" xml:space="preserve">
+    <value>Open .cplc configuration file</value>
+  </data>
+  <data name="PerformanceLabel" xml:space="preserve">
+    <value>Performance (P)</value>
+  </data>
+  <data name="PlcAddrConfigTitle" xml:space="preserve">
+    <value>PLC Address Configuration</value>
+  </data>
+  <data name="PlcAddress" xml:space="preserve">
+    <value>PLC Address:</value>
+  </data>
+  <data name="PlcBrand" xml:space="preserve">
+    <value>PLC Brand:</value>
+  </data>
+  <data name="PlcBrandLabel" xml:space="preserve">
+    <value>PLC Brand / Protocol:</value>
+  </data>
+  <data name="PlcConfig" xml:space="preserve">
+    <value>PLC Config</value>
+  </data>
+  <data name="PlcGroupTitle" xml:space="preserve">
+    <value>SUPPORTED PLC BRANDS</value>
+  </data>
+  <data name="PlcIp" xml:space="preserve">
+    <value>IP Address (or Serial Port):</value>
+  </data>
+  <data name="PlcIpLabel" xml:space="preserve">
+    <value>PLC IP Address:</value>
+  </data>
+  <data name="PlcPort" xml:space="preserve">
+    <value>Port (or Baud Rate):</value>
+  </data>
+  <data name="PlcPortLabel" xml:space="preserve">
+    <value>Connection Port (Port):</value>
+  </data>
+  <data name="PlcProtocol" xml:space="preserve">
+    <value>Connection / Driver (Protocol):</value>
+  </data>
+  <data name="PlcStatusConnected" xml:space="preserve">
+    <value>PLC: Connected</value>
+  </data>
+  <data name="PlcStatusError" xml:space="preserve">
+    <value>PLC: Connection Error (Hover)</value>
+  </data>
+  <data name="PlcStatusNotConnected" xml:space="preserve">
+    <value>PLC: Not Connected</value>
+  </data>
+  <data name="PlcUptimeLabel" xml:space="preserve">
+    <value>PLC Active Runtime:</value>
+  </data>
+  <data name="PromptNewConfig" xml:space="preserve">
+    <value>The current configuration has changed. Do you want to save before creating a new one?</value>
+  </data>
+  <data name="PromptOpenConfig" xml:space="preserve">
+    <value>The current configuration has changed. Do you want to save before opening another file?</value>
+  </data>
+  <data name="QueryBtn" xml:space="preserve">
+    <value>Query</value>
+  </data>
+  <data name="ReadError" xml:space="preserve">
+    <value>Read Error</value>
+  </data>
+  <data name="ReadInterval" xml:space="preserve">
+    <value>Read Interval (ms):</value>
+  </data>
+  <data name="ReadIntervalLabel" xml:space="preserve">
+    <value>Read Interval (ms):</value>
+  </data>
+  <data name="RefreshConfig" xml:space="preserve">
+    <value>Reload Config</value>
+  </data>
+  <data name="Reload" xml:space="preserve">
+    <value>Reload</value>
+  </data>
+  <data name="ReloadedConfig" xml:space="preserve">
+    <value>Reloaded configuration from the current file.</value>
+  </data>
+  <data name="STT" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="SaveChangesTitle" xml:space="preserve">
+    <value>Save Changes</value>
+  </data>
+  <data name="SaveConfig" xml:space="preserve">
+    <value>Save Connection Config</value>
+  </data>
+  <data name="UseMockDataText" xml:space="preserve">
+    <value>Use virtual data (Demo Mode)</value>
+  </data>
+  <data name="SaveFileError" xml:space="preserve">
+    <value>Error writing file:</value>
+  </data>
+  <data name="SelectAlarmDelete" xml:space="preserve">
+    <value>Select an alarm row to delete!</value>
+  </data>
+  <data name="SelectDateError" xml:space="preserve">
+    <value>Please select a date to query!</value>
+  </data>
+  <data name="SelectDateLabel" xml:space="preserve">
+    <value>Select Date:</value>
+  </data>
+  <data name="SelectShiftLabel" xml:space="preserve">
+    <value>Select Shift:</value>
+  </data>
+  <data name="ServerConfig" xml:space="preserve">
+    <value>Server Connection</value>
+  </data>
+  <data name="ServerHost" xml:space="preserve">
+    <value>MQTT Broker IP / Host:</value>
+  </data>
+  <data name="ServerHostLabel" xml:space="preserve">
+    <value>Server Host Address:</value>
+  </data>
+  <data name="ServerPort" xml:space="preserve">
+    <value>MQTT Broker Port:</value>
+  </data>
+  <data name="ServerPortLabel" xml:space="preserve">
+    <value>Server Port:</value>
+  </data>
+  <data name="ServerStatusConnected" xml:space="preserve">
+    <value>Server: Connected</value>
+  </data>
+  <data name="ServerStatusConnecting" xml:space="preserve">
+    <value>Server: Connecting...</value>
+  </data>
+  <data name="ServerStatusDisconnected" xml:space="preserve">
+    <value>Server: Disconnected</value>
+  </data>
+  <data name="SetupTitle" xml:space="preserve">
+    <value>Setup Read Addresses</value>
+  </data>
+  <data name="ShiftAvgSpeed" xml:space="preserve">
+    <value>Shift Avg Speed:</value>
+  </data>
+  <data name="ShiftDateLabel" xml:space="preserve">
+    <value>Working Date:</value>
+  </data>
+  <data name="ShiftName" xml:space="preserve">
+    <value>Shift:</value>
+  </data>
+  <data name="ShiftNameLabel" xml:space="preserve">
+    <value>Shift Name:</value>
+  </data>
+  <data name="Small" xml:space="preserve">
+    <value>Small (9pt)</value>
+  </data>
+  <data name="StatusUpdating" xml:space="preserve">
+    <value>Updating from Server...</value>
+  </data>
+  <data name="Success" xml:space="preserve">
+    <value>Success</value>
+  </data>
+  <data name="SuccessSave" xml:space="preserve">
+    <value>System settings updated successfully!</value>
+  </data>
+  <data name="SuccessSaveConfig" xml:space="preserve">
+    <value>Connection configuration saved successfully!</value>
+  </data>
+  <data name="SummaryTitle" xml:space="preserve">
+    <value>DETAILED OPERATIONAL METRICS</value>
+  </data>
+  <data name="SysDashboard" xml:space="preserve">
+    <value>Performance Monitor</value>
+  </data>
+  <data name="SysDataTable" xml:space="preserve">
+    <value>PLC Data Table</value>
+  </data>
+  <data name="SysHistoryQuery" xml:space="preserve">
+    <value>HISTORICAL PERFORMANCE QUERY</value>
+  </data>
+  <data name="SysLiveErrors" xml:space="preserve">
+    <value>Active Alarms List</value>
+  </data>
+  <data name="SysLiveStatus" xml:space="preserve">
+    <value>Live Status Details</value>
+  </data>
+  <data name="SysLog" xml:space="preserve">
+    <value>System Log</value>
+  </data>
+  <data name="SysSettings" xml:space="preserve">
+    <value>PLC &amp; Server Config</value>
+  </data>
+  <data name="TabAlarmsText" xml:space="preserve">
+    <value>Alarms</value>
+  </data>
+  <data name="TabOthersText" xml:space="preserve">
+    <value>Others</value>
+  </data>
+  <data name="TabProductsText" xml:space="preserve">
+    <value>Products</value>
+  </data>
+  <data name="TabStatusText" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="TabQualityText" xml:space="preserve">
+    <value>Quality</value>
+  </data>
+  <data name="TargetProgressPattern" xml:space="preserve">
+    <value>Target: {0} | Output Progress: {1}%</value>
+  </data>
+  <data name="TelemetryCpuCores" xml:space="preserve">
+    <value>CPU Cores: {0} Cores</value>
+  </data>
+  <data name="TelemetryCpuUsage" xml:space="preserve">
+    <value>Current CPU Load: {0:F1}%</value>
+  </data>
+  <data name="TelemetryOS" xml:space="preserve">
+    <value>Operating System: {0} ({1})</value>
+  </data>
+  <data name="TelemetryRamUsage" xml:space="preserve">
+    <value>RAM Used (App): {0:F2} MB</value>
+  </data>
+  <data name="TelemetryUptime" xml:space="preserve">
+    <value>System Uptime: {0} days {1} hours {2} mins</value>
+  </data>
+  <data name="TestConnection" xml:space="preserve">
+    <value>Test Server Connection</value>
+  </data>
+  <data name="TitleAppConfig" xml:space="preserve">
+    <value>Client Connection &amp; PLC Device Config</value>
+  </data>
+  <data name="TitleAppSettings" xml:space="preserve">
+    <value>Application &amp; Theme Settings</value>
+  </data>
+  <data name="TotalQtyLabel" xml:space="preserve">
+    <value>Total Shift Output:</value>
+  </data>
+  <data name="Type" xml:space="preserve">
+    <value>Data Type</value>
+  </data>
+  <data name="UnsavedChangesPrompt" xml:space="preserve">
+    <value>The configuration has changed. Do you want to save before closing this window?</value>
+  </data>
+  <data name="UpdatedTime" xml:space="preserve">
+    <value>Updated at: {0}</value>
+  </data>
+  <data name="Value" xml:space="preserve">
+    <value>Current Value</value>
+  </data>
+  <data name="Version" xml:space="preserve">
+    <value>Fii ClientPLC v1.0</value>
+  </data>
+  <data name="WaitingRead" xml:space="preserve">
+    <value>Waiting read...</value>
+  </data>
+  <data name="activeContinuous" xml:space="preserve">
+    <value>continuous system uptime</value>
+  </data>
+  <data name="cumulativeConnection" xml:space="preserve">
+    <value>accumulated connection runtime</value>
+  </data>
+  <data name="hourlyChartTitle" xml:space="preserve">
+    <value>HOUR-BY-HOUR SHIFT PRODUCTION CHART</value>
+  </data>
+  <data name="plcRuntimeLabel" xml:space="preserve">
+    <value>PLC Connection Runtime</value>
+  </data>
+  <data name="productionQty" xml:space="preserve">
+    <value>Shift Output</value>
+  </data>
+  <data name="unitProducts" xml:space="preserve">
+    <value>products</value>
+  </data>
+  <data name="⚙ HỆ THỐNG CLIENT" xml:space="preserve">
+    <value>CLIENT SYSTEM</value>
+  </data>
+  <data name="Status.NoPlcSignal" xml:space="preserve">
+    <value>No PLC heartbeat signal</value>
+  </data>
+  <data name="ExcelImport.Title" xml:space="preserve">
+    <value>Excel Configuration Import - Machine: {0}</value>
+  </data>
+  <data name="ExcelImport.Header" xml:space="preserve">
+    <value>EXCEL CONFIGURATION IMPORT</value>
+  </data>
+  <data name="ExcelImport.SelectFile" xml:space="preserve">
+    <value>Choose Excel file...</value>
+  </data>
+  <data name="ExcelImport.NoFileSelected" xml:space="preserve">
+    <value>No file selected...</value>
+  </data>
+  <data name="ExcelImport.SelectSheet" xml:space="preserve">
+    <value>Select Sheet:</value>
+  </data>
+  <data name="ExcelImport.HeaderRow" xml:space="preserve">
+    <value>Header Row (0-indexed):</value>
+  </data>
+  <data name="ExcelImport.FirstRowHeader" xml:space="preserve">
+    <value>First row is header</value>
+  </data>
+  <data name="ExcelImport.SkipEmptyRows" xml:space="preserve">
+    <value>Skip empty rows</value>
+  </data>
+  <data name="ExcelImport.TabularMode" xml:space="preserve">
+    <value>Standard table format (Each column is 1 attribute)</value>
+  </data>
+  <data name="ExcelImport.PairMode" xml:space="preserve">
+    <value>Multi-column pair format (Address + Name)</value>
+  </data>
+  <data name="ExcelImport.PreviewHeader" xml:space="preserve">
+    <value>EXCEL DATA PREVIEW</value>
+  </data>
+  <data name="ExcelImport.MappingHeader" xml:space="preserve">
+    <value>DATA COLUMN MAPPING</value>
+  </data>
+  <data name="ExcelImport.SummaryTotal" xml:space="preserve">
+    <value>Total rows: {0}</value>
+  </data>
+  <data name="ExcelImport.SummaryValid" xml:space="preserve">
+    <value>Valid: {0}</value>
+  </data>
+  <data name="ExcelImport.SummaryInvalid" xml:space="preserve">
+    <value>Invalid: {0}</value>
+  </data>
+  <data name="ExcelImport.SummaryDuplicate" xml:space="preserve">
+    <value>Duplicate: {0}</value>
+  </data>
+  <data name="ExcelImport.ApplyMode" xml:space="preserve">
+    <value>Import mode:</value>
+  </data>
+  <data name="ExcelImport.ApplyMerge" xml:space="preserve">
+    <value>Merge &amp; overwrite duplicates</value>
+  </data>
+  <data name="ExcelImport.ApplyReplace" xml:space="preserve">
+    <value>Replace entire machine configuration</value>
+  </data>
+  <data name="BtnYes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="BtnNo" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="BtnOK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="BtnRead" xml:space="preserve">
+    <value>READ DATA</value>
+  </data>
+  <data name="BtnWrite" xml:space="preserve">
+    <value>WRITE DATA</value>
+  </data>
+  <data name="Card.ComputerRuntime" xml:space="preserve">
+    <value>Computer Runtime</value>
+  </data>
+  <data name="Card.MachineStatus" xml:space="preserve">
+    <value>Machine Status</value>
+  </data>
+  <data name="Card.OeePerformance" xml:space="preserve">
+    <value>OEE Performance</value>
+  </data>
+  <data name="Card.PlcRuntime" xml:space="preserve">
+    <value>PLC Runtime</value>
+  </data>
+  <data name="Card.ShiftProduction" xml:space="preserve">
+    <value>Shift Production</value>
+  </data>
+  <data name="Chart.HourlyProduction" xml:space="preserve">
+    <value>Hourly Production by Shift</value>
+  </data>
+  <data name="Chart.NoProductionData" xml:space="preserve">
+    <value>No production data</value>
+  </data>
+  <data name="Chart.NoProductionDataDescription" xml:space="preserve">
+    <value>Insufficient data to calculate. Indicators will update after the PLC connects and the first product is manufactured.</value>
+  </data>
+  <data name="Chart.Target" xml:space="preserve">
+    <value>Target: {0} pcs/hr</value>
+  </data>
+  <data name="ColAddress" xml:space="preserve">
+    <value>Address</value>
+  </data>
+  <data name="ColDuration" xml:space="preserve">
+    <value>Duration</value>
+  </data>
+  <data name="ColEndedAt" xml:space="preserve">
+    <value>Ended At</value>
+  </data>
+  <data name="ColErrorCode" xml:space="preserve">
+    <value>Error Code</value>
+  </data>
+  <data name="ColErrorName" xml:space="preserve">
+    <value>Error Name</value>
+  </data>
+  <data name="ColIndex" xml:space="preserve">
+    <value>No.</value>
+  </data>
+  <data name="ColMachineId" xml:space="preserve">
+    <value>Machine ID</value>
+  </data>
+  <data name="ColSeverity" xml:space="preserve">
+    <value>Severity</value>
+  </data>
+  <data name="ColStartedAt" xml:space="preserve">
+    <value>Started At</value>
+  </data>
+  <data name="ColStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="ConnectPlcBtn" xml:space="preserve">
+    <value>Connect PLC</value>
+  </data>
+  <data name="DisconnectPlcBtn" xml:space="preserve">
+    <value>Disconnect</value>
+  </data>
+  <data name="Dashboard.Date" xml:space="preserve">
+    <value>Date: {0}</value>
+  </data>
+  <data name="Dashboard.Machine" xml:space="preserve">
+    <value>Machine: {0}</value>
+  </data>
+  <data name="Dashboard.ReadCycle" xml:space="preserve">
+    <value>Cycle: {0} ms</value>
+  </data>
+  <data name="Dashboard.Shift" xml:space="preserve">
+    <value>Shift: {0}</value>
+  </data>
+  <data name="Dashboard.Title" xml:space="preserve">
+    <value>Real-time Performance Monitoring</value>
+  </data>
+  <data name="Error.NoDataToExport" xml:space="preserve">
+    <value>No data to export!</value>
+  </data>
+  <data name="ExportSuccess" xml:space="preserve">
+    <value>Exported successfully to: {0}</value>
+  </data>
+  <data name="Filter.All" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="Footer.Cpu" xml:space="preserve">
+    <value>CPU: {0:F1}%</value>
+  </data>
+  <data name="Footer.LastUpdated" xml:space="preserve">
+    <value>Updated: {0}</value>
+  </data>
+  <data name="Footer.Ram" xml:space="preserve">
+    <value>RAM: {0}</value>
+  </data>
+  <data name="Footer.Uptime" xml:space="preserve">
+    <value>Uptime: {0}</value>
+  </data>
+  <data name="Footer.Version" xml:space="preserve">
+    <value>Version: {0}</value>
+  </data>
+  <data name="FormatPcsPerHour" xml:space="preserve">
+    <value>{0} pcs/h</value>
+  </data>
+  <data name="Group" xml:space="preserve">
+    <value>Group</value>
+  </data>
+  <data name="GroupName" xml:space="preserve">
+    <value>Group Name</value>
+  </data>
+  <data name="LabelErrorCode" xml:space="preserve">
+    <value>Error Code:</value>
+  </data>
+  <data name="LabelFromDate" xml:space="preserve">
+    <value>From Date:</value>
+  </data>
+  <data name="LabelMachine" xml:space="preserve">
+    <value>Machine:</value>
+  </data>
+  <data name="LabelStatus" xml:space="preserve">
+    <value>Status:</value>
+  </data>
+  <data name="LabelToDate" xml:space="preserve">
+    <value>To Date:</value>
+  </data>
+  <data name="LiveErrors.ColError" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="LiveErrors.ColTime" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="LiveErrors.EmptyDesc" xml:space="preserve">
+    <value>No PLC errors or warnings recorded at this time.</value>
+  </data>
+  <data name="LiveErrors.EmptyTitle" xml:space="preserve">
+    <value>No errors or warnings</value>
+  </data>
+  <data name="LiveErrors.ErrorPrefix" xml:space="preserve">
+    <value>Error:</value>
+  </data>
+  <data name="LiveErrors.Subtitle" xml:space="preserve">
+    <value>Monitor alarm and error signals from PLC in real time</value>
+  </data>
+  <data name="LiveErrors.Title" xml:space="preserve">
+    <value>Active Alarms &amp; PLC Errors</value>
+  </data>
+  <data name="LiveStatus.ColAddress" xml:space="preserve">
+    <value>Address</value>
+  </data>
+  <data name="LiveStatus.ColAlias" xml:space="preserve">
+    <value>Name / Alias</value>
+  </data>
+  <data name="LiveStatus.ColType" xml:space="preserve">
+    <value>Data Type</value>
+  </data>
+  <data name="LiveStatus.ColValue" xml:space="preserve">
+    <value>Read Value</value>
+  </data>
+  <data name="LiveStatus.Subtitle" xml:space="preserve">
+    <value>Real-time PLC register data visualization</value>
+  </data>
+  <data name="LiveStatus.Title" xml:space="preserve">
+    <value>PLC Register Status Details</value>
+  </data>
+  <data name="Menu.About" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="Menu.AboutClient" xml:space="preserve">
+    <value>About Fii Client PLC</value>
+  </data>
+  <data name="Menu.ApplicationSettings" xml:space="preserve">
+    <value>Application Settings</value>
+  </data>
+  <data name="Menu.ClearLocalCache" xml:space="preserve">
+    <value>Clear Local Cache</value>
+  </data>
+  <data name="Menu.CloseFile" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Menu.Copy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="Menu.Cut" xml:space="preserve">
+    <value>Cut</value>
+  </data>
+  <data name="Menu.Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Menu.Edit" xml:space="preserve">
+    <value>_Edit</value>
+  </data>
+  <data name="Menu.Exit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <data name="Menu.ExportExcel" xml:space="preserve">
+    <value>Export to Excel...</value>
+  </data>
+  <data name="Menu.File" xml:space="preserve">
+    <value>_File</value>
+  </data>
+  <data name="Menu.Find" xml:space="preserve">
+    <value>Find...</value>
+  </data>
+  <data name="Menu.FindNext" xml:space="preserve">
+    <value>Find Next</value>
+  </data>
+  <data name="Menu.ImportExcel" xml:space="preserve">
+    <value>Import from Excel...</value>
+  </data>
+  <data name="Menu.ImportMappingSettings" xml:space="preserve">
+    <value>Import Mapping Settings...</value>
+  </data>
+  <data name="Menu.Logging" xml:space="preserve">
+    <value>_Logging</value>
+  </data>
+  <data name="Menu.New" xml:space="preserve">
+    <value>New</value>
+  </data>
+  <data name="Menu.Open" xml:space="preserve">
+    <value>Open...</value>
+  </data>
+  <data name="Menu.OpenLogFolder" xml:space="preserve">
+    <value>Open Log Folder</value>
+  </data>
+  <data name="Menu.Paste" xml:space="preserve">
+    <value>Paste</value>
+  </data>
+  <data name="Menu.PlcConnectionTest" xml:space="preserve">
+    <value>PLC Connection Test</value>
+  </data>
+  <data name="Menu.ReadSelectedRegister" xml:space="preserve">
+    <value>Read Selected Register</value>
+  </data>
+  <data name="Menu.Redo" xml:space="preserve">
+    <value>Redo</value>
+  </data>
+  <data name="Menu.ReloadConfiguration" xml:space="preserve">
+    <value>Reload Configuration</value>
+  </data>
+  <data name="Menu.Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Menu.SaveAs" xml:space="preserve">
+    <value>Save As...</value>
+  </data>
+  <data name="Menu.SelectAll" xml:space="preserve">
+    <value>Select All</value>
+  </data>
+  <data name="Menu.SystemInfo" xml:space="preserve">
+    <value>System Info</value>
+  </data>
+  <data name="Menu.Tools" xml:space="preserve">
+    <value>_Tools</value>
+  </data>
+  <data name="Menu.Undo" xml:space="preserve">
+    <value>Undo</value>
+  </data>
+  <data name="Menu.VersionInfo" xml:space="preserve">
+    <value>Version Info</value>
+  </data>
+  <data name="Menu.Window" xml:space="preserve">
+    <value>_Window</value>
+  </data>
+  <data name="Menu.WndAlarmConfiguration" xml:space="preserve">
+    <value>Alarm Configuration</value>
+  </data>
+  <data name="Menu.WndAlarmHistory" xml:space="preserve">
+    <value>Alarm History</value>
+  </data>
+  <data name="Menu.WndConnectionLog" xml:space="preserve">
+    <value>Connection Log</value>
+  </data>
+  <data name="Menu.WndDataConfiguration" xml:space="preserve">
+    <value>Data Configuration</value>
+  </data>
+  <data name="Menu.WndMachineList" xml:space="preserve">
+    <value>Machine List</value>
+  </data>
+  <data name="Menu.WndMinimize" xml:space="preserve">
+    <value>Minimize to Tray</value>
+  </data>
+  <data name="Menu.WndPendingData" xml:space="preserve">
+    <value>Pending Data Queue</value>
+  </data>
+  <data name="Performance.Availability" xml:space="preserve">
+    <value>Availability (A)</value>
+  </data>
+  <data name="Performance.AverageSpeed" xml:space="preserve">
+    <value>Avg Speed:</value>
+  </data>
+  <data name="Performance.Performance" xml:space="preserve">
+    <value>Performance (P)</value>
+  </data>
+  <data name="Performance.RatedSpeed" xml:space="preserve">
+    <value>Rated Speed:</value>
+  </data>
+  <data name="Performance.Title" xml:space="preserve">
+    <value>Operational Performance Details</value>
+  </data>
+  <data name="Plc.Brand" xml:space="preserve">
+    <value>PLC Brand:</value>
+  </data>
+  <data name="Plc.HttpPort" xml:space="preserve">
+    <value>HTTP Port:</value>
+  </data>
+  <data name="Plc.IpAddress" xml:space="preserve">
+    <value>IP Address:</value>
+  </data>
+  <data name="Plc.LastReceived" xml:space="preserve">
+    <value>Last Received:</value>
+  </data>
+  <data name="Plc.Port" xml:space="preserve">
+    <value>PLC Port:</value>
+  </data>
+  <data name="Plc.Protocol" xml:space="preserve">
+    <value>Protocol:</value>
+  </data>
+  <data name="Plc.ReadCycle" xml:space="preserve">
+    <value>Read Cycle:</value>
+  </data>
+  <data name="Plc.ResponseLabel" xml:space="preserve">
+    <value>PLC Response:</value>
+  </data>
+  <data name="PlcExecutionResult" xml:space="preserve">
+    <value>EXECUTION RESULT</value>
+  </data>
+  <data name="PlcOperationConfig" xml:space="preserve">
+    <value>OPERATION CONFIG</value>
+  </data>
+  <data name="PlcRegisterAddress" xml:space="preserve">
+    <value>Register Address:</value>
+  </data>
+  <data name="PlcWriteValueLabel" xml:space="preserve">
+    <value>Write Value (if any):</value>
+  </data>
+  <data name="SendToServer" xml:space="preserve">
+    <value>Send to Server</value>
+  </data>
+  <data name="Server.Label" xml:space="preserve">
+    <value>Server</value>
+  </data>
+  <data name="Server.Status" xml:space="preserve">
+    <value>Server</value>
+  </data>
+  <data name="TestDataTitle" xml:space="preserve">
+    <value>Test Telemetry JSON Data:</value>
+  </data>
+  <data name="ViewJsonData" xml:space="preserve">
+    <value>View JSON Data</value>
+  </data>
+  <data name="Status.Active" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="Status.Connected" xml:space="preserve">
+    <value>Connected</value>
+  </data>
+  <data name="Status.Connecting" xml:space="preserve">
+    <value>Connecting...</value>
+  </data>
+  <data name="Status.Disconnected" xml:space="preserve">
+    <value>Disconnected</value>
+  </data>
+  <data name="Status.Error" xml:space="preserve">
+    <value>ERROR</value>
+  </data>
+  <data name="Status.Idle" xml:space="preserve">
+    <value>IDLE</value>
+  </data>
+  <data name="Status.Maintenance" xml:space="preserve">
+    <value>MAINTENANCE</value>
+  </data>
+  <data name="Status.Offline" xml:space="preserve">
+    <value>Offline</value>
+  </data>
+  <data name="Status.Recovered" xml:space="preserve">
+    <value>Recovered</value>
+  </data>
+  <data name="Status.Running" xml:space="preserve">
+    <value>RUNNING</value>
+  </data>
+  <data name="Status.Stopped" xml:space="preserve">
+    <value>STOPPED</value>
+  </data>
+  <data name="TabErrorHistory" xml:space="preserve">
+    <value>Error History</value>
+  </data>
+  <data name="TabOeePerformance" xml:space="preserve">
+    <value>OEE Performance</value>
+  </data>
+  <data name="Dashboard.ShiftProgress" xml:space="preserve">
+    <value>Shift time elapsed: {0}%</value>
+  </data>
+  <data name="Chart.HourTooltip" xml:space="preserve">
+    <value>Hour {0}: {1} pcs</value>
+  </data>
+  <data name="Sidebar.Navigation" xml:space="preserve">
+    <value>NAVIGATION</value>
+  </data>
+  <data name="Sidebar.PlcBrands" xml:space="preserve">
+    <value>SUPPORTED PLC BRANDS</value>
+  </data>
+  <data name="Sidebar.TooltipCollapse" xml:space="preserve">
+    <value>Collapse sidebar</value>
+  </data>
+  <data name="Sidebar.TooltipExpand" xml:space="preserve">
+    <value>Expand sidebar</value>
+  </data>
+  <data name="Footer.PlcResponse" xml:space="preserve">
+    <value>PLC Response: {0}</value>
+  </data>
+  <data name="Card.ComputerUptime" xml:space="preserve">
+    <value>System Uptime</value>
+  </data>
+  <data name="Card.UptimeSubtext" xml:space="preserve">
+    <value>continuous system uptime</value>
+  </data>
+  <data name="Card.PlcConnectionTime" xml:space="preserve">
+    <value>PLC Connection Time</value>
+  </data>
+  <data name="Card.PlcConnectionSubtext" xml:space="preserve">
+    <value>accumulated connection runtime</value>
+  </data>
+  <data name="Menu.Help" xml:space="preserve">
+    <value>_Help</value>
+  </data>
+  <data name="Menu.UserGuide" xml:space="preserve">
+    <value>User Guide</value>
+  </data>
+  <data name="Dashboard.ShiftBadge" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="Shift.DayLabel" xml:space="preserve">
+    <value>Day Shift</value>
+  </data>
+  <data name="Shift.NightLabel" xml:space="preserve">
+    <value>Night Shift</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecMcNet" xml:space="preserve">
+    <value>MC Protocol TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecMcAsciiNet" xml:space="preserve">
+    <value>MC Protocol ASCII TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecMcUdp" xml:space="preserve">
+    <value>MC Protocol UDP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecMcAsciiUdp" xml:space="preserve">
+    <value>MC Protocol ASCII UDP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecA1ENet" xml:space="preserve">
+    <value>A1E Protocol TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.MelsecA1EUdp" xml:space="preserve">
+    <value>A1E Protocol UDP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.SiemensS7Net_S1200" xml:space="preserve">
+    <value>Siemens S7 (S1200)</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.SiemensS7Net_S1500" xml:space="preserve">
+    <value>Siemens S7 (S1500)</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.SiemensS7Net_S300" xml:space="preserve">
+    <value>Siemens S7 (S300)</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.SiemensS7Net_S400" xml:space="preserve">
+    <value>Siemens S7 (S400)</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.ModbusTcpNet" xml:space="preserve">
+    <value>Modbus TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.ModbusUdpNet" xml:space="preserve">
+    <value>Modbus UDP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.ModbusRtuOverTcp" xml:space="preserve">
+    <value>Modbus RTU over TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.OmronFinsNet" xml:space="preserve">
+    <value>OMRON FINS TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.OmronFinsUdp" xml:space="preserve">
+    <value>OMRON FINS UDP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.KeyenceMcNet" xml:space="preserve">
+    <value>Keyence MC Protocol TCP</value>
+  </data>
+  <data name="Plc.FriendlyProtocol.BeckhoffAdsNet" xml:space="preserve">
+    <value>Beckhoff ADS/AMS</value>
+  </data>
+  <data name="Performance.Availability2" xml:space="preserve">
+    <value>Availability (A)</value>
+  </data>
+  <data name="Performance.AverageSpeed2" xml:space="preserve">
+    <value>Avg Speed:</value>
+  </data>
+  <data name="Performance.RatedSpeed2" xml:space="preserve">
+    <value>Rated Speed:</value>
+  </data>
+  <data name="Footer.Server" xml:space="preserve">
+    <value>Server: {0}</value>
+  </data>
+  <data name="Card.FirstPassYield" xml:space="preserve">
+    <value>First Pass Yield (FPY)</value>
+  </data>
+  <data name="Card.FpySubtext" xml:space="preserve">
+    <value>continuous quality rate</value>
+  </data>
+  <data name="Card.OeeQuality" xml:space="preserve">
+    <value>Quality (Q)</value>
+  </data>
+  <data name="Status.NotConfigured" xml:space="preserve">
+    <value>Not Configured</value>
+  </data>
+  <data name="Status.NoResponse" xml:space="preserve">
+    <value>No Response</value>
+  </data>
+  <data name="Status.ConfigError" xml:space="preserve">
+    <value>Config Error</value>
+  </data>
+  <data name="Menu.Monitor" xml:space="preserve">
+    <value>Monitor</value>
+  </data>
+  <data name="Menu.PLC" xml:space="preserve">
+    <value>PLC</value>
+  </data>
+  <data name="Menu.ErrorsLogs" xml:space="preserve">
+    <value>Errors &amp; Logs</value>
+  </data>
+  <data name="Menu.Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Menu.UnitHistory" xml:space="preserve">
+    <value>Unit History</value>
+  </data>
+  <data name="Menu.Product" xml:space="preserve">
+    <value>Production Monitor</value>
+  </data>
+  <data name="UnitHistory.Title" xml:space="preserve">
+    <value>UNIT PRODUCTION HISTORY</value>
+  </data>
+  <data name="UnitHistory.FilterSection" xml:space="preserve">
+    <value>Filter</value>
+  </data>
+  <data name="UnitHistory.FromDate" xml:space="preserve">
+    <value>From Date:</value>
+  </data>
+  <data name="UnitHistory.ToDate" xml:space="preserve">
+    <value>To Date:</value>
+  </data>
+  <data name="UnitHistory.Status" xml:space="preserve">
+    <value>Status:</value>
+  </data>
+  <data name="UnitHistory.StatusAll" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="UnitHistory.StatusOK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="UnitHistory.StatusNG" xml:space="preserve">
+    <value>NG</value>
+  </data>
+  <data name="UnitHistory.BtnSearch" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="UnitHistory.ColID" xml:space="preserve">
+    <value>ID</value>
+  </data>
+  <data name="UnitHistory.ColStartTime" xml:space="preserve">
+    <value>Start Time</value>
+  </data>
+  <data name="UnitHistory.ColEndTime" xml:space="preserve">
+    <value>End Time</value>
+  </data>
+  <data name="UnitHistory.ColCycleTime" xml:space="preserve">
+    <value>Cycle Time (s)</value>
+  </data>
+  <data name="UnitHistory.ColErrorCount" xml:space="preserve">
+    <value>Error Count</value>
+  </data>
+  <data name="UnitHistory.ColStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="UnitHistory.ColShift" xml:space="preserve">
+    <value>Shift</value>
+  </data>
+  <data name="UnitHistory.ColDate" xml:space="preserve">
+    <value>Date</value>
+  </data>
+  <data name="UnitHistory.StatTotal" xml:space="preserve">
+    <value>Total: {0}</value>
+  </data>
+  <data name="UnitHistory.StatOK" xml:space="preserve">
+    <value>OK: {0}</value>
+  </data>
+  <data name="UnitHistory.StatNG" xml:space="preserve">
+    <value>NG: {0}</value>
+  </data>
+  <data name="UnitHistory.DetailTitle" xml:space="preserve">
+    <value>UNIT DETAIL</value>
+  </data>
+  <data name="UnitHistory.DetailID" xml:space="preserve">
+    <value>ID: {0}</value>
+  </data>
+  <data name="UnitHistory.DetailTime" xml:space="preserve">
+    <value>Time: {0}</value>
+  </data>
+  <data name="UnitHistory.DetailCycle" xml:space="preserve">
+    <value>Cycle: {0}s</value>
+  </data>
+  <data name="UnitHistory.DetailErrorCount" xml:space="preserve">
+    <value>Error Count: {0}</value>
+  </data>
+  <data name="UnitHistory.DetailStudNG" xml:space="preserve">
+    <value>• Stud error (M402)</value>
+  </data>
+  <data name="UnitHistory.DetailStudOK" xml:space="preserve">
+    <value>• Stud OK</value>
+  </data>
+  <data name="UnitHistory.DetailSpringNG" xml:space="preserve">
+    <value>• Spring screw error (M405)</value>
+  </data>
+  <data name="UnitHistory.DetailSpringOK" xml:space="preserve">
+    <value>• Spring screw OK</value>
+  </data>
+  <data name="UnitHistory.DetailFrontRobot" xml:space="preserve">
+    <value>Front robot: {0}</value>
+  </data>
+  <data name="UnitHistory.DetailRearRobot" xml:space="preserve">
+    <value>Rear robot: {0}</value>
+  </data>
+  <data name="UnitHistory.DetailNA" xml:space="preserve">
+    <value>N/A</value>
+  </data>
+  <data name="Production.Title" xml:space="preserve">
+    <value>REAL-TIME PRODUCTION MONITOR</value>
+  </data>
+  <data name="Production.StatusProducing" xml:space="preserve">
+    <value>Producing</value>
+  </data>
+  <data name="Production.StatusWaiting" xml:space="preserve">
+    <value>Waiting for product</value>
+  </data>
+  <data name="Production.Time" xml:space="preserve">
+    <value>Time: {0}</value>
+  </data>
+  <data name="Production.NoProduct" xml:space="preserve">
+    <value>No product</value>
+  </data>
+  <data name="Production.Errors" xml:space="preserve">
+    <value>{0} errors</value>
+  </data>
+  <data name="Production.TargetCycle" xml:space="preserve">
+    <value>Target: {0}s</value>
+  </data>
+  <data name="Production.ActualCycle" xml:space="preserve">
+    <value>Actual: {0}s</value>
+  </data>
+  <data name="Production.ProgressTitle" xml:space="preserve">
+    <value>Production Progress</value>
+  </data>
+  <data name="Production.FrontRobot" xml:space="preserve">
+    <value>Front Robot</value>
+  </data>
+  <data name="Production.RearRobot" xml:space="preserve">
+    <value>Rear Robot</value>
+  </data>
+  <data name="Production.StatusAssembling" xml:space="preserve">
+    <value>Assembling</value>
+  </data>
+  <data name="Production.StatusCompleted" xml:space="preserve">
+    <value>Completed</value>
+  </data>
+  <data name="Production.StatusWaitingShort" xml:space="preserve">
+    <value>Waiting</value>
+  </data>
+  <data name="Production.Count" xml:space="preserve">
+    <value>Count: {0}</value>
+  </data>
+  <data name="Production.PLCDataTitle" xml:space="preserve">
+    <value>PLC Data Indicators</value>
+  </data>
+  <data name="Production.ProcessStatus" xml:space="preserve">
+    <value>Process Status</value>
+  </data>
+  <data name="Production.QualityStatus" xml:space="preserve">
+    <value>Quality Status</value>
+  </data>
+  <data name="Production.Metrics" xml:space="preserve">
+    <value>Production Metrics</value>
+  </data>
+  <data name="Production.ConveyorProduct" xml:space="preserve">
+    <value>Conveyor has product (M1050)</value>
+  </data>
+  <data name="Production.FrontComplete" xml:space="preserve">
+    <value>Front output complete (M1065)</value>
+  </data>
+  <data name="Production.RearComplete" xml:space="preserve">
+    <value>Rear output complete (M1068)</value>
+  </data>
+  <data name="Production.StudCheck" xml:space="preserve">
+    <value>Stud check (M402)</value>
+  </data>
+  <data name="Production.SpringScrewCheck" xml:space="preserve">
+    <value>Spring screw check (M405)</value>
+  </data>
+  <data name="Production.CycleTime" xml:space="preserve">
+    <value>Cycle time (D1022)</value>
+  </data>
+  <data name="Production.ProductionQty" xml:space="preserve">
+    <value>Production quantity (D2004)</value>
+  </data>
+  <data name="Production.YieldRate" xml:space="preserve">
+    <value>Yield rate</value>
+  </data>
+  <data name="Production.StatusLabel" xml:space="preserve">
+    <value>Production status</value>
+  </data>
+  <data name="Production.SerialLabel" xml:space="preserve">
+    <value>Serial number</value>
+  </data>
+  <data name="Production.TargetCycleLabel" xml:space="preserve">
+    <value>Target cycle</value>
+  </data>
+  <data name="UnitHistory.DetailErrorSection" xml:space="preserve">
+    <value>Error info</value>
+  </data>
+  <data name="UnitHistory.DetailRobotSection" xml:space="preserve">
+    <value>Robot</value>
+  </data>
+</root>

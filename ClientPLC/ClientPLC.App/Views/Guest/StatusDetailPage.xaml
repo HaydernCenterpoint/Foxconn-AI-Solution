@@ -1,0 +1,55 @@
+﻿<UserControl x:Class="PLC.Views.StatusDetailPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <Grid Margin="14">
+        <Border BorderThickness="1"
+                Padding="16,14,16,14"
+                CornerRadius="10"
+                BorderBrush="{DynamicResource BorderBrush}"
+                Background="{DynamicResource PanelBackground}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0" Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="280"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Vertical">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4" VerticalAlignment="Center">
+                            <Path Data="{StaticResource IconListChecks}" Stroke="#2F7BFF" StrokeThickness="2" Width="20" Height="20" Margin="0,0,10,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                            <TextBlock x:Name="TxtTitle" Text="CHI TIẾT TRẠNG THÁI THANH GHI PLC" FontWeight="Bold" FontSize="15" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock x:Name="TxtSubtitle" Text="Giám sát trực quan dữ liệu đọc thời gian thực từ PLC" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="32,2,0,0"/>
+                    </StackPanel>
+                    <Border Grid.Column="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Background="{DynamicResource WindowBackground}" Height="30" VerticalAlignment="Center">
+                        <TextBox x:Name="TxtStatusSearch" Background="Transparent" BorderThickness="0" Padding="8,4,8,4" VerticalContentAlignment="Center" TextChanged="TxtStatusSearch_TextChanged" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
+                    </Border>
+                </Grid>
+
+                <DataGrid
+                    Name="GridLiveStatus"
+                    Grid.Row="1"
+                    GridLinesVisibility="None"
+                    RowHeaderWidth="0"
+                    IsReadOnly="True"
+                    SelectionMode="Single"
+                    AutoGenerateColumns="False"
+                    BorderThickness="0"
+                    Background="Transparent"
+                    Foreground="{DynamicResource TextPrimary}"
+                    FontSize="13">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn x:Name="ColAlias" Header="TÊN / ALIAS" Binding="{Binding Alias}" Width="2*" MinWidth="200" />
+                        <DataGridTextColumn x:Name="ColAddress" Header="ĐỊA CHỈ" Binding="{Binding Address}" Width="140" MinWidth="130" />
+                        <DataGridTextColumn x:Name="ColType" Header="KIỂU DỮ LIỆU" Binding="{Binding Type}" Width="120" MinWidth="110" />
+                        <DataGridTextColumn x:Name="ColValue" Header="GIÁ TRỊ ĐỌC ĐƯỢC" Binding="{Binding Value}" Width="150" MinWidth="140" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

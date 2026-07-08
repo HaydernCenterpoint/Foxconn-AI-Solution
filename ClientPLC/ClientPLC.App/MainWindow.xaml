@@ -1,0 +1,841 @@
+<av:Window x:Class="PLC.MainWindow"
+    ThemeMode="None"
+    Title="Client PLC Dashboard"
+    WindowStartupLocation="CenterScreen"
+    WindowState="Maximized"
+    ResizeMode="NoResize"
+    Background="{av:DynamicResource WindowBackground}"
+    FontFamily="{av:DynamicResource AppFontFamily}"
+    Width="1150"
+    Height="750"
+    WindowStyle="None"
+    Icon="/ClientPLC;component/Resources/app_icon.png"
+    xmlns="clr-namespace:PLC;assembly=ClientPLC"
+    xmlns:av="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:s="clr-namespace:System;assembly=mscorlib"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <av:Window.Resources>
+        <av:Style TargetType="av:Menu">
+            <av:Setter Property="Background" Value="Transparent"/>
+            <av:Setter Property="Foreground" Value="{av:DynamicResource TextPrimary}"/>
+            <av:Setter Property="FontSize" Value="13"/>
+            <av:Setter Property="BorderThickness" Value="0"/>
+        </av:Style>
+
+        <av:Style TargetType="av:MenuItem">
+            <av:Setter Property="Foreground" Value="{av:DynamicResource TextPrimary}"/>
+            <av:Setter Property="Background" Value="Transparent"/>
+            <av:Setter Property="FontSize" Value="13"/>
+            <av:Setter Property="Height" Value="38"/>
+            <av:Setter Property="Template">
+                <av:Setter.Value>
+                    <av:ControlTemplate TargetType="av:MenuItem">
+                        <av:Border x:Name="Border"
+                                   Background="{av:TemplateBinding Background}"
+                                   BorderBrush="{av:TemplateBinding BorderBrush}"
+                                   BorderThickness="{av:TemplateBinding BorderThickness}"
+                                   CornerRadius="4"
+                                   SnapsToDevicePixels="True"
+                                   Margin="2,0,2,0">
+                            <av:Grid VerticalAlignment="Center">
+                                <av:Grid.ColumnDefinitions>
+                                    <av:ColumnDefinition Width="Auto" SharedSizeGroup="Icon"/>
+                                    <av:ColumnDefinition Width="*" SharedSizeGroup="Header"/>
+                                    <av:ColumnDefinition Width="Auto" SharedSizeGroup="Gesture"/>
+                                    <av:ColumnDefinition Width="Auto" SharedSizeGroup="Arrow"/>
+                                </av:Grid.ColumnDefinitions>
+
+                                <!-- Icon Container -->
+                                <av:ContentPresenter x:Name="Icon"
+                                                     ContentSource="Icon"
+                                                     Width="16"
+                                                     Height="16"
+                                                     Margin="10,0,10,0"
+                                                     VerticalAlignment="Center"/>
+
+                                <!-- Header Text -->
+                                <av:ContentPresenter x:Name="HeaderHost"
+                                                     ContentSource="Header"
+                                                     av:Grid.Column="1"
+                                                     Margin="5,0,20,0"
+                                                     VerticalAlignment="Center"
+                                                     RecognizesAccessKey="True"/>
+
+                                <!-- Shortcut Gesture -->
+                                <av:TextBlock x:Name="GestureBlock"
+                                              Text="{av:TemplateBinding InputGestureText}"
+                                              av:Grid.Column="2"
+                                              Margin="10,0,15,0"
+                                              VerticalAlignment="Center"
+                                              Foreground="{av:DynamicResource TextSecondary}"
+                                              FontSize="11"/>
+
+                                <!-- Arrow for Sub-menu -->
+                                <av:Path x:Name="Arrow"
+                                         Data="M 0,0 L 4,4 L 0,8"
+                                         Stroke="{av:DynamicResource TextSecondary}"
+                                         StrokeThickness="1.5"
+                                         av:Grid.Column="3"
+                                         Margin="0,0,10,0"
+                                         VerticalAlignment="Center"
+                                         Visibility="Collapsed"/>
+
+                                <!-- Popup for Dropdown items -->
+                                <av:Popup x:Name="PART_Popup"
+                                          AllowsTransparency="True"
+                                          Focusable="False"
+                                          IsOpen="{av:Binding IsSubmenuOpen, RelativeSource={av:RelativeSource TemplatedParent}}"
+                                          Placement="Bottom"
+                                          PopupAnimation="Slide">
+                                    <av:Border Background="{av:DynamicResource MenuBackground}"
+                                               BorderBrush="{av:DynamicResource MenuBorder}"
+                                               BorderThickness="1"
+                                               CornerRadius="6"
+                                               Padding="2"
+                                               Margin="0,4,0,4">
+                                        <av:Border.Effect>
+                                            <av:DropShadowEffect BlurRadius="8" ShadowDepth="2" Color="#000000" Opacity="0.4"/>
+                                        </av:Border.Effect>
+                                        <av:ScrollViewer x:Name="SubMenuScrollViewer">
+                                            <av:Grid av:RenderOptions.ClearTypeHint="Enabled">
+                                                <av:ItemsPresenter x:Name="ItemsPresenter"
+                                                                   av:KeyboardNavigation.DirectionalNavigation="Cycle"
+                                                                   av:Grid.IsSharedSizeScope="True"/>
+                                            </av:Grid>
+                                        </av:ScrollViewer>
+                                    </av:Border>
+                                </av:Popup>
+                            </av:Grid>
+                        </av:Border>
+
+                        <av:ControlTemplate.Triggers>
+                            <!-- Top level menu trigger -->
+                            <av:Trigger Property="Role" Value="TopLevelHeader">
+                                <av:Setter Property="Foreground" Value="{av:DynamicResource HeaderMenuText}"/>
+                                <av:Setter Property="Padding" Value="10,0,10,0"/>
+                                <av:Setter TargetName="Icon" Property="Visibility" Value="Collapsed"/>
+                                <av:Setter TargetName="GestureBlock" Property="Visibility" Value="Collapsed"/>
+                                <av:Setter TargetName="Arrow" Property="Visibility" Value="Collapsed"/>
+                                <av:Setter TargetName="PART_Popup" Property="Placement" Value="Bottom"/>
+                                <av:Setter TargetName="HeaderHost" Property="Margin" Value="10,0,10,0"/>
+                                <av:Setter Property="Height" Value="42"/>
+                            </av:Trigger>
+                            <av:Trigger Property="Role" Value="TopLevelItem">
+                                <av:Setter Property="Foreground" Value="{av:DynamicResource HeaderMenuText}"/>
+                                <av:Setter Property="Padding" Value="10,0,10,0"/>
+                                <av:Setter TargetName="Icon" Property="Visibility" Value="Collapsed"/>
+                                <av:Setter TargetName="GestureBlock" Property="Visibility" Value="Collapsed"/>
+                                <av:Setter TargetName="Arrow" Property="Visibility" Value="Collapsed"/>
+                                <av:Setter TargetName="HeaderHost" Property="Margin" Value="10,0,10,0"/>
+                                <av:Setter Property="Height" Value="42"/>
+                            </av:Trigger>
+                            <!-- Submenu header/item trigger -->
+                            <av:Trigger Property="Role" Value="SubmenuHeader">
+                                <av:Setter TargetName="Arrow" Property="Visibility" Value="Visible"/>
+                                <av:Setter TargetName="PART_Popup" Property="Placement" Value="Right"/>
+                            </av:Trigger>
+
+                            <!-- Mouse Over / Highlight -->
+                            <av:Trigger Property="IsHighlighted" Value="True">
+                                <av:Setter TargetName="Border" Property="Background" Value="{av:DynamicResource MenuHoverBackground}"/>
+                                <av:Setter TargetName="Border" Property="BorderBrush" Value="{av:DynamicResource MenuBorder}"/>
+                                <av:Setter Property="Foreground" Value="{av:DynamicResource TextPrimary}"/>
+                            </av:Trigger>
+
+                            <!-- Top-Level Menu Highlight (Hover) Decoupling -->
+                            <av:MultiTrigger>
+                                <av:MultiTrigger.Conditions>
+                                    <av:Condition Property="Role" Value="TopLevelHeader"/>
+                                    <av:Condition Property="IsHighlighted" Value="True"/>
+                                </av:MultiTrigger.Conditions>
+                                <av:Setter TargetName="Border" Property="Background" Value="{av:DynamicResource HeaderBtnHoverBackground}"/>
+                                <av:Setter TargetName="Border" Property="BorderBrush" Value="Transparent"/>
+                                <av:Setter Property="Foreground" Value="{av:DynamicResource HeaderForeground}"/>
+                            </av:MultiTrigger>
+                            <av:MultiTrigger>
+                                <av:MultiTrigger.Conditions>
+                                    <av:Condition Property="Role" Value="TopLevelItem"/>
+                                    <av:Condition Property="IsHighlighted" Value="True"/>
+                                </av:MultiTrigger.Conditions>
+                                <av:Setter TargetName="Border" Property="Background" Value="{av:DynamicResource HeaderBtnHoverBackground}"/>
+                                <av:Setter TargetName="Border" Property="BorderBrush" Value="Transparent"/>
+                                <av:Setter Property="Foreground" Value="{av:DynamicResource HeaderForeground}"/>
+                            </av:MultiTrigger>
+
+                            <!-- If checked -->
+                            <av:Trigger Property="IsChecked" Value="True">
+                                <av:Setter TargetName="Border" Property="BorderBrush" Value="{av:DynamicResource AccentColor}"/>
+                            </av:Trigger>
+                        </av:ControlTemplate.Triggers>
+                    </av:ControlTemplate>
+                </av:Setter.Value>
+            </av:Setter>
+        </av:Style>
+
+        <!-- Separator Style -->
+        <av:Style TargetType="av:Separator">
+            <av:Setter Property="Background" Value="{av:DynamicResource MenuSeparator}"/>
+            <av:Setter Property="Margin" Value="4,4,4,4"/>
+            <av:Setter Property="Height" Value="1"/>
+        </av:Style>
+
+        <av:Style TargetType="av:Button" x:Key="TitleBarBtnStyle">
+            <av:Setter Property="Background" Value="Transparent"/>
+            <av:Setter Property="BorderThickness" Value="0"/>
+            <av:Setter Property="Foreground" Value="{av:DynamicResource HeaderForeground}"/>
+            <av:Setter Property="Width" Value="46"/>
+            <av:Setter Property="Height" Value="49"/>
+            <av:Setter Property="VerticalAlignment" Value="Stretch"/>
+            <av:Setter Property="Focusable" Value="False"/>
+            <av:Setter Property="Template">
+                <av:Setter.Value>
+                    <av:ControlTemplate TargetType="av:Button">
+                        <av:Border Background="{av:TemplateBinding Background}" SnapsToDevicePixels="True">
+                            <av:ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </av:Border>
+                    </av:ControlTemplate>
+                </av:Setter.Value>
+            </av:Setter>
+            <av:Style.Triggers>
+                <av:Trigger Property="IsMouseOver" Value="True">
+                    <av:Setter Property="Background" Value="{av:DynamicResource HeaderBtnHoverBackground}"/>
+                </av:Trigger>
+            </av:Style.Triggers>
+        </av:Style>
+
+        <av:Style TargetType="av:Button" x:Key="TitleBarCloseBtnStyle" BasedOn="{av:StaticResource TitleBarBtnStyle}">
+            <av:Style.Triggers>
+                <av:Trigger Property="IsMouseOver" Value="True">
+                    <av:Setter Property="Background" Value="#EF4444"/>
+                </av:Trigger>
+            </av:Style.Triggers>
+        </av:Style>
+
+        <av:Style
+            TargetType="av:Button"
+            x:Key="BrandBtnStyle">
+            <av:Style.BasedOn>
+                <av:Style
+                    TargetType="av:Button">
+                    <av:Style.Resources>
+                        <av:ResourceDictionary />
+                    </av:Style.Resources>
+                    <av:Setter
+                        Property="av:Panel.Background">
+                        <av:Setter.Value>
+                            <av:SolidColorBrush>#00FFFFFF</av:SolidColorBrush>
+                        </av:Setter.Value>
+                    </av:Setter>
+                    <av:Setter
+                        Property="av:Border.BorderThickness">
+                        <av:Setter.Value>
+                            <av:Thickness>0,0,0,0</av:Thickness>
+                        </av:Setter.Value>
+                    </av:Setter>
+                    <av:Setter
+                        Property="av:TextElement.Foreground">
+                        <av:Setter.Value>
+                            <av:DynamicResource
+                                ResourceKey="SidebarText" />
+                        </av:Setter.Value>
+                    </av:Setter>
+                    <av:Setter
+                        Property="av:FrameworkElement.Height">
+                        <av:Setter.Value>
+                            <s:Double>42</s:Double>
+                        </av:Setter.Value>
+                    </av:Setter>
+                    <av:Setter
+                        Property="av:Control.HorizontalContentAlignment">
+                        <av:Setter.Value>
+                            <x:Static
+                                Member="av:HorizontalAlignment.Left" />
+                        </av:Setter.Value>
+                    </av:Setter>
+                    <av:Setter
+                        Property="av:Control.Padding">
+                        <av:Setter.Value>
+                            <av:Thickness>15,0,0,0</av:Thickness>
+                        </av:Setter.Value>
+                    </av:Setter>
+                    <av:Setter
+                        Property="av:TextElement.FontSize">
+                        <av:Setter.Value>
+                            <av:DynamicResource
+                                ResourceKey="BaseFontSize" />
+                        </av:Setter.Value>
+                    </av:Setter>
+                    <av:Setter
+                        Property="av:TextElement.FontWeight">
+                        <av:Setter.Value>
+                            <av:FontWeight>SemiBold</av:FontWeight>
+                        </av:Setter.Value>
+                    </av:Setter>
+                    <av:Setter
+                        Property="av:FrameworkElement.Cursor">
+                        <av:Setter.Value>
+                            <av:Cursor>Hand</av:Cursor>
+                        </av:Setter.Value>
+                    </av:Setter>
+                    <av:Setter
+                        Property="av:Control.Template">
+                        <av:Setter.Value>
+                            <av:ControlTemplate
+                                TargetType="av:Button">
+                                <av:Border
+                                    BorderThickness="4,0,0,0"
+                                    CornerRadius="0,4,4,0"
+                                    BorderBrush="{av:TemplateBinding av:Border.BorderBrush}"
+                                    Background="{av:TemplateBinding av:Panel.Background}"
+                                    Name="border"
+                                    Margin="0,1,10,1">
+                                    <av:ContentPresenter
+                                        Content="{av:TemplateBinding av:ContentControl.Content}"
+                                        ContentTemplate="{av:TemplateBinding av:ContentControl.ContentTemplate}"
+                                        ContentStringFormat="{av:TemplateBinding av:ContentControl.ContentStringFormat}"
+                                        Margin="{av:TemplateBinding av:Control.Padding}"
+                                        HorizontalAlignment="Stretch"
+                                        VerticalAlignment="Center" />
+                                </av:Border>
+                                <av:ControlTemplate.Triggers>
+                                    <av:Trigger
+                                        Property="av:UIElement.IsMouseOver">
+                                        <av:Setter
+                                            Property="av:Panel.Background">
+                                            <av:Setter.Value>
+                                                <av:DynamicResource
+                                                    ResourceKey="WindowBackground" />
+                                            </av:Setter.Value>
+                                        </av:Setter>
+                                        <av:Setter
+                                            Property="av:TextElement.Foreground">
+                                            <av:Setter.Value>
+                                                <av:DynamicResource
+                                                    ResourceKey="TextPrimary" />
+                                            </av:Setter.Value>
+                                        </av:Setter>
+                                        <av:Trigger.Value>
+                                            <s:Boolean>True</s:Boolean>
+                                        </av:Trigger.Value>
+                                    </av:Trigger>
+                                </av:ControlTemplate.Triggers>
+                            </av:ControlTemplate>
+                        </av:Setter.Value>
+                    </av:Setter>
+                </av:Style>
+            </av:Style.BasedOn>
+            <av:Style.Resources>
+                <av:ResourceDictionary />
+            </av:Style.Resources>
+            <av:Setter
+                Property="av:Control.Padding">
+                <av:Setter.Value>
+                    <av:Thickness>25,0,10,0</av:Thickness>
+                </av:Setter.Value>
+            </av:Setter>
+            <av:Setter
+                Property="av:FrameworkElement.Height">
+                <av:Setter.Value>
+                    <s:Double>34</s:Double>
+                </av:Setter.Value>
+            </av:Setter>
+        </av:Style>
+        <av:Style
+            TargetType="av:Button"
+            x:Key="SidebarBtnStyle">
+            <av:Style.Resources>
+                <av:ResourceDictionary />
+            </av:Style.Resources>
+            <av:Setter
+                Property="av:Panel.Background">
+                <av:Setter.Value>
+                    <av:SolidColorBrush>#00FFFFFF</av:SolidColorBrush>
+                </av:Setter.Value>
+            </av:Setter>
+            <av:Setter
+                Property="av:Border.BorderThickness">
+                <av:Setter.Value>
+                    <av:Thickness>0,0,0,0</av:Thickness>
+                </av:Setter.Value>
+            </av:Setter>
+            <av:Setter
+                Property="av:TextElement.Foreground">
+                <av:Setter.Value>
+                    <av:DynamicResource
+                        ResourceKey="SidebarText" />
+                </av:Setter.Value>
+            </av:Setter>
+            <av:Setter
+                Property="av:FrameworkElement.Height">
+                <av:Setter.Value>
+                    <s:Double>46</s:Double>
+                </av:Setter.Value>
+            </av:Setter>
+            <av:Setter
+                Property="av:Control.HorizontalContentAlignment">
+                <av:Setter.Value>
+                    <x:Static
+                        Member="av:HorizontalAlignment.Left" />
+                </av:Setter.Value>
+            </av:Setter>
+            <av:Setter
+                Property="av:Control.Padding">
+                <av:Setter.Value>
+                    <av:Thickness>15,0,0,0</av:Thickness>
+                </av:Setter.Value>
+            </av:Setter>
+            <av:Setter
+                Property="av:TextElement.FontSize">
+                <av:Setter.Value>
+                    <s:Double>16</s:Double>
+                </av:Setter.Value>
+            </av:Setter>
+            <av:Setter
+                Property="av:TextElement.FontWeight">
+                <av:Setter.Value>
+                    <av:FontWeight>SemiBold</av:FontWeight>
+                </av:Setter.Value>
+            </av:Setter>
+            <av:Setter
+                Property="av:FrameworkElement.Cursor">
+                <av:Setter.Value>
+                    <av:Cursor>Hand</av:Cursor>
+                </av:Setter.Value>
+            </av:Setter>
+            <av:Setter
+                Property="av:Control.Template">
+                <av:Setter.Value>
+                    <av:ControlTemplate
+                        TargetType="av:Button">
+                        <av:Border
+                            BorderThickness="4,0,0,0"
+                            CornerRadius="0,4,4,0"
+                            BorderBrush="{av:TemplateBinding av:Border.BorderBrush}"
+                            Background="{av:TemplateBinding av:Panel.Background}"
+                            Name="border"
+                            Margin="0,1,10,1">
+                            <av:ContentPresenter
+                                Content="{av:TemplateBinding av:ContentControl.Content}"
+                                ContentTemplate="{av:TemplateBinding av:ContentControl.ContentTemplate}"
+                                ContentStringFormat="{av:TemplateBinding av:ContentControl.ContentStringFormat}"
+                                Margin="{av:TemplateBinding av:Control.Padding}"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Center" />
+                        </av:Border>
+                        <av:ControlTemplate.Triggers>
+                            <av:Trigger
+                                Property="av:UIElement.IsMouseOver">
+                                <av:Setter
+                                    Property="av:Panel.Background">
+                                    <av:Setter.Value>
+                                        <av:DynamicResource
+                                            ResourceKey="WindowBackground" />
+                                    </av:Setter.Value>
+                                </av:Setter>
+                                <av:Setter
+                                    Property="av:TextElement.Foreground">
+                                    <av:Setter.Value>
+                                        <av:DynamicResource
+                                            ResourceKey="TextPrimary" />
+                                    </av:Setter.Value>
+                                </av:Setter>
+                                <av:Trigger.Value>
+                                    <s:Boolean>True</s:Boolean>
+                                </av:Trigger.Value>
+                            </av:Trigger>
+                        </av:ControlTemplate.Triggers>
+                    </av:ControlTemplate>
+                </av:Setter.Value>
+            </av:Setter>
+        </av:Style>
+    </av:Window.Resources>
+    <av:Grid>
+        <av:Grid.RowDefinitions>
+            <av:RowDefinition Height="50" />  <!-- Row 0: Custom Title Bar -->
+            <av:RowDefinition Height="*" />   <!-- Row 1: Main Content Area -->
+            <av:RowDefinition Height="32" />  <!-- Row 2: Footer (Full Width) -->
+        </av:Grid.RowDefinitions>
+
+        <!-- Custom Title Bar (Height: 50px, Navy Theme) -->
+        <av:Border av:Grid.Row="0" Background="{av:DynamicResource HeaderBackground}" Height="50" Name="TitleBarBorder" BorderThickness="0" BorderBrush="{av:DynamicResource HeaderBorder}">
+            <av:Grid>
+                <av:Grid.ColumnDefinitions>
+                    <av:ColumnDefinition Width="Auto" />
+                    <av:ColumnDefinition Width="*" />
+                    <av:ColumnDefinition Width="Auto" />
+                </av:Grid.ColumnDefinitions>
+
+                <!-- Left: Logo & Menu Bar -->
+                <av:StackPanel av:Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Branding -->
+                    <av:StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,15,0">
+                        <av:Border Width="20" Height="20" CornerRadius="4" Margin="0,0,8,0" VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <av:Border.Background>
+                                <av:LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <av:GradientStop Color="{av:DynamicResource AccentColorVal}" Offset="0.0"/>
+                                    <av:GradientStop Color="#00F2FE" Offset="1.0"/>
+                                </av:LinearGradientBrush>
+                            </av:Border.Background>
+                            <av:Path Data="{av:StaticResource IconCpu}" Stroke="#FFFFFF" StrokeThickness="2" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </av:Border>
+                        <av:TextBlock Text="FOXCONN FII" FontSize="14" FontWeight="Bold" Foreground="{av:DynamicResource HeaderForeground}" VerticalAlignment="Center"/>
+                    </av:StackPanel>
+
+                    <!-- Divider -->
+                    <av:Border Width="1" Background="{av:DynamicResource HeaderBorder}" Height="20" Margin="0,0,10,0" VerticalAlignment="Center"/>
+
+                    <!-- Legacy collapsed elements to keep code-behind compiling -->
+                    <av:Path Name="PathActivePageIcon" Visibility="Collapsed"/>
+                    <av:TextBlock Name="TxtBreadcrumb" Visibility="Collapsed"/>
+
+                    <!-- Menu Bar -->
+                    <av:Menu Background="Transparent" BorderThickness="0" Padding="0" Foreground="{av:DynamicResource HeaderMenuText}" VerticalAlignment="Center" Name="MainMenuBar">
+                        <!-- Guest Menu Tabs -->
+                        <av:MenuItem Header="Trang chủ" Name="MnuGuestHome" Visibility="Collapsed"/>
+
+                        <av:MenuItem Header="Thông báo" Name="MnuGuestAlerts" Visibility="Collapsed"/>
+                        <av:MenuItem Header="Phân tích sản lượng" Name="MnuGuestProdAnalysis" Visibility="Collapsed"/>
+                        <av:MenuItem Header="Bảng dữ liệu" Name="MnuGuestDataTable" Visibility="Collapsed"/>
+
+                        <!-- Giám sát -->
+                        <av:MenuItem Header="Giám sát" Name="MnuMonitor">
+                            <av:MenuItem Header="Giám sát hiệu suất" Name="MnuMonitorPerf">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconChartLine}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                            <av:MenuItem Header="Chi tiết trạng thái" Name="MnuMonitorStatus">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconClipboardList}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                            <av:MenuItem Header="Tổng quan sản xuất" Name="MnuMonitorOverview">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconMonitor}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                            <av:MenuItem Header="Hiệu suất OEE" Name="MnuMonitorOee">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconGauge}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                            <av:MenuItem Header="Sản lượng theo ca" Name="MnuMonitorShiftQty">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconChartColumn}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                            <av:Separator/>
+                            <av:MenuItem Header="Làm mới dữ liệu" Name="MnuRefreshData" InputGestureText="F5">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconRefreshCw}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                        </av:MenuItem>
+
+                        <!-- PLC -->
+                        <av:MenuItem Header="PLC" Name="MnuPlc">
+                            <av:MenuItem Header="Bảng dữ liệu PLC" Name="MnuPlcTable">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconTableProperties}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                            <av:MenuItem Header="Kiểm tra kết nối PLC" Name="MnuPlcConnTest">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconActivity}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                            <av:MenuItem Header="Cấu hình địa chỉ PLC" Name="MnuPlcConfigAddr">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconSettings}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                            <av:MenuItem Header="Cấu hình IP / Port" Name="MnuPlcConfigIp">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconRouter}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                            <av:MenuItem Header="Chu kỳ đọc dữ liệu" Name="MnuPlcConfigCycle">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconClock3}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                        </av:MenuItem>
+
+                        <!-- Lỗi & Nhật ký -->
+                        <av:MenuItem Header="Lỗi &amp; Nhật ký" Name="MnuErrorsLogs">
+                            <av:MenuItem Header="Danh sách lỗi" Name="MnuErrorList">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconTriangleAlert}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                            <av:MenuItem Header="Lịch sử lỗi" Name="MnuErrorHistory">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconHistory}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                            <av:MenuItem Header="Nhật ký hệ thống" Name="MnuSysLog">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconFileText}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                            <av:MenuItem Header="Tra cứu lịch sử" Name="MnuSearchHistory">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconSearch}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                            <av:MenuItem Header="Xóa bộ lọc" Name="MnuClearFilter">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconCircleOff}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                            <av:MenuItem Header="Xuất lịch sử lỗi" Name="MnuExportErrorHistory">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconLogOut}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                        </av:MenuItem>
+
+                        <!-- Công cụ -->
+                        <av:MenuItem Header="Công cụ" Name="MnuTools" Visibility="Collapsed">
+                            <av:MenuItem Header="Kiểm tra Server" Name="MnuToolCheckServer">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconServer}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                            <av:MenuItem Header="Kiểm tra PLC" Name="MnuToolCheckPlc">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconActivity}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                            <av:MenuItem Header="Reset trạng thái hiển thị" Name="MnuToolResetView">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconRefreshCw}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                            <av:MenuItem Header="Chế độ trình chiếu" Name="MnuToolSlideshow">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconEye}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+
+                            <av:MenuItem Header="Chẩn đoán hệ thống" Name="MnuToolDiagnostic">
+                                <av:MenuItem.Icon>
+                                    <av:Path Data="{av:StaticResource IconSettings}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Stretch="Uniform" Width="14" Height="14"/>
+                                </av:MenuItem.Icon>
+                            </av:MenuItem>
+                        </av:MenuItem>
+
+                        <!-- Cài đặt -->
+                        <av:MenuItem Header="Cài đặt" Name="MnuSettings"/>
+                    </av:Menu>
+                </av:StackPanel>
+                <!-- Center: Active Page Title + Line Name -->
+                <av:StackPanel av:Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <av:TextBlock Name="TxtActivePageTitle" Text="Giám sát hiệu suất trực tuyến" FontWeight="Bold" FontSize="13.5" Foreground="{av:DynamicResource HeaderForeground}" VerticalAlignment="Center"/>
+                    <av:TextBlock Name="TxtActiveLineName" Text=" | Chuyền A" FontWeight="SemiBold" FontSize="13.5" Foreground="{av:DynamicResource HeaderMenuTextActive}" VerticalAlignment="Center"/>
+                </av:StackPanel>
+
+                <!-- Right: Statuses, Clock, Login, and Window Controls -->
+                <av:StackPanel av:Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Stretch">
+                    <!-- Server Status Badge -->
+                    <av:Border BorderThickness="1" Padding="8,3,8,3" CornerRadius="12" BorderBrush="{av:DynamicResource HeaderBadgeBorder}" Background="{av:DynamicResource HeaderBadgeBackground}" Margin="0,0,6,0" VerticalAlignment="Center">
+                        <av:StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <av:CheckBox Name="ChkServerToggle" IsChecked="True" VerticalAlignment="Center" Margin="0,0,4,0" Padding="0" MinHeight="0" Content="" Focusable="False"/>
+                            <av:Ellipse Fill="#FFEF4444" Name="LedServer" Width="8" Height="8" Margin="0,0,4,0" VerticalAlignment="Center">
+                                <av:Ellipse.Effect>
+                                    <av:BlurEffect Radius="2" />
+                                </av:Ellipse.Effect>
+                            </av:Ellipse>
+                            <av:TextBlock Text="Server: Mất kết nối" FontSize="11" Foreground="{av:DynamicResource HeaderBadgeText}" Name="TxtServerStatus" VerticalAlignment="Center"/>
+                        </av:StackPanel>
+                    </av:Border>
+
+                    <!-- PLC Status Badge -->
+                    <av:Border BorderThickness="1" Padding="8,3,8,3" CornerRadius="12" BorderBrush="{av:DynamicResource HeaderBadgeBorder}" Background="{av:DynamicResource HeaderBadgeBackground}" Margin="0,0,6,0" VerticalAlignment="Center">
+                        <av:StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <av:Ellipse Fill="#FFEF4444" Name="LedPlc" Width="8" Height="8" Margin="0,0,4,0" VerticalAlignment="Center">
+                                <av:Ellipse.Effect>
+                                    <av:BlurEffect Radius="2" />
+                                </av:Ellipse.Effect>
+                            </av:Ellipse>
+                            <av:TextBlock Text="PLC: Mất kết nối" FontSize="11" Foreground="{av:DynamicResource HeaderBadgeText}" Name="TxtPlcStatus" VerticalAlignment="Center"/>
+                        </av:StackPanel>
+                    </av:Border>
+
+                    <!-- Clock Badge -->
+                    <av:Border BorderThickness="1" Padding="10,3,10,3" CornerRadius="12" BorderBrush="{av:DynamicResource HeaderBadgeBorder}" Background="{av:DynamicResource HeaderBadgeBackground}" Margin="0,0,10,0" VerticalAlignment="Center">
+                        <av:TextBlock Name="TxtHeaderClock" Text="--:--:--" FontFamily="Consolas" FontSize="11.5" FontWeight="Bold" Foreground="{av:DynamicResource HeaderMenuTextActive}" VerticalAlignment="Center"/>
+                    </av:Border>
+
+                    <!-- Quick Language Swapper -->
+                    <av:Button Name="BtnLangQuick" Style="{av:StaticResource TitleBarBtnStyle}" Width="65" Height="49" VerticalAlignment="Stretch" ToolTip="Ngôn ngữ / Language" Click="BtnLangQuick_Click">
+                        <av:Button.ContextMenu>
+                            <av:ContextMenu>
+                                <av:MenuItem Header="Tiếng Việt" Tag="vi" Click="MnuLang_Click"/>
+                                <av:MenuItem Header="English" Tag="en" Click="MnuLang_Click"/>
+                                <av:MenuItem Header="中文" Tag="zh" Click="MnuLang_Click"/>
+                            </av:ContextMenu>
+                        </av:Button.ContextMenu>
+                        <av:StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <av:Path Data="{av:StaticResource IconGlobe}" Stroke="{av:DynamicResource HeaderForeground}" StrokeThickness="1.5" Width="14" Height="14" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <av:TextBlock Name="TxtLangQuick" Text="VI" FontSize="12" FontWeight="SemiBold" Foreground="{av:DynamicResource HeaderForeground}" VerticalAlignment="Center"/>
+                        </av:StackPanel>
+                    </av:Button>
+
+                    <!-- Quick Theme Swapper -->
+                    <av:Button Name="BtnThemeQuick" Style="{av:StaticResource TitleBarBtnStyle}" Width="46" Height="49" VerticalAlignment="Stretch" ToolTip="Giao diện / Theme" Click="BtnThemeQuick_Click">
+                        <av:Button.ContextMenu>
+                            <av:ContextMenu>
+                                <av:MenuItem Header="Dark Mode" Tag="dark" Click="MnuTheme_Click"/>
+                                <av:MenuItem Header="Blue Theme" Tag="blue" Click="MnuTheme_Click"/>
+                                <av:MenuItem Header="Default Light" Tag="default" Click="MnuTheme_Click"/>
+                            </av:ContextMenu>
+                        </av:Button.ContextMenu>
+                        <av:Path Data="{av:StaticResource IconPalette}" Stroke="{av:DynamicResource HeaderForeground}" StrokeThickness="1.5" Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"/>
+                    </av:Button>
+
+                    <!-- Divider -->
+                    <av:Border Width="1" Background="{av:DynamicResource HeaderBorder}" Height="20" Margin="0,0,10,0" VerticalAlignment="Center"/>
+
+                    <!-- Quyền / Đăng nhập Button -->
+                    <av:Button Name="BtnLogin" Style="{av:StaticResource TitleBarBtnStyle}" Padding="15,0,15,0" Width="Auto" MinWidth="110" Height="49" VerticalAlignment="Stretch">
+                        <av:StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <av:Path Data="{av:StaticResource IconLock}" Stroke="{av:DynamicResource HeaderForeground}" StrokeThickness="1.8" Width="13" Height="13" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <av:TextBlock Name="TxtRoleDisplay" Text="Khách" FontSize="12.5" FontWeight="SemiBold" Foreground="{av:DynamicResource HeaderForeground}" VerticalAlignment="Center"/>
+                        </av:StackPanel>
+                    </av:Button>
+                    <av:Button Name="BtnWinMin" Style="{av:StaticResource TitleBarBtnStyle}">
+                        <av:Path Data="M 5,12 H 19" Stroke="{av:DynamicResource HeaderForeground}" StrokeThickness="1.8" Width="11" Height="11" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </av:Button>
+                    <av:Button Name="BtnWinMax" Style="{av:StaticResource TitleBarBtnStyle}" Visibility="Collapsed">
+                        <av:Path Data="M 4,4 H 20 V 20 H 4 Z" Stroke="{av:DynamicResource HeaderForeground}" StrokeThickness="1.8" Width="11" Height="11" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </av:Button>
+                    <av:Button Name="BtnWinClose" Style="{av:StaticResource TitleBarCloseBtnStyle}">
+                        <av:Path Data="{av:StaticResource IconWinClose}" Stroke="{av:DynamicResource HeaderForeground}" StrokeThickness="1.8" Width="11" Height="11" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </av:Button>
+                </av:StackPanel>
+            </av:Grid>
+        </av:Border>
+
+        <!-- Custom Title Bar bottom indicator gradient line -->
+        <av:Border Height="2" av:Grid.Row="0" VerticalAlignment="Bottom">
+            <av:Border.Background>
+                <av:LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <av:GradientStop Color="{av:DynamicResource AccentColorVal}" Offset="0.0"/>
+                    <av:GradientStop Color="#00F2FE" Offset="0.5"/>
+                    <av:GradientStop Color="{av:DynamicResource AccentColorVal}" Offset="1.0"/>
+                </av:LinearGradientBrush>
+            </av:Border.Background>
+        </av:Border>
+
+        <!-- Main Content Area Grid (Row 1) -->
+        <av:Grid av:Grid.Row="1">
+            <av:Grid.RowDefinitions>
+                <av:RowDefinition Height="36" />  <!-- Row 0: Metadata Row -->
+                <av:RowDefinition Height="*" />   <!-- Row 1: Page Content -->
+            </av:Grid.RowDefinitions>
+
+            <!-- Row 0: Context Metadata Bar -->
+            <av:Border Name="PnlMetadataRow" av:Grid.Row="0" Background="{av:DynamicResource SidebarMenuHeaderBackground}" BorderThickness="0,0,0,1" BorderBrush="{av:DynamicResource BorderBrush}" Height="36">
+                <av:StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0,20,0">
+                    <!-- Machine -->
+                    <av:StackPanel Orientation="Horizontal" Margin="0,0,24,0">
+                        <av:Path Data="{av:StaticResource IconCpu}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                        <av:TextBlock Name="TxtMetadataMachine" Text="Máy: May 01" FontSize="12" Foreground="{av:DynamicResource TextSecondary}" VerticalAlignment="Center"/>
+                    </av:StackPanel>
+
+                    <av:TextBlock Text="•" FontSize="12" Foreground="{av:DynamicResource BorderBrush}" Margin="0,0,24,0" VerticalAlignment="Center"/>
+
+                    <!-- Shift -->
+                    <av:StackPanel Orientation="Horizontal" Margin="0,0,24,0">
+                        <av:Path Data="{av:StaticResource IconClock3}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                        <av:TextBlock Name="TxtMetadataShift" Text="Ca: Ca sáng (07:30 - 19:30)" FontSize="12" Foreground="{av:DynamicResource TextSecondary}" VerticalAlignment="Center"/>
+                    </av:StackPanel>
+
+                    <av:TextBlock Text="•" FontSize="12" Foreground="{av:DynamicResource BorderBrush}" Margin="0,0,24,0" VerticalAlignment="Center"/>
+
+                    <!-- Date -->
+                    <av:StackPanel Orientation="Horizontal" Margin="0,0,24,0">
+                        <av:Path Data="{av:StaticResource IconCalendarDays}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                        <av:TextBlock Name="TxtMetadataDate" Text="Ngày: 19/06/2026" FontSize="12" Foreground="{av:DynamicResource TextSecondary}" VerticalAlignment="Center"/>
+                    </av:StackPanel>
+
+                    <av:TextBlock Text="•" FontSize="12" Foreground="{av:DynamicResource BorderBrush}" Margin="0,0,24,0" VerticalAlignment="Center"/>
+
+                    <!-- Cycle -->
+                    <av:StackPanel Orientation="Horizontal">
+                        <av:Path Data="{av:StaticResource IconTimer}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                        <av:TextBlock Name="TxtMetadataCycle" Text="Chu kỳ: 1000 ms" FontSize="12" Foreground="{av:DynamicResource TextSecondary}" VerticalAlignment="Center"/>
+                    </av:StackPanel>
+                </av:StackPanel>
+            </av:Border>
+
+            <!-- Content Area (Row 1) -->
+            <av:Grid Margin="10,10,10,10" av:Grid.Row="1">
+                <av:ContentControl Name="ContentArea" />
+            </av:Grid>
+        </av:Grid>
+
+        <!-- Row 2: Custom Footer (Full Width Bottom Quick Actions Bar) -->
+        <av:Border
+            av:Grid.Row="2"
+            Background="{av:DynamicResource StatusBarBackground}"
+            Padding="16,2,16,2"
+            BorderThickness="0,1,0,0"
+            BorderBrush="{av:DynamicResource BorderBrush}"
+            Name="FooterPanel">
+            <av:Grid>
+                <av:Grid.ColumnDefinitions>
+                    <av:ColumnDefinition Width="*" />
+                    <av:ColumnDefinition Width="Auto" />
+                </av:Grid.ColumnDefinitions>
+
+                <!-- Left: Telemetry & Status Stats -->
+                <av:StackPanel av:Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <av:StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                        <av:Path Data="{av:StaticResource IconRefreshCw}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                        <av:TextBlock Name="FooterLastUpdate" Text="Cập nhật: --" FontSize="11" FontWeight="SemiBold" Foreground="{av:DynamicResource TextSecondary}" VerticalAlignment="Center"/>
+                    </av:StackPanel>
+
+                    <av:Border Width="1" Background="{av:DynamicResource BorderBrush}" Margin="0,4,12,4"/>
+
+                    <av:StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                        <av:Path Data="{av:StaticResource IconActivity}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                        <av:TextBlock Name="FooterPlcResponse" Text="Phản hồi PLC: 0ms" FontSize="11" FontWeight="SemiBold" Foreground="{av:DynamicResource TextSecondary}" VerticalAlignment="Center"/>
+                    </av:StackPanel>
+
+                    <av:Border Width="1" Background="{av:DynamicResource BorderBrush}" Margin="0,4,12,4"/>
+
+                    <av:StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                        <av:Path Data="{av:StaticResource IconServer}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                        <av:TextBlock Name="FooterServerStatus" Text="Server: Mất kết nối" FontSize="11" FontWeight="SemiBold" Foreground="{av:DynamicResource TextSecondary}" VerticalAlignment="Center"/>
+                    </av:StackPanel>
+
+                    <av:Border Width="1" Background="{av:DynamicResource BorderBrush}" Margin="0,4,12,4"/>
+
+                    <av:StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                        <av:Path Data="{av:StaticResource IconCpu}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                        <av:TextBlock Name="FooterCpu" Text="CPU: --%" FontSize="11" FontWeight="SemiBold" Foreground="{av:DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                    </av:StackPanel>
+
+                    <av:Border Width="1" Background="{av:DynamicResource BorderBrush}" Margin="0,4,12,4"/>
+
+                    <av:StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                        <av:Path Data="{av:StaticResource IconMemoryStick}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                        <av:TextBlock Name="FooterRam" Text="RAM: --/-- MB" FontSize="11" FontWeight="SemiBold" Foreground="{av:DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                    </av:StackPanel>
+
+                    <av:Border Width="1" Background="{av:DynamicResource BorderBrush}" Margin="0,4,12,4" Visibility="Collapsed"/>
+
+                    <av:StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0" Visibility="Collapsed">
+                        <av:Path Data="{av:StaticResource IconTimer}" Stroke="{av:DynamicResource TextSecondary}" StrokeThickness="1.5" Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center" Stretch="Uniform"/>
+                        <av:TextBlock Name="FooterUptime" Text="Uptime: --" FontSize="11" FontWeight="SemiBold" Foreground="{av:DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                    </av:StackPanel>
+
+                    <av:Border Width="1" Background="{av:DynamicResource BorderBrush}" Margin="0,4,12,4" Visibility="Collapsed"/>
+                    <av:TextBlock Name="FooterAppVersion" Text="v1.0" Visibility="Collapsed"/>
+                </av:StackPanel>
+            </av:Grid>
+        </av:Border>
+    </av:Grid>
+</av:Window>

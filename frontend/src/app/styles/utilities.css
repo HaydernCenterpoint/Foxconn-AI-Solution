@@ -1,0 +1,131 @@
+/* Theme compatibility aliases for incremental migration */
+:root {
+  --color-bg: var(--color-background);
+  --color-panel: var(--color-surface);
+  --color-panel-soft: var(--color-surface-container);
+  --color-light: var(--color-on-surface);
+  --color-sidebar: var(--color-background);
+  --color-border: var(--color-outline);
+  --color-hover: var(--color-surface-container-high);
+  --color-muted: var(--color-on-surface-variant);
+  --color-subtle: var(--color-on-surface-variant);
+  --color-on-accent: var(--color-on-primary);
+  --color-accent-hover: var(--color-primary-hover);
+  --color-accent-light: var(--color-accent-container);
+
+  --shadow-panel: var(--shadow-2);
+  --shadow-soft: var(--shadow-3);
+  --shadow-small: var(--shadow-1);
+  --shadow-medium: var(--shadow-4);
+
+  --focus-ring: 0 0 0 3px rgba(32, 198, 226, 0.4);
+}
+
+/* Preserve reduced motion utilities */
+.reduced-motion * {
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-outline-variant);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-outline);
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Animation utilities */
+.animate-fade-in {
+  animation: fadeIn 200ms ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 200ms ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 200ms ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Page transition */
+.page-enter {
+  animation: fadeIn 200ms ease-out;
+}
+
+/* Toast animation */
+.toast-enter {
+  animation: slideInRight 200ms ease-out;
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-container-high) 25%,
+    var(--color-surface-container) 50%,
+    var(--color-surface-container-high) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: var(--radius-small);
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* New alarm row highlight */
+@keyframes alarm-highlight {
+  0% {
+    background-color: rgba(32, 198, 226, 0.15);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.alarm-new {
+  animation: alarm-highlight 600ms ease-out;
+}

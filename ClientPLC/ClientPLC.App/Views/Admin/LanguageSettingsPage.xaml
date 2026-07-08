@@ -1,0 +1,24 @@
+﻿<UserControl x:Class="PLC.Views.LanguageSettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <Grid Margin="15">
+        <Border BorderThickness="1" Padding="20" CornerRadius="8"
+                BorderBrush="{DynamicResource BorderBrush}"
+                Background="{DynamicResource PanelBackground}"
+                MaxWidth="600" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <StackPanel>
+                <TextBlock Name="TxtTitle" Text="Cài đặt ngôn ngữ" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,20"/>
+
+                <Label Name="LblLanguageSelect" Content="Ngôn ngữ giao diện hệ thống:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                <ComboBox Name="CboLanguage" Margin="0,0,0,25" Height="30">
+                    <ComboBoxItem Content="Tiếng Việt" Tag="vi"/>
+                    <ComboBoxItem Content="English" Tag="en"/>
+                    <ComboBoxItem Content="中文 (Chinese)" Tag="zh"/>
+                </ComboBox>
+
+                <Button Name="BtnSave" Content="Lưu cài đặt" Height="35" Width="150" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

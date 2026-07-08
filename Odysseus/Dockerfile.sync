@@ -1,0 +1,23 @@
+# Dockerfile for MKZ Sync Service
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy sync script
+COPY scripts/sync_mkz_to_odysseus.py /app/
+COPY scripts /app/scripts
+
+# Install Python dependencies
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Create data directory
+RUN mkdir -p /app/data/mkz_exports
+
+# Run sync script
+CMD ["python", "-m", "scripts.sync_mkz_to_odysseus"]

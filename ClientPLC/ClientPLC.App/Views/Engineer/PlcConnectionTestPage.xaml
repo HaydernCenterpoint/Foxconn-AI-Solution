@@ -1,0 +1,40 @@
+﻿<UserControl x:Class="PLC.Views.PlcConnectionTestPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <Grid Margin="15">
+        <Border BorderThickness="1" Padding="20" CornerRadius="8"
+                BorderBrush="{DynamicResource BorderBrush}"
+                Background="{DynamicResource PanelBackground}"
+                MaxWidth="800" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <StackPanel>
+                <TextBlock Name="TxtTitle" Text="Kiểm tra kết nối PLC &amp; Chẩn đoán" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,20"/>
+ 
+                 <Grid Margin="0,0,0,15">
+                     <Grid.ColumnDefinitions>
+                         <ColumnDefinition Width="*"/>
+                         <ColumnDefinition Width="*"/>
+                     </Grid.ColumnDefinitions>
+                     <StackPanel Margin="0,0,10,0">
+                         <Label Name="LblIp" Content="IP Address / Host PLC:" Foreground="{DynamicResource TextSecondary}"/>
+                         <TextBox Name="TxtPlcIp" Height="30" VerticalContentAlignment="Center" IsReadOnly="True" Opacity="0.8"/>
+                     </StackPanel>
+                     <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                         <Label Name="LblPort" Content="Cổng kết nối (Port):" Foreground="{DynamicResource TextSecondary}"/>
+                         <TextBox Name="TxtPlcPort" Height="30" VerticalContentAlignment="Center" IsReadOnly="True" Opacity="0.8"/>
+                     </StackPanel>
+                 </Grid>
+ 
+                 <WrapPanel Margin="0,10,0,20">
+                     <Button Name="BtnPing" Content="Ping PLC IP" Height="32" Width="130" Margin="0,0,10,0"/>
+                     <Button Name="BtnTestTcp" Content="Kiểm tra TCP" Height="32" Width="130" Margin="0,0,10,0"/>
+                     <Button Name="BtnReadTest" Content="Đọc thử thanh ghi" Height="32" Width="150" Margin="0,0,10,0"/>
+                     <Button Name="BtnClear" Content="Xóa nhật ký" Height="32" Width="100"/>
+                 </WrapPanel>
+ 
+                 <TextBlock Name="TxtResultLabel" Text="Kết quả chẩn đoán:" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                 <TextBox Name="TxtLogConsole" Height="250" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" IsReadOnly="True" Background="#0A0F1F" Foreground="#FF00ADB5" FontFamily="Consolas" FontSize="11" Padding="10"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

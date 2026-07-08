@@ -1,0 +1,203 @@
+@theme {
+  /* Primary Colors - Corporate FII Cobalt Blue */
+  --color-primary: #1C64F2;
+  --color-primary-hover: #3F83F8;
+  --color-primary-light: rgba(28, 100, 242, 0.15);
+  --color-on-primary: #FFFFFF;
+
+  /* Secondary Colors - FII Crimson Red */
+  --color-secondary: #D00B27;
+  --color-secondary-hover: #E52E46;
+  --color-on-secondary: #FFFFFF;
+
+  /* Surface Colors */
+  --color-surface: rgba(15, 23, 42, 0.88);
+  --color-surface-dim: rgba(15, 23, 42, 0.95);
+  --color-surface-container-lowest: #030712;
+  --color-surface-container-low: rgba(15, 23, 42, 0.50);
+  --color-surface-container: rgba(15, 23, 42, 0.70);
+  --color-surface-container-high: rgba(30, 41, 59, 0.75);
+  --color-surface-container-highest: rgba(30, 41, 59, 0.90);
+
+  /* Background */
+  --color-background: #050B14;
+  --color-background-secondary: #0B1220;
+
+  /* Text Colors */
+  --color-on-surface: #E5E7EB;
+  --color-on-surface-variant: #AEB6C2;
+  --color-text-primary: #F8FAFC;
+  --color-text-secondary: var(--color-on-surface);
+  --color-text-muted: var(--color-on-surface-variant);
+  --color-outline: rgba(148, 163, 184, 0.15);
+  --color-outline-variant: rgba(56, 180, 255, 0.35);
+
+  /* Status Colors */
+  --color-running: #10B981;
+  --color-running-container: rgba(16, 185, 129, 0.15);
+  --color-success: #10B981;
+  --color-success-container: rgba(16, 185, 129, 0.15);
+  --color-error: #D00B27;
+  --color-error-container: rgba(208, 11, 39, 0.15);
+  --color-warn: #F59E0B;
+  --color-warn-container: rgba(245, 158, 11, 0.15);
+  --color-idle: #3B82F6;
+  --color-idle-container: rgba(59, 130, 246, 0.15);
+  --color-offline: #64748B;
+  --color-offline-container: rgba(100, 116, 139, 0.15);
+  --color-information: #3B82F6;
+  --color-information-container: rgba(59, 130, 246, 0.15);
+  --color-maintenance: #8B5CF6;
+  --color-maintenance-container: rgba(139, 92, 246, 0.15);
+
+  /* Accent */
+  --color-accent: #1C64F2;
+  --color-accent-container: rgba(28, 100, 242, 0.15);
+
+  /* Shadows - Corporate Subtle Glows */
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-2: 0 4px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-3: 0 10px 15px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-4: 0 20px 25px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-5: 0 25px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  /* Typography */
+  --font-family-sans: 'Google Sans', 'Product Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-family-mono: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-sans: 'Google Sans', 'Product Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  /* Border Radius */
+  --radius-extra-small: 2px;
+  --radius-small: 4px;
+  --radius-medium: 6px;
+  --radius-large: 8px;
+  --radius-extra-large: 12px;
+
+  /* Spacing Base Unit */
+  --spacing: 0.2rem;
+
+  /* Spacing Tokens */
+  --spacing-xs: 4.8px;
+  --spacing-sm: 9.6px;
+  --spacing-md: 19.2px;
+  --spacing-lg: 28.8px;
+  --spacing-xl: 38.4px;
+  --spacing-2xl: 57.6px;
+
+  /* Typography Font Sizes */
+  --text-xs: 0.9375rem;
+  --text-sm: 1.09375rem;
+  --text-base: 1.25rem;
+  --text-lg: 1.40625rem;
+  --text-xl: 1.5625rem;
+  --text-2xl: 1.875rem;
+  --text-3xl: 2.34375rem;
+  --text-4xl: 2.8125rem;
+  --text-5xl: 3.75rem;
+  --text-6xl: 4.6875rem;
+}
+
+:root {
+  /* Aliases for compatibility */
+  --color-bg: var(--color-background);
+  --color-panel: var(--color-surface);
+  --color-panel-soft: var(--color-surface-container);
+  --color-light: var(--color-on-surface);
+  --color-sidebar: var(--color-background);
+  --color-border: var(--color-outline);
+  --color-hover: var(--color-surface-container-high);
+  --color-muted: var(--color-on-surface-variant);
+  --color-subtle: var(--color-on-surface-variant);
+  --color-on-accent: var(--color-on-primary);
+  --color-accent-hover: var(--color-primary-hover);
+  --color-accent-light: var(--color-accent-container);
+  
+  --shadow-panel: var(--shadow-2);
+  --shadow-soft: var(--shadow-3);
+  --shadow-small: var(--shadow-1);
+  --shadow-medium: var(--shadow-4);
+  
+  --focus-ring: 0 0 0 3px rgba(28, 100, 242, 0.4);
+  
+  /* Additional Industrial Dashboard colors */
+  --background-primary: #050B14;
+  --background-secondary: #0B1220;
+  --background-tertiary: #0E1726;
+  --surface-primary: rgba(15, 23, 42, 0.88);
+  --surface-secondary: rgba(15, 23, 42, 0.82);
+  --surface-highlight: rgba(15, 23, 42, 0.70);
+  --surface-hover: rgba(30, 41, 59, 0.75);
+  --border-primary: rgba(28, 100, 242, 0.25);
+  --border-secondary: rgba(28, 100, 242, 0.40);
+  --border-highlight: #1C64F2;
+  --primary: #1C64F2;
+  --primary-hover: #3F83F8;
+  --secondary: #D00B27;
+  --accent-blue: #1C64F2;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --text-disabled: #475569;
+  --success: #10B981;
+  --warning: #F59E0B;
+  --danger: #D00B27;
+  --maintenance: #8B5CF6;
+  --offline: #64748B;
+  --info: #3B82F6;
+}
+
+:root[data-theme='dark'] {
+  /* Force dark theme variables to be identical for uniform experience */
+  --color-surface: rgba(15, 23, 42, 0.88);
+  --color-surface-dim: rgba(15, 23, 42, 0.95);
+  --color-surface-container-lowest: #030712;
+  --color-surface-container-low: rgba(15, 23, 42, 0.50);
+  --color-surface-container: rgba(15, 23, 42, 0.70);
+  --color-surface-container-high: rgba(30, 41, 59, 0.75);
+  --color-surface-container-highest: rgba(30, 41, 59, 0.90);
+  
+  --color-background: #050B14;
+  --color-background-secondary: #0B1220;
+  
+  --color-on-surface: #F8FAFC;
+  --color-on-surface-variant: #94A3B8;
+  --color-outline: rgba(28, 100, 242, 0.25);
+  --color-outline-variant: rgba(28, 100, 242, 0.40);
+  
+  --color-running-container: rgba(16, 185, 129, 0.15);
+  --color-success-container: rgba(16, 185, 129, 0.15);
+  --color-error-container: rgba(208, 11, 39, 0.15);
+  --color-warn-container: rgba(245, 158, 11, 0.15);
+  --color-idle-container: rgba(59, 130, 246, 0.15);
+  --color-offline-container: rgba(100, 116, 139, 0.15);
+  --color-accent-container: rgba(28, 100, 242, 0.15);
+  --color-information-container: rgba(59, 130, 246, 0.15);
+  --color-maintenance-container: rgba(139, 92, 246, 0.15);
+  
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-2: 0 4px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-3: 0 10px 15px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-4: 0 20px 25px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-5: 0 25px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  
+  --color-bg: var(--color-background);
+  --color-panel: var(--color-surface);
+  --color-panel-soft: var(--color-surface-container);
+  --color-light: var(--color-on-surface);
+  --color-sidebar: var(--color-background);
+  --color-border: var(--color-outline);
+  --color-hover: var(--color-surface-container-high);
+  --color-muted: var(--color-on-surface-variant);
+  --color-subtle: var(--color-on-surface-variant);
+  --color-on-accent: var(--color-on-primary);
+  --color-accent-hover: var(--color-primary-hover);
+  --color-accent-light: var(--color-accent-container);
+  
+  --shadow-panel: var(--shadow-2);
+  --shadow-soft: var(--shadow-3);
+  --shadow-small: var(--shadow-1);
+  --shadow-medium: var(--shadow-4);
+  
+  --focus-ring: 0 0 0 3px rgba(28, 100, 242, 0.4);
+}

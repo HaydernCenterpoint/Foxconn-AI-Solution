@@ -1,0 +1,59 @@
+<UserControl x:Class="PLC.Views.HistorySearchPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:PLC.Views"
+             Background="Transparent">
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Top DataType and Common filter row -->
+        <Border BorderThickness="1" Padding="15" CornerRadius="4"
+                BorderBrush="{DynamicResource BorderBrush}"
+                Background="{DynamicResource PanelBackground}"
+                Margin="0,0,0,15" Grid.Row="0">
+            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Margin="0,0,20,5" VerticalAlignment="Center">
+                    <TextBlock Name="TxtDataTypeLabel" Text="Loại dữ liệu:" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="SemiBold"/>
+                    <ComboBox Name="CboDataType" Width="180" Height="28" SelectionChanged="CboDataType_SelectionChanged">
+                        <ComboBoxItem Name="CboItemOeeData" Content="Dữ liệu hiệu suất OEE" Tag="OEE" IsSelected="True"/>
+                        <ComboBoxItem Name="CboItemErrorData" Content="Dữ liệu lịch sử lỗi" Tag="ERROR"/>
+                    </ComboBox>
+                </StackPanel>
+
+                <!-- Dynamic controls will show/hide depending on select -->
+                <StackPanel Name="PanelOeeFilters" Orientation="Horizontal" Margin="0,0,10,0">
+                    <TextBlock Name="TxtOeeSelectDateLabel" Text="Chọn ngày:" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <DatePicker Name="DpOeeDate" Width="130" Height="28" Margin="0,0,15,0"/>
+                    <TextBlock Name="TxtSelectShiftLabel" Text="Chọn ca:" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox Name="CboOeeShift" Width="180" Height="28">
+                        <ComboBoxItem Name="CboItemDayShift" Content="Ca Sáng (07:30 - 19:30)" Tag="Day" IsSelected="True"/>
+                        <ComboBoxItem Name="CboItemNightShift" Content="Ca Tối (19:30 - 07:30)" Tag="Night"/>
+                    </ComboBox>
+                </StackPanel>
+
+                <StackPanel Name="PanelErrorFilters" Orientation="Horizontal" Margin="0,0,10,0" Visibility="Collapsed">
+                    <TextBlock Name="TxtErrorFromDateLabel" Text="Từ ngày:" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <DatePicker Name="DpErrorFrom" Width="120" Height="28" Margin="0,0,10,0"/>
+                    <TextBlock Name="TxtErrorToDateLabel" Text="Đến ngày:" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <DatePicker Name="DpErrorTo" Width="120" Height="28" Margin="0,0,15,0"/>
+                    <TextBlock Name="TxtErrorMachineLabel" Text="Máy:" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox Name="CboErrorMachine" Width="120" Height="28" Margin="0,0,15,0"/>
+                    <TextBlock Name="TxtErrorShiftLabel" Text="Ca:" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox Name="CboErrorShift" Width="120" Height="28" Margin="0,0,10,0">
+                        <ComboBoxItem Name="CboItemAllErrorShift" Tag="All" IsSelected="True">Tất cả</ComboBoxItem>
+                        <ComboBoxItem Name="CboItemDayErrorShift" Tag="Day">Ca sáng</ComboBoxItem>
+                        <ComboBoxItem Name="CboItemNightErrorShift" Tag="Night">Ca tối</ComboBoxItem>
+                    </ComboBox>
+                </StackPanel>
+
+                <Button Name="BtnSearch" Content="⚡ Tìm kiếm" Width="120" Height="30" Margin="10,0,0,5"/>
+            </WrapPanel>
+        </Border>
+
+        <!-- Main Content Area: holds OeeDashboardPage or ErrorHistoryPage dynamically -->
+        <ContentControl Grid.Row="1" Name="ContainerGrid"/>
+    </Grid>
+</UserControl>
