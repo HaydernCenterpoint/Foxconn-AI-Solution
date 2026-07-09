@@ -85,8 +85,7 @@
 })();
 </script>
 <style>
-  @font-face { font-family: 'Fira Code'; font-weight: 400; font-style: normal; font-display: swap; src: url('/static/fonts/FiraCode-Regular.woff2') format('woff2'); }
-  @font-face { font-family: 'Fira Code'; font-weight: 600; font-style: normal; font-display: swap; src: url('/static/fonts/FiraCode-SemiBold.woff2') format('woff2'); }
+  @import url('https://fonts.cdnfonts.com/css/google-sans');
   /* Mirror the main app's :root defaults (static/style.css ~line 18) so an
      uncustomized theme — or a fresh browser with no `odysseus-theme` in
      localStorage — renders the login page in the same palette as the rest
@@ -115,7 +114,7 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: 'Fira Code', monospace;
+    font-family: 'Google Sans', 'Product Sans', system-ui, -apple-system, sans-serif;
     background: var(--bg); color: var(--fg);
     display: flex; justify-content: center; align-items: flex-start;
     min-height: 100vh; min-height: 100dvh;

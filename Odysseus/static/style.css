@@ -1,3 +1,4 @@
+@import url('https://fonts.cdnfonts.com/css/google-sans');
 /* ============================================ */
 /* Odysseus UI — Consolidated Stylesheet        */
 /* ============================================ */
@@ -40447,4 +40448,111 @@ body.theme-frosted .modal {
 @media (max-width: 768px) {
   .compare-grid[data-cols] { grid-template-columns: 1fr !important; overflow-y: auto; }
   .compare-pane { min-height: 60dvh; }
+}
+
+/* ======================================================== */
+/* CUSTOM APP OVERRIDES (Google Sans, Fixed Theme, Sidebar) */
+/* ======================================================== */
+
+:root {
+  --font-family: 'Google Sans', 'Product Sans', system-ui, -apple-system, sans-serif !important;
+}
+
+body, html, button, input, select, textarea, span, p, h1, h2, h3, h4, h5, h6 {
+  font-family: 'Google Sans', 'Product Sans', system-ui, -apple-system, sans-serif !important;
+}
+
+/* 2. Hide Theme modal and sidebar button */
+#tool-theme-btn {
+  display: none !important;
+}
+#theme-modal {
+  display: none !important;
+}
+
+/* 3. Double the size of text and icons in the sidebar (cột chức năng) */
+/* Increase base sidebar width to accommodate larger elements */
+.sidebar {
+  width: 320px !important;
+}
+
+/* Double sidebar brand header size */
+.sidebar-header {
+  height: 80px !important;
+  padding: 20px !important;
+}
+.sidebar-brand img {
+  height: 38px !important; /* Double the typical ~18px height */
+}
+.sidebar-hamburger svg {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+/* Double size of navigation items and list-items */
+.sidebar .list-item {
+  min-height: 56px !important;
+  padding: 12px 18px !important;
+  gap: 16px !important;
+}
+
+.sidebar .list-item .grow {
+  font-size: 20px !important; /* Double scale text */
+  font-weight: 500 !important;
+}
+
+.sidebar .list-item svg,
+.sidebar .list-item i {
+  width: 24px !important; /* Double scale icons from ~12px-14px */
+  height: 24px !important;
+}
+
+/* Double size of section titles (Chats, Email, Tools) */
+.sidebar .section-header-flex {
+  height: 48px !important;
+  padding: 12px 18px !important;
+}
+
+.sidebar .section-title {
+  font-size: 18px !important; /* Double scale text */
+  font-weight: 600 !important;
+  gap: 12px !important;
+}
+
+.sidebar .section-icon,
+.sidebar .sidebar-action-icon {
+  width: 22px !important; /* Double scale icons */
+  height: 22px !important;
+}
+
+/* Plus button inside section headers */
+.sidebar .list-item-plus-btn svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+/* Double size of user bar at the bottom */
+.sidebar-user-bar {
+  min-height: 80px !important;
+  padding: 16px 20px !important;
+}
+
+.user-bar-left {
+  gap: 14px !important;
+}
+
+.user-bar-avatar {
+  width: 36px !important;
+  height: 36px !important;
+  font-size: 16px !important;
+}
+
+.user-bar-name {
+  font-size: 18px !important;
+  font-weight: 500 !important;
+}
+
+.user-bar-btn svg {
+  width: 24px !important;
+  height: 24px !important;
 }

@@ -36,12 +36,12 @@ const LS_KEY = 'odysseus-theme';
 const CUSTOM_THEMES_KEY = 'odysseus-custom-themes';
 
 const FONT_MAP = {
-  mono: "'Fira Code', monospace",
-  sans: "system-ui, -apple-system, 'Segoe UI', sans-serif",
-  serif: "Georgia, 'Times New Roman', serif",
-  opendyslexic: "'OpenDyslexic', sans-serif",
+  mono: "'Google Sans', 'Product Sans', system-ui, -apple-system, sans-serif",
+  sans: "'Google Sans', 'Product Sans', system-ui, -apple-system, sans-serif",
+  serif: "'Google Sans', 'Product Sans', system-ui, -apple-system, sans-serif",
+  opendyslexic: "'Google Sans', 'Product Sans', system-ui, -apple-system, sans-serif",
 };
-const DEFAULT_FONT = 'mono';
+const DEFAULT_FONT = 'sans';
 const DEFAULT_DENSITY = 'comfortable';
 const MAX_CUSTOM_THEMES = 8;
 
