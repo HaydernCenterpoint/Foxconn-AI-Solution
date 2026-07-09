@@ -40479,12 +40479,57 @@ body, html, button, input, select, textarea, span, p, h1, h2, h3, h4, h5, h6 {
 /* Double sidebar brand header size */
 .sidebar-header {
   height: 80px !important;
-  padding: 20px !important;
+  padding: 0 20px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
 }
 .sidebar-brand img {
   height: 38px !important; /* Double the typical ~18px height */
 }
+
+/* Hide fixed hamburger on desktop when sidebar is open */
+body:not(.sidebar-collapsed) .hamburger-btn {
+  display: none !important;
+}
+
+/* Show in-sidebar hamburger when open and style it balanced */
+body:not(.sidebar-collapsed) .sidebar-hamburger {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: none !important;
+  border: none !important;
+  color: var(--fg) !important;
+  cursor: pointer !important;
+  opacity: 0.7 !important;
+  transition: opacity 0.15s !important;
+  width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
+}
+
+body:not(.sidebar-collapsed) .sidebar-hamburger:hover {
+  opacity: 1 !important;
+}
+
 .sidebar-hamburger svg {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+/* Fixed hamburger button when sidebar is collapsed */
+.hamburger-btn {
+  top: 22px !important;
+  left: 20px !important;
+  width: 36px !important;
+  height: 36px !important;
+  opacity: 0.7 !important;
+}
+.hamburger-btn:hover {
+  opacity: 1 !important;
+}
+.hamburger-btn svg {
   width: 28px !important;
   height: 28px !important;
 }
@@ -40663,4 +40708,49 @@ body, html, button, input, select, textarea, span, p, h1, h2, h3, h4, h5, h6 {
 #calendar-modal .cal-event-dot {
   width: 12px !important;
   height: 12px !important;
+}
+
+/* Fix select/input clipping in calendar form and scale them up */
+#calendar-modal .cal-input,
+#calendar-modal select.cal-input,
+#calendar-modal textarea.cal-input {
+  height: auto !important;
+  padding: 10px 14px !important;
+  font-size: var(--cal-text-size-md, 16px) !important;
+  line-height: 1.5 !important;
+  box-sizing: border-box !important;
+}
+
+/* Adjust date/time input specific padding to prevent indicator overlaps */
+#calendar-modal input[type="date"].cal-input,
+#calendar-modal input[type="time"].cal-input {
+  padding: 8px 12px !important;
+}
+
+/* Ensure the bespoke form has plenty of room */
+#calendar-modal .cal-form-bespoke {
+  padding: 24px 32px 20px !important;
+}
+
+/* Scale up the form titles and labels */
+#calendar-modal .cal-form-title {
+  font-size: var(--cal-text-size-md, 16px) !important;
+  margin-bottom: 6px !important;
+}
+
+#calendar-modal .cal-form-row label {
+  font-size: var(--cal-text-size-sm, 15px) !important;
+}
+
+#calendar-modal .cal-form-row label svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* Scale buttons inside the form */
+#calendar-modal .cal-form-actions button.cal-btn {
+  height: 40px !important;
+  padding: 0 20px !important;
+  font-size: var(--cal-text-size-sm, 15px) !important;
+  border-radius: 6px !important;
 }
