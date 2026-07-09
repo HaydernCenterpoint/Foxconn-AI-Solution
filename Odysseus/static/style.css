@@ -40754,3 +40754,98 @@ body:not(.sidebar-collapsed) .sidebar-hamburger:hover {
   font-size: var(--cal-text-size-sm, 15px) !important;
   border-radius: 6px !important;
 }
+
+/* ======================================================== */
+/* CLAUDE AI REDESIGN & FONT SIZE UPGRADE (18px)            */
+/* ======================================================== */
+
+/* Increase font size of chat messages and inputs */
+.msg .body,
+.msg .body p,
+.msg .body li,
+.msg .body blockquote,
+.msg .body table,
+.msg .body pre,
+.msg .body div {
+  font-size: 18px !important;
+  line-height: 1.62 !important;
+}
+
+/* Adjust inline code blocks size slightly to fit nicely within paragraphs */
+.msg .body code:not(pre code) {
+  font-size: 16px !important;
+}
+
+/* Redesign chat bubbles (Claude AI style) */
+/* 1. User Message: borderless capsule, soft bg, right-aligned */
+.msg-user {
+  background: color-mix(in srgb, var(--fg) 6%, var(--bg)) !important;
+  border: none !important;
+  border-radius: 24px 24px 4px 24px !important;
+  padding: 16px 22px !important;
+  box-shadow: none !important;
+  color: var(--fg) !important;
+}
+
+/* 2. AI Message: borderless, transparent bg, left-aligned, spacious width */
+.msg-ai {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 20px 0 !important;
+  box-shadow: none !important;
+  width: 90% !important;
+  max-width: 90% !important;
+  align-self: flex-start !important;
+  margin-left: 0 !important;
+}
+
+/* Model meta at the top of AI message: minimal, muted gray */
+.msg-ai .role {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--fg) !important;
+  opacity: 0.6 !important;
+  margin-bottom: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.msg-ai .role::before {
+  width: 7px !important;
+  height: 7px !important;
+}
+
+/* Separator between messages for nice spacing */
+.msg {
+  margin: 32px 0 !important;
+}
+
+/* Increase placeholder and input text sizes in composer */
+.chat-input-bar textarea#message {
+  font-size: 18px !important;
+  line-height: 1.52 !important;
+  min-height: 28px !important;
+}
+
+.ghost-text-overlay {
+  font-size: 18px !important;
+  line-height: 1.52 !important;
+}
+
+/* Redesign composer/input container to look like Claude AI */
+.chat-input-bar {
+  border-radius: 24px !important;
+  padding: 16px 20px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--input-bg, var(--panel)) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+  max-width: 840px !important;
+}
+
+.chat-input-bar:focus-within {
+  border-color: var(--accent, var(--red)) !important;
+  box-shadow: 0 4px 24px color-mix(in srgb, var(--accent, var(--red)) 12%, transparent) !important;
+}
