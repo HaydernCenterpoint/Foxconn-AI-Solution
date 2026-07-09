@@ -40849,3 +40849,8 @@ body:not(.sidebar-collapsed) .sidebar-hamburger:hover {
   border-color: var(--accent, var(--red)) !important;
   box-shadow: 0 4px 24px color-mix(in srgb, var(--accent, var(--red)) 12%, transparent) !important;
 }
+
+/* Thêm khoảng trống dưới thanh chat */
+.chat-container {
+  padding-bottom: 24px !important;
+}
