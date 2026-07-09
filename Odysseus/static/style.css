@@ -40556,3 +40556,111 @@ body, html, button, input, select, textarea, span, p, h1, h2, h3, h4, h5, h6 {
   width: 24px !important;
   height: 24px !important;
 }
+
+/* ======================================================== */
+/* CALENDAR LAYOUT REDESIGN & FONT UPGRADE (50% Larger)      */
+/* ======================================================== */
+
+/* Desktop view: side-by-side split layout */
+@media (min-width: 769px) {
+  #calendar-modal .cal-modal-content {
+    width: min(1080px, 96vw) !important;
+  }
+
+  #cal-body:has(.cal-day-detail) {
+    display: grid !important;
+    grid-template-columns: 1fr 340px !important;
+    grid-template-rows: auto auto 1fr !important;
+    gap: 16px !important;
+    height: min(680px, 75vh) !important;
+  }
+
+  /* Hide horizontal splitter, we use vertical grid boundary */
+  #cal-body .cal-splitter {
+    display: none !important;
+  }
+
+  /* Ensure the calendar grid occupies column 1, row 3 */
+  #cal-body > .cal-grid,
+  #cal-body > .cal-wk-wrap,
+  #cal-body > .cal-agenda-wrap {
+    grid-column: 1 !important;
+    grid-row: 3 !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+  }
+
+  /* Ensure the event list panel is on column 2, row 3 */
+  #cal-body > .cal-day-detail {
+    grid-column: 2 !important;
+    grid-row: 3 !important;
+    border-top: none !important;
+    border-left: 1px solid var(--border) !important;
+    padding-top: 0 !important;
+    padding-left: 16px !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+    margin-top: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+}
+
+/* Phóng to cỡ chữ thêm 50% cho lịch */
+#calendar-modal {
+  /* Scale font-sizes by 1.5 */
+  --cal-title-size: 20px;
+  --cal-text-size-lg: 18px;
+  --cal-text-size-md: 16px;
+  --cal-text-size-sm: 15px;
+  --cal-text-size-xs: 14px;
+}
+
+#calendar-modal .cal-title { font-size: var(--cal-title-size) !important; }
+#calendar-modal button.cal-nav { font-size: var(--cal-text-size-sm) !important; }
+#calendar-modal button.cal-today-btn { font-size: var(--cal-text-size-xs) !important; }
+#calendar-modal .cal-add-label { font-size: var(--cal-text-size-sm) !important; }
+#calendar-modal .cal-filter-item { font-size: var(--cal-text-size-xs) !important; }
+#calendar-modal .cal-weekday { font-size: var(--cal-text-size-xs) !important; }
+#calendar-modal .cal-day-num { font-size: var(--cal-text-size-xs) !important; }
+#calendar-modal .cal-event-row-time { font-size: var(--cal-text-size-xs) !important; }
+#calendar-modal .cal-event-row-name { font-size: var(--cal-text-size-xs) !important; }
+#calendar-modal .cal-event-more { font-size: var(--cal-text-size-xs) !important; }
+#calendar-modal .cal-detail-header { font-size: var(--cal-text-size-md) !important; }
+#calendar-modal .cal-empty { font-size: var(--cal-text-size-sm) !important; }
+#calendar-modal .cal-event-name { font-size: var(--cal-title-size) !important; }
+#calendar-modal .cal-event-time { font-size: var(--cal-text-size-sm) !important; }
+#calendar-modal .cal-event-loc { font-size: var(--cal-text-size-sm) !important; }
+#calendar-modal .cal-search-input { font-size: var(--cal-text-size-sm) !important; }
+#calendar-modal .cal-agenda-date { font-size: var(--cal-text-size-md) !important; }
+#calendar-modal .cal-agenda-empty { font-size: var(--cal-text-size-sm) !important; }
+#calendar-modal .cal-empty-title { font-size: var(--cal-text-size-lg) !important; }
+#calendar-modal .cal-empty-msg { font-size: var(--cal-text-size-md) !important; }
+#calendar-modal .cal-input { font-size: var(--cal-text-size-md) !important; }
+#calendar-modal button.cal-btn { font-size: var(--cal-text-size-sm) !important; }
+
+/* Scale up the day grid cells for the bigger text */
+#calendar-modal .cal-day {
+  min-height: 115px !important;
+}
+
+#calendar-modal .cal-weekday {
+  padding: 8px 0 !important;
+}
+
+/* Adjust size of Quick-add input and placeholder */
+#calendar-modal .cal-quickadd-hint {
+  font-size: var(--cal-text-size-sm) !important;
+}
+
+#calendar-modal .cal-quickadd-row input {
+  font-size: var(--cal-text-size-sm) !important;
+  padding: 6px 4px !important;
+}
+
+/* Adjust size of event items dot and text info */
+#calendar-modal .cal-event-dot {
+  width: 12px !important;
+  height: 12px !important;
+}
