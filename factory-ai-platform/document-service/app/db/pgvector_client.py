@@ -1,24 +1,24 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
+import math
 import os
+import re
 from typing import Any, Dict, Iterable, List, Optional
 
 import psycopg2
 import psycopg2.extras
-from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "postgres")
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
 POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 POSTGRES_DB = os.getenv("POSTGRES_DB", "factory_db")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "factory_user")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "factory_secure_password_9988")
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 EMBEDDING_DIMS = int(os.getenv("EMBEDDING_DIMS", "384"))
-
-_model: Optional[SentenceTransformer] = None
 
 
 def _connect():
@@ -32,29 +32,47 @@ def _connect():
     )
 
 
-def _get_model() -> SentenceTransformer:
-    global _model
-    if _model is None:
-        logger.info("Loading embedding model: %s", EMBEDDING_MODEL)
-        _model = SentenceTransformer(EMBEDDING_MODEL)
-    return _model
-
-
-def _vector_literal(values: Iterable[float]) -> str:
-    return "[" + ",".join(f"{float(value):.8f}" for value in values) + "]"
+def _tokenize(text: str) -> List[str]:
+    return re.findall(r"[a-z0-9_à-ỹ]+", (text or "").lower())
 
 
 def embed_text(text: str) -> List[float]:
-    embedding = _get_model().encode(text or "", normalize_embeddings=True)
-    return [float(value) for value in embedding]
+    """Deterministic hashing-based embedding. NO model download required.
+    Maps text -> EMBEDDING_DIMS-dimensional float vector using SHA-256 buckets.
+    Cosine similarity between texts sharing vocabulary is preserved approximately
+    well enough for document RAG in dev/local environments.
+    """
+    vec = [0.0] * EMBEDDING_DIMS
+    tokens = _tokenize(text)
+    if not tokens:
+        return vec
+    for tok in tokens:
+        digest = hashlib.sha256(tok.encode("utf-8")).digest()
+        for i in range(0, len(digest), 4):
+            bucket = int.from_bytes(digest[i : i + 4], "big") % EMBEDDING_DIMS
+            sign = 1.0 if (digest[i // 4] & 1) else -1.0
+            vec[bucket] += sign
+    norm = math.sqrt(sum(v * v for v in vec))
+    if norm > 0:
+        vec = [v / norm for v in vec]
+    return vec
+
+
+def _vector_literal(values: Iterable[float]) -> str:
+    return json.dumps([float(v) for v in values])
+
+
+def _cosine(a: List[float], b: List[float]) -> float:
+    if not a or not b:
+        return 0.0
+    return sum(x * y for x, y in zip(a, b))
 
 
 def initialize_schema() -> None:
     with _connect() as conn:
         with conn.cursor() as cur:
-            cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
             cur.execute(
-                f"""
+                """
                 CREATE TABLE IF NOT EXISTS document_chunks (
                     id SERIAL PRIMARY KEY,
                     document_id TEXT,
@@ -66,7 +84,7 @@ def initialize_schema() -> None:
                     page_number INT,
                     chunk_index INT,
                     content TEXT,
-                    embedding VECTOR({EMBEDDING_DIMS}),
+                    embedding JSONB,
                     created_at TIMESTAMPTZ DEFAULT NOW()
                 );
                 """
@@ -77,13 +95,8 @@ def initialize_schema() -> None:
                 ON document_chunks (document_id, machine_code, line_code, document_type);
                 """
             )
-            cur.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_doc_chunks_embedding
-                ON document_chunks USING ivfflat (embedding vector_cosine_ops);
-                """
-            )
         conn.commit()
+    logger.info("Document RAG schema initialized (JSONB mode, dims=%d)", EMBEDDING_DIMS)
 
 
 def insert_chunks(
@@ -113,7 +126,7 @@ def insert_chunks(
                 chunk.get("page_number"),
                 chunk["chunk_index"],
                 content,
-                _vector_literal(embed_text(content)),
+                json.dumps(embed_text(content)),
             )
         )
 
@@ -128,33 +141,32 @@ def insert_chunks(
                 ) VALUES %s
                 """,
                 rows,
-                template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector)",
+                template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)",
             )
         conn.commit()
     return len(rows)
 
 
-def search_chunks(query: str, limit: int = 5) -> List[Dict[str, Any]]:
-    query_vector = _vector_literal(embed_text(query))
+def search_chunks(query: str, limit: int = 5) -> List[Dict]:
+    qvec = embed_text(query)
     with _connect() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
-                SELECT
-                    document_id AS "documentId",
-                    filename,
-                    machine_code AS "machineCode",
-                    line_code AS "lineCode",
-                    document_type AS "documentType",
-                    version,
-                    page_number AS "pageNumber",
-                    chunk_index AS "chunkIndex",
-                    content AS text,
-                    1 - (embedding <=> %s::vector) AS score
-                FROM document_chunks
-                ORDER BY embedding <=> %s::vector
-                LIMIT %s;
-                """,
-                (query_vector, query_vector, limit),
+                "SELECT document_id AS \"documentId\", filename, "
+                "machine_code AS \"machineCode\", line_code AS \"lineCode\", "
+                "document_type AS \"documentType\", version, "
+                "page_number AS \"pageNumber\", chunk_index AS \"chunkIndex\", "
+                "content AS text, embedding FROM document_chunks"
             )
-            return [dict(row) for row in cur.fetchall()]
+            results = []
+            for row in cur.fetchall():
+                stored = row["embedding"]
+                if isinstance(stored, str):
+                    stored = json.loads(stored)
+                score = _cosine(qvec, stored)
+                out = dict(row)
+                out["score"] = score
+                out.pop("embedding", None)
+                results.append(out)
+            results.sort(key=lambda r: r["score"], reverse=True)
+            return results[: max(1, min(limit, 20))]

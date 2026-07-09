@@ -12,7 +12,7 @@ import { bindMenuDismiss } from './escMenuStack.js';
 
 let initialized = false;
 let modalEl = null;
-let _authPolicy = { password_min_length: 8 };
+let _authPolicy = { password_min_length: 6 };
 
 function el(id) { return document.getElementById(id); }
 function esc(s) { return uiModule.esc(s); }

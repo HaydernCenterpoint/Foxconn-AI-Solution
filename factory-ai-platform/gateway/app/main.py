@@ -1,3 +1,37 @@
+# Load local environment variables from infrastructure/.env if running locally
+import os
+def _load_local_env():
+    cur = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(5):
+        infra_env = os.path.join(cur, "infrastructure", ".env")
+        if os.path.exists(infra_env):
+            with open(infra_env, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    if "=" in line:
+                        k, v = line.split("=", 1)
+                        os.environ[k.strip()] = v.strip().strip("'").strip('"')
+            break
+        env_file = os.path.join(cur, ".env")
+        if os.path.exists(env_file):
+            with open(env_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    if "=" in line:
+                        k, v = line.split("=", 1)
+                        os.environ[k.strip()] = v.strip().strip("'").strip('"')
+            break
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            break
+        cur = parent
+
+_load_local_env()
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse

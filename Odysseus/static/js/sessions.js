@@ -2151,7 +2151,7 @@ export async function materializePendingSession() {
   _pendingChat = null;
 
   const incognitoChk = document.getElementById('incognito-toggle');
-  const isIncognito = incognitoChk && incognitoChk.checked;
+  const isIncognito = false;
   const base = (pending.modelId || 'model').split('/').pop();
   const name = isIncognito ? 'Nobody' : `${base} ${new Date().toLocaleTimeString()}`;
 

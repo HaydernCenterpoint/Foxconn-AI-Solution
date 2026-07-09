@@ -34,3 +34,26 @@ npm-debug.log*
 
 # Other temp files or backups
 may_data.rar
+
+# Python Virtual Environments
+venv*/
+.venv*/
+venv/
+.venv/
+
+# Python Cache
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Local Environment Secrets
+.env
+.env.*
+!*.example
+
+# Local storage and test sheets
+_local_storage/
+report-test.xlsx
+

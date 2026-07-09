@@ -1,0 +1,121 @@
+# ============================================
+# Configuration for Data Platform Services
+# ============================================
+
+# TimescaleDB / PostgreSQL
+postgres:
+  host: "localhost"
+  port: 5432
+  database: "factory_db"
+  username: "factory_user"
+  password: "factory_secure_password_9988"
+  timescaledb:
+    enabled: true
+    # Chunk interval for hypertables
+    chunk_interval: "1 day"
+    # Compression policy (compress after 7 days)
+    compress_after: "7 days"
+    # Retention policy (keep raw data 30 days)
+    retention_raw: "30 days"
+    # Retention for aggregates (keep 1 year)
+    retention_agg: "1 year"
+
+# ERP Connector
+erp:
+  api_url: "http://localhost:8080/api/erp"
+  api_key: ""
+  sync_interval: 300  # seconds
+  timeout: 30
+  batch_size: 1000
+  retry_attempts: 3
+  retry_delay: 5.0
+  entity_types:
+    - "production_orders"
+    - "material_consumption"
+    - "downtime_reasons"
+    - "quality_data"
+
+# MES Connector
+mes:
+  connection_type: "api"  # 'api' or 'database'
+  api_url: "http://localhost:8080/api/mes"
+  api_key: ""
+  # Database settings (if connection_type=database)
+  db_host: "localhost"
+  db_port: 1433
+  db_name: "mes_db"
+  db_user: "sa"
+  db_password: ""
+  db_driver: "ODBC Driver 17 for SQL Server"
+  sync_interval: 300
+  batch_size: 1000
+  entity_types:
+    - "work_orders"
+    - "quality_inspections"
+    - "operator_shifts"
+
+# File Watcher Connector
+file_watcher:
+  watch_dirs:
+    - "./incoming"
+    - "//network-share/factory-reports"
+  poll_interval: 30
+  processed_dir: "./processed"
+  failed_dir: "./failed"
+  archive_dir: "./archived"
+  batch_size: 1000
+  file_patterns:
+    - "*.xlsx"
+    - "*.xls"
+    - "*.csv"
+  max_file_age_seconds: 60
+  skip_header_rows: 1
+
+# Column mappings for file imports
+column_mappings:
+  default:
+    timestamp_col: "timestamp"
+    asset_id_col: "machine_id"
+    metric_col: "metric"
+    value_col: "value"
+    tags_cols:
+      line_code: "line_code"
+      shift: "shift"
+      operator: "operator"
+  
+  production_report:
+    timestamp_col: "report_time"
+    asset_id_col: "machine_code"
+    metric_col: "measurement"
+    value_col: "reading"
+    tags_cols:
+      line: "line_id"
+      operator: "created_by"
+
+# Alert/Notification settings
+notifications:
+  enabled: false
+  email:
+    smtp_host: "smtp.example.com"
+    smtp_port: 587
+    smtp_user: ""
+    smtp_password: ""
+    from_address: "factory-alerts@example.com"
+    to_addresses:
+      - "operations@example.com"
+  slack:
+    webhook_url: ""
+    channel: "#factory-alerts"
+
+# Dead letter queue settings
+dead_letter_queue:
+  enabled: true
+  directory: "./dlq"
+  max_size_mb: 100
+  retention_days: 7
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "data-platform.log"

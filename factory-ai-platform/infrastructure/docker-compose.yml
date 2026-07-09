@@ -194,3 +194,88 @@ services:
       interval: 15s
       timeout: 5s
       retries: 3
+
+  asset-service:
+    build:
+      context: ../asset-service
+      dockerfile: Dockerfile
+    container_name: asset-service
+    restart: always
+    ports:
+      - "8084:8084"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://factory_user:factory_secure_password_9988@postgres:5432/factory_db
+      - SYNC_DATABASE_URL=postgresql://factory_user:factory_secure_password_9988@postgres:5432/factory_db
+      - JWT_SECRET=${JWT_SECRET:-factory-jwt-secret-key-1234-long-enough-32bytes}
+      - DEBUG=${DEBUG:-false}
+    networks:
+      - factory-net
+      - db-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  asset-health-job:
+    build:
+      context: ../asset-service
+      dockerfile: Dockerfile
+    container_name: asset-health-job
+    restart: always
+    command: ["python", "-m", "app.scripts.health_score_job", "--daemon", "--interval", "15"]
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://factory_user:factory_secure_password_9988@postgres:5432/factory_db
+      - SYNC_DATABASE_URL=postgresql://factory_user:factory_secure_password_9988@postgres:5432/factory_db
+    networks:
+      - factory-net
+      - db-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      asset-service:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  cep-service:
+    build:
+      context: ../cep-service
+      dockerfile: Dockerfile
+    container_name: cep-service
+    restart: always
+    ports:
+      - "8085:8084"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - POSTGRES_URL=postgresql://factory_user:factory_secure_password_9988@postgres:5432/factory_db
+      - BACKEND_URL=http://host.docker.internal:5000
+      - JWT_SECRET=${JWT_SECRET:-factory-jwt-secret-key-1234-long-enough-32bytes}
+      - CEP_MODE=${CEP_MODE:-mock}
+    networks:
+      - factory-net
+      - db-net
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3

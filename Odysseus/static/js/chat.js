@@ -1201,8 +1201,7 @@ import { wireArrowUpRecall, getLastUserMessageFromChatHistory } from './composer
       // intent gate.
       const toggleState = Storage.loadToggleState();
       let isAgentMode = (toggleState.mode || 'chat') === 'agent';
-      const incognitoChk = el('incognito-toggle');
-      const isIncognito = !!(incognitoChk && incognitoChk.checked);
+      const isIncognito = false;
       // Auto-escalate to agent mode when a document is open — the user expects
       // the AI to see the document and have tools to edit it
       if (!isIncognito && !isAgentMode && documentModule && activeDocIdForSend) {

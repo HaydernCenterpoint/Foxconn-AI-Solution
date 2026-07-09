@@ -13,7 +13,7 @@ let modalEl = null;
 // the endpoints list can flash a glow on that row. Cleared once the
 // animation fires.
 let _recentlyAddedEpId = null;
-let _authPolicy = { password_min_length: 8, reserved_usernames: [] };
+let _authPolicy = { password_min_length: 6, reserved_usernames: [] };
 
 function el(id) { return document.getElementById(id); }
 function esc(s) { return uiModule.esc(s); }

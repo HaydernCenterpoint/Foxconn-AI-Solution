@@ -267,7 +267,7 @@ if AUTH_ENABLED:
         "/api/version",
         "/login",
     }
-    AUTH_EXEMPT_PREFIXES = ["/static"]
+    AUTH_EXEMPT_PREFIXES = ["/static", "/api/mkz/"]
     # Dynamic paths whose own handler proves identity via a path-embedded
     # secret instead of the session/bearer auth. The route handler at
     # routes/task_routes.py validates the per-task `webhook_token` itself
@@ -860,6 +860,11 @@ app.include_router(setup_companion_routes())
 # MKZ Factory Integration
 from routes.mkz_routes import setup_mkz_routes
 app.include_router(setup_mkz_routes())
+
+# MKZ Factory AI Gateway bridge (exposes factory-* + antigravity-engineering-agent models)
+from routes.mkz_gateway_routes import setup_mkz_gateway_routes
+app.include_router(setup_mkz_gateway_routes())
+logger.info("MKZ Gateway bridge mounted at /api/mkz/gateway")
 
 # ========= ROUTES (kept in app.py) =========
 

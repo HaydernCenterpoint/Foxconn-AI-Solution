@@ -1,0 +1,195 @@
+# ============================================
+# TimescaleDB Migration Docker Setup
+# ============================================
+
+version: '3.8'
+
+services:
+  # TimescaleDB Service (replaces standard PostgreSQL for time-series)
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: factory-timescaledb
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: factory_db
+      POSTGRES_USER: factory_user
+      POSTGRES_PASSWORD: factory_secure_password_9988
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - db-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U factory_user -d factory_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # Data Platform API
+  data-platform-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: data-platform-api
+    restart: unless-stopped
+    environment:
+      - POSTGRES_HOST=timescaledb
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=factory_db
+      - POSTGRES_USER=factory_user
+      - POSTGRES_PASSWORD=factory_secure_password_9988
+    ports:
+      - "8084:8084"
+    networks:
+      - factory-net
+      - db-net
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  # ERP Connector Worker
+  erp-connector:
+    build:
+      context: .
+      dockerfile: Dockerfile.connector
+    container_name: erp-connector
+    restart: unless-stopped
+    command: python -m connectors.erp.connector --daemon
+    environment:
+      - POSTGRES_HOST=timescaledb
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=factory_db
+      - POSTGRES_USER=factory_user
+      - POSTGRES_PASSWORD=factory_secure_password_9988
+      - ERP_API_URL=${ERP_API_URL:-http://erp-service:8080/api}
+      - ERP_API_KEY=${ERP_API_KEY:-}
+      - ERP_SYNC_INTERVAL=300
+    networks:
+      - factory-net
+      - db-net
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # MES Connector Worker
+  mes-connector:
+    build:
+      context: .
+      dockerfile: Dockerfile.connector
+    container_name: mes-connector
+    restart: unless-stopped
+    command: python -m connectors.mes.connector --daemon
+    environment:
+      - POSTGRES_HOST=timescaledb
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=factory_db
+      - POSTGRES_USER=factory_user
+      - POSTGRES_PASSWORD=factory_secure_password_9988
+      - MES_CONNECTION_TYPE=${MES_CONNECTION_TYPE:-api}
+      - MES_API_URL=${MES_API_URL:-http://mes-service:8080/api}
+      - MES_API_KEY=${MES_API_KEY:-}
+    networks:
+      - factory-net
+      - db-net
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # File Watcher Connector
+  file-watcher-connector:
+    build:
+      context: .
+      dockerfile: Dockerfile.connector
+    container_name: file-watcher-connector
+    restart: unless-stopped
+    command: python -m connectors.file_watcher.connector --daemon
+    volumes:
+      - ./incoming:/app/incoming:ro
+      - ./processed:/app/processed
+      - ./failed:/app/failed
+    environment:
+      - POSTGRES_HOST=timescaledb
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=factory_db
+      - POSTGRES_USER=factory_user
+      - POSTGRES_PASSWORD=factory_secure_password_9988
+      - FILE_WATCHER_DIRS=/app/incoming
+      - FILE_WATCHER_POLL_INTERVAL=30
+    networks:
+      - factory-net
+      - db-net
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # Backfill Service (run-once job)
+  backfill-job:
+    build:
+      context: .
+      dockerfile: Dockerfile.connector
+    container_name: backfill-job
+    restart: "no"
+    command: python -m backfill.backfill --resume
+    environment:
+      - POSTGRES_HOST=timescaledb
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=factory_db
+      - POSTGRES_USER=factory_user
+      - POSTGRES_PASSWORD=factory_secure_password_9988
+    networks:
+      - db-net
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+
+networks:
+  factory-net:
+    driver: bridge
+  db-net:
+    driver: bridge
+    internal: true
+
+volumes:
+  timescaledb_data:

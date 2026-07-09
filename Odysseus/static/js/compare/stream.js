@@ -241,8 +241,7 @@ async function streamToPane(paneIdx, sessionId, message, aiMsgEl, opts) {
       fd.append('mode', 'chat');
       fd.append('use_rag', 'false');
     }
-    const incognitoChk = document.getElementById('incognito-toggle');
-    if (incognitoChk && incognitoChk.checked) {
+    if (false) {
       fd.append('incognito', 'true');
     }
     // Disable document tool and memory injection in compare mode

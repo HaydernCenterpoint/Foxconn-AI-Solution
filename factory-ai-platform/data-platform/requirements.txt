@@ -1,0 +1,34 @@
+# Data Platform Requirements
+# Python 3.10+
+
+# Database
+psycopg2-binary==2.9.9
+timescaleb==0.1.0  # Not real, use: pip install timescaledb
+
+# Web Framework
+fastapi==0.110.0
+uvicorn[standard]==0.27.0
+pydantic==2.6.0
+
+# Data Processing
+pandas==2.2.0
+openpyxl==3.1.2
+xlrd==2.0.1
+
+# HTTP Client
+requests==2.31.0
+httpx==0.27.0
+
+# Configuration
+pyyaml==6.0.1
+
+# Database ODBC (for MES connector - optional)
+pyodbc==5.0.1
+
+# Testing
+pytest==8.0.0
+pytest-asyncio==0.23.0
+pytest-cov==4.1.0
+
+# Utilities
+python-dotenv==1.0.0

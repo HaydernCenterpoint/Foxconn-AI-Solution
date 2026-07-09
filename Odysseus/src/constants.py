@@ -103,7 +103,7 @@ CLEANUP_ENABLED = os.getenv("CLEANUP_ENABLED", "True").lower() == "true"
 CLEANUP_INTERVAL_HOURS = int(os.getenv("CLEANUP_INTERVAL_HOURS", "24"))
 
 # Auth policy
-PASSWORD_MIN_LENGTH = 8
+PASSWORD_MIN_LENGTH = 6
 
 # Default parameters
 DEFAULT_TEMPERATURE = 1.0

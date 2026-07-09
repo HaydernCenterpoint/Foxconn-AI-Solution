@@ -15,10 +15,22 @@
 #>
 param(
     [int]$Port = 7000,
-    [string]$BindHost = "127.0.0.1"
+    [string]$BindHost = $null
 )
 
 $ErrorActionPreference = "Stop"
+
+if (-not $BindHost) {
+    $BindHost = "127.0.0.1"
+    if (Test-Path ".env") {
+        $envLines = Get-Content ".env"
+        foreach ($line in $envLines) {
+            if ($line -match "^APP_BIND=(.*)$") {
+                $BindHost = $Matches[1].Trim()
+            }
+        }
+    }
+}
 Set-Location -Path $PSScriptRoot
 
 function Write-Step($msg) { Write-Host ""; Write-Host ("==> " + $msg) -ForegroundColor Cyan }
