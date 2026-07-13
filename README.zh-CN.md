@@ -19,7 +19,7 @@ PLC 与 Operations 的数据流构成本地运行边界；Open Data Fusion 仅�
 
 ```mermaid
 flowchart LR
-    PLC[PLC / thiết bị] --> Client[ClientPLC]
+    PLC[PLC / 设备] --> Client[ClientPLC]
     Client --> MQTT[MQTT Server]
     MQTT --> API[ASP.NET Core Backend]
     API <--> UI[React Operations UI]
@@ -111,15 +111,15 @@ npm --prefix frontend run dev
 ```text
 .
 ├── backend/                         # ASP.NET Core Operations API
-├── backend.Tests/                   # Kiểm thử backend
-├── ClientPLC/                       # Ứng dụng WPF cho PLC
+├── backend.Tests/                   # 后端测试
+├── ClientPLC/                       # PLC 的 WPF 应用程序
 ├── frontend/                        # React + Vite Operations UI
-├── fusion-contracts/                # Contract dùng chung
-├── fusion-adapter/                  # Worker dispatch outbox sang ODF
-├── fusion-adapter.Tests/            # Kiểm thử Fusion Adapter
-├── infrastructure/open-data-fusion/ # Cấu hình và hướng dẫn ODF
-├── docs/superpowers/specs/          # Thiết kế tích hợp
-└── third_party/open-data-fusion/    # Upstream Git submodule được ghim
+├── fusion-contracts/                # 共享契约
+├── fusion-adapter/                  # 向 ODF 分发 outbox 的工作程序
+├── fusion-adapter.Tests/            # Fusion Adapter 测试
+├── infrastructure/open-data-fusion/ # ODF 配置与指南
+├── docs/superpowers/specs/          # 集成设计
+└── third_party/open-data-fusion/    # 已固定版本的上游 Git submodule
 ```
 
 ## 测试与构建
