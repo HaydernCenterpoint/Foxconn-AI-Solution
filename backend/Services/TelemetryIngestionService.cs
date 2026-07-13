@@ -3,9 +3,12 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using backend.Configuration;
+using Mkz.Fusion.Contracts;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using backend.Hubs;
 
 namespace backend.Services
@@ -16,17 +19,20 @@ namespace backend.Services
         private readonly DatabaseService _dbService;
         private readonly IHubContext<TelemetryHub> _hubContext;
         private readonly ILogger<TelemetryIngestionService> _logger;
+        private readonly IOptions<OpenDataFusionCaptureOptions> _captureOptions;
 
         public ChannelWriter<string> Writer => _channel.Writer;
 
         public TelemetryIngestionService(
             DatabaseService dbService,
             IHubContext<TelemetryHub> hubContext,
-            ILogger<TelemetryIngestionService> logger)
+            ILogger<TelemetryIngestionService> logger,
+            IOptions<OpenDataFusionCaptureOptions> captureOptions)
         {
             _dbService = dbService;
             _hubContext = hubContext;
             _logger = logger;
+            _captureOptions = captureOptions;
             
             var options = new UnboundedChannelOptions
             {
@@ -72,42 +78,89 @@ namespace backend.Services
         {
             using var doc = JsonDocument.Parse(rawJson);
             var root = doc.RootElement;
-            
+
             if (!root.TryGetProperty("payload", out var payload)) return;
 
-            string machineId = payload.TryGetProperty("machineId", out var midProp) ? midProp.GetString() ?? "" : "";
+            string machineId = payload.TryGetProperty("machineId", out var midProp) && midProp.ValueKind == JsonValueKind.String
+                ? midProp.GetString() ?? ""
+                : "";
             if (string.IsNullOrEmpty(machineId)) return;
 
-            long sequence = payload.TryGetProperty("sequence", out var seqProp) ? seqProp.GetInt64() : 0L;
+            long sequence = payload.TryGetProperty("sequence", out var seqProp) && seqProp.TryGetInt64(out var parsedSequence)
+                ? parsedSequence
+                : 0L;
 
-            DateTime sentAt = DateTime.UtcNow;
-            if (root.TryGetProperty("sentAt", out var sentAtProp))
+            string? messageId = root.TryGetProperty("messageId", out var messageIdProp) && messageIdProp.ValueKind == JsonValueKind.String
+                ? messageIdProp.GetString()
+                : null;
+
+            DateTimeOffset sentAt = DateTimeOffset.UtcNow;
+            if (root.TryGetProperty("sentAt", out var sentAtProp) && sentAtProp.ValueKind == JsonValueKind.String)
             {
-                if (DateTime.TryParse(sentAtProp.GetString(), out var parsedSentAt))
+                if (DateTimeOffset.TryParse(sentAtProp.GetString(), out var parsedSentAt))
                 {
                     sentAt = parsedSentAt;
                 }
             }
 
-            // 1. Write raw to DB
-            await _dbService.InsertRawTelemetryAsync(machineId, rawJson, sequence, sentAt);
+            string status = payload.TryGetProperty("status", out var statusProp) && statusProp.ValueKind == JsonValueKind.String
+                ? statusProp.GetString() ?? "OFFLINE"
+                : "OFFLINE";
+            bool plcConnected = payload.TryGetProperty("plcConnected", out var plcProp) &&
+                plcProp.ValueKind is JsonValueKind.True or JsonValueKind.False &&
+                plcProp.GetBoolean();
 
-            // 2. Extract properties for quick machine record update
-            string status = payload.TryGetProperty("status", out var statusProp) ? statusProp.GetString() ?? "OFFLINE" : "OFFLINE";
-            bool plcConnected = payload.TryGetProperty("plcConnected", out var plcProp) && plcProp.GetBoolean();
-
-            // Extract production properties
             long productionCount = 0;
             double cycleTime = 0;
-            if (payload.TryGetProperty("production", out var prodProp))
+            double? uph = null;
+            double? oee = null;
+            double? yieldRate = null;
+            if (payload.TryGetProperty("production", out var prodProp) && prodProp.ValueKind == JsonValueKind.Object)
             {
-                if (prodProp.TryGetProperty("qty", out var qp)) productionCount = qp.GetInt64();
-                if (prodProp.TryGetProperty("time", out var tp)) cycleTime = tp.GetDouble();
+                if (prodProp.TryGetProperty("qty", out var qtyProp) && qtyProp.TryGetInt64(out var parsedQuantity))
+                    productionCount = parsedQuantity;
+                if (prodProp.TryGetProperty("time", out var timeProp) && timeProp.TryGetDouble(out var parsedCycleTime))
+                    cycleTime = parsedCycleTime;
+                if (prodProp.TryGetProperty("uph", out var uphProp) && uphProp.TryGetDouble(out var parsedUph))
+                    uph = parsedUph;
+                if (prodProp.TryGetProperty("oee", out var oeeProp) && oeeProp.TryGetDouble(out var parsedOee))
+                    oee = parsedOee;
+                if (prodProp.TryGetProperty("yieldRate", out var yieldProp) && yieldProp.TryGetDouble(out var parsedYieldRate))
+                    yieldRate = parsedYieldRate;
             }
 
-            // 3. Update machines table
+            bool? alarmActive = null;
+            if (payload.TryGetProperty("alarm", out var alarmProp) && alarmProp.ValueKind == JsonValueKind.Object &&
+                alarmProp.TryGetProperty("active", out var alarmActiveProp) &&
+                alarmActiveProp.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            {
+                alarmActive = alarmActiveProp.GetBoolean();
+            }
+
             if (Guid.TryParse(machineId, out var machineGuid))
             {
+                var captureInput = new TelemetryCaptureInput(
+                    machineGuid,
+                    rawJson,
+                    sequence,
+                    sentAt,
+                    messageId,
+                    payload.TryGetProperty("machineName", out var machineNameProp) && machineNameProp.ValueKind == JsonValueKind.String
+                        ? machineNameProp.GetString()
+                        : null,
+                    status,
+                    plcConnected,
+                    productionCount,
+                    cycleTime,
+                    uph,
+                    oee,
+                    yieldRate,
+                    alarmActive);
+
+                await _dbService.PersistTelemetryAndFusionOutboxAsync(
+                    captureInput,
+                    _captureOptions.Value.CaptureEnabled);
+
                 const string updateMachineSql = @"
                     UPDATE machines SET
                         status = @status,
@@ -124,17 +177,14 @@ namespace backend.Services
                     p.AddWithValue("mid", machineGuid);
                 });
 
-                // 4. Save history records
                 await _dbService.SaveTelemetryHistoryAsync(
                     machineGuid, status, plcConnected, (int)productionCount, cycleTime,
                     0.0, 0.0, 0L, payload.GetRawText());
 
-                // 5. Update hourly production table
                 await _dbService.UpdateHourlyProductionAsync(
                     machineGuid, (int)productionCount, 0.0, 0.0, 0L);
             }
 
-            // 5. Broadcast real-time SignalR updates
             await _hubContext.Clients.Group($"machine_{machineId}").SendAsync("TelemetryUpdate", rawJson);
             await _hubContext.Clients.Group("all_clients").SendAsync("TelemetryUpdate", rawJson);
         }

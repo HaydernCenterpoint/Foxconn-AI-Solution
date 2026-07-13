@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using backend.Configuration;
 using backend.Middleware;
 using backend.Services;
 using backend.Security;
@@ -17,6 +18,8 @@ CryptoHelper.Initialize(mqttEncryptionKey);
 
 // Add services to the container.
 builder.Services.AddControllers();
+builder.Services.Configure<OpenDataFusionCaptureOptions>(
+    builder.Configuration.GetSection(OpenDataFusionCaptureOptions.SectionName));
 
 // Swagger configuration
 builder.Services.AddEndpointsApiExplorer();
