@@ -61,13 +61,19 @@ $env:OpenDataFusion__CaptureEnabled = 'true'
 dotnet run --project backend/backend.csproj
 ```
 
+Giữ Backend chạy ở terminal A; thực hiện các lệnh preview ODF ở terminal B.
+
 3. Nếu dùng ODF preview, khởi động `application-preview` và chờ `http://127.0.0.1:54310/ready` phản hồi thành công trước khi tiếp tục:
 
 > [!WARNING]
 > `application-preview` dùng SQLite chỉ cho local/dev để xem trước mapping; không dùng profile hoặc tệp `.env` này cho production.
 
 ```powershell
-Copy-Item infrastructure/open-data-fusion/.env.example third_party/open-data-fusion/.env
+$odfEnv = 'third_party/open-data-fusion/.env'
+if (Test-Path -LiteralPath $odfEnv) {
+  throw "$odfEnv already exists; review it instead of overwriting."
+}
+Copy-Item infrastructure/open-data-fusion/.env.example $odfEnv
 Push-Location third_party/open-data-fusion
 docker compose --env-file .env --profile application-preview up -d
 Pop-Location

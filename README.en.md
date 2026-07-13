@@ -61,13 +61,19 @@ $env:OpenDataFusion__CaptureEnabled = 'true'
 dotnet run --project backend/backend.csproj
 ```
 
+Keep the backend running in terminal A; run the ODF preview commands in terminal B.
+
 3. If you use the ODF preview, start `application-preview` and wait for `http://127.0.0.1:54310/ready` to return successfully before continuing:
 
 > [!WARNING]
 > `application-preview` uses SQLite only for local/dev mapping preview; do not use this profile or its `.env` file in production.
 
 ```powershell
-Copy-Item infrastructure/open-data-fusion/.env.example third_party/open-data-fusion/.env
+$odfEnv = 'third_party/open-data-fusion/.env'
+if (Test-Path -LiteralPath $odfEnv) {
+  throw "$odfEnv already exists; review it instead of overwriting."
+}
+Copy-Item infrastructure/open-data-fusion/.env.example $odfEnv
 Push-Location third_party/open-data-fusion
 docker compose --env-file .env --profile application-preview up -d
 Pop-Location

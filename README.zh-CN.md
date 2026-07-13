@@ -61,13 +61,19 @@ $env:OpenDataFusion__CaptureEnabled = 'true'
 dotnet run --project backend/backend.csproj
 ```
 
+让后端继续在终端 A 中运行；在终端 B 中执行 ODF 预览命令。
+
 3. 如果使用 ODF preview，启动 `application-preview` 并等待 `http://127.0.0.1:54310/ready` 成功响应后再继续：
 
 > [!WARNING]
 > `application-preview` 使用 SQLite，仅用于本地/开发环境的 mapping 预览；不得将此 profile 或 `.env` 文件用于生产环境。
 
 ```powershell
-Copy-Item infrastructure/open-data-fusion/.env.example third_party/open-data-fusion/.env
+$odfEnv = 'third_party/open-data-fusion/.env'
+if (Test-Path -LiteralPath $odfEnv) {
+  throw "$odfEnv already exists; review it instead of overwriting."
+}
+Copy-Item infrastructure/open-data-fusion/.env.example $odfEnv
 Push-Location third_party/open-data-fusion
 docker compose --env-file .env --profile application-preview up -d
 Pop-Location
