@@ -181,6 +181,7 @@ export const vi = {
     reports: 'Báo cáo',
     productionAnalysis: 'Phân tích sản lượng',
     system: 'Hệ thống',
+    dataFusion: 'Hợp nhất dữ liệu',
   },
   titles: {
     login: 'Đăng nhập',

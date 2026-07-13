@@ -181,6 +181,7 @@ export const en = {
     reports: 'Reports',
     productionAnalysis: 'Production Analysis',
     system: 'System',
+    dataFusion: 'Data Fusion',
   },
   titles: {
     login: 'Sign in',

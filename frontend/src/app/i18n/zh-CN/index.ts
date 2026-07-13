@@ -181,6 +181,7 @@ export const zhCN = {
     reports: '报告',
     productionAnalysis: '产量分析',
     system: '系统',
+    dataFusion: '数据融合',
   },
   titles: {
     login: '登录',

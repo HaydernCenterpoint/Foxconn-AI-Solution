@@ -13,9 +13,11 @@ import {
   FileText,
   Settings,
   Cpu,
+  ExternalLink,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../store/auth.store';
+import { getOpenDataFusionUrl } from '../../config/openDataFusion';
 
 const baseNavItems = [
   { to: '/admin', icon: Gauge, labelKey: 'navigation.overview', permission: null },
@@ -55,6 +57,7 @@ export function Sidebar({ collapsed, onToggle, alarmCount = 0 }: Props) {
   const [hovered, setHovered] = useState(false);
   const leaveTimer = useRef<number | null>(null);
   const role = useAuthStore(s => s.role);
+  const odfWebUrl = getOpenDataFusionUrl(import.meta.env.VITE_ODF_WEB_URL);
 
   const isExpanded = !collapsed || hovered;
   const width = isExpanded ? EXPANDED_W : COLLAPSED_W;
@@ -128,6 +131,27 @@ export function Sidebar({ collapsed, onToggle, alarmCount = 0 }: Props) {
     );
   };
 
+  const renderExternalNavItem = (url: string) => {
+    const label = t('navigation.dataFusion');
+    return (
+      <a
+        key="navigation.dataFusion"
+        href={url}
+        target="_self"
+        rel="noreferrer"
+        title={!isExpanded ? label : undefined}
+        className={`group relative flex min-h-[2.85rem] items-center gap-3 rounded-lg border border-transparent px-3.5 text-sm font-semibold text-text-secondary transition-all duration-250 hover:border-[#14356a]/30 hover:bg-[#0A1A35]/35 hover:text-text-primary ${
+          !isExpanded ? 'justify-center' : ''
+        }`}
+      >
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-secondary transition-colors group-hover:text-text-primary">
+          <ExternalLink size={17} aria-hidden={true} />
+        </span>
+        {isExpanded && <span className="flex-1 truncate text-xs font-bold uppercase tracking-wide">{label}</span>}
+      </a>
+    );
+  };
+
   return (
     <div
       className="h-full flex-shrink-0 relative transition-[width] duration-200 ease-out"
@@ -150,10 +174,14 @@ export function Sidebar({ collapsed, onToggle, alarmCount = 0 }: Props) {
       >
         <nav className="flex-1 space-y-2 p-3">
           {isViewerMode ? (
-            viewerNavItems.map(item => renderNavItem(item, item.to === '/alarms'))
+            <>
+              {viewerNavItems.map(item => renderNavItem(item, item.to === '/alarms'))}
+              {odfWebUrl && renderExternalNavItem(odfWebUrl)}
+            </>
           ) : (
             <>
               {baseNavItems.map(item => renderNavItem(item, item.to === '/admin/alarms'))}
+              {odfWebUrl && renderExternalNavItem(odfWebUrl)}
 
               {role === 'ADMIN' && (
                 <>
