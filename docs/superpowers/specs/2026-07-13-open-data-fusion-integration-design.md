@@ -137,7 +137,7 @@ CREATE INDEX idx_fusion_outbox_dispatch
     ON fusion_outbox (status, available_at, created_at);
 ```
 
-Trạng thái hợp lệ là `PENDING`, `PROCESSING`, `DELIVERED`, và `DEAD`. `event_key` là `telemetry:<machine-guid>:<sequence>` khi sequence dương; khi sequence bằng 0, nó là `telemetry:<machine-guid>:<sha256(raw-json)>`. Unique key làm cho việc gửi lại MQTT không tạo thêm intent đồng bộ trong MKZ.
+Trạng thái hợp lệ là `PENDING`, `PROCESSING`, `DELIVERED`, và `DEAD`. `event_key` là `telemetry:<machine-guid>:<message-id>` khi envelope PLC cung cấp `messageId`; khi thiếu `messageId`, nó là `telemetry:<machine-guid>:<sha256(raw-json)>`. `sequence` vẫn được lưu trong raw telemetry nhưng không làm idempotency key vì ClientPLC hiện dùng nó như line order, không phải một sequence tăng dần cho từng message. Unique key làm cho việc gửi lại MQTT không tạo thêm intent đồng bộ trong MKZ.
 
 Payload là `TelemetryFusionEvent` version 1, gồm `eventId`, `eventKey`, `occurredAt`, snapshot `machine`, snapshot `line` có thể rỗng, và telemetry envelope gốc đã parse. Adapter chỉ dựa vào payload này khi dispatch, không query lại state mutable của máy.
 
@@ -170,7 +170,8 @@ ODF bundle chỉ nhận datapoint số; do đó string state không được đ�
 | `oee` | `oee` | Giá trị số nguồn cung cấp |
 | `yieldRate` | `yield_rate` | Giá trị số nguồn cung cấp |
 | `plcConnected` | `plc_connected` | `true=1`, `false=0` |
-| `status` | `machine_state_code` | `OFFLINE=0`, `RUNNING=1`, `IDLE=2`, `STOPPED=3`, `ALARM=4`, khác=`99` |
+| `production.uph` | `uph` | Giá trị số nguồn cung cấp |
+| `status` | `machine_state_code` | `OFFLINE=0`, `RUNNING=1`, `IDLE=2`, `STOPPED=3`, `ERROR` hoặc `ALARM=4`, khác=`99` |
 | `alarm` boolean nếu có | `alarm_active` | `true=1`, `false=0` |
 | `cpuPercent`, `ramPercent`, `uptimeSeconds` nếu có | `cpu_percent`, `ram_percent`, `uptime_seconds` | Giá trị số; `uptime_seconds` có unit `s` |
 
