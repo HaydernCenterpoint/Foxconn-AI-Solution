@@ -88,10 +88,14 @@
   npm --prefix frontend run dev
   ```
 
-  Include the ODF mapping-preview command, without inserting development passwords:
+  Keep the backend running in terminal A, then run the ODF mapping-preview commands in terminal B, without inserting development passwords:
 
   ```powershell
-  Copy-Item infrastructure/open-data-fusion/.env.example third_party/open-data-fusion/.env
+  $odfEnv = 'third_party/open-data-fusion/.env'
+  if (Test-Path -LiteralPath $odfEnv) {
+    throw "$odfEnv already exists; review it instead of overwriting."
+  }
+  Copy-Item infrastructure/open-data-fusion/.env.example $odfEnv
   Push-Location third_party/open-data-fusion
   docker compose --env-file .env --profile application-preview up -d
   Pop-Location
