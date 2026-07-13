@@ -42,7 +42,7 @@ flowchart LR
 
 ## Khởi chạy nhanh
 
-Điều kiện trước khi chạy: .NET 9 SDK, Node.js, PostgreSQL có thể truy cập được đã cấu hình qua connection string của backend và Docker Desktop nếu dùng ODF preview.
+Điều kiện trước khi chạy: .NET 9 SDK, Node.js, PostgreSQL có thể truy cập được đã cấu hình qua connection string của backend và Docker Desktop nếu dùng ODF preview. ClientPLC chạy trên Windows và yêu cầu .NET 9 Windows Desktop SDK.
 
 Khởi động end-to-end theo thứ tự an toàn:
 
@@ -81,6 +81,14 @@ dotnet run --project fusion-adapter/Fusion.Adapter.csproj
 ```
 
 5. Khi các thành phần trên sẵn sàng, khởi động ClientPLC theo cấu hình PLC của môi trường và chạy Operations UI trong terminal riêng:
+
+**Khởi động ClientPLC:**
+
+```powershell
+dotnet run --project ClientPLC/ClientPLC.App/ClientPLC.App.csproj
+```
+
+**Khởi động Operations UI:**
 
 ```powershell
 npm --prefix frontend install
