@@ -63,21 +63,22 @@ dotnet run --project backend/backend.csproj
 
 Giữ Backend chạy ở terminal A; thực hiện các lệnh preview ODF ở terminal B.
 
-3. Nếu dùng ODF preview, khởi động `application-preview` và chờ `http://127.0.0.1:54310/ready` phản hồi thành công trước khi tiếp tục:
+3. Nếu dùng ODF preview, khởi động và kiểm chứng `application-preview` bằng các script an toàn sau:
 
 > [!WARNING]
-> `application-preview` dùng SQLite chỉ cho local/dev để xem trước mapping; không dùng profile hoặc tệp `.env` này cho production.
+> `application-preview` dùng SQLite chỉ cho local/dev để xem trước mapping; không dùng profile này cho production. Các script không tạo `third_party/open-data-fusion/.env` và smoke test chỉ chấp nhận URL loopback.
 
-```powershell
-$odfEnv = 'third_party/open-data-fusion/.env'
-if (Test-Path -LiteralPath $odfEnv) {
-  throw "$odfEnv already exists; review it instead of overwriting."
-}
-Copy-Item infrastructure/open-data-fusion/.env.example $odfEnv
-Push-Location third_party/open-data-fusion
-docker compose --env-file .env --profile application-preview up -d
-Pop-Location
-```
+~~~powershell
+.\infrastructure\open-data-fusion\Start-OpenDataFusionPreview.ps1
+.\infrastructure\open-data-fusion\Test-OpenDataFusionPreview.ps1
+~~~
+
+Nếu script khởi động báo cổng PostgreSQL preview mặc định `55432` đang bị chiếm, chọn một cổng trống và chạy lại cả hai lệnh:
+
+~~~powershell
+.\infrastructure\open-data-fusion\Start-OpenDataFusionPreview.ps1 -PostgresPort 55433
+.\infrastructure\open-data-fusion\Test-OpenDataFusionPreview.ps1
+~~~
 
 4. Giữ `OpenDataFusion__DispatchEnabled` tắt cho đến khi ODF đã có tenant, project và identity. Sau đó, cấu hình theo [hướng dẫn Open Data Fusion](infrastructure/open-data-fusion/README.md), bật dispatch và chạy Fusion Adapter trong terminal riêng; không đặt bí mật trong tài liệu hoặc mã nguồn:
 

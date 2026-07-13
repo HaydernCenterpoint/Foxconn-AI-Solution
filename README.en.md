@@ -63,21 +63,22 @@ dotnet run --project backend/backend.csproj
 
 Keep the backend running in terminal A; run the ODF preview commands in terminal B.
 
-3. If you use the ODF preview, start `application-preview` and wait for `http://127.0.0.1:54310/ready` to return successfully before continuing:
+3. If you use the ODF preview, start and validate `application-preview` with these safe scripts:
 
 > [!WARNING]
-> `application-preview` uses SQLite only for local/dev mapping preview; do not use this profile or its `.env` file in production.
+> `application-preview` uses SQLite only for local/dev mapping preview; do not use this profile in production. The scripts do not create `third_party/open-data-fusion/.env`, and the smoke test accepts loopback URLs only.
 
-```powershell
-$odfEnv = 'third_party/open-data-fusion/.env'
-if (Test-Path -LiteralPath $odfEnv) {
-  throw "$odfEnv already exists; review it instead of overwriting."
-}
-Copy-Item infrastructure/open-data-fusion/.env.example $odfEnv
-Push-Location third_party/open-data-fusion
-docker compose --env-file .env --profile application-preview up -d
-Pop-Location
-```
+~~~powershell
+.\infrastructure\open-data-fusion\Start-OpenDataFusionPreview.ps1
+.\infrastructure\open-data-fusion\Test-OpenDataFusionPreview.ps1
+~~~
+
+If the startup script reports that the default preview PostgreSQL port `55432` is occupied, choose a free port and run both commands again:
+
+~~~powershell
+.\infrastructure\open-data-fusion\Start-OpenDataFusionPreview.ps1 -PostgresPort 55433
+.\infrastructure\open-data-fusion\Test-OpenDataFusionPreview.ps1
+~~~
 
 4. Keep `OpenDataFusion__DispatchEnabled` disabled until ODF has a tenant, project, and identity. Then configure it according to the [Open Data Fusion guide](infrastructure/open-data-fusion/README.md), enable dispatch, and run Fusion Adapter in a separate terminal; never put secrets in documentation or source code:
 

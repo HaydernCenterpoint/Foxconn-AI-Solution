@@ -6,21 +6,28 @@ The upstream source lives in the `third_party/open-data-fusion` Git submodule an
 
 The `application-preview` profile is only for validating the MKZ-to-ODF mapping. It uses ODF's local SQLite persistence profile and must not be used as the retained business-data deployment.
 
-```powershell
+~~~powershell
 git submodule update --init --recursive
-Copy-Item infrastructure/open-data-fusion/.env.example third_party/open-data-fusion/.env
-Push-Location third_party/open-data-fusion
-docker compose --env-file .env --profile application-preview config --quiet
-docker compose --env-file .env --profile application-preview up -d
-Invoke-WebRequest http://127.0.0.1:54310/ready
-Pop-Location
-```
+.\infrastructure\open-data-fusion\Start-OpenDataFusionPreview.ps1
+.\infrastructure\open-data-fusion\Test-OpenDataFusionPreview.ps1
+~~~
 
-The ODF Web entry is available at `http://127.0.0.1:58088` and the API is available at `http://127.0.0.1:54310`. The template binds PostgreSQL to `55432`, Redis to `56379`, Grafana to `53000`, and Prometheus to `59090`, avoiding the ports already used by MKZ and Factory AI.
+`Start-OpenDataFusionPreview.ps1` renders the existing Compose configuration before it starts anything, keeps overrides only in the current PowerShell process, and never creates an upstream `.env` file. The default API and Web entries are `http://127.0.0.1:54310` and `http://127.0.0.1:58088`. The script rejects an occupied requested port before Compose is allowed to recreate a container.
+
+The template binds PostgreSQL to `55432`, Redis to `56379`, Grafana to `53000`, and Prometheus to `59090`. If the default PostgreSQL port is already used, choose a free port explicitly:
+
+~~~powershell
+.\infrastructure\open-data-fusion\Start-OpenDataFusionPreview.ps1 -PostgresPort 55433
+.\infrastructure\open-data-fusion\Test-OpenDataFusionPreview.ps1
+~~~
+
+`Test-OpenDataFusionPreview.ps1` refuses non-loopback API/Web URLs. It creates a synthetic UUID tenant/project in the local preview volume, sends a canonical `mkz:ts:<machine-guid>:production_qty` bundle, and verifies that the latest `42/good` datapoint is returned. It is a local mapping proof, not a staging provisioning workflow.
 
 ## Retained business data
 
-Use ODF's `docker-compose.production-like.yml` for any environment that retains business data. Set PostgreSQL persistence, Redis, object storage, Keycloak/OIDC, and all passwords/client secrets through the deployment secret manager. The required production-like variables include `KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME`, `KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD`, `ODF_DEMO_USER_PASSWORD`, `ODF_CONNECTOR_CLIENT_SECRET`, `ODF_POSTGRES_ADMIN_PASSWORD`, and `ODF_REDIS_PASSWORD`; none belong in this repository.
+ODF's `docker-compose.production-like.yml` is a local/CI rehearsal overlay, not a production deployment topology. Use it to rehearse the PostgreSQL, Redis, object-storage, and Keycloak/OIDC boundaries before a staging release. A retained business-data environment must use a reviewed deployment equivalent with managed PostgreSQL, Redis, versioned object storage, OIDC, network isolation, backups, and a deployment secret manager.
+
+Before enabling MKZ delivery outside the local preview, an authorized deployment owner must create the tenant/project through upstream's controlled `tenant:provision` workflow, assign the adapter service account `data:ingest` plus project membership, and supply all passwords/client secrets through the secret manager. Required rehearsal/deployment variables include `KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME`, `KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD`, `ODF_DEMO_USER_PASSWORD`, `ODF_CONNECTOR_CLIENT_SECRET`, `ODF_POSTGRES_ADMIN_PASSWORD`, and `ODF_REDIS_PASSWORD`; none belong in this repository.
 
 ## Stop and rollback
 
@@ -28,7 +35,7 @@ Stopping ODF does not stop or change ClientPLC, the MKZ MQTT server, the MKZ bac
 
 ```powershell
 Push-Location third_party/open-data-fusion
-docker compose --env-file .env --profile application-preview down
+docker compose --env-file ../../infrastructure/open-data-fusion/.env.example --profile application-preview down
 Pop-Location
 ```
 
@@ -43,7 +50,7 @@ $env:OpenDataFusion__CaptureEnabled = 'true'
 dotnet run --project backend/backend.csproj
 ```
 
-Start the adapter in a separate terminal only after an ODF tenant/project and its ingest identity have been provisioned:
+For a loopback-only adapter rehearsal, start the adapter in a separate terminal after the preview smoke command has produced a tenant/project UUID:
 
 ```powershell
 $env:ConnectionStrings__MkzOperations = $env:MKZ_OPERATIONS_CONNECTION
@@ -57,7 +64,7 @@ $env:OpenDataFusion__Authentication__DevelopmentUser = 'local-user'
 dotnet run --project fusion-adapter/Fusion.Adapter.csproj
 ```
 
-For production, change Authentication__Mode to a non-development value and provide Authentication__TokenEndpoint, Authentication__ClientId, Authentication__ClientSecret, and optional Authentication__Scope from the secret manager. The service account needs the ODF data:ingest permission plus membership in the configured project.
+The development identity above is for loopback preview only. For staging or production, set `Authentication__Mode` to a non-development value and provide `Authentication__TokenEndpoint`, `Authentication__ClientId`, `Authentication__ClientSecret`, and optional `Authentication__Scope` from the secret manager. The service account needs the ODF `data:ingest` permission plus membership in the configured project. Do not enable `OpenDataFusion__DispatchEnabled` until those prerequisites and the ODF acceptance evidence have been recorded.
 
 ## Adapter rollback
 

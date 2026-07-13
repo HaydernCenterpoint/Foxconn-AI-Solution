@@ -63,21 +63,22 @@ dotnet run --project backend/backend.csproj
 
 让后端继续在终端 A 中运行；在终端 B 中执行 ODF 预览命令。
 
-3. 如果使用 ODF preview，启动 `application-preview` 并等待 `http://127.0.0.1:54310/ready` 成功响应后再继续：
+3. 如果使用 ODF preview，请通过以下安全脚本启动并验证 `application-preview`：
 
 > [!WARNING]
-> `application-preview` 使用 SQLite，仅用于本地/开发环境的 mapping 预览；不得将此 profile 或 `.env` 文件用于生产环境。
+> `application-preview` 使用 SQLite，仅用于本地/开发环境的 mapping 预览；不得将此 profile 用于生产环境。这些脚本不会创建 `third_party/open-data-fusion/.env`，并且 smoke test 仅接受 loopback URL。
 
-```powershell
-$odfEnv = 'third_party/open-data-fusion/.env'
-if (Test-Path -LiteralPath $odfEnv) {
-  throw "$odfEnv already exists; review it instead of overwriting."
-}
-Copy-Item infrastructure/open-data-fusion/.env.example $odfEnv
-Push-Location third_party/open-data-fusion
-docker compose --env-file .env --profile application-preview up -d
-Pop-Location
-```
+~~~powershell
+.\infrastructure\open-data-fusion\Start-OpenDataFusionPreview.ps1
+.\infrastructure\open-data-fusion\Test-OpenDataFusionPreview.ps1
+~~~
+
+如果启动脚本提示默认的 preview PostgreSQL 端口 `55432` 已被占用，请选择空闲端口后重新运行这两个命令：
+
+~~~powershell
+.\infrastructure\open-data-fusion\Start-OpenDataFusionPreview.ps1 -PostgresPort 55433
+.\infrastructure\open-data-fusion\Test-OpenDataFusionPreview.ps1
+~~~
 
 4. 保持 `OpenDataFusion__DispatchEnabled` 禁用，直到 ODF 已具备 tenant、project 和 identity。随后，按照 [Open Data Fusion 指南](infrastructure/open-data-fusion/README.md) 配置，启用 dispatch 并在单独终端运行 Fusion Adapter；不要将机密信息写入文档或源代码：
 
