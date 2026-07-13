@@ -1,0 +1,3 @@
+[submodule "third_party/open-data-fusion"]
+	path = third_party/open-data-fusion
+	url = https://github.com/HaydernCenterpoint/Open-Data-Fusion.git
