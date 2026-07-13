@@ -113,6 +113,17 @@
 
   End the page with links to the ODF runbook and approved integration design. State that secrets, production ODF credentials, and production deployment configuration must stay outside Git.
 
+- [ ] **Step 5: Commit the Vietnamese landing page**
+
+  Run:
+
+  ```powershell
+  git add README.md
+  git commit -m "docs: add Vietnamese project README"
+  ```
+
+  Expected: one commit containing only `README.md`.
+
 ### Task 2: Create synchronized English and Simplified Chinese translations
 
 **Files:**
@@ -162,6 +173,17 @@
   ```
 
   Expected: the command exits without an exception.
+
+- [ ] **Step 4: Commit both translations**
+
+  Run:
+
+  ```powershell
+  git add README.en.md README.zh-CN.md
+  git commit -m "docs: add English and Chinese READMEs"
+  ```
+
+  Expected: one commit containing only the two translation files.
 
 ### Task 3: Validate Markdown, links, and scope
 
@@ -215,13 +237,12 @@
 
   Verify each file has one H1, the language switch directly beneath it, one Mermaid block, matching command blocks, and exactly one relative link to the ODF runbook. Correct wording or Markdown hierarchy if any file differs.
 
-- [ ] **Step 4: Commit the documentation set**
+- [ ] **Step 4: Commit only verification fixes, if any**
 
   Run:
 
   ```powershell
-  git add README.md README.en.md README.zh-CN.md
-  git commit -m "docs: add multilingual project README"
+  git status --short
   ```
 
-  Expected: one commit containing only the three new root README files.
+  Expected: a clean worktree. If validation required a documentation correction, stage only the corrected README files and commit with `docs: validate multilingual README`.
