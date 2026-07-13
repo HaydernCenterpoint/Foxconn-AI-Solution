@@ -32,4 +32,33 @@ docker compose --env-file .env --profile application-preview down
 Pop-Location
 ```
 
-The Fusion Adapter activation and rollback steps are added once its worker project is present.
+## Activate telemetry capture and delivery
+
+Keep backend capture and adapter dispatch as two separately controlled switches. This lets the operational backend collect a local outbox backlog before any ODF API call is allowed.
+
+Start the MKZ backend with capture enabled in its own terminal:
+
+```powershell
+$env:OpenDataFusion__CaptureEnabled = 'true'
+dotnet run --project backend/backend.csproj
+```
+
+Start the adapter in a separate terminal only after an ODF tenant/project and its ingest identity have been provisioned:
+
+```powershell
+$env:ConnectionStrings__MkzOperations = $env:MKZ_OPERATIONS_CONNECTION
+$env:OpenDataFusion__DispatchEnabled = 'true'
+$env:OpenDataFusion__TenantId = $env:ODF_TENANT_ID
+$env:OpenDataFusion__ProjectId = $env:ODF_PROJECT_ID
+$env:OpenDataFusion__PlantExternalId = 'mkz:plant:site-a'
+$env:OpenDataFusion__PlantName = 'Site A'
+$env:OpenDataFusion__Authentication__Mode = 'development'
+$env:OpenDataFusion__Authentication__DevelopmentUser = 'local-user'
+dotnet run --project fusion-adapter/Fusion.Adapter.csproj
+```
+
+For production, change Authentication__Mode to a non-development value and provide Authentication__TokenEndpoint, Authentication__ClientId, Authentication__ClientSecret, and optional Authentication__Scope from the secret manager. The service account needs the ODF data:ingest permission plus membership in the configured project.
+
+## Adapter rollback
+
+Set `OpenDataFusion__CaptureEnabled=false` before restarting the backend, then stop the Fusion Adapter. Do not delete `fusion_outbox` rows: pending events stay in MKZ PostgreSQL and are available for delivery after the adapter is restored. ODF is not called from ClientPLC or MqttServerService, so an ODF outage never blocks PLC/MQTT processing.
