@@ -3,7 +3,7 @@
 
 ## Tổng quan
 
-Foxconn AI Solution là nền tảng giám sát công nghiệp triển khai tại chỗ cho máy móc, dây chuyền sản xuất, telemetry và cảnh báo. Hệ thống duy trì luồng vận hành PLC/MQTT có độ trễ thấp, lưu dữ liệu vận hành trong PostgreSQL và cung cấp giao diện Operations theo thời gian thực.
+Foxconn AI Solution là nền tảng giám sát công nghiệp triển khai tại chỗ cho máy móc, dây chuyền sản xuất, telemetry và cảnh báo. Hệ thống tiếp nhận telemetry qua PLC/MQTT, lưu dữ liệu vận hành trong PostgreSQL và cung cấp giao diện Operations theo thời gian thực.
 
 ## Khả năng chính
 
@@ -42,7 +42,11 @@ flowchart LR
 
 ## Khởi chạy nhanh
 
-Trong PowerShell, tải mã nguồn và khởi tạo submodule:
+Điều kiện trước khi chạy: .NET 9 SDK, Node.js, PostgreSQL có thể truy cập được đã cấu hình qua connection string của backend và Docker Desktop nếu dùng ODF preview.
+
+Khởi động end-to-end theo thứ tự an toàn:
+
+1. Tải mã nguồn và khởi tạo submodule:
 
 ```powershell
 git clone https://github.com/HaydernCenterpoint/Foxconn-AI-Solution.git
@@ -50,22 +54,17 @@ cd Foxconn-AI-Solution
 git submodule update --init --recursive
 ```
 
-Khởi động backend:
+2. Backend đồng thời cung cấp MQTT server. Bật ghi nhận outbox local trước khi khởi động backend:
 
 ```powershell
+$env:OpenDataFusion__CaptureEnabled = 'true'
 dotnet run --project backend/backend.csproj
 ```
 
-Cài đặt và chạy Operations UI:
+3. Nếu dùng ODF preview, khởi động `application-preview` và chờ `http://127.0.0.1:54310/ready` phản hồi thành công trước khi tiếp tục:
 
-```powershell
-npm --prefix frontend install
-npm --prefix frontend run dev
-```
-
-## Tích hợp Open Data Fusion
-
-Khởi động ODF local để xem trước mapping:
+> [!WARNING]
+> `application-preview` dùng SQLite chỉ cho local/dev để xem trước mapping; không dùng profile hoặc tệp `.env` này cho production.
 
 ```powershell
 Copy-Item infrastructure/open-data-fusion/.env.example third_party/open-data-fusion/.env
@@ -73,6 +72,22 @@ Push-Location third_party/open-data-fusion
 docker compose --env-file .env --profile application-preview up -d
 Pop-Location
 ```
+
+4. Giữ `OpenDataFusion__DispatchEnabled` tắt cho đến khi ODF đã có tenant, project và identity. Sau đó, cấu hình theo [hướng dẫn Open Data Fusion](infrastructure/open-data-fusion/README.md), bật dispatch và chạy Fusion Adapter trong terminal riêng; không đặt bí mật trong tài liệu hoặc mã nguồn:
+
+```powershell
+$env:OpenDataFusion__DispatchEnabled = 'true'
+dotnet run --project fusion-adapter/Fusion.Adapter.csproj
+```
+
+5. Khi các thành phần trên sẵn sàng, khởi động ClientPLC theo cấu hình PLC của môi trường và chạy Operations UI trong terminal riêng:
+
+```powershell
+npm --prefix frontend install
+npm --prefix frontend run dev
+```
+
+## Tích hợp Open Data Fusion
 
 Hai công tắc được quản lý độc lập để kiểm soát luồng đồng bộ:
 
