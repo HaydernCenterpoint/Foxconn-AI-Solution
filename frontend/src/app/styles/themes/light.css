@@ -21,6 +21,10 @@
   /* Text */
   --color-on-surface: #0F172A;
   --color-on-surface-variant: #475569;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748B;
+  --color-scrim: rgba(15, 23, 42, 0.45);
 
   /* Accent - Corporate Navy Blue (#002D72) */
   --color-primary: #002D72;

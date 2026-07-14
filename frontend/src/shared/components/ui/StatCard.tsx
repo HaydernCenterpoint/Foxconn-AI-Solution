@@ -1,6 +1,18 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
-type Accent = 'primary' | 'success' | 'warning' | 'error' | 'info' | 'neutral' | 'running' | 'idle' | 'offline' | 'disconnected' | 'warn' | 'accent';
+type Accent =
+  | 'primary'
+  | 'success'
+  | 'warning'
+  | 'error'
+  | 'info'
+  | 'neutral'
+  | 'running'
+  | 'idle'
+  | 'offline'
+  | 'disconnected'
+  | 'warn'
+  | 'accent';
 
 const ACCENT_TEXT: Record<Accent, string> = {
   primary: 'var(--color-primary)',
@@ -29,7 +41,7 @@ const ACCENT_ICON_BG: Record<Accent, string> = {
   idle: 'var(--color-idle-container)',
   offline: 'var(--color-offline-container)',
   disconnected: 'var(--color-offline-container)',
-  accent: 'var(--color-accent-light)',
+  accent: 'var(--color-accent-container)',
 };
 
 interface Props {
@@ -43,47 +55,42 @@ interface Props {
   className?: string;
 }
 
-export function StatCard({ label, value, icon, accent = 'primary', hint, trend, className = '' }: Props) {
-  const trendColor =
-    trend?.direction === 'up'
-      ? 'var(--color-success)'
-      : trend?.direction === 'down'
-        ? 'var(--color-error)'
-        : 'var(--color-on-surface-variant)';
-
-  const trendArrow =
-    trend?.direction === 'up' ? '↑' : trend?.direction === 'down' ? '↓' : '';
+export function StatCard({
+  label,
+  value,
+  icon,
+  accent = 'primary',
+  hint,
+  trend,
+  loading = false,
+  className = '',
+}: Props) {
+  const trendColor = trend?.direction === 'up'
+    ? 'var(--color-success)'
+    : trend?.direction === 'down'
+      ? 'var(--color-error)'
+      : 'var(--color-on-surface-variant)';
+  const trendArrow = trend?.direction === 'up' ? '↑' : trend?.direction === 'down' ? '↓' : '';
+  const style = {
+    '--stat-accent': ACCENT_TEXT[accent],
+    '--stat-icon-background': ACCENT_ICON_BG[accent],
+  } as CSSProperties;
 
   return (
-    <div
-      className={`group relative overflow-hidden rounded-lg border border-border bg-surface-1 p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:scale-[1.01] ${className}`}
-    >
-      <div className="absolute inset-y-0 left-0 w-[3px]" style={{ backgroundColor: ACCENT_TEXT[accent] }} />
-
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary/85">{label}</p>
-          <div className="flex items-baseline gap-2 mt-2">
-            <p className="text-3xl lg:text-[2rem] font-semibold leading-none tabular-nums transition-transform duration-200 group-hover:scale-105" style={{ color: ACCENT_TEXT[accent] }}>
-              {value}
-            </p>
-            {trend && (
-              <span className="text-sm font-medium" style={{ color: trendColor }}>
-                {trendArrow} {trend.value}
-              </span>
-            )}
-          </div>
-          {hint && <p className="mt-2 text-[13px] font-medium text-text-muted/90 tracking-wide leading-normal">{hint}</p>}
-        </div>
-        {icon && (
-          <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-110"
-            style={{ backgroundColor: ACCENT_ICON_BG[accent], color: ACCENT_TEXT[accent] }}
-          >
-            {icon}
+    <section className={`ui-stat-card ${className}`.trim()} style={style} aria-busy={loading || undefined}>
+      <div className="ui-stat-card__content">
+        <p className="ui-stat-card__label">{label}</p>
+        {loading ? (
+          <span className="ui-stat-card__skeleton" aria-label={label} />
+        ) : (
+          <div className="ui-stat-card__value-row">
+            <p className="ui-stat-card__value">{value}</p>
+            {trend && <span className="ui-stat-card__trend" style={{ color: trendColor }}>{trendArrow} {trend.value}</span>}
           </div>
         )}
+        {hint && <p className="ui-stat-card__hint">{hint}</p>}
       </div>
-    </div>
+      {icon && <div className="ui-stat-card__icon">{icon}</div>}
+    </section>
   );
 }

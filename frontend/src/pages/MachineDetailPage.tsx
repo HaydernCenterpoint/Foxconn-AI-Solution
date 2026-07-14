@@ -1,130 +1,140 @@
-import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { machinesApi } from '../features/machines/services/machines.api';
-import { ArrowLeft } from 'lucide-react';
-import { MachineDetailTabs } from '../features/machines/components/MachineDetailTabs';
+import { ArrowLeft, Network } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { machinesApi } from '../features/machines/services/machines.api';
+import { MachineDetailTabs } from '../features/machines/components/MachineDetailTabs';
+import { Badge } from '../shared/components/ui/Badge';
+import { Button } from '../shared/components/ui/Button';
+import { DataState } from '../shared/components/ui/DataState';
+import { PageHeader } from '../shared/components/ui/PageHeader';
+import { StatusBadge } from '../shared/components/ui/StatusBadge';
+import { Surface } from '../shared/components/ui/Surface';
 import { usePermissions } from '../shared/hooks/usePermissions';
+import { useDynamicTranslation } from '../shared/lib/translator';
 
-export const MachineDetailPage: React.FC = () => {
-  const { t, i18n } = useTranslation();
+export const MachineDetailPage = () => {
+  const { t } = useTranslation();
+  const { tDynamic } = useDynamicTranslation();
   const { canEdit } = usePermissions();
-  const currentLang = i18n.language || 'vi';
-  const locale = currentLang === 'zh-CN' || currentLang === 'zh' ? 'zh-CN' : currentLang === 'en' ? 'en-US' : 'vi-VN';
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  // Query: Machine general info & telemetry data
-  const { data: machine, isLoading: loadingMachine } = useQuery({
+  const machineQuery = useQuery({
     queryKey: ['machineDetailShared', id],
     queryFn: () => machinesApi.getById(id!),
-    enabled: !!id,
-    refetchInterval: 1000, // Refresh telemetry every second
+    enabled: Boolean(id),
+    refetchInterval: 1_000,
   });
 
-  // Query: Hourly production history (last 48 hours)
-  const { data: history } = useQuery({
+  const historyQuery = useQuery({
     queryKey: ['machineHistoryShared', id],
     queryFn: () => machinesApi.getHourlyProduction(id!),
-    enabled: !!id,
-    refetchInterval: 10000, // Refresh history charts every 10 seconds
+    enabled: Boolean(id),
+    refetchInterval: 10_000,
   });
 
-  if (loadingMachine) {
+  const backButton = (
+    <Button variant="secondary" size="sm" startIcon={<ArrowLeft size={16} aria-hidden="true" />} onClick={() => navigate(-1)}>
+      {t('common.actions.back', { defaultValue: 'Back' })}
+    </Button>
+  );
+
+  if (machineQuery.isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin"></div>
-        <p className="text-[#00ADB5] text-sm font-semibold tracking-wider">{t('machines.detail.loading', 'ĐANG TẢI THÔNG TIN THIẾT BỊ...')}</p>
+      <div className="space-y-6">
+        <PageHeader title={t('machines.detail.loadingTitle', { defaultValue: 'Machine details' })} actions={backButton} />
+        <Surface variant="raised">
+          <DataState kind="loading" title={t('machines.detail.loading', { defaultValue: 'Loading machine record' })} description={t('machines.detail.loadingDescription', { defaultValue: 'Retrieving the current machine record and latest reported values.' })} />
+        </Surface>
       </div>
     );
   }
 
+  if (machineQuery.isError) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title={t('machines.detail.errorTitle', { defaultValue: 'Machine details' })} actions={backButton} />
+        <Surface variant="raised">
+          <DataState
+            kind="error"
+            title={t('machines.detail.queryError', { defaultValue: 'Machine record is unavailable' })}
+            description={t('machines.detail.queryErrorDescription', { defaultValue: 'The machine service could not be reached for this record.' })}
+            action={<Button variant="secondary" size="sm" onClick={() => void machineQuery.refetch()}>{t('common.actions.retry', { defaultValue: 'Retry' })}</Button>}
+          />
+        </Surface>
+      </div>
+    );
+  }
+
+  const machine = machineQuery.data;
   if (!machine) {
     return (
-      <div className="p-6 max-w-2xl mx-auto mt-8 border border-red-500/40 bg-red-500/10 text-red-400 rounded-lg shadow-[0_0_15px_rgba(239,68,68,0.15)]">
-        <h3 className="font-bold text-lg uppercase tracking-wider">{t('machines.detail.notFound', 'Thiết bị không tồn tại')}</h3>
-        <p className="text-sm mt-2">{t('machines.detail.notFoundDesc', 'Không tìm thấy máy được yêu cầu trong cơ sở dữ liệu hệ thống.')}</p>
-        <button
-          onClick={() => navigate('/machines')}
-          className="mt-4 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg transition-colors cursor-pointer"
-        >
-          {t('machines.detail.backList', 'Quay lại danh sách')}
-        </button>
+      <div className="space-y-6">
+        <PageHeader title={t('machines.detail.notFound', { defaultValue: 'Machine not found' })} actions={backButton} />
+        <Surface variant="raised">
+          <DataState
+            kind="empty"
+            title={t('machines.detail.notFound', { defaultValue: 'Machine not found' })}
+            description={t('machines.detail.notFoundDesc', { defaultValue: 'The requested machine record is not available.' })}
+            action={<Button variant="secondary" size="sm" onClick={() => navigate('/machines')}>{t('machines.detail.backList', { defaultValue: 'Back to machines' })}</Button>}
+          />
+        </Surface>
       </div>
     );
   }
 
-  const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase().trim()) {
-      case 'running':
-        return 'text-[#38f26b] bg-[#38f26b]/10 border-[#38f26b]/30';
-      case 'error':
-        return 'text-[#ff5c6c] bg-[#ff5c6c]/10 border-[#ff5c6c]/30 animate-pulse';
-      case 'idle':
-        return 'text-[#18d7ff] bg-[#18d7ff]/10 border-[#18d7ff]/30';
-      case 'stopped':
-      case 'warning':
-        return 'text-[#ffc547] bg-[#ffc547]/10 border-[#ffc547]/30';
-      case 'offline':
-      default:
-        return 'text-slate-400 bg-slate-500/10 border-slate-500/20';
-    }
-  };
-
   return (
-    <div className="space-y-6 text-white bg-transparent">
-      {/* Back link & Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#14356a] pb-4">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2.5 bg-[#0A1129]/80 border border-[#14356a] rounded-xl hover:bg-cyan-500/10 text-cyan-400 hover:text-white transition-all shadow-[0_0_12px_rgba(0,173,181,0.2)] cursor-pointer"
-            title={t('common.actions.back', 'Quay lại')}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-xl md:text-2xl font-black text-white tracking-wider uppercase">
-              {machine.name}
-            </h1>
-            <p className="text-xs text-[#B7C8E8] mt-1 font-semibold tracking-wider">
-              {t('machines.detail.machineCodeLabel', 'MÃ MÁY')}: <span className="font-mono text-cyan-400">{machine.machineCode || 'N/A'}</span>
-              <span className="mx-2 text-[#14356a]">|</span>
-              {t('machines.detail.ipLabel', 'IP')}: <span className="font-mono text-cyan-400">{machine.ip || '0.0.0.0'}</span>
-              {machine.clientId && (
-                <>
-                  <span className="mx-2 text-[#14356a]">|</span>
-                  {t('machines.detail.clientIdLabel', 'CLIENT ID')}: <span className="font-mono text-cyan-400">{machine.clientId}</span>
-                </>
-              )}
-            </p>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow={t('machines.detail.eyebrow', { defaultValue: 'Machine workspace' })}
+        title={tDynamic(machine.name)}
+        description={t('machines.detail.description', { defaultValue: 'Current machine record, last PLC payload, reported history, and related alarm actions.' })}
+        actions={(
+          <div className="flex flex-wrap items-center gap-2">
+            {backButton}
+            <StatusBadge status={machine.status} size="sm" />
+            <Badge variant={machine.plcConnected ? 'success' : 'offline'} size="sm" dot>
+              <Network size={13} aria-hidden="true" />
+              {machine.plcConnected
+                ? t('machines.plcConnected', { defaultValue: 'PLC connected' })
+                : t('machines.plcDisconnected', { defaultValue: 'PLC disconnected' })}
+            </Badge>
           </div>
-        </div>
+        )}
+      />
 
-        {/* Status indicator */}
-        <div className="flex items-center gap-3">
-          <span className={`px-4 py-1.5 rounded-full text-xs font-black border uppercase tracking-widest ${getStatusBadge(machine.status)}`}>
-            {machine.status.toUpperCase()}
-          </span>
-          {machine.plcConnected ? (
-            <span className="bg-[#38f26b]/10 border border-[#38f26b]/30 text-[#38f26b] px-4 py-1.5 rounded-full text-xs font-black tracking-widest">
-              {t('machines.detail.plcOnline', 'PLC: ONLINE')}
-            </span>
-          ) : (
-            <span className="bg-slate-500/10 border border-slate-500/20 text-slate-400 px-4 py-1.5 rounded-full text-xs font-black tracking-widest">
-              {t('machines.detail.plcOffline', 'PLC: OFFLINE')}
-            </span>
-          )}
-        </div>
-      </div>
+      <Surface variant="quiet" padding="md">
+        <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <dt className="text-xs text-text-muted">{t('machines.detail.machineCodeLabel', { defaultValue: 'Station code' })}</dt>
+            <dd className="mt-1 font-mono text-text-primary">{machine.machineCode || '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-text-muted">{t('machines.detail.ipLabel', { defaultValue: 'IP address' })}</dt>
+            <dd className="mt-1 font-mono text-text-primary">{machine.ip || '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-text-muted">{t('machines.detail.clientIdLabel', { defaultValue: 'PLC client ID' })}</dt>
+            <dd className="mt-1 break-all font-mono text-text-primary">{machine.clientId || '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-text-muted">{t('machines.table.approval', { defaultValue: 'Approval' })}</dt>
+            <dd className="mt-1 text-text-primary">{machine.approvalStatus || '—'}</dd>
+          </div>
+        </dl>
+      </Surface>
 
       <MachineDetailTabs
         machine={machine}
-        history={history || []}
+        history={historyQuery.data ?? []}
+        historyIsLoading={historyQuery.isLoading}
+        historyIsError={historyQuery.isError}
+        refetchHistory={() => void historyQuery.refetch()}
         isAdminOrEngineer={canEdit}
       />
     </div>
   );
 };
+
 export default MachineDetailPage;

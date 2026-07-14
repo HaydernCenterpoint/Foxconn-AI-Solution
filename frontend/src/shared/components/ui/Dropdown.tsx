@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 
 export interface DropdownOption<T = string | number> {
   value: T;
@@ -22,56 +22,153 @@ export function Dropdown<T = string | number>({
   className = '',
 }: DropdownProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const listboxId = useId();
 
-  const selectedOption = options.find((opt) => opt.value === value) || options[0];
+  const selectedIndex = Math.max(0, options.findIndex((option) => option.value === value));
+  const activeOptionIndex = options.length === 0 ? 0 : Math.min(activeIndex, options.length - 1);
+  const selectedOption = options[selectedIndex];
+
+  const close = (restoreFocus = false) => {
+    setIsOpen(false);
+    if (restoreFocus) {
+      window.setTimeout(() => triggerRef.current?.focus(), 0);
+    }
+  };
+
+  const openAt = (index: number) => {
+    if (options.length === 0) return;
+    setActiveIndex(Math.min(Math.max(index, 0), options.length - 1));
+    setIsOpen(true);
+  };
+
+  const selectOption = (index: number) => {
+    const option = options[index];
+    if (!option) return;
+    onChange(option.value);
+    close(true);
+  };
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handlePointerDown = (event: PointerEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+        close();
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const focusTimer = window.setTimeout(() => optionRefs.current[activeOptionIndex]?.focus(), 0);
+    return () => window.clearTimeout(focusTimer);
+  }, [activeOptionIndex, isOpen]);
+
+  const handleTriggerKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        openAt(selectedIndex);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        openAt(selectedIndex);
+        break;
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        if (isOpen) close();
+        else openAt(selectedIndex);
+        break;
+      case 'Escape':
+        if (isOpen) {
+          event.preventDefault();
+          close();
+        }
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleOptionKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        setActiveIndex((index + 1) % options.length);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        setActiveIndex((index - 1 + options.length) % options.length);
+        break;
+      case 'Home':
+        event.preventDefault();
+        setActiveIndex(0);
+        break;
+      case 'End':
+        event.preventDefault();
+        setActiveIndex(options.length - 1);
+        break;
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        selectOption(index);
+        break;
+      case 'Escape':
+        event.preventDefault();
+        close(true);
+        break;
+      case 'Tab':
+        close();
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
-    <div ref={dropdownRef} className={`relative min-w-[140px] select-none ${className}`}>
-      {/* Dropdown Button */}
+    <div ref={dropdownRef} className={`ui-dropdown ${className}`.trim()}>
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between gap-2 rounded-lg border border-outline bg-surface px-3.5 py-2 text-xs font-semibold text-text-primary hover:bg-surface-container-high transition-all active:scale-[0.98] focus:outline-none focus:ring-1 focus:ring-primary shadow-sm"
+        className="ui-dropdown__trigger"
+        onClick={() => (isOpen ? close() : openAt(selectedIndex))}
+        onKeyDown={handleTriggerKeyDown}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-controls={listboxId}
+        disabled={options.length === 0}
       >
-        <span className="truncate">
-          {labelPrefix && <span className="text-text-muted mr-1.5 font-bold uppercase tracking-wider">{labelPrefix}</span>}
+        <span className="ui-dropdown__value">
+          {labelPrefix && <span className="ui-dropdown__prefix">{labelPrefix}</span>}
           {selectedOption?.label}
         </span>
-        <ChevronDown
-          size={14}
-          className={`text-text-secondary transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-        />
+        <ChevronDown size={16} className={`ui-dropdown__chevron ${isOpen ? 'is-open' : ''}`} aria-hidden="true" />
       </button>
 
-      {/* Options Dropdown Overlay */}
       {isOpen && (
-        <ul className="absolute right-0 z-50 mt-1 w-full min-w-[160px] rounded-lg border border-outline bg-surface py-1 text-xs font-semibold text-text-primary shadow-lg ring-1 ring-black/5 focus:outline-none max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-100">
-          {options.map((option) => (
+        <ul id={listboxId} className="ui-dropdown__menu" role="listbox">
+          {options.map((option, index) => (
             <li key={String(option.value)}>
               <button
-                type="button"
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
+                ref={(element) => {
+                  optionRefs.current[index] = element;
                 }}
-                className={`flex w-full items-center px-3.5 py-2.5 text-left transition-colors hover:bg-surface-container-high ${
-                  option.value === value
-                    ? 'bg-primary-light text-primary font-bold'
-                    : 'text-text-primary'
-                }`}
+                type="button"
+                role="option"
+                aria-selected={option.value === value}
+                tabIndex={index === activeOptionIndex ? 0 : -1}
+                className={`ui-dropdown__option ${option.value === value ? 'is-selected' : ''}`}
+                onClick={() => selectOption(index)}
+                onFocus={() => setActiveIndex(index)}
+                onKeyDown={(event) => handleOptionKeyDown(event, index)}
               >
-                <span className="truncate">{option.label}</span>
+                <span className="ui-dropdown__option-label">{option.label}</span>
               </button>
             </li>
           ))}

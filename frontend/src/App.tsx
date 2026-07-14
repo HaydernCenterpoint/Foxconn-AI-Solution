@@ -17,22 +17,16 @@ export default function App() {
     username,
     welcomePending,
   } = useAuthStore();
-  const { theme, setTheme, reducedMotion } = useUiStore();
+  const { theme, reducedMotion } = useUiStore();
 
   useEffect(() => {
     checkSession();
   }, [checkSession]);
 
   useEffect(() => {
-    if (theme !== 'dark') {
-      setTheme('dark');
-    }
-  }, [theme, setTheme]);
-
-  useEffect(() => {
     document.documentElement.classList.toggle('reduced-motion', reducedMotion);
-    document.documentElement.dataset.theme = 'dark';
-  }, [reducedMotion]);
+    document.documentElement.dataset.theme = theme;
+  }, [theme, reducedMotion]);
 
   if (!sessionChecked) {
     return <SplashScreen />;

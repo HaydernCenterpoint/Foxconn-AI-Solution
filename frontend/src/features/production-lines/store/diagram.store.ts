@@ -630,18 +630,20 @@ export const useDiagramStore = create<DiagramState>()(
         }
       },
       version: CURRENT_SCHEMA_VERSION,
-      migrate: (persistedState: any, version: number) => {
+      migrate: (persistedState: unknown, version: number) => {
+        const state = persistedState as Partial<PersistedDiagramState>;
+
         // v2 -> v3: backfill lastLocalEditAt for any existing entry
-        if (version < 3 && persistedState?.lineDiagrams) {
+        if (version < 3 && state.lineDiagrams) {
           const now = Date.now();
-          for (const lineId of Object.keys(persistedState.lineDiagrams)) {
-            const ls = persistedState.lineDiagrams[lineId];
-            if (ls && typeof ls.lastLocalEditAt !== 'number') {
-              ls.lastLocalEditAt = now;
+          for (const lineId of Object.keys(state.lineDiagrams)) {
+            const lineState = state.lineDiagrams[lineId];
+            if (lineState && typeof lineState.lastLocalEditAt !== 'number') {
+              lineState.lastLocalEditAt = now;
             }
           }
         }
-        return persistedState as PersistedDiagramState;
+        return state as PersistedDiagramState;
       },
     }
   )
