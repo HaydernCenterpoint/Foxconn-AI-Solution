@@ -1,387 +1,386 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Download, FileText, Filter, Layers3, MonitorCog } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { linesApi } from '../features/production-lines/services/lines.api';
-import { machinesApi } from '../features/machines/services/machines.api';
+import { machinesApi, type Machine } from '../features/machines/services/machines.api';
 import { api } from '../shared/services/apiClient';
-import { queryKeys } from '../app/queryKeys';
-import {
-  FileText,
-  Calendar,
-  Layers,
-  Cpu,
-  Download,
-  TrendingUp,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  Clock,
-} from 'lucide-react';
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  BarChart,
-  Bar,
-  Cell,
-  Legend,
-} from 'recharts';
+import { Badge } from '../shared/components/ui/Badge';
+import { Button } from '../shared/components/ui/Button';
+import { DataState } from '../shared/components/ui/DataState';
+import { PageHeader } from '../shared/components/ui/PageHeader';
+import { StatCard } from '../shared/components/ui/StatCard';
+import { Surface } from '../shared/components/ui/Surface';
+import { StatusBadge } from '../shared/components/ui/StatusBadge';
+import { useDynamicTranslation } from '../shared/lib/translator';
+import { useUiStore } from '../shared/store/ui.store';
+
+type RecordValue = Record<string, unknown>;
+type ReportMachine = Machine & { lineId?: string | null };
+
+interface ReportMetric {
+  key: string;
+  label: string;
+  value: number;
+  suffix?: string;
+  accent: 'primary' | 'success' | 'error' | 'info';
+}
+
+function isRecord(value: unknown): value is RecordValue {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
+function readText(value: unknown): string | undefined {
+  if (typeof value === 'string' && value.trim()) return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return undefined;
+}
+
+function recordsFrom(value: unknown) {
+  return Array.isArray(value) ? value.filter(isRecord) : [];
+}
+
+function getReportRows(data: unknown) {
+  return isRecord(data) ? recordsFrom(data.tableLogs) : [];
+}
+
+function getSummary(data: unknown) {
+  if (!isRecord(data) || !isRecord(data.summary)) return undefined;
+  return data.summary;
+}
+
+function formatValue(value: number, locale: string) {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(value);
+}
+
+function csvCell(value: unknown) {
+  const text = readText(value) ?? '';
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function getLogValue(row: RecordValue, key: string) {
+  return row[key];
+}
 
 export default function ReportsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { tDynamic } = useDynamicTranslation();
+  const addToast = useUiStore((state) => state.addToast);
   const [selectedTimeRange, setSelectedTimeRange] = useState('today');
   const [selectedLineId, setSelectedLineId] = useState('all');
   const [selectedMachineId, setSelectedMachineId] = useState('all');
 
-  // Fetch Lines for Filter
-  const { data: lines } = useQuery({
-    queryKey: queryKeys.lines.list(),
+  const locale = i18n.language === 'zh' || i18n.language === 'zh-CN'
+    ? 'zh-CN'
+    : i18n.language === 'en'
+      ? 'en-US'
+      : 'vi-VN';
+
+  const linesQuery = useQuery({
+    queryKey: ['reports-lines'],
     queryFn: linesApi.getAll,
   });
 
-  // Fetch Machines for Filter & Data
-  const { data: machines } = useQuery({
+  const machinesQuery = useQuery({
     queryKey: ['machines-list-reports'],
     queryFn: machinesApi.getAll,
   });
 
-  // Filtered Machines based on line selection
-  const filteredMachines = useMemo(() => {
-    if (!machines) return [];
-    return machines.filter((m: any) => {
-      const isApproved = m.approvalStatus === 'APPROVED' || m.approvalStatus === 'approved';
-      if (!isApproved) return false;
-      if (selectedLineId !== 'all' && m.lineId !== selectedLineId) return false;
-      return true;
-    });
-  }, [machines, selectedLineId]);
-
-  // Fetch Report Data from Backend
-  const { data: reportData } = useQuery({
+  const reportQuery = useQuery({
     queryKey: ['reports-query', selectedTimeRange, selectedLineId, selectedMachineId],
     queryFn: () => api.get('/reports/query', {
       params: {
         timeRange: selectedTimeRange,
         lineId: selectedLineId,
         machineId: selectedMachineId,
-      }
-    }).then(r => r.data),
+      },
+    }).then((response) => response.data),
   });
 
-  // Aggregate Metrics based on filters
-  const metrics = useMemo(() => {
-    return reportData?.summary ?? {
-      totalProduction: 0,
-      totalGood: 0,
-      totalScrap: 0,
-      yieldRate: 100,
-      scrapRate: 0,
-      avgSpeed: 0,
-      machinesCount: 0
-    };
-  }, [reportData]);
+  const reportMachines = useMemo(() => (machinesQuery.data ?? []) as ReportMachine[], [machinesQuery.data]);
+  const filteredMachines = useMemo(() => reportMachines.filter((machine) => {
+    const isApproved = machine.approvalStatus?.toUpperCase() === 'APPROVED';
+    if (!isApproved) return false;
+    return selectedLineId === 'all' || machine.lineId === selectedLineId;
+  }), [reportMachines, selectedLineId]);
 
-  // Chart Data based on backend response
-  const chartData = useMemo(() => {
-    return reportData?.chartData ?? [];
-  }, [reportData]);
-
-  // Defect Distribution Category Chart Data
-  const defectChartData = useMemo(() => {
-    const rawData = reportData?.defectChartData ?? [];
-    return rawData.map((d: any) => {
-      let name = d.name;
-      if (d.name === 'Kích thước') name = t('reports.defectDimension', 'Kích thước');
-      else if (d.name === 'Bề mặt') name = t('reports.defectSurface', 'Bề mặt');
-      else if (d.name === 'Mối hàn') name = t('reports.defectWelding', 'Mối hàn');
-      else if (d.name === 'Lắp ráp') name = t('reports.defectAssembly', 'Lắp ráp');
-      else if (d.name === 'Khác') name = t('reports.defectOther', 'Khác');
-      return { ...d, name };
+  const summary = useMemo(() => getSummary(reportQuery.data), [reportQuery.data]);
+  const tableRows = useMemo(() => getReportRows(reportQuery.data), [reportQuery.data]);
+  const chartRows = useMemo(() => {
+    if (!isRecord(reportQuery.data)) return [];
+    return recordsFrom(reportQuery.data.chartData).flatMap((row) => {
+      const label = readText(row.hour) ?? readText(row.date) ?? readText(row.label);
+      const output = readNumber(row.output);
+      return label && output !== undefined ? [{ label, output }] : [];
     });
-  }, [reportData, t]);
+  }, [reportQuery.data]);
+  const defectRows = useMemo(() => {
+    if (!isRecord(reportQuery.data)) return [];
+    return recordsFrom(reportQuery.data.defectChartData).flatMap((row) => {
+      const label = readText(row.name) ?? readText(row.label);
+      const value = readNumber(row.value);
+      return label && value !== undefined ? [{ label, value }] : [];
+    });
+  }, [reportQuery.data]);
 
-  // Table Detailed Data Logs
-  const tableLogs = useMemo(() => {
-    return reportData?.tableLogs ?? [];
-  }, [reportData]);
+  const metrics = useMemo<ReportMetric[]>(() => {
+    if (!summary) return [];
+    const candidates: Array<Omit<ReportMetric, 'value'> & { raw: unknown }> = [
+      { key: 'totalProduction', label: t('reports.totalProduction', { defaultValue: 'Reported production' }), raw: summary.totalProduction, accent: 'primary' },
+      { key: 'totalGood', label: t('reports.yield', { defaultValue: 'Reported good output' }), raw: summary.totalGood, accent: 'success' },
+      { key: 'totalScrap', label: t('reports.scrap', { defaultValue: 'Reported scrap' }), raw: summary.totalScrap, accent: 'error' },
+      { key: 'yieldRate', label: t('reports.yieldRate', { defaultValue: 'Reported yield' }), raw: summary.yieldRate, suffix: '%', accent: 'info' },
+    ];
 
-  const handleExport = () => {
-    alert(t('common.actions.pending', 'Đang xử lý...') || 'Đang xuất báo cáo định dạng PDF/CSV. Vui lòng chờ...');
+    return candidates.flatMap((candidate) => {
+      const value = readNumber(candidate.raw);
+      return value === undefined
+        ? []
+        : [{ key: candidate.key, label: candidate.label, value, suffix: candidate.suffix, accent: candidate.accent }];
+    });
+  }, [summary, t]);
+
+  const hasReportContent = metrics.length > 0 || tableRows.length > 0 || chartRows.length > 0 || defectRows.length > 0;
+
+  const exportCsv = () => {
+    if (tableRows.length === 0) return;
+
+    const headers = [
+      t('reports.tableStt', { defaultValue: 'No.' }),
+      t('reports.tableLine', { defaultValue: 'Production line' }),
+      t('reports.tableMachine', { defaultValue: 'Machine' }),
+      t('reports.tableOutput', { defaultValue: 'Output' }),
+      t('reports.tableGood', { defaultValue: 'Good output' }),
+      t('reports.tableScrap', { defaultValue: 'Scrap' }),
+      t('reports.tableStatus', { defaultValue: 'Status' }),
+    ];
+    const csvRows = tableRows.map((row, index) => [
+      getLogValue(row, 'no') ?? index + 1,
+      getLogValue(row, 'lineName'),
+      getLogValue(row, 'machineName'),
+      getLogValue(row, 'output'),
+      getLogValue(row, 'good'),
+      getLogValue(row, 'scrap'),
+      getLogValue(row, 'status'),
+    ]);
+    const csv = [headers, ...csvRows].map((row) => row.map(csvCell).join(',')).join('\r\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `production-report-${selectedTimeRange}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    addToast('success', t('reports.exportSuccess', { defaultValue: 'Exported loaded report rows as CSV' }));
   };
 
-  return (
-    <div className="flex-1 flex flex-col gap-6 min-h-0 overflow-y-auto w-full select-none pr-1">
-      {/* 1. Header Title & Export controls */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0 border-b border-[#14356a]/40 pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
-            <h1 className="text-base font-black tracking-widest text-[#00f0ff] uppercase">
-              {t('reports.title')}
-            </h1>
-          </div>
-          <p className="text-[10px] font-bold text-text-muted mt-1 uppercase">
-            {t('reports.subtitle')}
-          </p>
-        </div>
-
-        <button
-          onClick={handleExport}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded border border-cyan-400/40 bg-[#00f0ff]/10 text-cyan-400 hover:bg-[#00f0ff]/20 text-[10px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer active:scale-95 shadow-[0_0_10px_rgba(0,240,255,0.1)]"
+  const pageHeader = (
+    <PageHeader
+      eyebrow={t('reports.eyebrow', { defaultValue: 'Reporting workspace' })}
+      title={t('reports.title', { defaultValue: 'Production report' })}
+      description={t('reports.subtitle', { defaultValue: 'Review only values returned by the reporting service for the selected scope.' })}
+      actions={(
+        <Button
+          variant="secondary"
+          size="sm"
+          startIcon={<Download size={16} aria-hidden="true" />}
+          disabled={tableRows.length === 0}
+          onClick={exportCsv}
+          title={tableRows.length === 0 ? t('reports.exportUnavailable', { defaultValue: 'No loaded detail rows to export' }) : undefined}
         >
-          <Download className="h-3 w-3" />
-          {t('reports.exportBtn')}
-        </button>
-      </div>
-
-      {/* 2. Filters Bar */}
-      <div className="cyber-panel rounded-none border border-[#14356a] bg-[#0A1129]/95 p-3.5 shrink-0 relative flex flex-wrap gap-4 items-center">
-        <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#00f0ff]" />
-        <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#00f0ff]" />
-
-        {/* Calendar Filter */}
-        <div className="flex items-center gap-2">
-          <Calendar className="h-3.5 w-3.5 text-cyan-400" />
-          <span className="text-[10px] font-black text-text-secondary uppercase">{t('reports.filterTime')}</span>
-          <select
-            value={selectedTimeRange}
-            onChange={(e) => setSelectedTimeRange(e.target.value)}
-            className="bg-[#050b14] border border-[#14356a] text-white text-[10.5px] font-black px-2.5 py-1 rounded cursor-pointer hover:border-cyan-400/60 focus:outline-none"
-          >
-            <option value="today">{t('reports.today')}</option>
-            <option value="shift_morning">{t('reports.shiftMorning')}</option>
-            <option value="shift_night">{t('reports.shiftNight')}</option>
-            <option value="last_7_days">{t('reports.last7Days')}</option>
-            <option value="month">{t('reports.month')}</option>
-          </select>
-        </div>
-
-        {/* Line Filter */}
-        <div className="flex items-center gap-2">
-          <Layers className="h-3.5 w-3.5 text-cyan-400" />
-          <span className="text-[10px] font-black text-text-secondary uppercase">{t('reports.filterLine')}</span>
-          <select
-            value={selectedLineId}
-            onChange={(e) => {
-              setSelectedLineId(e.target.value);
-              setSelectedMachineId('all');
-            }}
-            className="bg-[#050b14] border border-[#14356a] text-white text-[10.5px] font-black px-2.5 py-1 rounded cursor-pointer hover:border-cyan-400/60 focus:outline-none"
-          >
-            <option value="all">{t('reports.allLines')}</option>
-            {lines?.map((line: any) => (
-              <option key={line.id} value={line.id}>
-                {line.name.toUpperCase()}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Machine Filter */}
-        <div className="flex items-center gap-2">
-          <Cpu className="h-3.5 w-3.5 text-cyan-400" />
-          <span className="text-[10px] font-black text-text-secondary uppercase">{t('reports.filterMachine')}</span>
-          <select
-            value={selectedMachineId}
-            onChange={(e) => setSelectedMachineId(e.target.value)}
-            className="bg-[#050b14] border border-[#14356a] text-white text-[10.5px] font-black px-2.5 py-1 rounded cursor-pointer hover:border-cyan-400/60 focus:outline-none"
-          >
-            <option value="all">{t('reports.allMachines')}</option>
-            {filteredMachines.map((m: any) => (
-              <option key={m.id} value={m.id}>
-                {m.name.toUpperCase()}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* 3. KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
-        
-        {/* KPI 1: Total Production */}
-        <div className="cyber-panel border border-[#14356a] bg-[#0A1129]/80 p-3.5 relative flex flex-col justify-between">
-          <div className="absolute top-0 left-0 w-1.5 h-1.5 border-t border-l border-[#00f0ff]" />
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('reports.totalProduction')}</span>
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-black text-white font-mono leading-none">
-              {metrics.totalProduction.toLocaleString()}
-            </span>
-            <span className="text-[8.5px] font-bold text-text-muted">sp</span>
-          </div>
-          <div className="flex items-center gap-1 text-[8.5px] font-black text-emerald-400 uppercase mt-2.5">
-            <TrendingUp className="h-3 w-3 shrink-0" />
-            Uptime: 96.8%
-          </div>
-        </div>
-
-        {/* KPI 2: Good Products */}
-        <div className="cyber-panel border border-emerald-500/25 bg-emerald-950/5 p-3.5 relative flex flex-col justify-between shadow-[0_0_15px_rgba(16,185,129,0.02)]">
-          <div className="absolute top-0 left-0 w-1.5 h-1.5 border-t border-l border-emerald-500" />
-          <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">{t('reports.yield')}</span>
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-black text-emerald-400 font-mono leading-none">
-              {metrics.totalGood.toLocaleString()}
-            </span>
-            <span className="text-[8.5px] font-black text-emerald-400/70">{metrics.yieldRate}%</span>
-          </div>
-          <div className="w-full bg-[#0a1a35] h-1.5 rounded-full mt-2.5 overflow-hidden">
-            <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${metrics.yieldRate}%` }} />
-          </div>
-        </div>
-
-        {/* KPI 3: Defects/Scrap */}
-        <div className="cyber-panel border border-rose-500/25 bg-rose-950/5 p-3.5 relative flex flex-col justify-between shadow-[0_0_15px_rgba(239,68,68,0.02)]">
-          <div className="absolute top-0 left-0 w-1.5 h-1.5 border-t border-l border-rose-500" />
-          <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest">{t('reports.scrap')}</span>
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-black text-rose-400 font-mono leading-none">
-              {metrics.totalScrap.toLocaleString()}
-            </span>
-            <span className="text-[8.5px] font-black text-rose-400/70">{metrics.scrapRate}%</span>
-          </div>
-          <div className="w-full bg-[#0a1a35] h-1.5 rounded-full mt-2.5 overflow-hidden">
-            <div className="bg-rose-500 h-full rounded-full" style={{ width: `${metrics.scrapRate}%` }} />
-          </div>
-        </div>
-
-        {/* KPI 4: Operating Speed */}
-        <div className="cyber-panel border border-amber-500/25 bg-amber-950/5 p-3.5 relative flex flex-col justify-between shadow-[0_0_15px_rgba(245,158,11,0.02)]">
-          <div className="absolute top-0 left-0 w-1.5 h-1.5 border-t border-l border-amber-500" />
-          <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">{t('reports.uphSpeed')}</span>
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-black text-amber-400 font-mono leading-none">
-              {metrics.avgSpeed.toLocaleString()}
-            </span>
-            <span className="text-[8.5px] font-bold text-text-muted">sp/g</span>
-          </div>
-          <div className="flex items-center gap-1 text-[8.5px] font-black text-amber-400 uppercase mt-2.5">
-            <Clock className="h-3 w-3 shrink-0" />
-            Giám sát thời gian thực
-          </div>
-        </div>
-      </div>
-
-      {/* 4. Main Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 shrink-0 min-h-[220px]">
-        {/* Production Output History Chart */}
-        <div className="lg:col-span-2 cyber-panel border border-[#14356a] bg-[#0A1129]/80 p-4 flex flex-col justify-between">
-          <div className="absolute top-0 left-0 w-2.5 h-2.5 border-t border-l border-[#00f0ff]" />
-          <span className="text-[11px] font-black uppercase tracking-wider text-cyan-400 block mb-3 border-b border-[#14356a]/30 pb-2">{t('reports.chartHourlyTitle')}</span>
-          <div className="flex-1 min-h-0 w-full text-[9px] font-bold">
-            <ResponsiveContainer width="100%" height="90%">
-              <AreaChart data={chartData} margin={{ top: 15, right: 10, left: -25, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="areaColorReport" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#00f0ff" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#00f0ff" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="2 2" stroke="#112240" vertical={false} />
-                <XAxis dataKey="hour" stroke="#55678c" strokeWidth={0.5} tickLine={false} axisLine={false} />
-                <YAxis stroke="#55678c" strokeWidth={0.5} tickLine={false} axisLine={false} width={30} />
-                <Tooltip cursor={{ stroke: '#00f0ff', strokeWidth: 1 }} />
-                <Area type="monotone" name="Sản lượng đạt" dataKey="output" stroke="#00f0ff" strokeWidth={2} fillOpacity={1} fill="url(#areaColorReport)" dot={{ stroke: '#00f0ff', strokeWidth: 1.5, fill: '#0a1129', r: 3 }} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Defect Categories Distribution Chart */}
-        <div className="cyber-panel border border-[#14356a] bg-[#0A1129]/80 p-4 flex flex-col justify-between">
-          <div className="absolute top-0 left-0 w-2.5 h-2.5 border-t border-l border-[#00f0ff]" />
-          <span className="text-[11px] font-black uppercase tracking-wider text-cyan-400 block mb-3 border-b border-[#14356a]/30 pb-2">{t('reports.defectTitle')}</span>
-          <div className="flex-1 min-h-0 w-full text-[9px] font-bold">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={defectChartData} layout="vertical" barSize={10} margin={{ top: 10, right: 30, left: -15, bottom: 0 }}>
-                <XAxis type="number" stroke="#55678c" strokeWidth={0.5} tickLine={false} axisLine={false} />
-                <YAxis dataKey="name" type="category" stroke="#55678c" strokeWidth={0.5} tickLine={false} axisLine={false} width={65} />
-                <Tooltip cursor={{ fill: 'rgba(20, 53, 106, 0.15)' }} />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                  {defectChartData.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* 5. Detailed Logs Table */}
-      <div className="cyber-panel border border-[#14356a] bg-[#0A1129]/80 p-4 flex-1 flex flex-col min-h-[220px]">
-        <div className="absolute top-0 left-0 w-2.5 h-2.5 border-t border-l border-[#00f0ff]" />
-        <span className="text-[11px] font-black uppercase tracking-wider text-cyan-400 block mb-3 border-b border-[#14356a]/30 pb-2 shrink-0">{t('reports.tableTitle')}</span>
-        <div className="flex-1 min-h-0 overflow-y-auto w-full">
-          {tableLogs.length === 0 ? (
-            <div className="text-center w-full py-12 text-sm font-bold text-text-secondary select-none">
-              {t('reports.tableEmpty', 'Không có dữ liệu báo cáo cho thiết bị đã chọn.')}
-            </div>
-          ) : (
-            <table className="w-full text-left border-collapse text-[10px] font-bold">
-              <thead>
-                <tr className="border-b border-[#14356a]/60 text-slate-400 uppercase text-[9px] tracking-wider bg-[#050b14]/50">
-                  <th className="py-2.5 px-3">{t('reports.tableStt')}</th>
-                  <th className="py-2.5 px-3">{t('reports.tableLine')}</th>
-                  <th className="py-2.5 px-3">{t('reports.tableMachine')}</th>
-                  <th className="py-2.5 px-3 text-right">{t('reports.tableOutput')}</th>
-                  <th className="py-2.5 px-3 text-right">{t('reports.tableGood')}</th>
-                  <th className="py-2.5 px-3 text-right">{t('reports.tableScrap')}</th>
-                  <th className="py-2.5 px-3 text-center">{t('reports.tableStatus')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#14356a]/20">
-                {tableLogs.map((log: any) => {
-                  const isRunning = log.status === 'running' || log.status === 'đang chạy';
-                  const isError = log.status === 'error' || log.status === 'lỗi';
-                  const isIdle = log.status === 'idle' || log.status === 'chờ';
-
-                  let statusBadge = (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-[#14356a]/30 bg-[#0A1A35]/30 text-text-muted text-[8px] uppercase font-black">
-                      Offline
-                    </span>
-                  );
-                  if (isRunning) {
-                    statusBadge = (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-emerald-500/25 bg-emerald-500/5 text-emerald-400 text-[8px] uppercase font-black">
-                        Running
-                      </span>
-                    );
-                  } else if (isError) {
-                    statusBadge = (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-rose-500/25 bg-rose-500/5 text-rose-500 text-[8px] uppercase font-black">
-                        Error
-                      </span>
-                    );
-                  } else if (isIdle) {
-                    statusBadge = (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-amber-500/25 bg-amber-500/5 text-amber-400 text-[8px] uppercase font-black">
-                        Standby
-                      </span>
-                    );
-                  }
-
-                  return (
-                    <tr key={log.key} className="hover:bg-[#070c1e]/40 transition-colors">
-                      <td className="py-2.5 px-3 text-[#00f0ff] font-mono">{log.no}</td>
-                      <td className="py-2.5 px-3 text-slate-300">{log.lineName}</td>
-                      <td className="py-2.5 px-3 text-white uppercase">{log.machineName}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-white">{log.output.toLocaleString()}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-emerald-400">{log.good.toLocaleString()}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-rose-400">{log.scrap.toLocaleString()}</td>
-                      <td className="py-2.5 px-3 text-center">{statusBadge}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
-    </div>
+          {t('reports.exportCsv', { defaultValue: 'Export CSV' })}
+        </Button>
+      )}
+    />
   );
+
+  const filters = (
+    <Surface variant="quiet" padding="md" className="toolbar">
+      <label className="min-w-44 flex-1">
+        <span className="mb-2 flex items-center gap-2 text-xs font-medium text-text-secondary"><Filter size={14} aria-hidden="true" />{t('reports.filterTime', { defaultValue: 'Time range' })}</span>
+        <select className="field" value={selectedTimeRange} onChange={(event) => setSelectedTimeRange(event.target.value)}>
+          <option value="today">{t('reports.today', { defaultValue: 'Today' })}</option>
+          <option value="shift_morning">{t('reports.shiftMorning', { defaultValue: 'Morning shift' })}</option>
+          <option value="shift_night">{t('reports.shiftNight', { defaultValue: 'Night shift' })}</option>
+          <option value="last_7_days">{t('reports.last7Days', { defaultValue: 'Last 7 days' })}</option>
+          <option value="month">{t('reports.month', { defaultValue: 'This month' })}</option>
+        </select>
+      </label>
+      <label className="min-w-44 flex-1">
+        <span className="mb-2 flex items-center gap-2 text-xs font-medium text-text-secondary"><Layers3 size={14} aria-hidden="true" />{t('reports.filterLine', { defaultValue: 'Production line' })}</span>
+        <select
+          className="field"
+          value={selectedLineId}
+          onChange={(event) => {
+            setSelectedLineId(event.target.value);
+            setSelectedMachineId('all');
+          }}
+        >
+          <option value="all">{t('reports.allLines', { defaultValue: 'All lines' })}</option>
+          {(linesQuery.data ?? []).map((line) => <option key={line.id} value={line.id}>{tDynamic(line.name)}</option>)}
+        </select>
+      </label>
+      <label className="min-w-44 flex-1">
+        <span className="mb-2 flex items-center gap-2 text-xs font-medium text-text-secondary"><MonitorCog size={14} aria-hidden="true" />{t('reports.filterMachine', { defaultValue: 'Machine' })}</span>
+        <select className="field" value={selectedMachineId} onChange={(event) => setSelectedMachineId(event.target.value)}>
+          <option value="all">{t('reports.allMachines', { defaultValue: 'All approved machines' })}</option>
+          {filteredMachines.map((machine) => <option key={machine.id} value={machine.id}>{tDynamic(machine.name)}</option>)}
+        </select>
+      </label>
+    </Surface>
+  );
+
+  let reportContent: React.ReactNode;
+  if (reportQuery.isLoading) {
+    reportContent = (
+      <Surface variant="raised">
+        <DataState
+          kind="loading"
+          title={t('reports.loading', { defaultValue: 'Loading report' })}
+          description={t('reports.loadingDescription', { defaultValue: 'Retrieving the selected report scope from the reporting service.' })}
+        />
+      </Surface>
+    );
+  } else if (reportQuery.isError) {
+    reportContent = (
+      <Surface variant="raised">
+        <DataState
+          kind="error"
+          title={t('reports.errorTitle', { defaultValue: 'Report is unavailable' })}
+          description={t('reports.errorDescription', { defaultValue: 'The reporting service could not be reached for the selected filters.' })}
+          action={<Button variant="secondary" size="sm" onClick={() => void reportQuery.refetch()}>{t('common.actions.retry', { defaultValue: 'Retry' })}</Button>}
+        />
+      </Surface>
+    );
+  } else if (!hasReportContent) {
+    reportContent = (
+      <Surface variant="raised">
+        <DataState
+          kind="empty"
+          title={t('reports.noData', { defaultValue: 'No report data returned' })}
+          description={t('reports.tableEmpty', { defaultValue: 'The reporting service returned no summary, trend, defect, or detail rows for this scope.' })}
+        />
+      </Surface>
+    );
+  } else {
+    reportContent = (
+      <div className="space-y-6">
+        {metrics.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {metrics.map((metric) => (
+              <StatCard
+                key={metric.key}
+                label={metric.label}
+                value={`${formatValue(metric.value, locale)}${metric.suffix ?? ''}`}
+                accent={metric.accent}
+                icon={<FileText size={20} aria-hidden="true" />}
+                hint={t('reports.reportedValue', { defaultValue: 'Reported value' })}
+              />
+            ))}
+          </div>
+        )}
+
+        <div className="grid gap-6 xl:grid-cols-2">
+          <Surface variant="raised" padding="none" className="overflow-hidden">
+            <div className="panel-header">
+              <div>
+                <h2 className="title-small text-text-primary">{t('reports.chartHourlyTitle', { defaultValue: 'Reported output trend' })}</h2>
+                <p className="mt-1 text-xs text-text-muted">{t('reports.chartHourlyDescription', { defaultValue: 'Only output points returned by the report are shown.' })}</p>
+              </div>
+            </div>
+            {chartRows.length === 0 ? (
+              <DataState kind="empty" title={t('reports.noTrend', { defaultValue: 'No output trend returned' })} />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="data-table">
+                  <thead><tr><th>{t('reports.period', { defaultValue: 'Period' })}</th><th className="text-right">{t('reports.tableOutput', { defaultValue: 'Output' })}</th></tr></thead>
+                  <tbody>{chartRows.map((row, index) => <tr key={`${row.label}-${index}`}><td>{row.label}</td><td className="text-right font-mono">{formatValue(row.output, locale)}</td></tr>)}</tbody>
+                </table>
+              </div>
+            )}
+          </Surface>
+
+          <Surface variant="raised" padding="none" className="overflow-hidden">
+            <div className="panel-header">
+              <div>
+                <h2 className="title-small text-text-primary">{t('reports.defectTitle', { defaultValue: 'Reported defect categories' })}</h2>
+                <p className="mt-1 text-xs text-text-muted">{t('reports.defectDescription', { defaultValue: 'Category counts supplied by the reporting service.' })}</p>
+              </div>
+            </div>
+            {defectRows.length === 0 ? (
+              <DataState kind="empty" title={t('reports.noDefects', { defaultValue: 'No defect categories returned' })} />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="data-table">
+                  <thead><tr><th>{t('reports.category', { defaultValue: 'Category' })}</th><th className="text-right">{t('reports.count', { defaultValue: 'Count' })}</th></tr></thead>
+                  <tbody>{defectRows.map((row, index) => <tr key={`${row.label}-${index}`}><td>{row.label}</td><td className="text-right font-mono">{formatValue(row.value, locale)}</td></tr>)}</tbody>
+                </table>
+              </div>
+            )}
+          </Surface>
+        </div>
+
+        <Surface variant="raised" padding="none" className="overflow-hidden">
+          <div className="panel-header">
+            <div>
+              <h2 className="title-small text-text-primary">{t('reports.tableTitle', { defaultValue: 'Reported detail rows' })}</h2>
+              <p className="mt-1 text-xs text-text-muted">{t('reports.tableDescription', { defaultValue: 'These are the exact rows available for CSV export.' })}</p>
+            </div>
+            <Badge variant="neutral" size="sm">{t('reports.rowCount', { defaultValue: '{{count}} rows', count: tableRows.length })}</Badge>
+          </div>
+          {tableRows.length === 0 ? (
+            <DataState kind="empty" title={t('reports.tableEmpty', { defaultValue: 'No detail rows returned' })} />
+          ) : (
+            <>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="data-table">
+                  <thead><tr>
+                    <th>{t('reports.tableStt', { defaultValue: 'No.' })}</th>
+                    <th>{t('reports.tableLine', { defaultValue: 'Production line' })}</th>
+                    <th>{t('reports.tableMachine', { defaultValue: 'Machine' })}</th>
+                    <th className="text-right">{t('reports.tableOutput', { defaultValue: 'Output' })}</th>
+                    <th className="text-right">{t('reports.tableGood', { defaultValue: 'Good output' })}</th>
+                    <th className="text-right">{t('reports.tableScrap', { defaultValue: 'Scrap' })}</th>
+                    <th>{t('reports.tableStatus', { defaultValue: 'Status' })}</th>
+                  </tr></thead>
+                  <tbody>{tableRows.map((row, index) => {
+                    const status = readText(row.status);
+                    return <tr key={readText(row.key) ?? `${index}`}>
+                      <td className="font-mono text-text-muted">{readText(row.no) ?? String(index + 1)}</td>
+                      <td>{readText(row.lineName) ?? '—'}</td>
+                      <td className="font-medium text-text-primary">{readText(row.machineName) ?? '—'}</td>
+                      <td className="text-right font-mono">{readNumber(row.output) === undefined ? '—' : formatValue(readNumber(row.output)!, locale)}</td>
+                      <td className="text-right font-mono">{readNumber(row.good) === undefined ? '—' : formatValue(readNumber(row.good)!, locale)}</td>
+                      <td className="text-right font-mono">{readNumber(row.scrap) === undefined ? '—' : formatValue(readNumber(row.scrap)!, locale)}</td>
+                      <td>{status ? <StatusBadge status={status} size="sm" /> : '—'}</td>
+                    </tr>;
+                  })}</tbody>
+                </table>
+              </div>
+              <div className="space-y-3 p-3 md:hidden">{tableRows.map((row, index) => {
+                const status = readText(row.status);
+                return <Surface key={readText(row.key) ?? `${index}`} variant="quiet" padding="md" className="space-y-3">
+                  <div className="flex items-start justify-between gap-3"><div><p className="font-medium text-text-primary">{readText(row.machineName) ?? '—'}</p><p className="mt-1 text-xs text-text-muted">{readText(row.lineName) ?? '—'}</p></div>{status ? <StatusBadge status={status} size="sm" /> : null}</div>
+                  <dl className="grid grid-cols-3 gap-3 border-t border-border pt-3 text-sm"><div><dt className="text-xs text-text-muted">{t('reports.tableOutput', { defaultValue: 'Output' })}</dt><dd className="mt-1 font-mono text-text-primary">{readNumber(row.output) === undefined ? '—' : formatValue(readNumber(row.output)!, locale)}</dd></div><div><dt className="text-xs text-text-muted">{t('reports.tableGood', { defaultValue: 'Good' })}</dt><dd className="mt-1 font-mono text-text-primary">{readNumber(row.good) === undefined ? '—' : formatValue(readNumber(row.good)!, locale)}</dd></div><div><dt className="text-xs text-text-muted">{t('reports.tableScrap', { defaultValue: 'Scrap' })}</dt><dd className="mt-1 font-mono text-text-primary">{readNumber(row.scrap) === undefined ? '—' : formatValue(readNumber(row.scrap)!, locale)}</dd></div></dl>
+                </Surface>;
+              })}</div>
+            </>
+          )}
+        </Surface>
+      </div>
+    );
+  }
+
+  return <div className="space-y-6">{pageHeader}{filters}{reportContent}</div>;
 }

@@ -1,13 +1,15 @@
-import { LogOut, PanelLeft, RefreshCw, Wifi, WifiOff, Bell, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Bell, Eye, LogOut, Menu, Moon, RefreshCw, Sun, Wifi, WifiOff } from 'lucide-react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '../../store/auth.store';
-import { useUiStore } from '../../store/ui.store';
+import logoUrl from '../../../assets/Foxconn_Industrial_Internet.png';
 import type { RefreshScope } from '../../../app/refresh';
 import { routeMetaByPath } from '../../../app/routeMeta';
-import { LanguageSelector } from '../i18n/LanguageSelector';
-import { useState, useRef, useEffect } from 'react';
-import logoUrl from '../../../assets/Foxconn_Industrial_Internet.png';
+import { IconButton } from '../ui/IconButton';
+import { LanguageControl } from '../ui/LanguageControl';
+import { LocalizedDateTime } from '../ui/LocalizedDateTime';
+import { useAuthStore } from '../../store/auth.store';
+import { useUiStore } from '../../store/ui.store';
 
 interface Props {
   isOnline?: boolean;
@@ -15,6 +17,8 @@ interface Props {
   onRefresh?: () => Promise<void> | void;
   isRefreshing?: boolean;
   onToggleSidebar?: () => void;
+  isSidebarOpen?: boolean;
+  menuButtonRef?: RefObject<HTMLButtonElement | null>;
 }
 
 export function Topbar({
@@ -22,267 +26,191 @@ export function Topbar({
   onRefresh,
   isRefreshing = false,
   onToggleSidebar,
+  isSidebarOpen = false,
+  menuButtonRef,
 }: Props) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const location = useLocation();
   const { username, role, logout, isAuthenticated } = useAuthStore();
-  const { notifications, clearNotifications, sidebarCollapsed } = useUiStore();
-  const routeMeta = routeMetaByPath[location.pathname];
-  const title = routeMeta ? t(routeMeta.titleKey) : t('common.systemName');
-
+  const { notifications, clearNotifications, theme, setTheme } = useUiStore();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
-  const notifRef = useRef<HTMLDivElement>(null);
-
-  const [time, setTime] = useState(new Date());
+  const notificationMenuRef = useRef<HTMLDivElement>(null);
+  const routeMeta = routeMetaByPath[location.pathname];
+  const title = routeMeta ? t(routeMeta.titleKey) : t('common.systemName');
+  const unreadCount = notifications.filter((notification) => !notification.read).length;
+  const roleLabel = role ? t(`common.role.${role}`, { defaultValue: role }) : t('common.guest');
+  const avatarLabel = (username ?? t('common.values.user')).slice(0, 1).toUpperCase();
+  const connectionLabel = isOnline ? t('common.status.backendOnline') : t('common.status.backendOffline');
 
   useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (userMenuRef.current && !userMenuRef.current.contains(target)) {
         setUserMenuOpen(false);
       }
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+      if (notificationMenuRef.current && !notificationMenuRef.current.contains(target)) {
         setNotificationsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setUserMenuOpen(false);
+        setNotificationsOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-  const currentLang = i18n.language || 'vi';
-
-  const getLocalizedDayAndDate = (date: Date, lang: string) => {
-    let locale = 'vi-VN';
-    if (lang === 'en') locale = 'en-US';
-    else if (lang === 'zh-CN' || lang === 'zh') locale = 'zh-CN';
-
-    const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(date);
-    const dateStr = new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
-
-    const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-    return `${capitalizedWeekday}, ${dateStr}`;
-  };
-
-  const formattedDayAndDate = getLocalizedDayAndDate(time, currentLang);
-  const formattedTime = time.toTimeString().split(' ')[0];
-
-  const getShiftBadge = () => {
-    const totalMinutes = time.getHours() * 60 + time.getMinutes();
-
-    if (totalMinutes >= 450 && totalMinutes <= 1110) {
-      return {
-        label: t('common.time.shiftMorning'),
-        className: 'bg-running-container text-running border border-running/25',
-      };
-    }
-    if (totalMinutes >= 1170 || totalMinutes <= 390) {
-      return {
-        label: t('common.time.shiftNight'),
-        className: 'bg-idle-container text-idle border border-idle/25',
-      };
-    }
-    return {
-      label: t('common.time.shiftHandover'),
-      className: 'bg-warn-container text-warn border border-warn/25',
-    };
-  };
-
-  const shiftInfo = getShiftBadge();
-
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-[#14356a] bg-[#060a16] pr-4 lg:pr-6 shadow-[0_4px_20px_rgba(0,0,0,0.4)] sticky top-0 z-40">
-      <div className="flex min-w-0 items-center gap-0 h-full">
-        {/* Logo FII */}
-        <div 
-          className="flex h-full items-center justify-center bg-white w-[280px] pr-6 shrink-0" 
-          style={{ clipPath: 'polygon(0 0, 100% 0, 88% 100%, 0 100%)' }}
-        >
-          <img
-            src={logoUrl}
-            alt="Foxconn Industrial Internet"
-            className="h-[30px] w-auto object-contain"
+    <header className="app-topbar">
+      <div className="app-topbar__leading">
+        {onToggleSidebar && (
+          <IconButton
+            ref={menuButtonRef}
+            icon={<Menu size={21} aria-hidden="true" />}
+            label={t('common.aria.toggleSidebar')}
+            variant="ghost"
+            className="app-topbar__menu-button"
+            onClick={onToggleSidebar}
+            aria-controls="app-sidebar-drawer"
+            aria-expanded={isSidebarOpen}
           />
+        )}
+        <div className="app-topbar__brand">
+          <span className="app-topbar__logo-frame">
+            <img src={logoUrl} alt={t('common.logoAlt')} className="app-topbar__logo" />
+          </span>
+          <div className="app-topbar__context">
+            <span className="app-topbar__app-name">{t('common.appName')}</span>
+            <span className="app-topbar__page-title">{title}</span>
+          </div>
         </div>
-        
-
       </div>
 
-      <div className="flex items-center gap-3">
-        {/* Digital Clock Panel (No background frame, simple text clock) */}
-        <div className="hidden md:flex items-center gap-2 px-2 mr-1">
-          <span className="font-mono text-xl font-bold tracking-widest text-[#20DFF3] drop-shadow-[0_0_8px_rgba(32,223,243,0.3)] select-none">
-            {formattedTime}
-          </span>
-          <div className="w-px h-5 bg-[#14356a]/60 mx-1" />
-          <div className="flex flex-col text-[8px] leading-tight text-text-secondary font-black select-none">
-            <span>{time.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
-            <span className="text-[#00f0ff] uppercase text-[7px] tracking-wider mt-0.5">
-              {time.toLocaleDateString('vi-VN', { weekday: 'long' })}
-            </span>
-          </div>
+      <div className="app-topbar__actions">
+        <LocalizedDateTime className="app-topbar__clock" />
+        <div className={`app-topbar__connection ${isOnline ? 'is-online' : 'is-offline'}`} role="status" title={connectionLabel}>
+          {isOnline ? <Wifi size={16} aria-hidden="true" /> : <WifiOff size={16} aria-hidden="true" />}
+          <span>{connectionLabel}</span>
         </div>
-
-        {/* Connection status - stacked vertically */}
-        <div className="hidden h-9 items-center gap-2 px-3 bg-emerald-500/10 border border-emerald-500/25 rounded-md text-emerald-400 md:flex">
-          <div className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[7.5px] font-bold text-text-secondary leading-none">KẾT NỐI</span>
-            <span className="text-[9.5px] font-black text-[#00E676] leading-none mt-0.5 tracking-wider">ONLINE</span>
-          </div>
-        </div>
-
-        <div className="h-5 w-px bg-[#14356a] hidden md:block" />
-
-        {/* GROUP 3: Nhóm thao tác nhanh */}
-        <div className="flex items-center gap-1.5 bg-[#0A1A35]/50 border border-[#14356a] rounded-lg p-1">
-          {/* Refresh Button */}
+        <div className="app-topbar__utility-group">
           {onRefresh && (
-            <button
-              type="button"
-              onClick={onRefresh}
-              className="flex h-7.5 w-7.5 items-center justify-center rounded-md text-text-secondary hover:text-[#20DFF3] hover:bg-surface-3 transition-all duration-200 active:scale-90 cursor-pointer"
-              title={t('common.aria.refresh')}
-              aria-label={t('common.aria.refresh')}
-            >
-              <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
-            </button>
+            <IconButton
+              icon={<RefreshCw size={17} className={isRefreshing ? 'animate-spin' : ''} aria-hidden="true" />}
+              label={t('common.aria.refresh')}
+              variant="ghost"
+              onClick={() => { void onRefresh(); }}
+              disabled={isRefreshing}
+            />
           )}
-
-          {/* Notifications Button */}
           {isAuthenticated && (
-            <div ref={notifRef} className="relative flex items-center">
-              <button
-                type="button"
-                onClick={() => setNotificationsOpen(!notificationsOpen)}
-                className="flex h-7.5 w-7.5 items-center justify-center rounded-md text-text-secondary hover:text-[#20DFF3] hover:bg-surface-3 transition-all duration-200 active:scale-90 cursor-pointer relative"
-                title={t('common.notifications.title')}
-              >
-                <Bell size={14} />
-                {unreadCount > 0 && (
-                  <span
-                    className="absolute right-0.5 top-0.5 flex h-3 min-w-3 items-center justify-center rounded-full text-[8px] font-bold text-white px-0.5 shadow-[0_0_6px_rgba(244,63,94,0.6)] animate-pulse"
-                    style={{ backgroundColor: 'var(--color-error)' }}
-                  >
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </button>
+            <div ref={notificationMenuRef} className="app-topbar__menu-anchor">
+              <IconButton
+                icon={<Bell size={17} aria-hidden="true" />}
+                label={t('common.notifications.title')}
+                variant="ghost"
+                onClick={() => {
+                  setNotificationsOpen((value) => !value);
+                  setUserMenuOpen(false);
+                }}
+                aria-haspopup="dialog"
+                aria-expanded={notificationsOpen}
+              />
+              {unreadCount > 0 && <span className="app-topbar__notification-count">{unreadCount > 9 ? '9+' : unreadCount}</span>}
               {notificationsOpen && (
-                <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-md border border-[#20DFF3]/35 bg-[#0A2243]/95 backdrop-blur-md shadow-[0_10px_25px_rgba(0,0,0,0.5)] animate-fade-in">
-                  <div className="flex items-center justify-between border-b border-border-subtle p-3.5 bg-[#0B2243]/30">
-                    <span className="text-xs font-medium uppercase tracking-wider text-[#20DFF3]">{t('common.notifications.title')}</span>
+                <section className="app-topbar__popover app-topbar__notification-popover" role="dialog" aria-label={t('common.notifications.title')}>
+                  <div className="app-topbar__popover-header">
+                    <span>{t('common.notifications.title')}</span>
                     {unreadCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={clearNotifications}
-                        className="text-xs transition-colors hover:underline text-[#20DFF3] font-medium"
-                      >
+                      <button type="button" className="app-topbar__text-action" onClick={clearNotifications}>
                         {t('common.notifications.markAllRead')}
                       </button>
                     )}
                   </div>
-                  <div className="max-h-72 overflow-y-auto">
+                  <div className="app-topbar__notification-list">
                     {notifications.length === 0 ? (
-                      <div className="p-6 text-center">
-                        <p className="text-xs text-text-secondary">{t('common.notifications.empty')}</p>
-                      </div>
+                      <p className="app-topbar__empty-notifications">{t('common.notifications.empty')}</p>
                     ) : (
-                      notifications.slice(0, 6).map((notif) => (
-                        <div
-                          key={notif.id}
-                          className="flex gap-3 border-b border-border-subtle p-3.5 transition-colors hover:bg-[#20DFF3]/10"
-                        >
-                          <div
-                            className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
-                            style={{ backgroundColor: notif.read ? 'var(--color-outline)' : '#20DFF3' }}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs leading-snug text-text-primary">{notif.message}</p>
-                            <p className="mt-1 text-[10px] text-text-muted">{notif.timestamp}</p>
+                      notifications.slice(0, 6).map((notification) => (
+                        <div key={notification.id} className={`app-topbar__notification ${notification.read ? 'is-read' : ''}`}>
+                          <span className="app-topbar__notification-indicator" aria-hidden="true" />
+                          <div>
+                            <p>{notification.message}</p>
+                            <time>{notification.timestamp}</time>
                           </div>
                         </div>
                       ))
                     )}
                   </div>
-                </div>
+                </section>
               )}
             </div>
           )}
-
-          {/* Language Selector */}
-          <LanguageSelector compact />
+          <IconButton
+            icon={theme === 'dark' ? <Sun size={17} aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}
+            label={t('settings.appearance.theme')}
+            title={t(theme === 'dark' ? 'settings.appearance.light' : 'settings.appearance.dark')}
+            variant="ghost"
+            aria-pressed={theme === 'dark'}
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          />
+          <LanguageControl compact />
         </div>
 
-        <div className="h-5 w-px bg-border/20" />
-
-        {/* GROUP 4: Nhóm tài khoản */}
         {isAuthenticated ? (
-          <div ref={userMenuRef} className="relative hidden items-center sm:flex">
+          <div ref={userMenuRef} className="app-topbar__menu-anchor app-topbar__account-anchor">
             <button
               type="button"
-              onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-surface-2 transition-all duration-200 cursor-pointer"
+              className="app-topbar__account-button"
+              onClick={() => {
+                setUserMenuOpen((value) => !value);
+                setNotificationsOpen(false);
+              }}
+              aria-label={t('common.aria.userMenu')}
+              aria-haspopup="menu"
+              aria-expanded={userMenuOpen}
             >
-              <div
-                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold text-white shadow-[0_0_8px_rgba(32,223,243,0.25)] ${
-                  role === 'ADMIN'
-                    ? 'bg-gradient-to-tr from-purple-500 to-indigo-600'
-                    : 'bg-gradient-to-tr from-teal-400 to-[#20DFF3]'
-                }`}
-              >
-                {username?.charAt(0).toUpperCase() || 'U'}
-              </div>
-              <span className="hidden max-w-24 truncate text-xs font-semibold lg:block text-text-primary">{username}</span>
-              <ChevronDown size={12} className="text-text-muted" />
+              <span className="app-topbar__avatar">{avatarLabel}</span>
+              <span className="app-topbar__account-copy">
+                <span className="app-topbar__account-name">{username}</span>
+                <span className="app-topbar__account-role">{roleLabel}</span>
+              </span>
             </button>
-
             {userMenuOpen && (
-              <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-md border border-[#20DFF3]/35 bg-[#0A2243]/98 backdrop-blur-md shadow-[0_10px_25px_rgba(0,0,0,0.5)] animate-fade-in">
-                <div className="border-b border-border-subtle p-3.5 bg-[#0B2243]/30">
-                  <p className="text-xs font-medium text-white uppercase tracking-wider">{username}</p>
-                  <p className="text-[10px] text-text-muted mt-0.5">{role}</p>
+              <div className="app-topbar__popover app-topbar__user-popover" role="menu">
+                <div className="app-topbar__user-summary">
+                  <span>{username}</span>
+                  <span>{roleLabel}</span>
                 </div>
-                <div className="py-1">
-                  <button
-                    type="button"
-                    onClick={() => logout()}
-                    className="flex w-full items-center gap-3 px-3.5 py-2.5 text-xs font-medium transition-colors hover:bg-rose-500/10 text-error"
-                  >
-                    <LogOut size={14} />
-                    {t('common.aria.logout')}
-                  </button>
-                </div>
+                <button type="button" className="app-topbar__logout-action" onClick={() => logout()} role="menuitem">
+                  <LogOut size={17} aria-hidden="true" />
+                  <span>{t('common.aria.logout')}</span>
+                </button>
               </div>
             )}
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 rounded-full bg-[#20DFF3]/10 border border-[#20DFF3]/25 px-3 py-1 text-xs font-medium text-[#20DFF3] select-none">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#20DFF3] animate-pulse" />
-            {t('common.viewerMode', 'Chế độ xem')}
+          <div className="app-topbar__viewer-indicator">
+            <Eye size={16} aria-hidden="true" />
+            <span>{t('common.viewerMode')}</span>
           </div>
         )}
-
-        {/* Mobile Log Out */}
         {isAuthenticated && (
-          <button
-            type="button"
+          <IconButton
+            icon={<LogOut size={17} aria-hidden="true" />}
+            label={t('common.aria.logout')}
+            variant="ghost"
+            className="app-topbar__mobile-logout"
             onClick={() => logout()}
-            className="flex h-8 w-8 items-center justify-center text-text-secondary hover:text-rose-400 transition-all duration-200 active:scale-90 cursor-pointer sm:hidden"
-            title={t('common.aria.logout')}
-            aria-label={t('common.aria.logout')}
-          >
-            <LogOut size={16} />
-          </button>
+          />
         )}
       </div>
     </header>

@@ -1,17 +1,15 @@
 import { useTranslation } from 'react-i18next';
 import { getStatusKey, STATUS_LABELS } from '../../lib/utils';
-import { Badge } from './Badge';
+import { Badge, type BadgeVariant } from './Badge';
 
-type MachineStatus = 'running' | 'idle' | 'stopped' | 'error' | 'maintenance' | 'offline' | 'disconnected';
-
-const STATUS_TO_VARIANT: Record<string, string> = {
+const STATUS_TO_VARIANT: Record<string, BadgeVariant> = {
   running: 'running',
   error: 'error',
   warning: 'warning',
   warn: 'warning',
   idle: 'idle',
   stopped: 'neutral',
-  maintenance: 'primary',
+  maintenance: 'maintenance',
   offline: 'offline',
   disconnected: 'disconnected',
   info: 'info',
@@ -28,10 +26,10 @@ export function StatusBadge({ status, showDot = true, size = 'md', className = '
   const { t } = useTranslation();
   const key = getStatusKey(status);
   const label = t(`common.machineStatus.${key}`, { defaultValue: STATUS_LABELS[key] });
-  const variant = STATUS_TO_VARIANT[key] || 'neutral';
+  const variant = STATUS_TO_VARIANT[key] ?? 'neutral';
 
   return (
-    <Badge variant={variant as any} size={size} dot={showDot} className={className}>
+    <Badge variant={variant} size={size} dot={showDot} className={className}>
       {label}
     </Badge>
   );

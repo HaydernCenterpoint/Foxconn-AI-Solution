@@ -1,23 +1,25 @@
+import { LoaderCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import logoUrl from '../../../assets/Foxconn_Industrial_Internet.png';
+import { Surface } from '../../../shared/components/ui/Surface';
+import { AuthScreen } from './AuthScreen';
 
 export function SplashScreen() {
   const { t } = useTranslation();
 
   return (
-    <div className="app-backdrop flex min-h-[100dvh] w-screen items-center justify-center bg-bg">
-      <div className="flex flex-col items-center gap-6 rounded-[var(--radius-large)] border border-border bg-panel px-10 py-9 shadow-panel">
-        <span className="flex h-20 w-20 items-center justify-center rounded-full bg-panel-soft">
-          <img
-            src={logoUrl}
-            alt={t('common.logoAlt')}
-            className="h-14 w-auto object-contain"
-          />
-        </span>
-        <div className="h-1.5 w-32 overflow-hidden rounded-full bg-panel-soft" aria-label={t('common.loading')}>
-          <div className="loading-bar h-full w-1/2 rounded-full bg-accent" />
-        </div>
-      </div>
-    </div>
+    <AuthScreen>
+      <main className="w-full max-w-sm" aria-busy="true" aria-live="polite">
+        <Surface variant="raised" padding="lg" className="flex flex-col items-center gap-5 text-center sm:p-8">
+          <div className="flex h-16 w-16 items-center justify-center rounded-md border border-border bg-on-primary p-2">
+            <img src={logoUrl} alt={t('common.logoAlt')} className="h-10 w-auto object-contain" />
+          </div>
+          <div className="flex items-center gap-3 text-sm font-medium text-text-secondary" role="status">
+            <LoaderCircle className="animate-spin text-primary" size={20} aria-hidden="true" />
+            <span>{t('common.loading')}</span>
+          </div>
+        </Surface>
+      </main>
+    </AuthScreen>
   );
 }

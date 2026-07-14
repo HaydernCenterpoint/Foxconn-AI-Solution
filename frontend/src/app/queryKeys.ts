@@ -23,4 +23,9 @@ export const queryKeys = {
   reports: {
     production: (filters: Record<string, string>) => ['reports', 'production', filters] as const,
   },
+  system: {
+    health: () => ['system', 'health'] as const,
+    liveTelemetry: () => ['system', 'telemetry', 'live'] as const,
+    telemetryLog: (count: number) => ['system', 'telemetry', 'log', count] as const,
+  },
 };

@@ -1,20 +1,27 @@
-import { Link } from 'react-router-dom';
-import { SearchX } from 'lucide-react';
+import { ArrowLeft, SearchX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '../shared/components/ui/Button';
+import { Surface } from '../shared/components/ui/Surface';
 
 export default function NotFoundPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   return (
-    <div className="flex min-h-[420px] flex-col items-center justify-center text-center">
-      <div className="mb-4 rounded-full bg-accent/10 p-4 text-accent">
-        <SearchX size={40} aria-hidden="true" />
-      </div>
-      <h1 className="mb-2 text-2xl font-semibold">{t('pages.notFound.title')}</h1>
-      <p className="mb-5 text-sm text-muted">{t('pages.notFound.description')}</p>
-      <Link to="/" className="btn btn-primary">
-        {t('pages.notFound.backToOverview')}
-      </Link>
-    </div>
+    <main className="flex min-h-[420px] items-center justify-center py-8" aria-labelledby="not-found-heading">
+      <Surface variant="raised" padding="lg" className="w-full max-w-lg text-center sm:p-8">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary-light text-primary" aria-hidden="true">
+          <SearchX size={30} />
+        </div>
+        <h1 id="not-found-heading" className="mt-5 text-2xl font-semibold text-text-primary">
+          {t('pages.notFound.title')}
+        </h1>
+        <p className="mx-auto mt-3 max-w-md text-sm text-text-secondary">{t('pages.notFound.description')}</p>
+        <Button className="mt-6" startIcon={<ArrowLeft size={16} aria-hidden="true" />} onClick={() => navigate('/')}>
+          {t('pages.notFound.backToOverview')}
+        </Button>
+      </Surface>
+    </main>
   );
 }

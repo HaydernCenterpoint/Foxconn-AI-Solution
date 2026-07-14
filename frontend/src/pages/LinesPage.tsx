@@ -1,334 +1,421 @@
-import { useState } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Network, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, WifiOff, Plus } from 'lucide-react';
 import { linesApi, type LineRequest, type ProductionLine } from '../features/production-lines/services/lines.api';
+import type { Machine } from '../features/machines/services/machines.api';
+import { DiagramEditor } from '../features/production-lines/components/DiagramEditor';
 import { queryKeys } from '../app/queryKeys';
 import { queryTimings } from '../app/queryOptions';
-import { EmptyState } from '../shared/components/ui/EmptyState';
-import { DiagramEditor } from '../features/production-lines/components/DiagramEditor';
-import { useDynamicTranslation } from '../shared/lib/translator';
-import { Modal } from '../shared/components/ui/Modal';
-import { Badge } from '../shared/components/ui/Badge';
-import { usePermissions } from '../shared/hooks/usePermissions';
-import type { Machine } from '../features/machines/services/machines.api';
 import { SharedDashboardPage } from '../features/dashboard/components/SharedDashboardPage';
+import { Badge, type BadgeVariant } from '../shared/components/ui/Badge';
+import { Button } from '../shared/components/ui/Button';
+import { ConfirmDialog } from '../shared/components/ui/ConfirmDialog';
+import { DataState } from '../shared/components/ui/DataState';
+import { Modal } from '../shared/components/ui/Modal';
+import { PageHeader } from '../shared/components/ui/PageHeader';
+import { StatusBadge } from '../shared/components/ui/StatusBadge';
+import { Surface } from '../shared/components/ui/Surface';
+import { usePermissions } from '../shared/hooks/usePermissions';
+import { useDynamicTranslation } from '../shared/lib/translator';
+import { useUiStore } from '../shared/store/ui.store';
+
+interface LineSummary {
+  line: ProductionLine;
+  index: number;
+  machines: Machine[];
+  isLoading: boolean;
+  isError: boolean;
+}
+
+function getLineStatusVariant(status?: string): BadgeVariant {
+  switch (status?.toLowerCase()) {
+    case 'active':
+    case 'running':
+      return 'success';
+    case 'maintenance':
+    case 'warning':
+      return 'warning';
+    case 'error':
+      return 'error';
+    default:
+      return 'neutral';
+  }
+}
+
+function getLineStatusLabel(status?: string) {
+  if (!status) return '—';
+  return status.replace(/_/g, ' ');
+}
+
+function getLatestStation(machines: Machine[]) {
+  if (machines.length === 0) return undefined;
+  return [...machines].sort((left, right) => (left.sequenceOrder ?? 0) - (right.sequenceOrder ?? 0)).at(-1);
+}
+
+function formatOutput(machine: Machine | undefined, locale: string) {
+  const value = machine?.lastPlcData?.productionCount;
+  return typeof value === 'number' && Number.isFinite(value) ? value.toLocaleString(locale) : '—';
+}
 
 export default function LinesPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { tDynamic } = useDynamicTranslation();
   const { canEdit, canCreate, isViewer } = usePermissions();
-
-  if (isViewer) {
-    return <SharedDashboardPage role="viewer" hideBottomCharts={true} />;
-  }
+  const queryClient = useQueryClient();
+  const addToast = useUiStore((state) => state.addToast);
 
   const [selectedLine, setSelectedLine] = useState<ProductionLine | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ProductionLine | null>(null);
   const [newLineName, setNewLineName] = useState('');
   const [newLineDescription, setNewLineDescription] = useState('');
+  const [createError, setCreateError] = useState('');
 
-  const queryClient = useQueryClient();
-  const createLineMutation = useMutation({
-    mutationFn: (data: LineRequest) => linesApi.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.lines.list() });
-      setIsCreateModalOpen(false);
-      setNewLineName('');
-      setNewLineDescription('');
-    },
-  });
+  const locale = i18n.language === 'zh' || i18n.language === 'zh-CN'
+    ? 'zh-CN'
+    : i18n.language === 'en'
+      ? 'en-US'
+      : 'vi-VN';
 
-  const deleteLineMutation = useMutation({
-    mutationFn: (id: string) => linesApi.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.lines.list() });
-    },
-  });
-
-  const handleCreateLineSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newLineName) return;
-    createLineMutation.mutate({
-      name: newLineName,
-      description: newLineDescription || undefined,
-    });
-  };
-
-  const {
-    data: lines,
-    isLoading,
-    isError,
-  } = useQuery({
+  const linesQuery = useQuery({
     queryKey: queryKeys.lines.list(),
     queryFn: linesApi.getAll,
     refetchInterval: queryTimings.lines,
   });
 
-  const handleSelectLine = (line: ProductionLine) => {
-    setSelectedLine(line);
+  const lineMachineQueries = useQueries({
+    queries: (linesQuery.data ?? []).map((line) => ({
+      queryKey: ['line-machines', line.id],
+      queryFn: () => linesApi.getMachines(line.id),
+      refetchInterval: 2_000,
+    })),
+  });
+
+  const lineSummaries = useMemo<LineSummary[]>(() => (
+    (linesQuery.data ?? []).map((line, index) => ({
+      line,
+      index,
+      machines: lineMachineQueries[index]?.data ?? [],
+      isLoading: lineMachineQueries[index]?.isLoading ?? false,
+      isError: lineMachineQueries[index]?.isError ?? false,
+    }))
+  ), [lineMachineQueries, linesQuery.data]);
+
+  const createLineMutation = useMutation({
+    mutationFn: (data: LineRequest) => linesApi.create(data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.lines.list() });
+      addToast('success', t('linesPage.createSuccess', { defaultValue: 'Production line created' }));
+      setIsCreateModalOpen(false);
+      setNewLineName('');
+      setNewLineDescription('');
+      setCreateError('');
+    },
+    onError: () => {
+      const message = t('linesPage.createError', { defaultValue: 'Unable to create the production line' });
+      setCreateError(message);
+      addToast('error', message);
+    },
+  });
+
+  const deleteLineMutation = useMutation({
+    mutationFn: (id: string) => linesApi.delete(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.lines.list() });
+      addToast('success', t('linesPage.deleteSuccess', { defaultValue: 'Production line deleted' }));
+      setDeleteTarget(null);
+      if (selectedLine?.id === deleteTarget?.id) setSelectedLine(null);
+    },
+    onError: () => {
+      addToast('error', t('linesPage.deleteError', { defaultValue: 'Unable to delete the production line' }));
+    },
+  });
+
+  const handleCreateLineSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = newLineName.trim();
+    if (!name) return;
+
+    setCreateError('');
+    createLineMutation.mutate({
+      name,
+      description: newLineDescription.trim() || undefined,
+    });
   };
 
-  const handleBackToList = () => {
-    setSelectedLine(null);
+  const closeCreateModal = () => {
+    if (createLineMutation.isPending) return;
+    setIsCreateModalOpen(false);
+    setCreateError('');
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
-        <Loader2 size={40} className="animate-spin text-[#00ADB5]" />
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <EmptyState
-        icon={<WifiOff size={56} />}
-        title={t('linesPage.error.title')}
-        description={t('linesPage.error.description')}
-      />
-    );
+  // Keep the viewer branch after every hook. This preserves the existing Hooks fix.
+  if (isViewer) {
+    return <SharedDashboardPage role="viewer" hideBottomCharts={true} />;
   }
 
   if (selectedLine) {
     return (
-      <div className="flex h-[calc(100vh-8rem)] flex-col overflow-hidden rounded-lg border border-[#14356a] bg-[#060a16] shadow-2xl">
-        <DiagramEditor
-          lineId={selectedLine.id}
-          readOnly={!canEdit}
-          onClose={handleBackToList}
+      <DiagramEditor
+        lineId={selectedLine.id}
+        readOnly={!canEdit}
+        onClose={() => setSelectedLine(null)}
+      />
+    );
+  }
+
+  const pageHeader = (
+    <PageHeader
+      eyebrow={t('linesPage.eyebrow', { defaultValue: 'Operations configuration' })}
+      title={t('linesPage.title', { defaultValue: 'Production lines' })}
+      description={t('linesPage.description', { defaultValue: 'Manage line membership and the station flow stored by the production-line service.' })}
+      actions={canCreate ? (
+        <Button
+          startIcon={<Plus size={16} aria-hidden="true" />}
+          onClick={() => {
+            setCreateError('');
+            setIsCreateModalOpen(true);
+          }}
+        >
+          {t('linesPage.add', { defaultValue: 'Add line' })}
+        </Button>
+      ) : undefined}
+    />
+  );
+
+  let content: React.ReactNode;
+  if (linesQuery.isLoading) {
+    content = (
+      <Surface variant="raised">
+        <DataState
+          kind="loading"
+          title={t('linesPage.loading', { defaultValue: 'Loading production lines' })}
+          description={t('linesPage.loadingDescription', { defaultValue: 'Retrieving configured production lines and station assignments.' })}
         />
-      </div>
+      </Surface>
+    );
+  } else if (linesQuery.isError) {
+    content = (
+      <Surface variant="raised">
+        <DataState
+          kind="error"
+          title={t('linesPage.error.title', { defaultValue: 'Production lines are unavailable' })}
+          description={t('linesPage.error.description', { defaultValue: 'The production-line service could not be reached.' })}
+          action={(
+            <Button variant="secondary" size="sm" onClick={() => void linesQuery.refetch()}>
+              {t('common.actions.retry', { defaultValue: 'Retry' })}
+            </Button>
+          )}
+        />
+      </Surface>
+    );
+  } else if (lineSummaries.length === 0) {
+    content = (
+      <Surface variant="raised">
+        <DataState
+          kind="empty"
+          title={t('linesPage.emptyTitle', { defaultValue: 'No production lines configured' })}
+          description={t('linesPage.emptyTable', { defaultValue: 'Create a production line before assigning stations or designing its flow.' })}
+          action={canCreate ? (
+            <Button size="sm" startIcon={<Plus size={16} aria-hidden="true" />} onClick={() => setIsCreateModalOpen(true)}>
+              {t('linesPage.add', { defaultValue: 'Add line' })}
+            </Button>
+          ) : undefined}
+        />
+      </Surface>
+    );
+  } else {
+    content = (
+      <Surface variant="raised" padding="none" className="overflow-hidden">
+        <div className="hidden overflow-x-auto md:block">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>{t('common.table.index', { defaultValue: 'No.' })}</th>
+                <th>{t('linesPage.table.name', { defaultValue: 'Production line' })}</th>
+                <th>{t('linesPage.table.stations', { defaultValue: 'Stations' })}</th>
+                <th>{t('linesPage.table.status', { defaultValue: 'Current status' })}</th>
+                <th>{t('linesPage.table.output', { defaultValue: 'Last station output' })}</th>
+                <th className="text-right">{t('common.table.actions', { defaultValue: 'Actions' })}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lineSummaries.map((summary) => {
+                const latestStation = getLatestStation(summary.machines);
+                return (
+                  <tr key={summary.line.id}>
+                    <td className="font-mono text-text-muted">{String(summary.index + 1).padStart(2, '0')}</td>
+                    <td>
+                      <div className="min-w-48">
+                        <p className="font-semibold text-text-primary">{tDynamic(summary.line.name)}</p>
+                        <p className="mt-1 text-xs text-text-muted">
+                          {summary.line.description?.trim().startsWith('{')
+                            ? t('linesPage.diagramConfigured', { defaultValue: 'Flow configured' })
+                            : t('linesPage.diagramNotConfigured', { defaultValue: 'Flow not configured' })}
+                        </p>
+                      </div>
+                    </td>
+                    <td>
+                      {summary.isLoading ? '—' : summary.isError ? t('common.status.unavailable', { defaultValue: 'Unavailable' }) : summary.machines.length}
+                    </td>
+                    <td>
+                      {latestStation ? (
+                        <StatusBadge status={latestStation.status} size="sm" />
+                      ) : (
+                        <Badge variant={getLineStatusVariant(summary.line.status)} size="sm">
+                          {getLineStatusLabel(summary.line.status)}
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="font-mono">
+                      {formatOutput(latestStation, locale)}
+                    </td>
+                    <td>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          startIcon={<Network size={15} aria-hidden="true" />}
+                          onClick={() => setSelectedLine(summary.line)}
+                        >
+                          {t('linesPage.openDiagram', { defaultValue: 'Open flow' })}
+                        </Button>
+                        {canCreate && (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            aria-label={t('common.actions.delete', { defaultValue: 'Delete' })}
+                            title={t('common.actions.delete', { defaultValue: 'Delete' })}
+                            onClick={() => setDeleteTarget(summary.line)}
+                          >
+                            <Trash2 size={15} aria-hidden="true" />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="space-y-3 p-3 md:hidden">
+          {lineSummaries.map((summary) => {
+            const latestStation = getLatestStation(summary.machines);
+            return (
+              <Surface key={summary.line.id} variant="quiet" padding="md" className="space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-text-primary">{tDynamic(summary.line.name)}</p>
+                    <p className="mt-1 text-xs text-text-muted">
+                      {summary.isLoading
+                        ? t('common.status.loading', { defaultValue: 'Loading stations' })
+                        : summary.isError
+                          ? t('common.status.unavailable', { defaultValue: 'Station data unavailable' })
+                          : t('linesPage.stationCount', { defaultValue: '{{count}} stations', count: summary.machines.length })}
+                    </p>
+                  </div>
+                  {latestStation ? (
+                    <StatusBadge status={latestStation.status} size="sm" />
+                  ) : (
+                    <Badge variant={getLineStatusVariant(summary.line.status)} size="sm">{getLineStatusLabel(summary.line.status)}</Badge>
+                  )}
+                </div>
+                <div className="flex items-center justify-between gap-3 border-t border-border pt-3 text-sm">
+                  <span className="text-text-secondary">{t('linesPage.table.output', { defaultValue: 'Last station output' })}</span>
+                  <span className="font-mono font-semibold text-text-primary">{formatOutput(latestStation, locale)}</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="secondary" size="sm" startIcon={<Network size={15} aria-hidden="true" />} onClick={() => setSelectedLine(summary.line)}>
+                    {t('linesPage.openDiagram', { defaultValue: 'Open flow' })}
+                  </Button>
+                  {canCreate && (
+                    <Button variant="danger" size="sm" startIcon={<Trash2 size={15} aria-hidden="true" />} onClick={() => setDeleteTarget(summary.line)}>
+                      {t('common.actions.delete', { defaultValue: 'Delete' })}
+                    </Button>
+                  )}
+                </div>
+              </Surface>
+            );
+          })}
+        </div>
+      </Surface>
     );
   }
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col overflow-hidden">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight text-text-primary">{t('linesPage.title', 'Dây chuyền lắp ráp')}</h1>
-          <p className="mt-2 text-base text-text-secondary">{t('linesPage.description', 'Quản lý danh sách dây chuyền lắp ráp và chỉnh sửa sơ đồ kết nối PLC.')}</p>
-        </div>
-
-        {canCreate && (
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#00ADB5] hover:bg-[#00ADB5]/80 px-4 py-2.5 font-bold text-white transition-colors self-end sm:self-auto cursor-pointer text-sm shadow-[0_0_12px_rgba(0,173,181,0.35)]"
-          >
-            <Plus size={18} />
-            {t('linesPage.add', { defaultValue: 'Thêm dây chuyền' })}
-          </button>
-        )}
-      </div>
-
-      <div className="flex-1 overflow-auto pr-1 bg-[#0A1129]/40 border border-[#14356a] rounded-xl shadow-2xl mb-6">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-[#14356a] bg-[#101625]/85">
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-16">STT</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider">Tên dây chuyền</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-28">Số máy</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-28">Trạng thái</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-28">OEE Chuyền</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-36">Sản lượng</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-32">Tốc độ UPH</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-28">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lines && lines.length > 0 ? (
-              lines.map((line, index) => (
-                <LineRow
-                  key={line.id}
-                  index={index}
-                  line={line}
-                  onClick={() => handleSelectLine(line)}
-                  onDelete={(id) => deleteLineMutation.mutate(id)}
-                  canDelete={canCreate}
-                />
-              ))
-            ) : (
-              <tr>
-                <td colSpan={8} className="py-12 text-center text-sm font-bold text-text-secondary">
-                  {t('linesPage.emptyTable', 'Chưa có dây chuyền sản xuất nào được cấu hình.')}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+    <div className="space-y-6">
+      {pageHeader}
+      {content}
 
       {canCreate && (
         <Modal
           open={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-          title={t('linesPage.createModal.title', { defaultValue: 'Tạo dây chuyền mới' })}
+          onClose={closeCreateModal}
+          title={t('linesPage.createModal.title', { defaultValue: 'Create production line' })}
+          subtitle={t('linesPage.createModal.subtitle', { defaultValue: 'A flow can be configured after the line is created.' })}
           size="md"
-          footer={
+          footer={(
             <>
-              <button type="button" onClick={() => setIsCreateModalOpen(false)} className="rounded-lg px-4 py-2 text-sm font-semibold text-text-secondary transition-colors hover:bg-surface-3">
-                {t('common.actions.cancel')}
-              </button>
-              <button
-                type="submit"
-                form="line-form"
-                disabled={createLineMutation.isPending}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
-              >
-                {createLineMutation.isPending ? t('common.status.loading') : t('common.actions.create')}
-              </button>
+              <Button variant="secondary" onClick={closeCreateModal} disabled={createLineMutation.isPending}>
+                {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+              </Button>
+              <Button type="submit" form="line-form" loading={createLineMutation.isPending}>
+                {t('common.actions.create', { defaultValue: 'Create line' })}
+              </Button>
             </>
-          }
+          )}
         >
-          <form id="line-form" onSubmit={handleCreateLineSubmit} className="space-y-4">
-            {createLineMutation.isError && (
-              <div className="rounded-lg border border-error bg-error-container px-3.5 py-2.5 text-xs text-error">
-                {t('common.errors.unknown', 'Có lỗi xảy ra khi tạo dây chuyền')}
+          <form id="line-form" className="space-y-4" onSubmit={handleCreateLineSubmit}>
+            {createError && (
+              <div className="rounded-md border border-error bg-error-container px-3 py-2 text-sm text-error" role="alert">
+                {createError}
               </div>
             )}
-            <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-text-secondary">
-                {t('linesPage.createModal.form.name', { defaultValue: 'Tên dây chuyền' })}
-              </label>
+            <label className="block space-y-2">
+              <span className="label-small text-text-secondary">{t('linesPage.createModal.form.name', { defaultValue: 'Line name' })}</span>
               <input
-                type="text"
+                className="field"
                 value={newLineName}
-                onChange={(e) => setNewLineName(e.target.value)}
+                onChange={(event) => setNewLineName(event.target.value)}
+                placeholder={t('linesPage.createModal.form.namePlaceholder', { defaultValue: 'e.g. Assembly line A' })}
+                autoFocus
                 required
-                placeholder={t('linesPage.createModal.form.namePlaceholder', { defaultValue: 'e.g. MKZ Auto Line' })}
-                className="w-full rounded-lg border border-border bg-surface-1 px-3.5 py-2.5 text-sm text-text-primary outline-none focus:border-primary"
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-text-secondary">
-                {t('linesPage.createModal.form.description', { defaultValue: 'Mô tả' })}
-              </label>
+            </label>
+            <label className="block space-y-2">
+              <span className="label-small text-text-secondary">{t('linesPage.createModal.form.description', { defaultValue: 'Description' })}</span>
               <textarea
+                className="field min-h-24 py-3"
                 value={newLineDescription}
-                onChange={(e) => setNewLineDescription(e.target.value)}
-                placeholder={t('linesPage.createModal.form.descriptionPlaceholder', { defaultValue: 'e.g. Luồng lắp ráp cho nhóm trạm A' })}
+                onChange={(event) => setNewLineDescription(event.target.value)}
+                placeholder={t('linesPage.createModal.form.descriptionPlaceholder', { defaultValue: 'Optional operational context' })}
                 rows={3}
-                className="w-full rounded-lg border border-border bg-surface-1 px-3.5 py-2.5 text-sm text-text-primary outline-none focus:border-primary resize-none"
               />
-            </div>
+            </label>
           </form>
         </Modal>
       )}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title={t('linesPage.deleteConfirmTitle', { defaultValue: 'Delete production line?' })}
+        description={t('linesPage.deleteConfirmDescription', {
+          defaultValue: 'This removes {{name}} and its line configuration. This action cannot be undone from this page.',
+          name: deleteTarget ? tDynamic(deleteTarget.name) : '',
+        })}
+        confirmLabel={t('common.actions.delete', { defaultValue: 'Delete' })}
+        confirmTone="danger"
+        isPending={deleteLineMutation.isPending}
+        onCancel={() => {
+          if (!deleteLineMutation.isPending) setDeleteTarget(null);
+        }}
+        onConfirm={() => {
+          if (deleteTarget) deleteLineMutation.mutate(deleteTarget.id);
+        }}
+      />
     </div>
-  );
-}
-
-interface LineRowProps {
-  index: number;
-  line: ProductionLine;
-  onClick: () => void;
-  onDelete: (id: string) => void;
-  canDelete: boolean;
-}
-
-function LineRow({ index, line, onClick, onDelete, canDelete }: LineRowProps) {
-  const { t, i18n } = useTranslation();
-  const { tDynamic } = useDynamicTranslation();
-
-  const getStatusVariant = (status: string | undefined): 'primary' | 'success' | 'warning' | 'error' | 'neutral' => {
-    switch (status) {
-      case 'active':
-        return 'success';
-      case 'maintenance':
-        return 'warning';
-      default:
-        return 'neutral';
-    }
-  };
-
-  const { data: machines } = useQuery({
-    queryKey: ['line-machines', line.id],
-    queryFn: () => linesApi.getMachines(line.id),
-    refetchInterval: 2000,
-  });
-
-  const sortedMachines = [...(machines || [])].sort((a, b) => (a.sequenceOrder ?? 0) - (b.sequenceOrder ?? 0));
-  const lastMachine = sortedMachines.length > 0 ? sortedMachines[sortedMachines.length - 1] : null;
-
-  const locale = i18n.language === 'zh' ? 'zh-CN' : (i18n.language === 'en' ? 'en-US' : 'vi-VN');
-
-  const getLineMetrics = (m: Machine | null) => {
-    if (!m) return { lineOee: 0, lineOutput: 0, lineUph: 0, isError: false, isRunning: false, isIdle: false };
-    
-    const isRunning = m.status === 'running';
-    const isIdle = m.status === 'idle';
-    const isError = m.status === 'error';
-    
-    const prodQty = m.lastPlcData?.productionCount ?? 0;
-    const oeeVal = Number(m.lastPlcData?.production?.oee ?? m.lastPlcData?.tags?.oee ?? 0);
-    const uphVal = Number(m.lastPlcData?.production?.uph ?? m.lastPlcData?.tags?.uph ?? 0);
-    
-    return { lineOee: oeeVal, lineOutput: prodQty, lineUph: uphVal, isError, isRunning, isIdle };
-  };
-
-  const { lineOee, lineOutput, lineUph, isError } = getLineMetrics(lastMachine);
-
-  const lineStatus = lastMachine ? lastMachine.status : (line.status ?? 'active');
-  const variant = getStatusVariant(lineStatus);
-
-  const numMachines = machines ? machines.length : 0;
-
-  const rowBgClass = isError 
-    ? 'hover:bg-rose-950/20 bg-rose-950/5' 
-    : 'hover:bg-cyan-950/20';
-
-  return (
-    <tr 
-      onClick={onClick}
-      className={`border-b border-[#14356a]/40 cursor-pointer transition-all duration-200 ${rowBgClass}`}
-    >
-      <td className="px-6 py-4.5 font-mono text-[#9CA3AF] text-center font-bold">
-        {String(index + 1).padStart(2, '0')}
-      </td>
-      <td className="px-6 py-4.5 font-black text-[#EEEEEE] group-hover:text-cyan-400">
-        {tDynamic(line.name)}
-      </td>
-      <td className="px-6 py-4.5 text-center font-bold text-slate-300 font-mono text-sm">
-        {numMachines}
-      </td>
-      <td className="px-6 py-4.5 text-center">
-        <Badge variant={variant} dot className="px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider">
-          {lineStatus}
-        </Badge>
-      </td>
-      <td className="px-6 py-4.5 font-mono font-black text-center text-cyan-400 text-sm">
-        {lineOee}%
-      </td>
-      <td className="px-6 py-4.5 font-mono font-black text-center text-[#EEEEEE] text-sm">
-        {lineOutput.toLocaleString(locale)} <span className="text-[10px] font-bold text-[#9CA3AF]">pcs</span>
-      </td>
-      <td className="px-6 py-4.5 font-mono font-black text-center text-[#38BDF8] text-sm">
-        {lineUph} <span className="text-[10px] font-bold text-[#9CA3AF]">p/h</span>
-      </td>
-      <td className="px-6 py-4.5 text-center flex items-center justify-center gap-2">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick();
-          }}
-          className="px-3 py-1.5 bg-[#00ADB5]/10 hover:bg-[#00ADB5] border border-[#00ADB5]/30 text-[#00ADB5] hover:text-white text-xs font-black uppercase tracking-wider rounded transition-all cursor-pointer"
-        >
-          Sơ đồ
-        </button>
-        {canDelete && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (window.confirm('Xóa dây chuyền này?')) {
-                onDelete(line.id);
-              }
-            }}
-            className="px-3 py-1.5 bg-[#EF4444]/10 hover:bg-[#EF4444] border border-[#EF4444]/30 text-[#EF4444] hover:text-white text-xs font-black uppercase tracking-wider rounded transition-all cursor-pointer"
-          >
-            Xóa
-          </button>
-        )}
-      </td>
-    </tr>
   );
 }

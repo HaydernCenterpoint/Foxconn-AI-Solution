@@ -12,8 +12,8 @@ function readCssVar(name: string, fallback: string): string {
   return value || fallback;
 }
 
-const EDGE_COLOR = readCssVar('--color-edge', '#20DFF3');
-const EDGE_COLOR_SELECTED = readCssVar('--color-edge-selected', '#3CE9F7');
+const EDGE_COLOR = readCssVar('--color-edge', 'var(--color-primary)');
+const EDGE_COLOR_SELECTED = readCssVar('--color-edge-selected', 'var(--color-primary-hover)');
 
 export function AnimatedEdge({
   id,
@@ -62,9 +62,7 @@ export function AnimatedEdge({
   const strokeColor = style?.stroke || (selected ? EDGE_COLOR_SELECTED : EDGE_COLOR);
   const strokeWidth = style?.strokeWidth || (selected ? 3 : 2.25);
 
-  const marker = typeof markerEnd === 'object' && markerEnd !== null
-    ? { ...(markerEnd as any), color: strokeColor }
-    : markerEnd;
+  const marker = markerEnd;
 
   return (
     <>
@@ -77,9 +75,7 @@ export function AnimatedEdge({
           stroke: strokeColor,
           strokeWidth,
           strokeDasharray: isAnimated ? '8 8' : undefined,
-          filter: selected
-            ? 'drop-shadow(0 0 4px var(--color-primary-hover, #3CE9F7))'
-            : (style?.filter as string | undefined),
+          filter: style?.filter as string | undefined,
         }}
         className={isAnimated ? 'animated-edge-flow' : undefined}
       />

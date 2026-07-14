@@ -1,33 +1,27 @@
-import { Wrench } from 'lucide-react';
+import { ArrowLeft, Wrench } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '../shared/components/ui/Button';
+import { Surface } from '../shared/components/ui/Surface';
 
 export default function UnderDevelopmentPage({ title }: { title: string }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+
   return (
-    <div className="w-full min-h-[70dvh] flex items-center justify-center p-6 bg-transparent">
-      <div className="cyber-panel border border-[#14356a] bg-[#0A1129]/80 p-8 max-w-md w-full min-w-[320px] md:min-w-[400px] text-center relative shadow-[0_4px_30px_rgba(0,240,255,0.05)]">
-        {/* Corner Decals */}
-        <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-[#00f0ff]" />
-        <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-[#00f0ff]" />
-        <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-[#00f0ff]" />
-        <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-[#00f0ff]" />
-
-        <div className="flex justify-center mb-6">
-          <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-[#00f0ff]/10 border border-[#00f0ff]/30 text-[#00f0ff] animate-pulse">
-            <Wrench className="h-8 w-8 stroke-[1.5]" />
-          </div>
+    <main className="flex min-h-[420px] items-center justify-center py-8" aria-labelledby="under-development-heading">
+      <Surface variant="raised" padding="lg" className="w-full max-w-lg text-center sm:p-8">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary-light text-primary" aria-hidden="true">
+          <Wrench size={30} />
         </div>
-
-        <h2 className="text-lg font-black tracking-widest text-[#00f0ff] uppercase mb-2">
-          {title.toUpperCase()}
-        </h2>
-        <div className="h-px bg-[#14356a]/40 my-4 w-full" />
-        
-        <p className="text-xs font-bold text-slate-300 uppercase tracking-wide leading-relaxed">
-          Phân hệ đang được nâng cấp &amp; cấu hình kết nối PLC.
+        <h1 id="under-development-heading" className="mt-5 text-2xl font-semibold text-text-primary">{title}</h1>
+        <p className="mx-auto mt-3 max-w-md text-sm text-text-secondary">
+          {t('pages.underDevelopment.description', { defaultValue: 'This area is currently under development.' })}
         </p>
-        <p className="text-[10px] font-semibold text-text-muted mt-2">
-          Hệ thống giám sát vận hành thông minh NEXUS-9000
-        </p>
-      </div>
-    </div>
+        <Button className="mt-6" startIcon={<ArrowLeft size={16} aria-hidden="true" />} onClick={() => navigate('/')}>
+          {t('pages.notFound.backToOverview')}
+        </Button>
+      </Surface>
+    </main>
   );
 }
