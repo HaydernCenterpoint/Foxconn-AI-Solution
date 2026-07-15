@@ -1,355 +1,399 @@
-"""
-sync_mkz_to_odysseus.py
+"""Export concise, read-only MKZ Factory summaries for Odysseus RAG.
 
-Script để đồng bộ dữ liệu từ MKZ Factory PLC database lên Odysseus.
+The MKZ data source is the authorized .NET REST API. This script deliberately
+does not open a database connection and never exports raw PLC telemetry.
 """
 
-import os
-import sys
+from __future__ import annotations
+
+import argparse
 import json
 import logging
-import argparse
-from datetime import datetime, timedelta
+import os
+import sys
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Callable, Dict, List, Mapping, Optional
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode, urlparse
+from urllib.request import Request, urlopen
+
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger("mkz_sync")
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+ODYSSEUS_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ODYSSEUS_ROOT))
 
-
+DEFAULT_BACKEND_URL = "http://127.0.0.1:5165"
+REPORT_TIME_RANGES = ("today", "last_7_days", "month")
+LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+REPORT_LABELS = {
+    "today": "Today",
+    "last_7_days": "Last 7 days",
+    "month": "This month",
+}
 class Config:
-    MKZ_DB = {
-        "host": os.getenv("MKZ_DB_HOST", "localhost"),
-        "port": int(os.getenv("MKZ_DB_PORT", "5432")),
-        "database": os.getenv("MKZ_DB_NAME", "plc_monitoring"),
-        "user": os.getenv("MKZ_DB_USER", "postgres"),
-        "password": os.getenv("MKZ_DB_PASSWORD", "12345678"),
-    }
-    ODYSSEUS_ROOT = Path(os.getenv("ODYSSEUS_ROOT", str(Path(__file__).parent.parent)))
-    DATA_DIR = ODYSSEUS_ROOT / "data"
+    """Runtime paths and REST configuration for the exporter."""
+
+    ODYSSEUS_ROOT = Path(os.getenv("ODYSSEUS_ROOT", str(ODYSSEUS_ROOT)))
+    DATA_DIR = Path(os.getenv("ODYSSEUS_DATA_DIR", str(ODYSSEUS_ROOT / "data")))
     EXPORT_DIR = DATA_DIR / "mkz_exports"
+    RAG_EXPORT_DIR = EXPORT_DIR / "rag"
 
 
-def get_mkz_connection():
-    try:
-        import psycopg2
-        import psycopg2.extras
-        return psycopg2.connect(
-            **Config.MKZ_DB,
-            cursor_factory=psycopg2.extras.RealDictCursor
+class MKZRestError(RuntimeError):
+    """Raised when the configured MKZ REST API cannot provide a response."""
+
+
+class MKZRestClient:
+    """Small GET-only client for the MKZ backend API."""
+
+    def __init__(
+        self,
+        base_url: Optional[str] = None,
+        token: Optional[str] = None,
+        timeout: float = 20.0,
+        opener: Callable[..., Any] = urlopen,
+    ) -> None:
+        self.base_url = (base_url or os.getenv("MKZ_BACKEND_URL", DEFAULT_BACKEND_URL)).rstrip("/")
+        self.token = token if token is not None else os.getenv("MKZ_BACKEND_TOKEN", "")
+        self.timeout = timeout
+        self._opener = opener
+        self._validate_token_transport()
+
+    def _validate_token_transport(self) -> None:
+        parsed = urlparse(self.base_url)
+        host = (parsed.hostname or "").lower()
+        if self.token and parsed.scheme.lower() == "http" and host not in LOOPBACK_HOSTS:
+            raise ValueError("MKZ_BACKEND_TOKEN requires HTTPS for a non-loopback backend")
+
+    def headers(self) -> Dict[str, str]:
+        headers = {"Accept": "application/json"}
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
+        return headers
+
+    def get(self, path: str, params: Optional[Mapping[str, Any]] = None) -> Any:
+        path = path if path.startswith("/") else f"/{path}"
+        filtered_params = {
+            key: value
+            for key, value in (params or {}).items()
+            if value is not None and value != ""
+        }
+        query = urlencode(filtered_params)
+        url = f"{self.base_url}{path}{'?' + query if query else ''}"
+        request = Request(url, headers=self.headers(), method="GET")
+
+        try:
+            with self._opener(request, timeout=self.timeout) as response:
+                status = getattr(response, "status", None)
+                if status is None:
+                    status = response.getcode()
+                if not 200 <= status < 300:
+                    raise MKZRestError(f"GET {path} returned HTTP {status}")
+                payload = response.read().decode("utf-8")
+        except HTTPError as exc:
+            raise MKZRestError(f"GET {path} returned HTTP {exc.code}") from exc
+        except URLError as exc:
+            raise MKZRestError(f"GET {path} failed: {exc.reason}") from exc
+        except OSError as exc:
+            raise MKZRestError(f"GET {path} failed: {exc}") from exc
+        except UnicodeDecodeError as exc:
+            raise MKZRestError(f"GET {path} returned invalid UTF-8") from exc
+
+        try:
+            return json.loads(payload) if payload else {}
+        except json.JSONDecodeError as exc:
+            raise MKZRestError(f"GET {path} returned invalid JSON") from exc
+
+    def fetch_dashboard(self) -> Mapping[str, Any]:
+        return _as_mapping(self.get("/api/dashboard/summary"))
+
+    def fetch_lines(self) -> List[Mapping[str, Any]]:
+        return _as_mapping_list(self.get("/api/production-lines"))
+
+    def fetch_active_alarms(self) -> List[Mapping[str, Any]]:
+        return _as_mapping_list(self.get("/api/alarms", {"status": "ACTIVE", "limit": 100}))
+
+    def fetch_report(self, time_range: str) -> Mapping[str, Any]:
+        if time_range not in REPORT_TIME_RANGES:
+            raise ValueError(f"Unsupported report time range: {time_range}")
+        return _as_mapping(
+            self.get(
+                "/api/reports/query",
+                {"timeRange": time_range, "lineId": "all", "machineId": "all"},
+            )
         )
-    except ImportError:
-        logger.error("psycopg2 not installed. Run: pip install psycopg2-binary")
-        sys.exit(1)
 
+    def fetch_snapshot(self) -> Dict[str, Any]:
+        """Fetch the limited, report-level data set needed for RAG summaries."""
 
-def execute_query(query: str, params: tuple = None) -> List[Dict]:
-    with get_mkz_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, params)
-            return [dict(row) for row in cur.fetchall()]
-
-
-def fetch_machines() -> List[Dict]:
-    logger.info("Fetching machines...")
-    query = """
-        SELECT
-            m.id, m.name, m.ip, m.status, m.machine_code,
-            m.cpu_percent, m.ram_percent, m.uptime_seconds,
-            m.approval_status, m.last_heartbeat, m.created_at,
-            m.plc_connected, m.plc_brand, m.plc_ip,
-            m.client_id, m.production_count,
-            pl.name as line_name, pl.id as line_id
-        FROM machines m
-        LEFT JOIN line_machines lm ON m.id = lm.machine_id
-        LEFT JOIN production_lines pl ON lm.line_id = pl.id
-        ORDER BY m.name
-    """
-    return execute_query(query)
-
-
-def fetch_production_lines() -> List[Dict]:
-    logger.info("Fetching production lines...")
-    query = """
-        SELECT
-            pl.id, pl.name, pl.description, pl.created_at,
-            COUNT(DISTINCT lm.machine_id) as machine_count,
-            COUNT(DISTINCT CASE WHEN UPPER(m.status) = 'RUNNING' THEN m.id END) as running_count,
-            COUNT(DISTINCT CASE WHEN UPPER(m.status) = 'ERROR' THEN m.id END) as error_count
-        FROM production_lines pl
-        LEFT JOIN line_machines lm ON pl.id = lm.line_id
-        LEFT JOIN machines m ON lm.machine_id = m.id
-        GROUP BY pl.id, pl.name, pl.description, pl.created_at
-        ORDER BY pl.name
-    """
-    return execute_query(query)
-
-
-def fetch_active_alarms() -> List[Dict]:
-    logger.info("Fetching active alarms...")
-    query = """
-        SELECT
-            a.id, a.machine_id, a.severity, a.message,
-            a.status, a.acknowledged_by, a.acknowledged_at,
-            a.resolved_at, a.notes, a.created_at,
-            m.name as machine_name
-        FROM alarms a
-        LEFT JOIN machines m ON a.machine_id = m.id
-        WHERE UPPER(a.status) IN ('ACTIVE', 'ACKNOWLEDGED')
-        ORDER BY
-            CASE a.severity
-                WHEN 'CRITICAL' THEN 1
-                WHEN 'HIGH' THEN 2
-                WHEN 'MEDIUM' THEN 3
-                ELSE 4
-            END,
-            a.created_at DESC
-        LIMIT 100
-    """
-    return execute_query(query)
-
-
-def fetch_production_summary(days: int = 7) -> Dict:
-    logger.info(f"Fetching production summary (last {days} days)...")
-
-    daily_query = f"""
-        SELECT
-            prod_date,
-            SUM(hourly_qty) as total_output,
-            AVG(avg_cpu) as avg_cpu,
-            AVG(avg_ram) as avg_ram,
-            COUNT(DISTINCT machine_id) as active_machines
-        FROM machine_hourly_production
-        WHERE prod_date >= CURRENT_DATE - INTERVAL '{days} days'
-        GROUP BY prod_date
-        ORDER BY prod_date DESC
-    """
-    daily = execute_query(daily_query)
-
-    machine_query = f"""
-        SELECT
-            m.id, m.name, m.machine_code, m.status,
-            COALESCE(SUM(mhp.hourly_qty), 0) as total_output,
-            AVG(mhp.avg_cpu) as avg_cpu,
-            AVG(mhp.avg_ram) as avg_ram
-        FROM machines m
-        LEFT JOIN machine_hourly_production mhp ON m.id = mhp.machine_id
-            AND mhp.prod_date >= CURRENT_DATE - INTERVAL '{days} days'
-        WHERE m.id IN (SELECT machine_id FROM line_machines)
-        GROUP BY m.id, m.name, m.machine_code, m.status
-        ORDER BY total_output DESC
-    """
-    machines = execute_query(machine_query)
-
-    return {
-        "period_days": days,
-        "daily_production": daily,
-        "machine_breakdown": machines,
-        "generated_at": datetime.now().isoformat(),
-    }
-
-
-def fetch_dashboard_summary() -> Dict:
-    logger.info("Fetching dashboard summary...")
-
-    status_query = "SELECT status, COUNT(*) as count FROM machines GROUP BY status"
-    status_counts = execute_query(status_query)
-    status_dict = {str(row['status']).upper(): row['count'] for row in status_counts}
-
-    production_query = """
-        SELECT
-            COALESCE(SUM(hourly_qty), 0) as total_output,
-            COUNT(DISTINCT machine_id) as active_machines
-        FROM machine_hourly_production
-        WHERE prod_date = CURRENT_DATE
-    """
-    production = execute_query(production_query)
-
-    alarm_query = "SELECT COUNT(*) as count FROM alarms WHERE UPPER(status) = 'ACTIVE'"
-    alarms = execute_query(alarm_query)
-
-    return {
-        "timestamp": datetime.now().isoformat(),
-        "machines": {
-            "total": sum(status_dict.values()),
-            "running": status_dict.get("RUNNING", 0),
-            "idle": status_dict.get("IDLE", 0),
-            "error": status_dict.get("ERROR", 0),
-            "offline": status_dict.get("OFFLINE", 0),
-        },
-        "production_today": {
-            "output": production[0]['total_output'] if production else 0,
-            "active_machines": production[0]['active_machines'] if production else 0,
-        },
-        "active_alarms": alarms[0]['count'] if alarms else 0,
-    }
-
-
-def export_all_data() -> Dict[str, Any]:
-    logger.info("Starting full data export...")
-
-    data = {
-        "export_timestamp": datetime.now().isoformat(),
-        "machines": fetch_machines(),
-        "production_lines": fetch_production_lines(),
-        "active_alarms": fetch_active_alarms(),
-        "production_summary": fetch_production_summary(),
-        "dashboard": fetch_dashboard_summary(),
-    }
-
-    Config.EXPORT_DIR.mkdir(parents=True, exist_ok=True)
-
-    export_file = Config.EXPORT_DIR / f"full_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    with open(export_file, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2, default=str)
-    logger.info(f"Export saved to: {export_file}")
-
-    latest_file = Config.EXPORT_DIR / "latest_export.json"
-    with open(latest_file, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2, default=str)
-    logger.info(f"Latest export saved to: {latest_file}")
-
-    return data
-
-
-def create_vector_documents(data: Dict[str, Any]) -> List[Dict]:
-    documents = []
-
-    for machine in data.get("machines", []):
-        doc = {
-            "id": f"machine_{machine['id']}",
-            "content": f"""
-Machine: {machine['name']}
-Status: {machine['status']}
-Machine Code: {machine.get('machine_code', 'N/A')}
-IP: {machine.get('ip', 'N/A')}
-CPU: {machine.get('cpu_percent', 0):.1f}%
-RAM: {machine.get('ram_percent', 0):.1f}%
-Production Line: {machine.get('line_name', 'N/A')}
-Approval: {machine.get('approval_status', 'N/A')}
-PLC Connected: {machine.get('plc_connected', False)}
-Production Count: {machine.get('production_count', 0)}
-""".strip(),
-            "metadata": {
-                "type": "machine",
-                "name": machine['name'],
-                "status": machine['status'],
-                "line": machine.get('line_name'),
-            }
+        return {
+            "fetched_at": _utc_timestamp(),
+            "dashboard": self.fetch_dashboard(),
+            "lines": self.fetch_lines(),
+            "active_alarms": self.fetch_active_alarms(),
+            "reports": {period: self.fetch_report(period) for period in REPORT_TIME_RANGES},
         }
-        documents.append(doc)
 
-    for line in data.get("production_lines", []):
-        doc = {
-            "id": f"line_{line['id']}",
-            "content": f"""
-Production Line: {line['name']}
-Machines: {line.get('machine_count', 0)}
-Running: {line.get('running_count', 0)}
-Errors: {line.get('error_count', 0)}
-Created: {line.get('created_at', 'N/A')}
-""".strip(),
-            "metadata": {
-                "type": "production_line",
-                "name": line['name'],
-            }
-        }
-        documents.append(doc)
 
-    for alarm in data.get("active_alarms", []):
-        doc = {
-            "id": f"alarm_{alarm['id']}",
-            "content": f"""
-Alarm: {alarm.get('severity', 'UNKNOWN')} - {alarm.get('message', 'No message')}
-Status: {alarm.get('status', 'N/A')}
-Machine: {alarm.get('machine_name', 'N/A')}
-Created: {alarm.get('created_at', 'N/A')}
-Acknowledged By: {alarm.get('acknowledged_by', 'N/A')}
-""".strip(),
-            "metadata": {
-                "type": "alarm",
-                "severity": alarm.get('severity'),
-                "status": alarm.get('status'),
-                "machine": alarm.get('machine_name'),
-            }
-        }
-        documents.append(doc)
+def _as_mapping(value: Any) -> Mapping[str, Any]:
+    return value if isinstance(value, Mapping) else {}
 
-    summary = data.get("dashboard", {})
-    doc = {
-        "id": "dashboard_summary",
-        "content": f"""
-Factory Dashboard - {summary.get('timestamp', 'N/A')}
 
-Machines: Total={summary.get('machines', {}).get('total', 0)},
-Running={summary.get('machines', {}).get('running', 0)},
-Offline={summary.get('machines', {}).get('offline', 0)}
+def _as_mapping_list(value: Any) -> List[Mapping[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, Mapping)]
 
-Production Today: {summary.get('production_today', {}).get('output', 0)} units
-Active Alarms: {summary.get('active_alarms', 0)}
-""".strip(),
-        "metadata": {"type": "dashboard_summary", "timestamp": summary.get('timestamp')}
+
+def _value(data: Mapping[str, Any], *keys: str, default: Any = 0) -> Any:
+    for key in keys:
+        value = data.get(key)
+        if value is not None:
+            return value
+    return default
+
+
+def _utc_timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _clean_text(value: Any, default: str = "N/A") -> str:
+    if value is None:
+        return default
+    text = " ".join(str(value).split()).replace("|", "\\|")
+    return text[:400] if text else default
+
+
+def _format_number(value: Any) -> str:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return _clean_text(value, default="0")
+    if number.is_integer():
+        return f"{int(number):,}"
+    return f"{number:,.1f}".rstrip("0").rstrip(".")
+
+
+def _report_document(period: str, report: Mapping[str, Any], generated_at: str) -> str:
+    summary = _as_mapping(report.get("summary"))
+    label = REPORT_LABELS[period]
+    if not summary:
+        return (
+            f"# Production report: {label}\n\n"
+            f"Generated: {generated_at}\n\n"
+            "No report summary data was returned for this period.\n"
+        )
+
+    return (
+        f"# Production report: {label}\n\n"
+        f"Generated: {generated_at}\n\n"
+        "## Summary\n\n"
+        f"- Total production: {_format_number(_value(summary, 'totalProduction', 'total_production'))}\n"
+        f"- Good units: {_format_number(_value(summary, 'totalGood', 'total_good'))}\n"
+        f"- Scrap units: {_format_number(_value(summary, 'totalScrap', 'total_scrap'))}\n"
+        f"- Yield rate: {_format_number(_value(summary, 'yieldRate', 'yield_rate'))}%\n"
+        f"- Scrap rate: {_format_number(_value(summary, 'scrapRate', 'scrap_rate'))}%\n"
+        f"- Average UPH: {_format_number(_value(summary, 'avgSpeed', 'avg_speed'))}\n"
+        f"- Active machines: {_format_number(_value(summary, 'machinesCount', 'machines_count'))}\n"
+    )
+
+
+def build_rag_documents(snapshot: Mapping[str, Any], generated_at: Optional[str] = None) -> Dict[str, str]:
+    """Build concise Markdown documents from whitelisted REST summary fields.
+
+    Chart points, per-machine records, and every PLC telemetry field are
+    intentionally excluded. The resulting documents are suitable for RAG
+    reindexing without exposing raw process data.
+    """
+
+    generated_at = generated_at or _clean_text(snapshot.get("fetched_at"), default=_utc_timestamp())
+    dashboard = _as_mapping(snapshot.get("dashboard"))
+    lines = _as_mapping_list(snapshot.get("lines"))
+    alarms = _as_mapping_list(snapshot.get("active_alarms"))
+    reports = _as_mapping(snapshot.get("reports"))
+
+    documents: Dict[str, str] = {
+        "factory_dashboard.md": (
+            "# Factory dashboard\n\n"
+            f"Generated: {generated_at}\n\n"
+            "## Operations at a glance\n\n"
+            f"- Production lines: {_format_number(_value(dashboard, 'totalLines', 'total_lines'))}\n"
+            f"- Machines: {_format_number(_value(dashboard, 'totalMachines', 'total_machines'))}\n"
+            f"- Running: {_format_number(_value(dashboard, 'running'))}\n"
+            f"- Idle: {_format_number(_value(dashboard, 'idle'))}\n"
+            f"- Error: {_format_number(_value(dashboard, 'error'))}\n"
+            f"- Offline: {_format_number(_value(dashboard, 'offline'))}\n"
+            f"- Production today: {_format_number(_value(dashboard, 'totalProduction', 'total_production'))}\n"
+            f"- Active alarms: {_format_number(_value(dashboard, 'activeAlarms', 'active_alarms'))}\n"
+        ),
+        "production_lines.md": _build_line_document(lines, generated_at),
+        "active_alarms.md": _build_alarm_document(alarms, generated_at),
     }
-    documents.append(doc)
-
+    for period in REPORT_TIME_RANGES:
+        documents[f"report_{period}.md"] = _report_document(
+            period,
+            _as_mapping(reports.get(period)),
+            generated_at,
+        )
     return documents
 
 
-def save_vector_documents(documents: List[Dict]):
-    Config.EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+def _build_line_document(lines: List[Mapping[str, Any]], generated_at: str) -> str:
+    header = "# Production lines\n\n" f"Generated: {generated_at}\n\n"
+    if not lines:
+        return header + "No production lines were returned.\n"
 
-    vector_file = Config.EXPORT_DIR / "vector_documents.json"
-    with open(vector_file, 'w', encoding='utf-8') as f:
-        json.dump(documents, f, indent=2, ensure_ascii=False)
-    logger.info(f"Saved {len(documents)} vector documents to: {vector_file}")
-
-    md_file = Config.EXPORT_DIR / "mkz_report.md"
-    with open(md_file, 'w', encoding='utf-8') as f:
-        f.write("# MKZ Factory Report\n\n")
-        f.write(f"Generated: {datetime.now().isoformat()}\n\n")
-        f.write("## Machines\n\n")
-        for doc in documents:
-            if doc['metadata'].get('type') == 'machine':
-                f.write(f"### {doc['metadata']['name']} ({doc['metadata']['status']})\n\n")
-                f.write(doc['content'] + "\n\n")
-    logger.info(f"Saved markdown report to: {md_file}")
+    sections = []
+    for line in lines:
+        name = _clean_text(_value(line, "name", default="Unnamed line"))
+        description = _clean_text(_value(line, "description", default="No description"))
+        machine_count = _format_number(_value(line, "machineCount", "machine_count"))
+        sections.append(
+            f"## {name}\n\n"
+            f"- Machines: {machine_count}\n"
+            f"- Description: {description}\n"
+        )
+    return header + "\n".join(sections)
 
 
-def cleanup_old_exports():
-    if not Config.EXPORT_DIR.exists():
-        return
-    cutoff = datetime.now() - timedelta(days=30)
-    for file in Config.EXPORT_DIR.glob("full_export_*.json"):
-        if datetime.fromtimestamp(file.stat().st_mtime) < cutoff:
-            file.unlink()
-            logger.info(f"Deleted old export: {file.name}")
+def _build_alarm_document(alarms: List[Mapping[str, Any]], generated_at: str) -> str:
+    header = "# Active alarms\n\n" f"Generated: {generated_at}\n\n"
+    if not alarms:
+        return header + "No active alarms were returned.\n"
+
+    sections = []
+    for alarm in alarms[:100]:
+        severity = _clean_text(_value(alarm, "severity", default="UNKNOWN"))
+        message = _clean_text(_value(alarm, "message", default="No message"))
+        machine = _clean_text(_value(alarm, "machineName", "machine_name", default="Unassigned"))
+        status = _clean_text(_value(alarm, "status", default="UNKNOWN"))
+        created_at = _clean_text(_value(alarm, "createdAt", "created_at", default="N/A"))
+        sections.append(
+            f"## {severity}: {message}\n\n"
+            f"- Machine: {machine}\n"
+            f"- Status: {status}\n"
+            f"- Created: {created_at}\n"
+        )
+    return header + "\n".join(sections)
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Sync MKZ Factory data to Odysseus")
-    parser.add_argument("--export-only", action="store_true", help="Only export data")
-    parser.add_argument("--days", type=int, default=7, help="Days for summary")
-    parser.add_argument("-v", action="store_true", help="Verbose")
+def write_rag_documents(
+    documents: Mapping[str, str], output_dir: Optional[Path] = None
+) -> List[Path]:
+    """Write the generated Markdown documents to the dedicated RAG directory."""
+
+    directory = Path(output_dir or Config.RAG_EXPORT_DIR)
+    directory.mkdir(parents=True, exist_ok=True)
+    targets: List[tuple[Path, str]] = []
+    for filename, content in documents.items():
+        target = directory / filename
+        if target.parent != directory or target.suffix.lower() != ".md":
+            raise ValueError(f"RAG export filename must be a local Markdown file: {filename}")
+        targets.append((target, content))
+
+    for existing_path in directory.iterdir():
+        if existing_path.suffix.lower() == ".md" and (
+            existing_path.is_file() or existing_path.is_symlink()
+        ):
+            existing_path.unlink()
+
+    written_paths: List[Path] = []
+    for target, content in targets:
+        temporary = target.with_suffix(".tmp")
+        temporary.write_text(content.rstrip() + "\n", encoding="utf-8")
+        temporary.replace(target)
+        written_paths.append(target)
+    logger.info("Wrote %s MKZ Markdown RAG summaries to %s", len(written_paths), directory)
+    return written_paths
+
+
+def reindex_rag_exports(output_dir: Optional[Path] = None) -> Mapping[str, Any]:
+    """Reindex Markdown summaries and return a scheduler-safe success result."""
+
+    directory = Path(output_dir or Config.RAG_EXPORT_DIR)
+    try:
+        from src.rag_vector import VectorRAG
+    except Exception as exc:
+        message = f"Chroma RAG could not initialize: {type(exc).__name__}"
+        logger.error(message)
+        return {"success": False, "message": message}
+
+    try:
+        rag = VectorRAG()
+    except Exception as exc:
+        message = f"Chroma RAG could not initialize: {type(exc).__name__}"
+        logger.error(message)
+        return {"success": False, "message": message}
+
+    if not rag.healthy:
+        message = "Chroma RAG is unhealthy; reindex was not attempted"
+        logger.error(message)
+        return {"success": False, "message": message}
+
+    try:
+        result = rag.reindex_directory(str(directory), file_extensions={".md"})
+        if not isinstance(result, Mapping):
+            logger.error("MKZ RAG reindex returned an invalid result")
+            return {"success": False, "message": "MKZ RAG reindex returned an invalid result"}
+        logger.info("MKZ RAG reindex result: %s", result.get("message", result))
+        return result
+    except Exception:
+        logger.exception("MKZ RAG reindex raised an exception")
+        return {"success": False, "message": "MKZ RAG reindex raised an exception"}
+
+
+def export_rag_summaries(
+    client: Optional[MKZRestClient] = None,
+    output_dir: Optional[Path] = None,
+) -> List[Path]:
+    """Fetch REST summaries and write their RAG-safe Markdown representation."""
+
+    snapshot = (client or MKZRestClient()).fetch_snapshot()
+    documents = build_rag_documents(snapshot)
+    return write_rag_documents(documents, output_dir=output_dir)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Export MKZ REST summaries to Odysseus RAG Markdown")
+    parser.add_argument(
+        "--export-only",
+        action="store_true",
+        help="Write Markdown summaries without attempting a Chroma RAG reindex",
+    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable debug logging")
     args = parser.parse_args()
 
-    if args.v:
+    if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
     try:
-        data = export_all_data()
-        if not args.export_only:
-            documents = create_vector_documents(data)
-            save_vector_documents(documents)
-        cleanup_old_exports()
-        logger.info("Sync completed successfully!")
-    except Exception as e:
-        logger.error(f"Sync failed: {e}")
-        sys.exit(1)
+        written_paths = export_rag_summaries()
+        if args.export_only:
+            logger.info("Export-only mode complete; skipped Chroma RAG reindex")
+        else:
+            reindex_result = reindex_rag_exports()
+            if (
+                not isinstance(reindex_result, Mapping)
+                or not reindex_result.get("success", False)
+                or reindex_result.get("failed_count", 0) > 0
+            ):
+                message = (
+                    reindex_result.get("message", reindex_result)
+                    if isinstance(reindex_result, Mapping)
+                    else "MKZ RAG reindex did not return a result"
+                )
+                logger.error("MKZ RAG reindex failed: %s", message)
+                raise SystemExit(1)
+        logger.info("MKZ REST export completed successfully (%s documents)", len(written_paths))
+    except MKZRestError as exc:
+        logger.error("MKZ REST export failed: %s", exc)
+        raise SystemExit(1) from exc
 
 
 if __name__ == "__main__":
