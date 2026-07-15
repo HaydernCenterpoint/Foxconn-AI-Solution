@@ -1,99 +1,98 @@
-import type { ReactNode } from 'react';
-import { Globe2, Moon, Palette, Sun, UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '../../shared/components/ui/Badge';
-import { Button } from '../../shared/components/ui/Button';
-import { LanguageControl } from '../../shared/components/ui/LanguageControl';
-import { PageHeader } from '../../shared/components/ui/PageHeader';
-import { Surface } from '../../shared/components/ui/Surface';
+import {
+  Globe,
+  Palette,
+  UserRound,
+} from 'lucide-react';
+import { LanguageSelector } from '../../shared/components/i18n/LanguageSelector';
 import { useAuthStore } from '../../shared/store/auth.store';
 import { useUiStore } from '../../shared/store/ui.store';
-import './viewer.css';
+import './modern-settings.css';
 
 interface SettingSectionProps {
-  icon: ReactNode;
+  icon: React.ReactNode;
   title: string;
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 function SettingSection({ icon, title, children }: SettingSectionProps) {
   return (
-    <Surface variant="raised" className="viewer-settings__section">
-      <header className="viewer-settings__section-header">
-        <span className="viewer-settings__section-icon" aria-hidden="true">{icon}</span>
-        <h2 className="viewer-settings__section-title">{title}</h2>
+    <section className="modern-settings__section">
+      <header className="modern-settings__section-head">
+        <div className="modern-settings__section-icon">
+          {icon}
+        </div>
+        <h2>{title}</h2>
       </header>
-      {children}
-    </Surface>
+      <div className="modern-settings__section-body">{children}</div>
+    </section>
   );
 }
 
-export function SettingsPage() {
+const themeOptions = [
+  { value: 'dark' as const, label: 'Dark', color: '#ef4444' },
+  { value: 'light' as const, label: 'Light', color: '#e4e4e4' },
+];
+
+export default function SettingsPage() {
   const { t } = useTranslation();
-  const { username, role } = useAuthStore();
-  const { theme, setTheme } = useUiStore();
+  const auth = useAuthStore();
+  const ui = useUiStore();
 
   return (
-    <div className="viewer-page">
-      <PageHeader
-        eyebrow={t('settings.eyebrow', { defaultValue: 'Viewer preferences' })}
-        title={t('settings.title', { defaultValue: 'Settings' })}
-        description={t('settings.viewerSubtitle', { defaultValue: 'Configure read-only viewer display preferences.' })}
-      />
+    <div className="modern-settings space-y-6">
+      <div className="modern-settings__intro">
+        <h1 className="modern-settings__title">{t('settings.title', 'Cài đặt hệ thống')}</h1>
+        <p className="modern-settings__subtitle">{t('settings.viewerSubtitle', 'Cấu hình hiển thị và tùy chọn cá nhân.')}</p>
+      </div>
 
-      <div className="viewer-settings__grid">
-        <SettingSection icon={<UserRound size={20} />} title={t('settings.profile.title', { defaultValue: 'User profile' })}>
-          <div className="viewer-settings__profile">
-            <div className="viewer-settings__profile-row">
-              <span className="viewer-settings__label">{t('settings.profile.username', { defaultValue: 'Account' })}</span>
-              <span className="viewer-settings__value">{username || t('common.guest', { defaultValue: 'Guest' })}</span>
+      <div className="modern-settings__grid">
+        {/* User Profile */}
+        <SettingSection icon={<UserRound size={18} />} title={t('settings.profile.title', 'Thông tin người dùng')}>
+          <div className="modern-settings__list">
+            <div className="modern-settings__row">
+              <span>{t('settings.profile.username', 'Tài khoản')}</span>
+              <span>{auth.username || t('common.guest', 'Khách')}</span>
             </div>
-            <div className="viewer-settings__profile-row">
-              <span className="viewer-settings__label">{t('settings.profile.role', { defaultValue: 'Access level' })}</span>
-              <Badge variant="neutral">{role || 'GUEST'}</Badge>
+            <div className="modern-settings__row">
+              <span>{t('settings.profile.role', 'Quyền hạn')}</span>
+              <span className="modern-settings__role">
+                {auth.role || 'GUEST'}
+              </span>
             </div>
           </div>
         </SettingSection>
 
-        <SettingSection icon={<Globe2 size={20} />} title={t('settings.language.title', { defaultValue: 'Language' })}>
-          <div className="viewer-settings__row">
+        {/* Display / Language */}
+        <SettingSection icon={<Globe size={18} />} title={t('settings.language.title', 'Ngôn ngữ & Hiển thị')}>
+          <div className="space-y-4">
             <div>
-              <span className="viewer-settings__label">{t('settings.language.selectLabel', { defaultValue: 'Display language' })}</span>
-              <p className="viewer-settings__caption">
-                {t('settings.language.description', { defaultValue: 'Applies to the viewer navigation and all available translated content.' })}
-              </p>
+              <label className="modern-settings__label">
+                {t('settings.language.selectLabel', 'Chọn ngôn ngữ')}
+              </label>
+              <LanguageSelector />
             </div>
-            <LanguageControl />
           </div>
         </SettingSection>
 
-        <SettingSection icon={<Palette size={20} />} title={t('settings.theme.title', { defaultValue: 'Appearance' })}>
-          <div className="viewer-settings__row">
-            <div>
-              <span className="viewer-settings__label">{t('settings.theme.selectLabel', { defaultValue: 'Color mode' })}</span>
-              <p className="viewer-settings__caption">
-                {t('settings.theme.description', { defaultValue: 'Choose the application color mode for this browser.' })}
-              </p>
-            </div>
-            <div className="viewer-settings__theme-actions">
-              <Button
-                variant={theme === 'dark' ? 'primary' : 'secondary'}
-                size="sm"
-                startIcon={<Moon size={16} aria-hidden="true" />}
-                aria-pressed={theme === 'dark'}
-                onClick={() => setTheme('dark')}
-              >
-                {t('settings.appearance.dark', { defaultValue: 'Dark' })}
-              </Button>
-              <Button
-                variant={theme === 'light' ? 'primary' : 'secondary'}
-                size="sm"
-                startIcon={<Sun size={16} aria-hidden="true" />}
-                aria-pressed={theme === 'light'}
-                onClick={() => setTheme('light')}
-              >
-                {t('settings.appearance.light', { defaultValue: 'Light' })}
-              </Button>
+        {/* Theme Settings */}
+        <SettingSection icon={<Palette size={18} />} title={t('settings.theme.title', 'Giao diện ứng dụng')}>
+          <div>
+            <label className="modern-settings__label">
+              {t('settings.theme.selectLabel', 'Tông màu chủ đạo')}
+            </label>
+            <div className="modern-settings__theme-list">
+              {themeOptions.map((theme) => (
+                <button
+                  key={theme.value}
+                  type="button"
+                  onClick={() => ui.setTheme(theme.value)}
+                  className={`modern-settings__theme-button${ui.theme === theme.value ? ' is-selected' : ''}`}
+                >
+                  <span className="modern-settings__theme-dot" style={{ backgroundColor: theme.color }} />
+                  {theme.label}
+                </button>
+              ))}
             </div>
           </div>
         </SettingSection>
@@ -101,5 +100,4 @@ export function SettingsPage() {
     </div>
   );
 }
-
-export default SettingsPage;
+export { SettingsPage };
