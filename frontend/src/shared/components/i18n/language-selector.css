@@ -1,0 +1,206 @@
+.language-selector {
+  position: relative;
+  display: inline-grid;
+  gap: 6px;
+  z-index: 100;
+  color: #f5f5f5;
+  font-family: "Be Vietnam Pro", "Segoe UI", Arial, sans-serif;
+  text-align: left;
+}
+
+.language-selector__field-label,
+.language-selector__menu-heading {
+  color: #969696;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.045em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.language-selector__trigger {
+  display: inline-flex;
+  min-width: 168px;
+  height: 42px;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #404040;
+  border-radius: 12px;
+  padding: 0 11px;
+  color: #f5f5f5;
+  background: #1b1b1b;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease;
+}
+
+.language-selector__trigger:hover,
+.language-selector__trigger--open {
+  border-color: #6a6a6a;
+  background: #282828;
+}
+
+.language-selector__trigger:focus-visible,
+.language-selector__option:focus-visible {
+  outline: 2px solid #ff8a8c;
+  outline-offset: 2px;
+}
+
+.language-selector__trigger > svg:first-child {
+  flex: 0 0 auto;
+  color: #d4d4d4;
+}
+
+.language-selector__current-label {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.language-selector__code {
+  display: inline-flex;
+  min-width: 25px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #525252;
+  border-radius: 5px;
+  color: #cfcfcf;
+  background: #252525;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.language-selector__chevron {
+  flex: 0 0 auto;
+  color: #a4a4a4;
+  transition: transform 180ms ease, color 180ms ease;
+}
+
+.language-selector__chevron--open {
+  color: #ff8a8c;
+  transform: rotate(180deg);
+}
+
+.language-selector--compact {
+  display: inline-block;
+}
+
+.language-selector--compact .language-selector__trigger {
+  min-width: 68px;
+  padding-inline: 10px;
+}
+
+.language-selector--compact .language-selector__code {
+  min-width: 22px;
+  height: 17px;
+  font-size: 8px;
+}
+
+.language-selector__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  width: 224px;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid #484848;
+  border-radius: 14px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  background: #242424;
+  box-shadow: 0 18px 38px rgb(0 0 0 / 38%);
+  list-style: none;
+  transform: translateY(-4px) scale(0.98);
+  transform-origin: top right;
+  transition: opacity 160ms ease, transform 160ms ease, visibility 160ms step-end;
+}
+
+.language-selector__menu--open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.language-selector__menu-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 6px 9px;
+  border-bottom: 1px solid #3b3b3b;
+}
+
+.language-selector__menu-heading strong {
+  color: #ff8a8c;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.language-selector__option {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 0 9px 0 12px;
+  color: #dedede;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.language-selector__option:hover,
+.language-selector__option:focus-visible {
+  border-color: #4a4a4a;
+  color: #fff;
+  background: #303030;
+}
+
+.language-selector__option--selected {
+  border-color: rgb(239 68 68 / 42%);
+  color: #fff;
+  background: rgb(239 68 68 / 12%);
+}
+
+.language-selector__option-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.language-selector__option-end {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.language-selector__option--selected .language-selector__code {
+  border-color: rgb(255 138 140 / 56%);
+  color: #ffb1b2;
+  background: rgb(239 68 68 / 12%);
+}
+
+.language-selector__option--selected svg {
+  color: #ff8a8c;
+}
