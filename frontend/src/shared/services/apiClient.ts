@@ -58,7 +58,7 @@ api.interceptors.response.use(
       return api(config);
     }
 
-    if (import.meta.env.DEV && isNetworkError && config) {
+    if (import.meta.env.DEV && config && (isNetworkError || isTimeout || isRetryableStatus)) {
       const url = config.url || '';
       const method = config.method?.toLowerCase() || 'get';
       const { getMockDataForUrl } = await import('./apiClient.mock');

@@ -1,76 +1,77 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState, type ReactNode } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '../../shared/store/auth.store';
-import { usersApi, type CreateUserRequest } from '../../features/admin/services/users.api';
 import {
-  Trash2,
-  UserPlus,
-  Shield,
-  X,
-  ShieldCheck,
-  UserCheck,
-  Users,
+  AlertTriangle,
   ChevronDown,
+  Shield,
+  ShieldCheck,
+  Trash2,
+  UserCheck,
+  UserPlus,
+  Users,
+  X,
+  type LucideIcon,
 } from 'lucide-react';
+import { usersApi, type CreateUserRequest, type User } from '../../features/admin/services/users.api';
+import { useAuthStore } from '../../shared/store/auth.store';
+import './admin-modern.css';
 
-interface UserItem {
-  id: number;
-  username: string;
-  role: string;
+type Role = CreateUserRequest['role'];
+
+interface RoleMeta {
+  icon: LucideIcon;
+  tone: 'red' | 'amber' | 'neutral';
 }
 
-const ROLE_CONFIG: Record<string, { label: string; bg: string; text: string; border: string; icon: React.ReactNode }> = {
-  ADMIN: {
-    label: 'Quản trị viên',
-    bg: 'bg-[rgba(255,92,108,0.1)]',
-    text: 'text-[#FF5C6C]',
-    border: 'border-[rgba(255,92,108,0.35)]',
-    icon: <ShieldCheck className="w-3.5 h-3.5 shrink-0" />,
-  },
-  ENGINEER: {
-    label: 'Kỹ sư',
-    bg: 'bg-[rgba(255,197,71,0.1)]',
-    text: 'text-[#FFC547]',
-    border: 'border-[rgba(255,197,71,0.35)]',
-    icon: <Shield className="w-3.5 h-3.5 shrink-0" />,
-  },
-  GUEST: {
-    label: 'Khách',
-    bg: 'bg-[rgba(111,123,150,0.1)]',
-    text: 'text-[#6F7B96]',
-    border: 'border-[rgba(111,123,150,0.3)]',
-    icon: <UserCheck className="w-3.5 h-3.5 shrink-0" />,
-  },
+const ROLE_META: Record<Role, RoleMeta> = {
+  ADMIN: { icon: ShieldCheck, tone: 'red' },
+  ENGINEER: { icon: Shield, tone: 'amber' },
+  GUEST: { icon: UserCheck, tone: 'neutral' },
 };
+
+function extractErrorMessage(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null || !('response' in error)) return undefined;
+  const response = error.response;
+  if (typeof response !== 'object' || response === null || !('data' in response)) return undefined;
+  const data = response.data;
+  if (typeof data !== 'object' || data === null || !('error' in data)) return undefined;
+  return typeof data.error === 'string' ? data.error : undefined;
+}
+
+function Modal({ children }: { children: ReactNode }) {
+  return <div className="admin-modal__backdrop">{children}</div>;
+}
 
 export const UserManagementPage: React.FC = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const currentUsername = useAuthStore(state => state.username);
-
+  const currentUsername = useAuthStore((state) => state.username);
   const [showAddForm, setShowAddForm] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
-  const [roleInput, setRoleInput] = useState<'ADMIN' | 'ENGINEER' | 'GUEST'>('GUEST');
+  const [roleInput, setRoleInput] = useState<Role>('GUEST');
   const [formError, setFormError] = useState('');
-  const [deleteTarget, setDeleteTarget] = useState<UserItem | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
-  // ── Data ──────────────────────────────────────────────────────────────
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ['users'],
     queryFn: usersApi.getAll,
   });
 
   const createMutation = useMutation({
-    mutationFn: (newUser: CreateUserRequest) =>
-      usersApi.create(newUser),
+    mutationFn: (newUser: CreateUserRequest) => usersApi.create(newUser),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowAddForm(false);
-      setUsernameInput(''); setPasswordInput(''); setRoleInput('GUEST'); setFormError('');
+      setUsernameInput('');
+      setPasswordInput('');
+      setRoleInput('GUEST');
+      setFormError('');
     },
-    onError: (err: any) => setFormError(err.response?.data?.error || t('pages.users.toasts.createError', 'Lỗi khi tạo tài khoản')),
+    onError: (requestError) => {
+      setFormError(extractErrorMessage(requestError) || t('pages.users.toasts.createError', 'Lỗi khi tạo tài khoản'));
+    },
   });
 
   const deleteMutation = useMutation({
@@ -81,8 +82,8 @@ export const UserManagementPage: React.FC = () => {
     },
   });
 
-  const handleCreate = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreate = (event: React.FormEvent) => {
+    event.preventDefault();
     if (!usernameInput.trim() || !passwordInput.trim()) {
       setFormError(t('pages.users.validation.usernamePasswordRequired', 'Tên tài khoản và mật khẩu là bắt buộc'));
       return;
@@ -90,240 +91,110 @@ export const UserManagementPage: React.FC = () => {
     createMutation.mutate({ username: usernameInput, password: passwordInput, role: roleInput });
   };
 
-  const getRoleCfg = (r: string) => {
-    const uppercaseRole = r.toUpperCase();
-    const config = ROLE_CONFIG[uppercaseRole] ?? ROLE_CONFIG.GUEST;
-    let label = '';
-    if (uppercaseRole === 'ADMIN') label = t('pages.users.roles.admin', 'Quản trị viên');
-    else if (uppercaseRole === 'ENGINEER') label = t('pages.users.roles.engineer', 'Kỹ sư');
-    else label = t('pages.users.roles.guest', 'Khách');
-    return { ...config, label };
+  const roleLabel = (role: Role) => {
+    if (role === 'ADMIN') return t('pages.users.roles.admin', 'Quản trị viên');
+    if (role === 'ENGINEER') return t('pages.users.roles.engineer', 'Kỹ sư');
+    return t('pages.users.roles.guest', 'Khách');
   };
 
-  // ── Shared UI constants ────────────────────────────────────────────────
-  const panelBg  = { background: 'rgba(7,17,47,0.85)' } as React.CSSProperties;
-  const panelCls = 'rounded-xl border border-[rgba(47,123,255,0.25)] overflow-hidden';
-  const inputCls =
-    'w-full bg-[rgba(7,17,47,0.9)] border border-[rgba(47,123,255,0.3)] rounded-lg px-3 py-2 text-sm text-[#B7C8E8] placeholder-[#3A4A6B] focus:outline-none focus:border-[#2F7BFF] transition-colors';
-  const selectCls =
-    'w-full appearance-none bg-[rgba(7,17,47,0.9)] border border-[rgba(47,123,255,0.3)] rounded-lg px-3 py-2 pr-8 text-sm text-[#B7C8E8] focus:outline-none focus:border-[#2F7BFF] cursor-pointer transition-colors';
-
-  // ── Stats ──────────────────────────────────────────────────────────────
-  const admins    = users.filter(u => u.role === 'ADMIN').length;
-  const engineers = users.filter(u => u.role === 'ENGINEER').length;
-  const guests    = users.filter(u => u.role === 'GUEST').length;
+  const counts = {
+    admins: users.filter((user) => user.role === 'ADMIN').length,
+    engineers: users.filter((user) => user.role === 'ENGINEER').length,
+    guests: users.filter((user) => user.role === 'GUEST').length,
+  };
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <div className="w-8 h-8 border-2 border-[#18D7FF] border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm" style={{ color: '#7183A8' }}>{t('pages.users.loading', 'Đang tải danh sách tài khoản...')}</p>
+      <div className="admin-page admin-page__state">
+        <div className="admin-page__spinner" aria-hidden="true" />
+        <p>{t('pages.users.loading', 'Đang tải danh sách tài khoản...')}</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-xl border border-[rgba(255,92,108,0.35)] bg-[rgba(255,92,108,0.08)] p-5 max-w-2xl mx-auto mt-8">
-        <h3 className="font-bold text-[#FF5C6C]">{t('pages.users.loadErrorTitle', 'Lỗi tải dữ liệu')}</h3>
-        <p className="text-sm mt-1" style={{ color: '#B7C8E8' }}>{t('pages.users.loadError', 'Không thể lấy danh sách người dùng. Kiểm tra quyền Admin.')}</p>
+      <div className="admin-page admin-page__error">
+        <h3>{t('pages.users.loadErrorTitle', 'Lỗi tải dữ liệu')}</h3>
+        <p>{t('pages.users.loadError', 'Không thể lấy danh sách người dùng. Kiểm tra quyền Admin.')}</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5">
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between">
+    <div className="admin-page admin-users-page">
+      <header className="admin-page__header">
         <div>
-          <h1 className="text-xl font-bold text-white tracking-wide">{t('titles.users', 'Quản lý người dùng')}</h1>
-          <p className="text-xs mt-0.5" style={{ color: '#7183A8' }}>
-            {t('pages.users.subtitle', 'Tạo tài khoản, phân quyền và quản lý truy cập hệ thống')}
-          </p>
+          <p>{t('pages.users.subtitle', 'Tạo tài khoản, phân quyền và quản lý truy cập hệ thống')}</p>
+          <h1>{t('titles.users', 'Quản lý người dùng')}</h1>
         </div>
         <button
-          onClick={() => { setShowAddForm(true); setFormError(''); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white transition-all active:scale-95 cursor-pointer"
-          style={{ background: 'linear-gradient(135deg,#2F7BFF,#18D7FF)' }}
+          type="button"
+          className="admin-page__primary-action"
+          onClick={() => {
+            setShowAddForm(true);
+            setFormError('');
+          }}
         >
-          <UserPlus className="w-4 h-4" />
+          <UserPlus aria-hidden="true" size={17} />
           {t('pages.users.addAccount', 'Thêm tài khoản')}
         </button>
-      </div>
+      </header>
 
-      {/* ── Stats row ── */}
-      <div className="grid grid-cols-4 gap-3">
+      <section className="admin-page__stats" aria-label={t('titles.users', 'User management')}>
         {[
-          { label: t('pages.users.totalAccounts', 'Tổng tài khoản'), value: users.length, color: '#18D7FF' },
-          { label: t('pages.users.roles.admin', 'Quản trị viên'),  value: admins,       color: '#FF5C6C' },
-          { label: t('pages.users.roles.engineer', 'Kỹ sư'),          value: engineers,    color: '#FFC547' },
-          { label: t('pages.users.roles.guest', 'Khách'),          value: guests,       color: '#6F7B96' },
-        ].map(s => (
-          <div key={s.label} className={panelCls} style={panelBg}>
-            <div className="px-4 py-3 flex items-center justify-between">
-              <span className="text-xs font-semibold" style={{ color: '#7183A8' }}>{s.label}</span>
-              <span className="text-2xl font-bold tabular-nums" style={{ color: s.color }}>{s.value}</span>
-            </div>
-          </div>
+          { label: t('pages.users.totalAccounts', 'Tổng tài khoản'), value: users.length, tone: 'neutral' },
+          { label: t('pages.users.roles.admin', 'Quản trị viên'), value: counts.admins, tone: 'red' },
+          { label: t('pages.users.roles.engineer', 'Kỹ sư'), value: counts.engineers, tone: 'amber' },
+          { label: t('pages.users.roles.guest', 'Khách'), value: counts.guests, tone: 'muted' },
+        ].map((stat) => (
+          <article className={`admin-page__stat admin-page__stat--${stat.tone}`} key={stat.label}>
+            <span>{stat.label}</span>
+            <strong>{stat.value}</strong>
+          </article>
         ))}
-      </div>
+      </section>
 
-      {/* ── Create modal ── */}
-      {showAddForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div
-            className="w-full max-w-md rounded-xl border border-[rgba(47,123,255,0.35)] shadow-2xl p-6 space-y-4"
-            style={{ background: '#07112F' }}
-          >
-            <div className="flex items-center justify-between border-b border-[rgba(47,123,255,0.2)] pb-3">
-              <h3 className="font-bold uppercase tracking-wider text-white text-sm">
-                <Users className="w-4 h-4 inline-block mr-2 text-[#18D7FF]" />
-                {t('pages.users.createTitle', 'Thêm người dùng mới')}
-              </h3>
-              <button onClick={() => setShowAddForm(false)} className="text-[#6F7B96] hover:text-white transition-colors cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {formError && (
-              <div className="px-3 py-2 rounded-lg border border-[rgba(255,92,108,0.3)] bg-[rgba(255,92,108,0.1)] text-[#FF5C6C] text-xs">
-                {formError}
-              </div>
-            )}
-
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold uppercase tracking-wider" style={{ color: '#7183A8' }}>{t('pages.users.username', 'Tên tài khoản')}</label>
-                <input
-                  type="text"
-                  value={usernameInput}
-                  onChange={e => setUsernameInput(e.target.value)}
-                  placeholder={t('pages.users.usernamePlaceholder', 'ví dụ: engineer02')}
-                  className={inputCls}
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold uppercase tracking-wider" style={{ color: '#7183A8' }}>{t('pages.users.password', 'Mật khẩu')}</label>
-                <input
-                  type="password"
-                  value={passwordInput}
-                  onChange={e => setPasswordInput(e.target.value)}
-                  placeholder={t('pages.users.validation.passwordMin', 'Tối thiểu 6 ký tự')}
-                  className={inputCls}
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold uppercase tracking-wider" style={{ color: '#7183A8' }}>{t('pages.users.role', 'Vai trò')}</label>
-                <div className="relative">
-                  <select value={roleInput} onChange={e => setRoleInput(e.target.value as 'ADMIN' | 'ENGINEER' | 'GUEST')} className={selectCls}>
-                    <option value="ADMIN">{t('pages.users.roles.admin', 'Quản trị viên')} (ADMIN)</option>
-                    <option value="ENGINEER">{t('pages.users.roles.engineer', 'Kỹ sư')} (ENGINEER)</option>
-                    <option value="GUEST">{t('pages.users.roles.guest', 'Khách')} (GUEST)</option>
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: '#7183A8' }} />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddForm(false)}
-                  className="px-4 py-2 rounded-lg text-sm font-semibold border border-[rgba(47,123,255,0.25)] text-[#7183A8] hover:text-white transition-colors cursor-pointer"
-                >
-                  {t('common.actions.cancel', 'Hủy')}
-                </button>
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending}
-                  className="px-4 py-2 rounded-lg text-sm font-bold text-white transition-all disabled:opacity-50 cursor-pointer"
-                  style={{ background: 'linear-gradient(135deg,#2F7BFF,#18D7FF)' }}
-                >
-                  {createMutation.isPending ? t('pages.users.createPending', 'Đang tạo...') : t('pages.users.createButton', 'Tạo tài khoản')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ── Delete confirm modal ── */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div
-            className="w-full max-w-sm rounded-xl border border-[rgba(255,92,108,0.35)] shadow-2xl p-6 space-y-4"
-            style={{ background: '#07112F' }}
-          >
-            <div className="flex items-center gap-2.5 border-b border-[rgba(255,92,108,0.2)] pb-3">
-              <span className="text-[#FF5C6C]">⚠️</span>
-              <h3 className="font-bold text-[#FF5C6C] text-sm uppercase tracking-wider">{t('pages.users.deleteConfirmTitle', 'Xác nhận xóa tài khoản')}</h3>
-            </div>
-            <p className="text-xs leading-relaxed" style={{ color: '#B7C8E8' }}>
-              {t('pages.users.deleteWarning', 'Hành động này không thể hoàn tác. Bạn có chắc chắn muốn xóa tài khoản ')}
-              <span className="font-bold text-white">{deleteTarget.username}</span>?
-            </p>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                className="px-4 py-2 rounded-lg text-sm font-semibold border border-[rgba(47,123,255,0.25)] text-[#7183A8] hover:text-white transition-colors cursor-pointer"
-              >
-                {t('common.actions.cancel', 'Hủy')}
-              </button>
-              <button
-                onClick={() => deleteMutation.mutate(deleteTarget.id)}
-                disabled={deleteMutation.isPending}
-                className="px-4 py-2 rounded-lg text-sm font-bold text-white transition-all bg-[#FF5C6C] hover:bg-[#E04B5B] disabled:opacity-50 cursor-pointer"
-              >
-                {deleteMutation.isPending ? t('common.status.loading', 'Đang xóa...') : t('common.actions.delete', 'Xóa')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Users Table ── */}
-      <div className={panelCls} style={panelBg}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-[#B7C8E8] border-collapse">
+      <section className="admin-page__panel admin-page__table-panel">
+        <div className="admin-page__table-wrap">
+          <table>
             <thead>
-              <tr className="border-b border-[rgba(47,123,255,0.2)] bg-[rgba(7,17,47,0.4)] text-[10px] uppercase font-bold tracking-wider" style={{ color: '#7183A8' }}>
-                <th className="py-3.5 px-5 w-12 text-center">#</th>
-                <th className="py-3.5 px-4">{t('pages.users.table.username', 'Tên tài khoản')}</th>
-                <th className="py-3.5 px-4">{t('pages.users.table.role', 'Quyền hạn')}</th>
-                <th className="py-3.5 px-5 text-center">{t('pages.users.table.actions', 'Thao tác')}</th>
+              <tr>
+                <th scope="col" className="is-center">#</th>
+                <th scope="col">{t('pages.users.table.username', 'Tên tài khoản')}</th>
+                <th scope="col">{t('pages.users.table.role', 'Quyền hạn')}</th>
+                <th scope="col" className="is-center">{t('pages.users.table.actions', 'Thao tác')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[rgba(47,123,255,0.15)]">
-              {users.map((u: any, idx: number) => {
-                const isCurrent = u.username === currentUsername;
-                const cfg = getRoleCfg(u.role);
+            <tbody>
+              {users.map((user, index) => {
+                const isCurrent = user.username === currentUsername;
+                const meta = ROLE_META[user.role];
+                const RoleIcon = meta.icon;
                 return (
-                  <tr key={u.id} className="hover:bg-[rgba(47,123,255,0.03)] transition-colors">
-                    <td className="py-3.5 px-5 text-center font-mono" style={{ color: '#7183A8' }}>{idx + 1}</td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-sm">{u.username}</span>
-                        {isCurrent && (
-                          <span className="rounded bg-[#18D7FF]/10 border border-[#18D7FF]/35 px-1.5 py-0.5 text-[9px] font-bold text-[#18D7FF] uppercase tracking-wider">
-                            {t('pages.users.table.activeSelf', 'Tài khoản của bạn')}
-                          </span>
-                        )}
+                  <tr key={user.id}>
+                    <td className="is-center admin-page__index">{index + 1}</td>
+                    <td>
+                      <div className="admin-page__user-cell">
+                        <b>{user.username}</b>
+                        {isCurrent && <em>{t('pages.users.table.activeSelf', 'Tài khoản của bạn')}</em>}
                       </div>
                     </td>
-                    <td className="py-3.5 px-4">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-                        {cfg.icon}
-                        {cfg.label}
+                    <td>
+                      <span className={`admin-page__badge admin-page__badge--${meta.tone}`}>
+                        <RoleIcon aria-hidden="true" size={14} />
+                        {roleLabel(user.role)}
                       </span>
                     </td>
-                    <td className="py-3.5 px-5 text-center">
+                    <td className="is-center">
                       {!isCurrent && (
                         <button
-                          onClick={() => setDeleteTarget(u)}
-                          className="p-1.5 rounded-lg border border-[rgba(255,92,108,0.2)] hover:bg-[rgba(255,92,108,0.1)] text-[#FF5C6C] transition-all active:scale-95 cursor-pointer"
+                          type="button"
+                          className="admin-page__delete-button"
+                          onClick={() => setDeleteTarget(user)}
                           title={t('common.actions.delete', 'Xóa')}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 aria-hidden="true" size={15} />
                         </button>
                       )}
                     </td>
@@ -333,8 +204,79 @@ export const UserManagementPage: React.FC = () => {
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
+
+      {showAddForm && (
+        <Modal>
+          <div className="admin-modal" role="dialog" aria-modal="true" aria-labelledby="create-user-title">
+            <header className="admin-modal__header">
+              <h2 id="create-user-title"><Users aria-hidden="true" size={18} /> {t('pages.users.createTitle', 'Thêm người dùng mới')}</h2>
+              <button type="button" onClick={() => setShowAddForm(false)} aria-label={t('common.actions.close', 'Đóng')}><X aria-hidden="true" size={18} /></button>
+            </header>
+            {formError && <p className="admin-modal__error">{formError}</p>}
+            <form onSubmit={handleCreate} className="admin-modal__form">
+              <label>
+                <span>{t('pages.users.username', 'Tên tài khoản')}</span>
+                <input
+                  type="text"
+                  value={usernameInput}
+                  onChange={(event) => setUsernameInput(event.target.value)}
+                  placeholder={t('pages.users.usernamePlaceholder', 'ví dụ: engineer02')}
+                  required
+                />
+              </label>
+              <label>
+                <span>{t('pages.users.password', 'Mật khẩu')}</span>
+                <input
+                  type="password"
+                  value={passwordInput}
+                  onChange={(event) => setPasswordInput(event.target.value)}
+                  placeholder={t('pages.users.validation.passwordMin', 'Tối thiểu 6 ký tự')}
+                  required
+                />
+              </label>
+              <label>
+                <span>{t('pages.users.role', 'Vai trò')}</span>
+                <span className="admin-modal__select-wrap">
+                  <select value={roleInput} onChange={(event) => setRoleInput(event.target.value as Role)}>
+                    <option value="ADMIN">{roleLabel('ADMIN')} {t('pages.users.roleCode', { role: 'ADMIN' })}</option>
+                    <option value="ENGINEER">{roleLabel('ENGINEER')} {t('pages.users.roleCode', { role: 'ENGINEER' })}</option>
+                    <option value="GUEST">{roleLabel('GUEST')} {t('pages.users.roleCode', { role: 'GUEST' })}</option>
+                  </select>
+                  <ChevronDown aria-hidden="true" size={15} />
+                </span>
+              </label>
+              <footer className="admin-modal__actions">
+                <button type="button" className="admin-modal__secondary" onClick={() => setShowAddForm(false)}>{t('common.actions.cancel', 'Hủy')}</button>
+                <button type="submit" className="admin-modal__primary" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? t('pages.users.createPending', 'Đang tạo...') : t('pages.users.createButton', 'Tạo tài khoản')}
+                </button>
+              </footer>
+            </form>
+          </div>
+        </Modal>
+      )}
+
+      {deleteTarget && (
+        <Modal>
+          <div className="admin-modal admin-modal--danger" role="dialog" aria-modal="true" aria-labelledby="delete-user-title">
+            <header className="admin-modal__header">
+              <h2 id="delete-user-title"><AlertTriangle aria-hidden="true" size={18} /> {t('pages.users.deleteConfirmTitle', 'Xác nhận xóa tài khoản')}</h2>
+            </header>
+            <p className="admin-modal__copy">
+              {t('pages.users.deleteWarning', 'Hành động này không thể hoàn tác. Bạn có chắc chắn muốn xóa tài khoản ')} <b>{deleteTarget.username}</b>?
+            </p>
+            <footer className="admin-modal__actions">
+              <button type="button" className="admin-modal__secondary" onClick={() => setDeleteTarget(null)}>{t('common.actions.cancel', 'Hủy')}</button>
+              <button type="button" className="admin-modal__danger" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(deleteTarget.id)}>
+                {deleteMutation.isPending ? t('common.status.loading', 'Đang xóa...') : t('common.actions.delete', 'Xóa')}
+              </button>
+            </footer>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
+
 export default UserManagementPage;

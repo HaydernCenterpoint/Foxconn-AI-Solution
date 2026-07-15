@@ -15,68 +15,49 @@ export function TechPanel({
   title,
   extraHeader,
 }: TechPanelProps) {
-  // Determine color theme based on alertSeverity
-  let borderColorClass = 'border-[#14356a]';
-  let accentColorClass = 'border-[#00ADB5]'; // Default teal accent
-  let bgClass = 'bg-[#0A1129]/80';
-  let shadowClass = 'shadow-[0_4px_15px_rgba(0,0,0,0.3)]';
-  let titleColorClass = 'text-[#00ADB5]';
-  let dotColorClass = 'bg-[#00ADB5]';
+  let borderColorClass = 'border-[#3d3d3d]';
+  let accentColorClass = 'bg-[#ef4444]';
+  let backgroundClass = 'bg-[#1d1d1d]';
+  let titleColorClass = 'text-[#f8f8f8]';
+  let dotColorClass = 'bg-[#ef4444]';
 
   if (alertSeverity === 'error') {
-    borderColorClass = 'border-red-500/40';
-    accentColorClass = 'border-red-500';
-    bgClass = 'bg-[#1a0c10]/95';
-    shadowClass = 'shadow-[0_0_20px_rgba(239,68,68,0.15)]';
-    titleColorClass = 'text-red-400';
-    dotColorClass = 'bg-red-500';
+    borderColorClass = 'border-[#7c3639]';
+    accentColorClass = 'bg-[#ef4444]';
+    backgroundClass = 'bg-[#221b1c]';
+    titleColorClass = 'text-[#ffd9d9]';
+    dotColorClass = 'bg-[#ff737b]';
   } else if (alertSeverity === 'warning') {
-    borderColorClass = 'border-amber-500/45';
-    accentColorClass = 'border-amber-500';
-    bgClass = 'bg-[#17130a]/95';
-    shadowClass = 'shadow-[0_0_20px_rgba(245,158,11,0.12)]';
-    titleColorClass = 'text-amber-400';
-    dotColorClass = 'bg-amber-500';
+    borderColorClass = 'border-[#6a5529]';
+    accentColorClass = 'bg-[#e7b950]';
+    backgroundClass = 'bg-[#211f1a]';
+    titleColorClass = 'text-[#ffe8ae]';
+    dotColorClass = 'bg-[#e7b950]';
   } else if (alertSeverity === 'info') {
-    borderColorClass = 'border-blue-500/40';
-    accentColorClass = 'border-blue-400';
-    bgClass = 'bg-[#0A1430]/90';
-    shadowClass = 'shadow-[0_4px_15px_rgba(0,0,0,0.35)]';
-    titleColorClass = 'text-blue-400';
-    dotColorClass = 'bg-blue-400';
-  } else if (alertSeverity === 'normal') {
-    borderColorClass = 'border-[#14356a]';
-    accentColorClass = 'border-cyan-400';
-    bgClass = 'bg-[#0A1129]/80';
-    titleColorClass = 'text-cyan-400';
-    dotColorClass = 'bg-cyan-400';
+    borderColorClass = 'border-[#3d4f62]';
+    accentColorClass = 'bg-[#8aa9c8]';
+    backgroundClass = 'bg-[#1d2024]';
+    titleColorClass = 'text-[#e6edf4]';
+    dotColorClass = 'bg-[#8aa9c8]';
   }
 
   return (
-    <div className={`relative overflow-hidden rounded-none border ${borderColorClass} ${bgClass} p-5 ${shadowClass} ${className}`}>
-      {/* Decals (Pointer Events Disabled) */}
-      <div className="absolute inset-0 pointer-events-none select-none z-0">
-        <div className={`absolute top-0 left-0 w-3.5 h-3.5 border-t-2 border-l-2 ${accentColorClass}`} />
-        <div className={`absolute top-0 right-0 w-3.5 h-3.5 border-t-2 border-r-2 ${accentColorClass}`} />
-        <div className={`absolute bottom-0 left-0 w-3.5 h-3.5 border-b-2 border-l-2 ${accentColorClass}`} />
-        <div className={`absolute bottom-0 right-0 w-3.5 h-3.5 border-b-2 border-r-2 ${accentColorClass}`} />
-      </div>
+    <section className={`relative overflow-hidden rounded-2xl border ${borderColorClass} ${backgroundClass} p-4 md:p-5 ${className}`}>
+      <div className={`absolute inset-y-0 left-0 w-1 ${accentColorClass}`} aria-hidden="true" />
 
-      {/* Header if Title exists */}
       {title && (
-        <div className="flex items-center justify-between border-b border-[#14356a]/40 pb-4 mb-4 select-none relative z-10">
-          <h3 className={`text-sm font-black uppercase tracking-wider ${titleColorClass} flex items-center gap-2`}>
-            <span className={`h-2 w-2 rounded-full ${dotColorClass} ${alertSeverity === 'error' || alertSeverity === 'warning' ? 'animate-pulse' : ''}`} />
+        <header className="relative z-10 mb-4 flex items-center justify-between gap-3 border-b border-[#373737] pb-3">
+          <h3 className={`flex items-center gap-2 text-[15px] font-semibold ${titleColorClass}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${dotColorClass}`} aria-hidden="true" />
             {title}
           </h3>
           {extraHeader && <div className="flex items-center">{extraHeader}</div>}
-        </div>
+        </header>
       )}
 
-      {/* Content */}
-      <div className="relative z-10 w-full h-full">
+      <div className="relative z-10 h-full w-full">
         {children}
       </div>
-    </div>
+    </section>
   );
 }

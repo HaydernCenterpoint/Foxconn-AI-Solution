@@ -1,21 +1,23 @@
-import { useState, useEffect, useMemo, useRef, useId } from 'react';
-import { useQuery, useQueries } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { TechBackground } from '../../shared/components/ui/TechBackground';
 import {
-  Maximize2,
-  Minimize2,
-  X,
-  RefreshCw,
-  Search,
-  Eye,
-} from 'lucide-react';
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useId,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
+import { useQuery, useQueries } from '@tanstack/react-query';
+import { useNavigate, type NavigateFunction } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import './modern-slideshow.css';
+import { RefreshCw } from 'lucide-react';
 import {
   ComposedChart,
   Bar,
   Line,
-  LineChart,
   Radar,
   RadarChart,
   PolarGrid,
@@ -24,22 +26,57 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Legend,
   ResponsiveContainer,
 } from 'recharts';
 
 import { dashboardApi } from '../../features/dashboard/services/dashboard.api';
-import { linesApi } from '../../features/production-lines/services/lines.api';
-import { alarmsApi } from '../../features/alarms/services/alarms.api';
+import { linesApi, type ProductionLine } from '../../features/production-lines/services/lines.api';
+import type { Machine } from '../../features/machines/services/machines.api';
 import { queryKeys } from '../../app/queryKeys';
 import { queryTimings } from '../../app/queryOptions';
 import { useDynamicTranslation } from '../../shared/lib/translator';
-import { getSimulationAll } from '../../features/simulation/services/simulation.api';
+import { getSimulationAll, type SimulationData } from '../../features/simulation/services/simulation.api';
 import { api } from '../../shared/services/apiClient';
+
+type SlideshowMachine = Machine & {
+  productionCount?: number;
+};
+
+interface SlideshowReportChartPoint {
+  date?: string;
+  output?: number;
+  target?: number;
+}
+
+interface SlideshowReportData {
+  chartData?: SlideshowReportChartPoint[];
+}
+
+interface SlideshowFuturisticCardProps {
+  themeColor?: string;
+  accentColor?: string;
+  glowGradId?: string;
+  className?: string;
+  variant?: 'normal' | 'gauges';
+  children?: ReactNode;
+}
+
+interface SlideshowHeaderProps {
+  selectedLineId: string;
+  setSelectedLineId: Dispatch<SetStateAction<string>>;
+  lines?: ProductionLine[];
+  tDynamic: (text: string) => string;
+  selectedLine?: ProductionLine;
+  formattedDateTime: string;
+  toggleFullscreen: () => void;
+  isFullscreen: boolean;
+  navigate: NavigateFunction;
+  t: TFunction;
+}
 
 const HoneycombPattern = () => (
   <svg
-    className="absolute right-2 bottom-2 w-32 h-32 opacity-[0.16] pointer-events-none select-none"
+    className="modern-slideshow__decoration absolute right-2 bottom-2 w-32 h-32 opacity-[0.16] pointer-events-none select-none"
     style={{ filter: 'drop-shadow(0 0 5px rgba(0, 229, 255, 0.35))' }}
     viewBox="0 0 100 100"
     fill="none"
@@ -56,7 +93,7 @@ const HoneycombPattern = () => (
 );
 
 const CyberDivider = () => (
-  <div className="w-full h-[12px] flex items-center justify-center select-none relative my-[-8px]">
+  <div className="modern-slideshow__decoration w-full h-[12px] flex items-center justify-center select-none relative my-[-8px]">
     <svg className="w-full h-full max-w-[800px]" viewBox="0 0 800 12" fill="none">
       <style>{`
         .chevron-l-0 { animation: pulseChevronLeft 2s infinite 0s; }
@@ -118,7 +155,7 @@ const CyberDivider = () => (
 
 const FactorySkyline = () => (
   <svg
-    className="absolute left-0 bottom-0 w-full h-18 opacity-[0.16] pointer-events-none select-none"
+    className="modern-slideshow__decoration absolute left-0 bottom-0 w-full h-18 opacity-[0.16] pointer-events-none select-none"
     style={{ filter: 'drop-shadow(0 0 5px rgba(0, 229, 255, 0.35))' }}
     viewBox="0 0 300 80"
     preserveAspectRatio="none"
@@ -142,7 +179,7 @@ const SlideshowFuturisticCard = ({
   className = '',
   variant = 'normal',
   children
-}: any) => {
+}: SlideshowFuturisticCardProps) => {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 300, height: 200 });
   const uniqueId = useId();
@@ -165,14 +202,14 @@ const SlideshowFuturisticCard = ({
   const W = size.width;
   const H = size.height;
 
-  let borderPath = '';
-  let innerPath = '';
-  let innerPathInset = '';
-  let clipPathStyle = '';
-  let glowingTL = '';
-  let glowingTR = '';
-  let dBL = '';
-  let dBR = '';
+  let borderPath: string;
+  let innerPath: string;
+  let innerPathInset: string;
+  let clipPathStyle: string;
+  let glowingTL: string;
+  let glowingTR: string;
+  let dBL: string;
+  let dBR: string;
 
   if (variant === 'gauges') {
     const NH = 6; // Notch depth (shallower, matching screenshot)
@@ -325,7 +362,7 @@ const SlideshowFuturisticCard = ({
   return (
     <div
       ref={ref}
-      className={"relative overflow-hidden bg-[#030a18]/94 min-h-0 " + className}
+      className={"modern-slideshow__card relative overflow-hidden bg-[#030a18]/94 min-h-0 " + className}
       style={{
         clipPath: clipPathStyle,
         boxShadow: 'inset 0 0 18px rgba(0, 145, 255, 0.07), 0 0 8px rgba(0, 220, 255, 0.2)'
@@ -373,9 +410,9 @@ const SlideshowHeader = ({
   isFullscreen,
   navigate,
   t
-}: any) => {
+}: SlideshowHeaderProps) => {
   return (
-    <header className="cyber-header relative w-full h-[96px] md:h-[110px] bg-[#020b20] shrink-0 z-50 overflow-hidden select-none" style={{ boxShadow: '0 0 18px rgba(0, 183, 255, .45), inset 0 0 32px rgba(0, 94, 255, .22)' }}>
+    <header className="modern-slideshow__header cyber-header relative w-full h-[96px] md:h-[110px] bg-[#020b20] shrink-0 z-50 overflow-hidden select-none" style={{ boxShadow: '0 0 18px rgba(0, 183, 255, .45), inset 0 0 32px rgba(0, 94, 255, .22)' }}>
       {/* Background radial/linear glow */}
       <div
         className="absolute inset-[10px_0] pointer-events-none z-0"
@@ -484,7 +521,7 @@ const SlideshowHeader = ({
 
       {/* Interactive Controls & Content Layout */}
       <div
-        className="relative w-full h-full z-10 px-10"
+        className="modern-slideshow__header-content relative w-full h-full z-10 px-10"
         style={{
           display: 'grid',
           gridTemplateColumns: '1fr minmax(360px, 650px) 1fr',
@@ -501,7 +538,7 @@ const SlideshowHeader = ({
               textShadow: '0 0 9px rgba(255,255,255,0.55)'
             }}
           >
-            LINE:
+            {t('slideshow.lineLabel')}
           </span>
           <div
             className="relative flex items-center bg-gradient-to-b from-[#063558]/65 to-[#03132b]/76 min-w-[208px] h-[50px] rounded border-[1.5px] border-[#00c9f8] px-3.5 shadow-[0_0_10px_rgba(0,221,255,0.45),_inset_0_0_15px_rgba(0,130,255,0.13)] cursor-pointer"
@@ -512,7 +549,7 @@ const SlideshowHeader = ({
               className="appearance-none bg-transparent text-[#00eaff] text-[20px] font-bold uppercase pl-1 pr-8 py-1 w-full focus:outline-none cursor-pointer select-none"
             >
               <option value="all" className="bg-[#020b20] text-[#00eaff] uppercase">{t('slideshow.all', 'TẤT CẢ')}</option>
-              {lines?.map((line: any) => (
+              {lines?.map((line) => (
                 <option key={line.id} value={line.id} className="bg-[#020b20] text-[#00eaff] uppercase">
                   {tDynamic(line.name)}
                 </option>
@@ -580,7 +617,7 @@ const SlideshowHeader = ({
               navigate('/');
             }}
             className="w-[51px] h-[51px] p-[12px] rounded border-[1.5px] border-[#ff0b55]/80 bg-gradient-to-b from-[#07375d]/65 to-[#031027]/80 text-[#ff0b55] hover:text-white transition-all shadow-[0_0_11px_rgba(255,0,81,0.25),_inset_0_0_12px_rgba(255,0,81,0.08)] cursor-pointer"
-            title="Thoát chế độ trình chiếu"
+            title={t('slideshow.exitSlideshow')}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" className="w-full h-full fill-none stroke-current stroke-[2.4]">
               <path d="M5 5l14 14M19 5L5 19" />
@@ -593,7 +630,7 @@ const SlideshowHeader = ({
 };
 
 export const SlideshowPage = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { tDynamic } = useDynamicTranslation();
   const navigate = useNavigate();
 
@@ -626,7 +663,7 @@ export const SlideshowPage = () => {
   };
 
   // Queries
-  const { data: dashboardData, isLoading: isDashboardLoading } = useQuery({
+  const { isLoading: isDashboardLoading } = useQuery({
     queryKey: ['dashboardSummary'],
     queryFn: dashboardApi.getSummary,
     refetchInterval: 2000,
@@ -653,10 +690,10 @@ export const SlideshowPage = () => {
     refetchInterval: 2000,
   });
 
-  const { data: reportsDailyData } = useQuery({
+  const { data: reportsDailyData } = useQuery<SlideshowReportData>({
     queryKey: ['reports-daily-slideshow', selectedLineId],
     queryFn: () =>
-      api.get('/reports/query', {
+      api.get<SlideshowReportData>('/reports/query', {
         params: {
           timeRange: 'last_7_days',
           lineId: selectedLineId || 'all',
@@ -667,7 +704,7 @@ export const SlideshowPage = () => {
     refetchInterval: 5000,
   });
 
-  const activeLineMachines = useMemo(() => {
+  const activeLineMachines = useMemo<SlideshowMachine[]>(() => {
     if (selectedLineId === 'all') return [];
     const selectedIdx = lines?.findIndex(l => l.id === selectedLineId);
     if (selectedIdx === undefined || selectedIdx === -1) return [];
@@ -675,8 +712,8 @@ export const SlideshowPage = () => {
   }, [selectedLineId, lines, lineMachinesQueries]);
 
   // Helper to gather all machines across all lines
-  const allMachines = useMemo(() => {
-    const list: any[] = [];
+  const allMachines = useMemo<SlideshowMachine[]>(() => {
+    const list: SlideshowMachine[] = [];
     lineMachinesQueries.forEach((q) => {
       if (q.data) {
         list.push(...q.data);
@@ -690,7 +727,7 @@ export const SlideshowPage = () => {
     if (!lines || lineMachinesQueries.some(q => q.isLoading || !q.data)) return [];
 
     return lines.map((line, idx) => {
-      const machines = lineMachinesQueries[idx].data || [];
+      const machines: SlideshowMachine[] = lineMachinesQueries[idx].data || [];
       const totalMachines = machines.length;
       const sortedMachines = [...machines].sort((a, b) => (a.sequenceOrder ?? 0) - (b.sequenceOrder ?? 0));
       const lastMachine = sortedMachines.length > 0 ? sortedMachines[sortedMachines.length - 1] : null;
@@ -704,8 +741,8 @@ export const SlideshowPage = () => {
       let hasRunning = false;
       let hasIdle = false;
 
-      machines.forEach((m: any) => {
-        if (m.approvalStatus === 'APPROVED' || m.approvalStatus === 'approved') {
+      machines.forEach((m) => {
+        if (m.approvalStatus.toLowerCase() === 'approved') {
           approvedCount++;
           const oeeVal = Number(m.lastPlcData?.production?.oee ?? m.lastPlcData?.tags?.oee ?? 0);
           const yieldVal = Number(m.lastPlcData?.production?.yieldRate ?? m.lastPlcData?.tags?.yieldRate ?? 0);
@@ -714,16 +751,19 @@ export const SlideshowPage = () => {
           yieldSum += yieldVal;
           uphSum += uphVal;
 
-          if (m.status === 'error') hasError = true;
-          if (m.status === 'running' || m.status === 'đang chạy') hasRunning = true;
-          if (m.status === 'idle' || m.status === 'chờ') hasIdle = true;
+          const machineStatus = m.status.toLowerCase();
+          if (machineStatus === 'error') hasError = true;
+          if (machineStatus === 'running' || machineStatus === 'đang chạy') hasRunning = true;
+          if (machineStatus === 'idle' || machineStatus === 'chờ') hasIdle = true;
         }
       });
 
       const lineOee = approvedCount > 0 ? oeeSum / approvedCount : 0.0;
       const lineYield = approvedCount > 0 ? yieldSum / approvedCount : 100.0;
       const lineUph = approvedCount > 0 ? Math.round(uphSum / approvedCount) : 0;
-      const lineOutput = lastMachine ? ((lastMachine as any).lastPlcData?.productionCount ?? (lastMachine as any).productionCount ?? 0) : 0;
+      const lineOutput = lastMachine
+        ? (lastMachine.lastPlcData?.productionCount ?? lastMachine.productionCount ?? 0)
+        : 0;
 
       let status = 'offline';
       if (hasError) status = 'error';
@@ -756,8 +796,8 @@ export const SlideshowPage = () => {
         totalOutput += l.output;
       });
 
-      allMachines.forEach((m: any) => {
-        if (m.approvalStatus === 'APPROVED' || m.approvalStatus === 'approved') {
+      allMachines.forEach((m) => {
+        if (m.approvalStatus.toLowerCase() === 'approved') {
           approvedCount++;
           const oeeVal = Number(m.lastPlcData?.production?.oee ?? m.lastPlcData?.tags?.oee ?? 0);
           const yieldVal = Number(m.lastPlcData?.production?.yieldRate ?? m.lastPlcData?.tags?.yieldRate ?? 0);
@@ -796,8 +836,8 @@ export const SlideshowPage = () => {
 
   const targetOutput = useMemo(() => {
     let activeCount = 0;
-    allMachines.forEach((m: any) => {
-      if (m.approvalStatus === 'APPROVED' || m.approvalStatus === 'approved') {
+    allMachines.forEach((m) => {
+      if (m.approvalStatus.toLowerCase() === 'approved') {
         activeCount++;
       }
     });
@@ -824,14 +864,6 @@ export const SlideshowPage = () => {
   // Selected line object for header display
   const selectedLine = useMemo(() => {
     return lines?.find(l => l.id === selectedLineId);
-  }, [selectedLineId, lines]);
-
-  // Diagram active line fallback
-  const activeLineIdForDiagram = useMemo(() => {
-    if (selectedLineId === 'all') {
-      return lines && lines.length > 0 ? lines[0].id : null;
-    }
-    return selectedLineId;
   }, [selectedLineId, lines]);
 
   // Get active items for Left panels (fetched dynamically from database)
@@ -918,7 +950,7 @@ export const SlideshowPage = () => {
       return chart;
     }
 
-    return reportsDailyData.chartData.map((item: any) => {
+    return reportsDailyData.chartData.map((item) => {
       const dateParts = item.date ? item.date.split('-') : [];
       const label = dateParts.length >= 3 ? `${dateParts[1]}-${dateParts[2]}` : (item.date || '');
       const outVal = Number(item.output || 0);
@@ -931,37 +963,6 @@ export const SlideshowPage = () => {
       };
     });
   }, [reportsDailyData]);
-
-  // Panel M3: Yield Trends
-  const yieldTrendsData = useMemo(() => {
-    const trends = [];
-    const hasProduction = selectedMetrics.output > 0;
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const label = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-      if (!hasProduction) {
-        trends.push({
-          date: label,
-          ete: 0,
-          pcba: 0,
-          ict: 0,
-          sigma: 0,
-        });
-      } else {
-        const factor = i === 2 ? 0.88 : 0.98 + (Math.random() * 0.02);
-        trends.push({
-          date: label,
-          ete: Number((selectedMetrics.yieldRate * factor * 0.99).toFixed(1)),
-          pcba: Number((selectedMetrics.yieldRate * factor * 1.01).toFixed(1)),
-          ict: Number((selectedMetrics.yieldRate * factor * 1.0).toFixed(1)),
-          sigma: Number((selectedMetrics.yieldRate * factor * 1.02).toFixed(1)),
-        });
-      }
-    }
-    return trends;
-  }, [selectedMetrics]);
 
   // Panel R1: Radar Performance Indicators
   const radarData = useMemo(() => {
@@ -984,192 +985,24 @@ export const SlideshowPage = () => {
   }, [selectedMetrics]);
 
 
-  // Ring circular progress renderer
-  const renderCircularRing = (value: number, centerText: string, text: string, label: string, color: string) => {
-    const radius = 38;
-    const circumference = 2 * Math.PI * radius;
-    const strokeDashoffset = circumference - (Math.min(100, value) / 100) * circumference;
+  const renderMetricCard = (value: number, centerText: string, text: string, label: string, color: string) => {
+    const progress = Math.max(0, Math.min(100, value));
 
     return (
-      <div className="flex flex-col items-center flex-1 min-w-0">
-        <div className="relative h-[160px] w-[160px] flex-shrink-0 flex items-center justify-center">
-          {/* Cyberpunk Concentric Gauge Rings */}
-          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
-            {/* Ring 1: Outermost pulse fade ring */}
-            <circle
-              cx="50"
-              cy="50"
-              r="48.5"
-              stroke={color}
-              strokeWidth="0.8"
-              fill="transparent"
-              opacity="0.25"
-              style={{
-                animation: 'pulse 2.5s ease-in-out infinite'
-              }}
-            />
-            {/* Ring 2: Outer faint border */}
-            <circle
-              cx="50"
-              cy="50"
-              r="47.5"
-              stroke={color}
-              strokeWidth="0.5"
-              fill="transparent"
-              opacity="0.12"
-            />
-            {/* Ring 3: Outer decorative high-tech widget ticks - rotates clockwise */}
-            <circle
-              cx="50"
-              cy="50"
-              r="45.5"
-              stroke={color}
-              strokeWidth="1.2"
-              fill="transparent"
-              strokeDasharray="15 30 5 5 10 35"
-              opacity="0.4"
-              style={{
-                transformOrigin: '50% 50%',
-                animation: 'spin 20s linear infinite'
-              }}
-            />
-            {/* Ring 4: Intermediate dashed widget - rotates counter-clockwise */}
-            <circle
-              cx="50"
-              cy="50"
-              r="42.5"
-              stroke={color}
-              strokeWidth="0.8"
-              fill="transparent"
-              strokeDasharray="8 15 4 8"
-              opacity="0.25"
-              style={{
-                transformOrigin: '50% 50%',
-                animation: 'spin 25s linear infinite reverse'
-              }}
-            />
-            {/* Ring 5: Main track background */}
-            <circle
-              cx="50"
-              cy="50"
-              r={radius}
-              stroke="#0f1c3f"
-              strokeWidth="3.5"
-              fill="transparent"
-              opacity="0.6"
-            />
-            {/* Ring 6: Main Progress Arc */}
-            <circle
-              cx="50"
-              cy="50"
-              r={radius}
-              stroke={color}
-              strokeWidth="4"
-              fill="transparent"
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              strokeLinecap="round"
-              className="transition-all duration-1000 ease-out"
-              style={{
-                transform: 'rotate(-90deg)',
-                transformOrigin: '50% 50%',
-                filter: `drop-shadow(0 0 5px ${color})`
-              }}
-            />
-            {/* Ring 7: Inner Dotted Ticks - rotates clockwise */}
-            <circle
-              cx="50"
-              cy="50"
-              r="32.5"
-              stroke={color}
-              strokeWidth="1.5"
-              fill="transparent"
-              strokeDasharray="1.5 2.5"
-              opacity="0.45"
-              style={{
-                transformOrigin: '50% 50%',
-                animation: 'spin 15s linear infinite'
-              }}
-            />
-            {/* Ring 8: Inner thin solid ring */}
-            <circle
-              cx="50"
-              cy="50"
-              r="29.5"
-              stroke={color}
-              strokeWidth="0.6"
-              fill="transparent"
-              opacity="0.25"
-            />
-          </svg>
-
-          {/* Centered Values */}
-          <div className="text-center z-10 select-none flex flex-col items-center">
-            <span className="text-[24px] font-black font-mono block text-white tracking-tight leading-none" style={{ textShadow: '0 0 6px rgba(255,255,255,0.5)' }}>
-              {centerText}
-            </span>
-            <span className="text-[10px] font-black font-mono block tracking-wider mt-1.5 uppercase" style={{ color: color, textShadow: `0 0 2px ${color}` }}>
-              {text}
-            </span>
-          </div>
+      <article className="modern-slideshow__metric-card" style={{ borderTopColor: color }}>
+        <span className="modern-slideshow__metric-label">{label}</span>
+        <strong className="modern-slideshow__metric-value">{centerText}</strong>
+        <span className="modern-slideshow__metric-unit">{text}</span>
+        <div className="modern-slideshow__metric-progress" aria-hidden="true">
+          <span style={{ width: `${progress}%`, backgroundColor: color }} />
         </div>
-
-        {/* Color-coded 3D perspective glowing trapezoid label */}
-        <div
-          className="relative mt-3 w-[130px] h-[24px] flex items-center justify-center select-none font-black text-[11px] tracking-widest"
-          title={label}
-        >
-          {/* SVG trapezoid background */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 130 24">
-            <defs>
-              <linearGradient id={`trap-grad-${color.replace('#', '')}`} x1="0%" y1="100%" x2="0%" y2="0%">
-                <stop offset="0%" stopColor={color} stopOpacity="0.25" />
-                <stop offset="100%" stopColor={color} stopOpacity="0.0" />
-              </linearGradient>
-            </defs>
-
-            {/* Filled trapezoid background with fading opacity */}
-            <path
-              d="M 10 2 L 28 22 L 102 22 L 120 2 Z"
-              fill={`url(#trap-grad-${color.replace('#', '')})`}
-            />
-
-            {/* Thin 3D side lines */}
-            <line x1="10" y1="2" x2="28" y2="22" stroke={color} strokeWidth="1" opacity="0.45" />
-            <line x1="102" y1="22" x2="120" y2="2" stroke={color} strokeWidth="1" opacity="0.45" />
-
-            {/* Solid glowing bottom line (dưới rõ) */}
-            <line
-              x1="28"
-              y1="22"
-              x2="102"
-              y2="22"
-              stroke={color}
-              strokeWidth="2.2"
-              style={{
-                filter: `drop-shadow(0 0 4px ${color})`
-              }}
-            />
-          </svg>
-          {/* Label Text */}
-          <span
-            className="z-10 text-center truncate px-2"
-            style={{
-              color: color,
-              textShadow: `0 0 3px ${color}`,
-              transform: 'translateY(-1px)'
-            }}
-          >
-            {label}
-          </span>
-        </div>
-      </div>
+      </article>
     );
   };
 
   if (isDashboardLoading || isLinesLoading) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#070b15] text-[#00ADB5]">
+      <div className="modern-slideshow__loading flex h-screen w-screen items-center justify-center bg-[#070707] text-[#ef4444]">
         <div className="flex flex-col items-center gap-3">
           <RefreshCw className="h-10 w-10 animate-spin" />
           <span className="text-sm font-semibold tracking-wider uppercase">{t('dashboard.loading', 'Khởi tạo màn hình trình chiếu...')}</span>
@@ -1183,12 +1016,11 @@ export const SlideshowPage = () => {
 
   return (
     <div
-      className="fixed inset-0 h-screen w-screen text-[#c1d3ee] flex flex-col overflow-hidden font-sans select-none z-[999]"
+      className="modern-slideshow fixed inset-0 h-screen w-screen text-[#c1d3ee] flex flex-col overflow-hidden font-sans select-none z-[999]"
       style={{
-        background: 'radial-gradient(circle at 50% 0%, rgba(0, 104, 180, 0.12), transparent 45%), linear-gradient(180deg, #06142a 0%, #020b1b 100%)'
+        background: '#070707'
       }}
     >
-      <TechBackground />
       <style>{`
         .cyber-header {
           position: relative;
@@ -1268,10 +1100,10 @@ export const SlideshowPage = () => {
       />
 
       {/* Main 3-Column Grid Dashboard Body */}
-      <div className="flex-1 flex min-h-0 gap-3.5 p-3.5 pt-2">
+      <div className="modern-slideshow__content flex-1 flex min-h-0 gap-3.5 p-3.5 pt-2">
 
         {/* COLUMN 1: LEFT PANEL COLUMN (24.5% Width) */}
-        <div className="w-[24.5%] h-full flex flex-col gap-3.5 shrink-0 min-h-0">
+        <div className="modern-slideshow__column modern-slideshow__column--left w-[24.5%] h-full flex flex-col gap-3.5 shrink-0 min-h-0">
 
           {/* L1: OEE Status */}
           <SlideshowFuturisticCard className="p-4 flex flex-col min-h-0 relative flex-[51]">
@@ -1345,38 +1177,40 @@ export const SlideshowPage = () => {
         </div>
 
         {/* COLUMN 2: MIDDLE CHART COLUMN (49.5% Width) */}
-        <div className="w-[49.5%] h-full flex flex-col gap-3.5 min-h-0">
+        <div className="modern-slideshow__column modern-slideshow__column--main w-[49.5%] h-full flex flex-col gap-3.5 min-h-0">
 
-          {/* M1: Circular Progress Gauges */}
-          <SlideshowFuturisticCard variant="gauges" className="p-4 flex gap-4 shrink-0 rounded-lg justify-around items-center h-[270px]">
-            {renderCircularRing(
-              outputProgress.percent,
-              outputProgress.text,
-              outputProgress.subtext,
-              'SẢN LƯỢNG',
-              '#00e676'
-            )}
-            {renderCircularRing(
-              selectedMetrics.yieldRate,
-              `${selectedMetrics.yieldRate.toFixed(1)}%`,
-              'Yield',
-              'TỈ LỆ ĐẠT',
-              '#00f0ff'
-            )}
-            {renderCircularRing(
-              selectedMetrics.uph,
-              `${selectedMetrics.uph}`,
-              'UPH',
-              'UPH',
-              '#2F7BFF'
-            )}
-            {renderCircularRing(
-              selectedMetrics.oee,
-              `${selectedMetrics.oee.toFixed(1)}%`,
-              'OEE',
-              'OEE',
-              '#0088ff'
-            )}
+          {/* M1: Key production metrics */}
+          <SlideshowFuturisticCard className="modern-slideshow__metrics-panel p-4 shrink-0 h-[190px]">
+            <div className="modern-slideshow__metrics">
+              {renderMetricCard(
+                outputProgress.percent,
+                outputProgress.text,
+                outputProgress.subtext,
+                'SẢN LƯỢNG',
+                '#4ec798'
+              )}
+              {renderMetricCard(
+                selectedMetrics.yieldRate,
+                `${selectedMetrics.yieldRate.toFixed(1)}%`,
+                'Tỷ lệ đạt',
+                'TỶ LỆ ĐẠT',
+                '#ef4444'
+              )}
+              {renderMetricCard(
+                selectedMetrics.uph,
+                `${selectedMetrics.uph}`,
+                'Đơn vị / giờ',
+                'UPH',
+                '#ff8a8c'
+              )}
+              {renderMetricCard(
+                selectedMetrics.oee,
+                `${selectedMetrics.oee.toFixed(1)}%`,
+                'Hiệu suất thiết bị',
+                'OEE',
+                '#ef4444'
+              )}
+            </div>
           </SlideshowFuturisticCard>
 
           {/* Graphic divider between gauges and composed chart */}
@@ -1387,7 +1221,7 @@ export const SlideshowPage = () => {
             <div className="cyber-panel-title justify-between">
               <div className="flex items-center gap-1.5">
                 <span className="text-[12px] font-black text-cyan-400 mr-1.5">■</span>
-                SẢN LƯỢNG / TỶ LỆ HOÀN THÀNH
+                {t('slideshow.outputAchieved')}
               </div>
               <div className="text-cyan-400/50 font-mono text-[8px] tracking-tight mr-1 select-none">
                 /////
@@ -1396,24 +1230,24 @@ export const SlideshowPage = () => {
             <div className="flex-1 min-h-0 w-full flex flex-col justify-between">
               <div className="flex justify-center items-center gap-6 text-[12px] font-bold mb-2 select-none">
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 bg-[#1c64f2] rounded-sm" />
-                  <span className="text-slate-300">Sản lượng (PCS)</span>
+                  <div className="w-3 h-3 bg-[#ef4444] rounded-sm" />
+                  <span className="text-slate-300">{t('slideshow.outputPcs')}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-0.5 bg-[#00e676] relative flex items-center justify-center">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#00e676]" />
                   </div>
-                  <span className="text-slate-300">Tỷ lệ hoàn thành (%)</span>
+                  <span className="text-slate-300">{t('slideshow.completionRate')}</span>
                 </div>
               </div>
               <div className="flex-1 min-h-0 w-full">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} className="pointer-events-none">
                   <ComposedChart data={outputChartData} margin={{ top: 25, right: 25, left: 10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0, 240, 255, 0.15)" />
-                    <XAxis dataKey="date" stroke="#6882b5" fontSize={12} tickLine={false} />
-                    <YAxis yAxisId="left" stroke="#6882b5" fontSize={12} tickLine={false} />
-                    <YAxis yAxisId="right" orientation="right" stroke="#6882b5" fontSize={12} tickLine={false} domain={[0, 150]} />
-                    <Bar yAxisId="left" dataKey="output" fill="#1c64f2" radius={[2, 2, 0, 0]} barSize={28} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255, 255, 255, 0.12)" />
+                    <XAxis dataKey="date" stroke="#a4a4a4" fontSize={12} tickLine={false} />
+                    <YAxis yAxisId="left" stroke="#a4a4a4" fontSize={12} tickLine={false} />
+                    <YAxis yAxisId="right" orientation="right" stroke="#a4a4a4" fontSize={12} tickLine={false} domain={[0, 150]} />
+                    <Bar yAxisId="left" dataKey="output" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={28} />
                     <Line yAxisId="right" dataKey="rate" stroke="#00e676" strokeWidth={1.8} dot={{ fill: '#00e676', r: 2.5 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
@@ -1426,14 +1260,14 @@ export const SlideshowPage = () => {
         </div>
 
         {/* COLUMN 3: RIGHT PANEL COLUMN (26% Width) */}
-        <div className="w-[26%] h-full flex flex-col gap-3.5 shrink-0 min-h-0">
+        <div className="modern-slideshow__column modern-slideshow__column--right w-[26%] h-full flex flex-col gap-3.5 shrink-0 min-h-0">
 
           {/* R1: Radar Performance chart */}
           <SlideshowFuturisticCard className="p-4 flex flex-col min-h-0 flex-[55]">
             <div className="cyber-panel-title justify-between">
               <div className="flex items-center gap-1.5">
                 <span className="text-[12px] font-black text-cyan-400 mr-1.5">■</span>
-                MỨC ĐỘ ĐẠT ĐƯỢC CHỈ TIÊU SẢN XUẤT
+                {t('slideshow.performanceRadar')}
               </div>
               <div className="text-cyan-400/50 font-mono text-[8px] tracking-tight mr-1 select-none">
                 /////
@@ -1442,10 +1276,10 @@ export const SlideshowPage = () => {
             <div className="flex-1 min-h-0 w-full flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} className="pointer-events-none">
                 <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                  <PolarGrid stroke="rgba(20, 53, 106, 0.4)" />
-                  <PolarAngleAxis dataKey="subject" stroke="#6882b5" fontSize={12} />
-                  <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="rgba(20, 53, 106, 0.3)" tick={false} />
-                  <Radar name="Indicators" dataKey="score" stroke="#00f0ff" fill="#00f0ff" fillOpacity={0.25} />
+                  <PolarGrid stroke="rgba(255, 255, 255, 0.18)" />
+                  <PolarAngleAxis dataKey="subject" stroke="#a4a4a4" fontSize={12} />
+                  <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="rgba(255, 255, 255, 0.15)" tick={false} />
+                  <Radar name="Indicators" dataKey="score" stroke="#ef4444" fill="#ef4444" fillOpacity={0.22} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
@@ -1467,11 +1301,11 @@ export const SlideshowPage = () => {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="border-b border-[#14356a]/60 text-slate-400 font-bold">
-                      <th className="py-2 text-left">STT</th>
-                      <th className="py-2 text-left">Dây chuyền</th>
-                      <th className="py-2 text-right">Sản lượng</th>
-                      <th className="py-2 text-right">Hiệu suất</th>
-                      <th className="py-2 text-center">Trạng thái</th>
+                      <th className="py-2 text-left">{t('slideshow.table.no')}</th>
+                      <th className="py-2 text-left">{t('slideshow.table.line')}</th>
+                      <th className="py-2 text-right">{t('slideshow.table.output')}</th>
+                      <th className="py-2 text-right">{t('slideshow.table.efficiency')}</th>
+                      <th className="py-2 text-center">{t('slideshow.table.status')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#14356a]/20 font-mono text-slate-300">
@@ -1507,19 +1341,22 @@ export const SlideshowPage = () => {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="border-b border-[#14356a]/60 text-slate-400 font-bold">
-                      <th className="py-2 text-left">STT</th>
-                      <th className="py-2 text-left">Trạm máy</th>
-                      <th className="py-2 text-right">Sản lượng</th>
-                      <th className="py-2 text-center">Trạng thái</th>
+                      <th className="py-2 text-left">{t('slideshow.table.no')}</th>
+                      <th className="py-2 text-left">{t('slideshow.table.station')}</th>
+                      <th className="py-2 text-right">{t('slideshow.table.output')}</th>
+                      <th className="py-2 text-center">{t('slideshow.table.status')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#14356a]/20 font-mono text-slate-300">
                     {activeLineMachines.map((m, idx) => {
-                      const telemetryVal = (telemetryMap[m.id] || m) as any;
-                      const statusStr = String(telemetryVal.status || '').toLowerCase();
+                      const telemetry: SimulationData | undefined = telemetryMap[m.id];
+                      const statusStr = String(telemetry?.status ?? m.status ?? '').toLowerCase();
                       const isRunning = statusStr === 'running' || statusStr === 'đang chạy';
                       const statusClass = isRunning ? 'text-[#00e676]' : 'text-[#ff5c6c]';
-                      const prodQty = telemetryVal.productionCount ?? telemetryVal.lastPlcData?.productionCount ?? 0;
+                      const prodQty = telemetry?.productionCount
+                        ?? m.productionCount
+                        ?? m.lastPlcData?.productionCount
+                        ?? 0;
                       return (
                         <tr key={m.id} className="hover:bg-[#14356a]/15 transition-all">
                           <td className="py-2">{String(idx + 1).padStart(2, '0')}</td>

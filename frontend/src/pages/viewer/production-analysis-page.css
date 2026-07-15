@@ -1,0 +1,495 @@
+.production-analysis {
+  --pa-surface: #1d1d1d;
+  --pa-raised: #242424;
+  --pa-border: #3d3d3d;
+  --pa-text: #f8f8f8;
+  --pa-muted: #a4a4a4;
+  --pa-red: #ef4444;
+  --pa-amber: #ffb739;
+  --pa-green: #38b785;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: .9rem;
+  overflow-y: auto;
+  color: var(--pa-text);
+  font-family: "Be Vietnam Pro", system-ui, sans-serif;
+}
+
+.production-analysis *,
+.production-analysis *::before,
+.production-analysis *::after {
+  box-sizing: border-box;
+}
+
+.production-analysis button {
+  font: inherit;
+}
+
+.production-analysis button:focus-visible {
+  outline: 2px solid #ff6567;
+  outline-offset: 2px;
+}
+
+.production-analysis__intro {
+  min-height: 5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-bottom: .9rem;
+  border-bottom: 1px solid #303030;
+}
+
+.production-analysis__heading h1 {
+  margin: 0;
+}
+
+.production-analysis__heading h1 {
+  font-size: clamp(1.5rem, 2vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -.025em;
+  line-height: 1.1;
+}
+
+.production-analysis__toolbar,
+.production-analysis__period,
+.production-analysis__date {
+  display: flex;
+  align-items: center;
+}
+
+.production-analysis__toolbar {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .7rem;
+}
+
+.production-analysis__period {
+  overflow: hidden;
+  border: 1px solid #454545;
+  border-radius: .7rem;
+  background: var(--pa-raised);
+}
+
+.production-analysis__period button {
+  min-height: 2.25rem;
+  padding: 0 .8rem;
+  border: 0;
+  border-right: 1px solid #454545;
+  background: transparent;
+  color: #c5c5c5;
+  cursor: pointer;
+  font-size: .75rem;
+  font-weight: 600;
+  transition: background .18s ease, color .18s ease;
+}
+
+.production-analysis__period button:last-child {
+  border-right: 0;
+}
+
+.production-analysis__period button:hover {
+  background: #303030;
+  color: var(--pa-text);
+}
+
+.production-analysis__period button.is-active {
+  background: var(--pa-red);
+  color: #fff;
+}
+
+.production-analysis__date {
+  min-height: 2.25rem;
+  gap: .45rem;
+  padding: 0 .75rem;
+  border: 1px solid #454545;
+  border-radius: .7rem;
+  background: var(--pa-raised);
+  color: #d4d4d4;
+  font-size: .75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.production-analysis__date svg {
+  color: var(--pa-muted);
+}
+
+.production-analysis__content {
+  min-height: 0;
+  display: grid;
+  flex: 1;
+  grid-template-rows: minmax(20rem, .93fr) minmax(18rem, 1.07fr);
+  gap: .9rem;
+}
+
+.production-analysis__top-grid,
+.production-analysis__bottom-grid {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  gap: .9rem;
+}
+
+.production-analysis__top-grid {
+  grid-template-columns: minmax(0, 2.05fr) minmax(18rem, 1fr);
+}
+
+.production-analysis__bottom-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.production-analysis__panel {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 1rem;
+  border: 1px solid var(--pa-border);
+  border-radius: 1rem;
+  background: var(--pa-surface);
+}
+
+.production-analysis__panel-head {
+  min-height: 1.9rem;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding-bottom: .65rem;
+  border-bottom: 1px solid #303030;
+}
+
+.production-analysis__panel-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 1.85rem;
+  height: 1.85rem;
+  place-items: center;
+  border-radius: .55rem;
+  background: #322121;
+  color: var(--pa-red);
+}
+
+.production-analysis__panel-icon--amber {
+  background: #3a321d;
+  color: var(--pa-amber);
+}
+
+.production-analysis__panel-icon--green {
+  background: #173229;
+  color: var(--pa-green);
+}
+
+.production-analysis__panel-head h2 {
+  margin: 0;
+  color: var(--pa-text);
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.production-analysis__chart {
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+}
+
+.production-analysis__chart--output {
+  min-height: 14rem;
+  margin-top: .8rem;
+}
+
+.production-analysis__chart--stations {
+  min-height: 14rem;
+  margin-top: 1rem;
+}
+
+.production-analysis__oee-list {
+  min-height: 0;
+  display: grid;
+  flex: 1;
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+  gap: .55rem;
+  margin: .8rem 0 0;
+}
+
+.production-analysis__oee-list > div {
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .6rem .7rem;
+  border: 1px solid #303030;
+  border-radius: .65rem;
+  background: #202020;
+}
+
+.production-analysis__oee-list dt,
+.production-analysis__oee-list dd {
+  margin: 0;
+}
+
+.production-analysis__oee-list dt {
+  color: var(--pa-muted);
+  font-size: .72rem;
+  font-weight: 600;
+}
+
+.production-analysis__oee-list dd {
+  color: var(--pa-text);
+  font-size: .9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.production-analysis__oee-list dd.is-danger {
+  color: #ff8f9b;
+}
+
+.production-analysis__oee-list dd.is-amber {
+  color: #f5c45c;
+}
+
+.production-analysis__oee-list .production-analysis__oee-effective {
+  border-color: #28513f;
+  background: #1a2a23;
+}
+
+.production-analysis__oee-effective dt,
+.production-analysis__oee-effective dd {
+  color: #5ad3a4;
+}
+
+.production-analysis__panel-copy {
+  margin: .75rem 0 0;
+  color: var(--pa-muted);
+  font-size: .75rem;
+}
+
+.production-analysis__table-wrap {
+  min-height: 0;
+  flex: 1;
+  margin-top: .45rem;
+  overflow: auto;
+}
+
+.production-analysis__table-wrap table {
+  width: 100%;
+  min-width: 35rem;
+  border-collapse: collapse;
+  color: #dedede;
+  font-size: .75rem;
+}
+
+.production-analysis__table-wrap th,
+.production-analysis__table-wrap td {
+  padding: .55rem .4rem;
+  text-align: left;
+}
+
+.production-analysis__table-wrap th {
+  border-bottom: 1px solid #454545;
+  color: var(--pa-muted);
+  font-size: .68rem;
+  font-weight: 700;
+}
+
+.production-analysis__table-wrap td {
+  border-bottom: 1px solid #303030;
+  font-weight: 500;
+}
+
+.production-analysis__table-wrap tbody tr:hover {
+  background: #252525;
+}
+
+.production-analysis__table-wrap .is-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.production-analysis__station {
+  color: #e6e6e6;
+  font-weight: 650 !important;
+}
+
+.production-analysis__ratio-cell {
+  width: 10rem;
+}
+
+.production-analysis__ratio-cell > span {
+  display: inline-block;
+  min-width: 2.5rem;
+}
+
+.production-analysis__ratio-bar {
+  width: 4rem;
+  height: .35rem;
+  display: inline-block;
+  overflow: hidden;
+  margin-left: .45rem;
+  border-radius: 999px;
+  background: #353535;
+  vertical-align: middle;
+}
+
+.production-analysis__ratio-bar > span {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+}
+
+.production-analysis .recharts-cartesian-axis-tick-value {
+  font-size: 10px;
+}
+
+@media (min-width: 1440px) {
+  .production-analysis {
+    gap: 1.15rem;
+  }
+
+  .production-analysis__intro {
+    min-height: 5.5rem;
+    padding-bottom: 1rem;
+  }
+
+  .production-analysis__heading h1 {
+    font-size: clamp(1.75rem, 1.75vw, 2.25rem);
+  }
+
+  .production-analysis__toolbar {
+    gap: .85rem;
+  }
+
+  .production-analysis__period button,
+  .production-analysis__date {
+    min-height: 2.5rem;
+    font-size: .82rem;
+  }
+
+  .production-analysis__content,
+  .production-analysis__top-grid,
+  .production-analysis__bottom-grid {
+    gap: 1.15rem;
+  }
+
+  .production-analysis__panel {
+    padding: 1rem;
+    border-radius: 1.15rem;
+  }
+
+  .production-analysis__panel-head h2 {
+    font-size: 1.125rem;
+  }
+
+  .production-analysis__chart--output,
+  .production-analysis__chart--stations {
+    margin-top: 1rem;
+  }
+
+  .production-analysis__oee-list {
+    gap: .65rem;
+    margin-top: 1rem;
+  }
+
+  .production-analysis__oee-list > div {
+    padding: .7rem .8rem;
+  }
+
+  .production-analysis__oee-list dt {
+    font-size: .76rem;
+  }
+
+  .production-analysis__oee-list dd {
+    font-size: .95rem;
+  }
+
+  .production-analysis__panel-copy {
+    font-size: .8rem;
+  }
+
+  .production-analysis__table-wrap table {
+    font-size: .8rem;
+  }
+
+  .production-analysis__table-wrap th {
+    font-size: .72rem;
+  }
+
+  .production-analysis__table-wrap th,
+  .production-analysis__table-wrap td {
+    padding-block: .65rem;
+  }
+
+  .production-analysis .recharts-cartesian-axis-tick-value {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .production-analysis {
+    height: auto;
+  }
+
+  .production-analysis__content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .production-analysis__top-grid,
+  .production-analysis__bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .production-analysis__output-panel,
+  .production-analysis__oee-panel,
+  .production-analysis__pareto-panel,
+  .production-analysis__station-panel {
+    min-height: 20rem;
+  }
+}
+
+@media (max-width: 680px) {
+  .production-analysis__intro {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .production-analysis__toolbar {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .production-analysis__period {
+    flex: 1;
+  }
+
+  .production-analysis__period button {
+    flex: 1;
+    padding-inline: .45rem;
+  }
+
+  .production-analysis__date {
+    padding-inline: .55rem;
+  }
+
+  .production-analysis__panel {
+    padding: .85rem;
+  }
+
+  .production-analysis__panel-head h2 {
+    font-size: .94rem;
+  }
+
+  .production-analysis__chart--output,
+  .production-analysis__chart--stations {
+    min-height: 13rem;
+  }
+}
