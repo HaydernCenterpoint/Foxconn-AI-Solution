@@ -1,197 +1,148 @@
-# MKZ Factory + Odysseus Integration Guide
+# FII Factory + Odysseus Integration Guide
 
 ## Overview
 
-This guide explains how to integrate the MKZ Factory PLC monitoring system with Odysseus AI workspace.
+Odysseus answers factory questions through the FII .NET backend REST API. It
+does not open a direct connection to the factory database. The AI provider key
+and the backend credential are separate secrets with separate responsibilities.
 
-## Quick Start
+| Setting | Used for | Development default |
+| --- | --- | --- |
+| `OPENAI_API_KEY` | Odysseus calling an AI provider | Set only on the Odysseus server when using a hosted model. |
+| `MKZ_BACKEND_URL` | Odysseus and the MCP server reading FII data | `http://127.0.0.1:5165` |
+| `MKZ_BACKEND_TOKEN` | Optional authorization for FII backend requests | Blank when local read endpoints do not require a token. |
 
-### 1. Start Server
-```bash
-cd d:\hnhnhnhnh\odysseus
-$env:MKZ_DB_HOST="localhost"; $env:MKZ_DB_PORT="5432"; $env:MKZ_DB_NAME="plc_monitoring"; $env:MKZ_DB_USER="postgres"; $env:MKZ_DB_PASSWORD="12345678"; $env:AUTH_ENABLED="false"
-python -m uvicorn app:app --host 127.0.0.1 --port 7000
+Never send the provider key to the frontend, MCP configuration, prompts, or
+factory data store. A backend token is not an AI provider key and must not be
+used to configure a model.
+
+## Development setup
+
+1. Copy `.env.integration.example` to `.env` and edit it locally.
+2. Set `OPENAI_API_KEY` only if Odysseus will call a hosted AI provider.
+3. Start the FII backend on `http://127.0.0.1:5165`.
+4. Start Odysseus from its project directory:
+
+```powershell
+.\venv\Scripts\python.exe -m uvicorn app:app --host 127.0.0.1 --port 7000
 ```
 
-### 2. Test API
-```bash
-# Health check
-Invoke-RestMethod -Uri "http://127.0.0.1:7000/api/mkz/health" -Method GET
+5. Sign in to Odysseus as an administrator and verify the bridge from the
+   browser UI or an internal trusted tool path. A bare, unauthenticated shell
+   request to `http://127.0.0.1:7000/api/mkz/health` deliberately returns
+   HTTP 401, including when it originates from the local machine.
 
-# Get dashboard
-Invoke-RestMethod -Uri "http://127.0.0.1:7000/api/mkz/dashboard" -Method GET
+### FastEmbed first-run download in development
 
-# Get machines
-Invoke-RestMethod -Uri "http://127.0.0.1:7000/api/mkz/machines" -Method GET
-```
+Keep `HF_HUB_DISABLE_XET=1` in the local development `.env`. It prevents the
+first FastEmbed ONNX model download from hanging in this development
+environment. Docker forwards this opt-in setting only to FastEmbed consumers:
+the `odysseus` application and `mkz-sync` service, when the local `.env`
+supplies it. Do not add it to the ChromaDB service; ChromaDB does not download
+or run the FastEmbed model. Re-evaluate the workaround before using it in a
+production deployment.
 
-## API Endpoints
+To configure the model itself, use **Settings > Models** in Odysseus to add
+the provider endpoint and select a model. Keep the provider key server-side;
+Odysseus stores endpoint keys in its encrypted endpoint field rather than
+returning them from the endpoint list API.
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/mkz/health` | GET | Health check |
-| `/api/mkz/dashboard` | GET | Dashboard summary |
-| `/api/mkz/machines` | GET | List all machines |
-| `/api/mkz/production-lines` | GET | List production lines |
-| `/api/mkz/alarms` | GET | List alarms |
-| `/api/mkz/reports/production` | GET | Production reports |
-| `/api/mkz/telemetry` | GET | Live telemetry |
-| `/api/mkz/audit-logs` | GET | Audit logs |
-| `/api/mkz/system-info` | GET | DB schema info |
+## REST bridge endpoints
 
-## REST API Examples
+### Access control and backend token transport
 
-### Get Machines
-```bash
-curl "http://localhost:7000/api/mkz/machines"
-```
+Only the listed read-only FII bridge endpoints below require Odysseus
+authentication through a signed-in administrator session, or the internal
+trusted tool path used by Odysseus itself. The HTTP bridge is admin-only in this
+development setup because the shared MCP server cannot provide a distinct scope
+for each browser user. Bearer/API tokens are deliberately not accepted by
+`require_admin`; they use a separate scoped-integration authorization model.
+There is no anonymous factory-proxy exemption. This policy does **not** cover
+the separately mounted `/api/mkz/gateway/...` namespace, which has its own
+gateway integration and authorization rules. `AUTH_ENABLED=false` remains an
+explicit, trusted-local development mode and must not be exposed remotely.
 
-### Get Dashboard
-```bash
-curl "http://localhost:7000/api/mkz/dashboard"
-```
+`MKZ_BACKEND_TOKEN` requires HTTPS for a non-loopback backend. It may be sent
+over HTTP only to a direct loopback backend such as `localhost`, `127.0.0.1`,
+or `::1`; Odysseus rejects a backend token configured with remote plaintext
+HTTP. HTTPS is allowed for any backend address.
 
-### Get Production Report (7 days)
-```bash
-curl "http://localhost:7000/api/mkz/reports/production?time_range=last_7_days"
-```
+| Endpoint | Description |
+| --- | --- |
+| `/api/mkz/health` | Checks FII backend reachability |
+| `/api/mkz/dashboard` | Dashboard KPIs and totals |
+| `/api/mkz/machines` | Machine list |
+| `/api/mkz/production-lines` | Production-line list |
+| `/api/mkz/alarms` | Alarm list |
+| `/api/mkz/reports/production` | Production report data |
+| `/api/mkz/telemetry` | Live or recent telemetry |
+| `/api/mkz/system-info` | REST bridge routing information |
 
-### Get Alarms
-```bash
-curl "http://localhost:7000/api/mkz/alarms"
-```
+The bridge intentionally does **not** expose FII audit logs. They are sensitive
+and will remain unavailable through both REST and MCP until the FII backend has
+a dedicated least-privilege audit-read policy for this integration.
 
-## MCP Server Tools
+Production reports accept only `today`, `last_7_days`, or `month`. Both
+`line_id` and `machine_id` default to `all`; when supplied, each must be either
+`all` or a canonical UUID. Empty or malformed selectors are rejected rather
+than widened to an all-factory query. The bridge does not publish the current
+backend shift ranges because they do not yet match the factory's operational
+shift calendar.
 
-The MCP server (`mcp_servers/plc_mcp_server.py`) provides these tools:
+Examples below show the endpoint shapes for calls made by a signed-in
+administrator session or an internal trusted tool; they are not public URLs:
 
-| Tool | Description |
-|------|-------------|
-| `mkz_get_machines` | Get all machines |
-| `mkz_get_production_lines` | Get production lines |
-| `mkz_get_alarms` | Get alarms |
-| `mkz_get_dashboard_summary` | Dashboard KPIs |
-| `mkz_get_production_report` | Production reports |
-| `mkz_get_telemetry` | Live telemetry |
-| `mkz_get_audit_logs` | Audit trail |
-| `mkz_get_system_info` | Database info |
+- `GET /api/mkz/dashboard`
+- `GET /api/mkz/alarms?status=ACTIVE`
+- `GET /api/mkz/reports/production?time_range=last_7_days`
 
-### Connect MCP Server
-1. Settings → MCP Servers → Add
-2. Command: `python`
-3. Args: `mcp_servers/plc_mcp_server.py`
-4. Environment variables:
-   - `MKZ_DB_HOST=localhost`
-   - `MKZ_DB_PORT=5432`
-   - `MKZ_DB_NAME=plc_monitoring`
-   - `MKZ_DB_USER=postgres`
-   - `MKZ_DB_PASSWORD=12345678`
+## Register the read-only MCP server
 
-## Sync Script
+The current local Odysseus instance keeps the `mkz_factory` MCP server
+disabled. FII data is already available through the scheduled/direct RAG sync,
+which lets Odysseus answer factory questions from the indexed summaries without
+granting every chat user a direct backend reader. Enable this MCP server only
+for a trusted single-administrator development session, or after implementing
+per-user factory authorization for direct tool calls. Do not enable it for a
+shared or remotely exposed deployment.
 
-### Manual Sync
-```bash
-cd d:\hnhnhnhnh\odysseus
-python scripts/sync_mkz_to_odysseus.py
-```
+In **Settings > MCP Servers > Add**, configure:
 
-### Export Only
-```bash
-python scripts/sync_mkz_to_odysseus.py --export-only
-```
+| Field | Value |
+| --- | --- |
+| Command | `python` |
+| Args | `mcp_servers/plc_mcp_server.py` |
+| `MKZ_BACKEND_URL` | `http://127.0.0.1:5165` |
 
-### With Verbose Output
-```bash
-python scripts/sync_mkz_to_odysseus.py -v
-```
+The static MCP template deliberately omits `MKZ_BACKEND_TOKEN` so the MCP
+subprocess inherits it from the process environment. Set the optional
+read-only backend token on the Odysseus service environment instead of adding
+an empty value to the MCP configuration; an empty static value would override
+the inherited token. Follow the HTTPS/non-loopback transport rule above.
 
-## Database Schema
-
-### Tables Available
-| Table | Description |
-|-------|-------------|
-| `machines` | Machine registry (7 machines) |
-| `production_lines` | Production lines |
-| `line_machines` | Line-machine relationships |
-| `machine_hourly_production` | Hourly production stats |
-| `machine_telemetry_history` | Telemetry history |
-| `alarms` | Alarm events |
-| `audit_logs` | User actions |
-| `plc_clients` | PLC client registry |
-
-### Machine Status Values
-- `RUNNING` - Machine operating
-- `IDLE` - Machine idle
-- `ERROR` - Machine in error state
-- `OFFLINE` - Machine disconnected
-- `MAINTENANCE` - Under maintenance
-
-### Alarm Severity Levels
-- `CRITICAL` - Immediate attention required
-- `HIGH` - High priority
-- `MEDIUM` - Medium priority
-- `LOW` - Low priority
-
-## Files Created
-
-| File | Purpose |
-|------|---------|
-| `mcp_servers/plc_mcp_server.py` | MCP server |
-| `routes/mkz_routes.py` | REST API |
-| `scripts/sync_mkz_to_odysseus.py` | Data sync |
-| `docker-compose.yml` | Production Docker |
-| `Dockerfile.sync` | Sync container |
-| `config/mosquitto.conf` | MQTT config |
-| `INTEGRATION.md` | This documentation |
-
-## Example Questions for Odysseus
-
-After connecting MCP, ask Odysseus:
-- "Show me all machines in the factory"
-- "What are the active alarms?"
-- "Get the production report for the last 7 days"
-- "Show me machine JUMPER-01 telemetry"
-- "What is the current machine status?"
-- "List all production lines"
-- "Show me the audit log for today"
+The available MCP tools are limited to reading machines, lines, alarms,
+dashboard data, production reports, telemetry, and bridge information. They
+cannot execute SQL or change factory data. Sensitive audit logs are intentionally
+not exposed until a least-privilege backend policy exists.
 
 ## Troubleshooting
 
-### Database Connection Failed
-```
-Error: could not connect to server
-```
-- Check PostgreSQL is running
-- Verify credentials in environment variables
+### Bridge health reports `unhealthy`
 
-### Port 7000 Already in Use
-```bash
-netstat -ano | Select-String "7000"
-# Kill the process using that port
-Stop-Process -Id <PID> -Force
-```
+- Confirm that the FII backend is listening on `127.0.0.1:5165`.
+- Check that `MKZ_BACKEND_URL` matches the backend address.
+- If the backend now requires authorization, configure a read-only
+  `MKZ_BACKEND_TOKEN` and restart Odysseus.
 
-### MCP Server Won't Connect
-- Ensure psycopg2-binary is installed
-- Check environment variables are set
-- Restart Odysseus after changes
+### Model does not appear in Odysseus
 
-## Production Deployment
+- Check that the provider key is present only in the Odysseus server
+  environment or the protected endpoint configuration.
+- In **Settings > Models**, verify the provider endpoint and refresh its model
+  list.
 
-### Docker Compose
-```bash
-cd odysseus
-docker-compose up -d
-```
+### Semantic memory is unavailable
 
-### Environment Variables
-Set in `.env` file:
-```env
-MKZ_DB_HOST=mkz-db
-MKZ_DB_PORT=5432
-MKZ_DB_NAME=plc_monitoring
-MKZ_DB_USER=postgres
-MKZ_DB_PASSWORD=your_password
-AUTH_ENABLED=true
-JWT_SECRET=your_jwt_secret
-```
+ChromaDB must be available at the configured host and port before RAG can
+store or retrieve factory summaries. Live telemetry remains a direct REST/MCP
+query source; it should not be treated as durable historical memory.
