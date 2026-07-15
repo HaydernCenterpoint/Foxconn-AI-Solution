@@ -1,71 +1,52 @@
 {
-  "name": "MKZ Factory PLC",
-  "description": "MCP server for querying MKZ Factory PLC monitoring database. Provides access to machines, production lines, alarms, telemetry, and production reports.",
+  "name": "FII Factory REST Bridge",
+  "description": "Read-only MCP tools for the FII factory backend REST API. This server never connects directly to the factory database.",
   "command": "python",
   "args": ["mcp_servers/plc_mcp_server.py"],
   "env": {
-    "MKZ_DB_HOST": "localhost",
-    "MKZ_DB_PORT": "5432",
-    "MKZ_DB_NAME": "plc_monitoring",
-    "MKZ_DB_USER": "postgres",
-    "MKZ_DB_PASSWORD": "12345678"
+    "MKZ_BACKEND_URL": "http://127.0.0.1:5165"
   },
   "tools": [
     {
       "name": "mkz_get_machines",
-      "description": "Get all machines from the MKZ factory system",
+      "description": "Get machines from the FII backend",
       "read_only": true
     },
     {
       "name": "mkz_get_production_lines",
-      "description": "Get all production lines",
+      "description": "Get production lines from the FII backend",
       "read_only": true
     },
     {
       "name": "mkz_get_alarms",
-      "description": "Get active alarms",
+      "description": "Get alarm records from the FII backend",
       "read_only": true
     },
     {
       "name": "mkz_get_dashboard_summary",
-      "description": "Get factory dashboard summary with KPIs",
+      "description": "Get dashboard KPIs and machine/alarm totals",
       "read_only": true
     },
     {
       "name": "mkz_get_production_report",
-      "description": "Generate production reports",
+      "description": "Get production report data by time range, line, or machine",
       "read_only": true
     },
     {
       "name": "mkz_get_telemetry",
-      "description": "Get live telemetry data",
-      "read_only": true
-    },
-    {
-      "name": "mkz_get_hourly_production",
-      "description": "Get hourly production history",
-      "read_only": true
-    },
-    {
-      "name": "mkz_get_audit_logs",
-      "description": "Get audit log entries",
-      "read_only": true
-    },
-    {
-      "name": "mkz_execute_sql",
-      "description": "Execute raw SQL queries (SELECT only)",
+      "description": "Get live or recent telemetry from the FII backend",
       "read_only": true
     },
     {
       "name": "mkz_get_system_info",
-      "description": "Get database schema info",
+      "description": "Get REST bridge routing information",
       "read_only": true
     }
   ],
   "setup_instructions": [
-    "1. Ensure MKZ PostgreSQL database is running",
-    "2. Copy this config to Odysseus MCP settings",
-    "3. Update environment variables for your database connection",
-    "4. Save and reconnect"
+    "1. Start the FII .NET backend at http://127.0.0.1:5165.",
+    "2. This template omits MKZ_BACKEND_TOKEN so the subprocess inherits a configured read-only token from its parent environment.",
+    "3. Add this command and environment configuration in Odysseus Settings > MCP Servers.",
+    "4. Save and reconnect the MCP server."
   ]
 }
