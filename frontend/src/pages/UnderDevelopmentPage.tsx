@@ -1,33 +1,30 @@
 import { Wrench } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function UnderDevelopmentPage({ title }: { title: string }) {
-  return (
-    <div className="w-full min-h-[70dvh] flex items-center justify-center p-6 bg-transparent">
-      <div className="cyber-panel border border-[#14356a] bg-[#0A1129]/80 p-8 max-w-md w-full min-w-[320px] md:min-w-[400px] text-center relative shadow-[0_4px_30px_rgba(0,240,255,0.05)]">
-        {/* Corner Decals */}
-        <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-[#00f0ff]" />
-        <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-[#00f0ff]" />
-        <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-[#00f0ff]" />
-        <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-[#00f0ff]" />
+  const { t } = useTranslation();
 
-        <div className="flex justify-center mb-6">
-          <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-[#00f0ff]/10 border border-[#00f0ff]/30 text-[#00f0ff] animate-pulse">
+  return (
+    <div className="flex min-h-[70dvh] w-full items-center justify-center p-6">
+      <section className="w-full max-w-lg rounded-3xl border border-[#3b3b3b] bg-[#1e1e1e] p-8 text-center shadow-[0_20px_44px_rgba(0,0,0,0.24)] sm:p-10">
+        <div className="mb-6 flex justify-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#ef4444]/45 bg-[#ef4444]/10 text-[#ff8a8c]">
             <Wrench className="h-8 w-8 stroke-[1.5]" />
           </div>
         </div>
 
-        <h2 className="text-lg font-black tracking-widest text-[#00f0ff] uppercase mb-2">
+        <h2 className="mb-3 text-xl font-bold tracking-[0.04em] text-[#f5f5f5] uppercase">
           {title.toUpperCase()}
         </h2>
-        <div className="h-px bg-[#14356a]/40 my-4 w-full" />
+        <div className="mx-auto mb-5 h-px w-full max-w-xs bg-[#3b3b3b]" />
         
-        <p className="text-xs font-bold text-slate-300 uppercase tracking-wide leading-relaxed">
-          Phân hệ đang được nâng cấp &amp; cấu hình kết nối PLC.
+        <p className="text-sm font-semibold uppercase leading-relaxed tracking-[0.03em] text-[#d4d4d4]">
+          {t('underDevelopment.description')}
         </p>
-        <p className="text-[10px] font-semibold text-text-muted mt-2">
-          Hệ thống giám sát vận hành thông minh NEXUS-9000
+        <p className="mt-3 text-xs font-medium text-[#9b9b9b]">
+          {t('underDevelopment.systemName')}
         </p>
-      </div>
+      </section>
     </div>
   );
 }

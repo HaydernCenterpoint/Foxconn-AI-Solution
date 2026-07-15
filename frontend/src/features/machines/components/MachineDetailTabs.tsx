@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { alarmsApi } from '../../alarms/services/alarms.api';
+import { alarmsApi, type Alarm } from '../../alarms/services/alarms.api';
+import type { HourlyProduction, Machine } from '../services/machines.api';
+import type { PlcTelemetry, ProductionTelemetry } from '../../../shared/types/domain';
 import {
   TrendingUp,
   Cpu,
-  Database,
-  Clock,
   Activity,
   AlertTriangle,
   CheckCircle,
@@ -15,7 +15,6 @@ import {
   Filter,
   Info,
   Zap,
-  Thermometer,
   Shield,
   Clock3
 } from 'lucide-react';
@@ -33,6 +32,7 @@ import {
   Tooltip
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
+import './machine-detail.css';
 
 // LCG seeded random helper for stable mock data
 function seededRandom(seedStr: string) {
@@ -48,9 +48,49 @@ function seededRandom(seedStr: string) {
 }
 
 interface MachineDetailTabsProps {
-  machine: any;
-  history: any[];
+  machine: MachineDetailMachine;
+  history: HourlyProduction[];
   isAdminOrEngineer: boolean;
+}
+
+interface MachineDetailTelemetry extends PlcTelemetry {
+  temperature?: number;
+  Temperature?: number;
+  pressure?: number;
+  Pressure?: number;
+  speed?: number;
+  Speed?: number;
+  ProductionCount?: number;
+  production?: ProductionTelemetry & {
+    time?: number;
+  };
+}
+
+interface MachineDetailMachine extends Omit<Machine, 'lastPlcData'> {
+  lastPlcData?: MachineDetailTelemetry;
+}
+
+interface UnitHistoryEntry {
+  id: string;
+  startTime: Date;
+  endTime: Date;
+  cycleTimeSeconds: number;
+  errorCount: number;
+  status: 'OK' | 'NG';
+  shift: string;
+  date: string;
+  frontRobotCount: number;
+  rearRobotCount: number;
+  hasQualityFail: boolean;
+}
+
+function getRequestErrorMessage(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null || !('response' in error)) return undefined;
+  const response = error.response;
+  if (typeof response !== 'object' || response === null || !('data' in response)) return undefined;
+  const data = response.data;
+  if (typeof data !== 'object' || data === null || !('error' in data)) return undefined;
+  return typeof data.error === 'string' ? data.error : undefined;
 }
 
 export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
@@ -66,14 +106,14 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
   const [activeTab, setActiveTab] = useState<'dashboard' | 'alarms' | 'analysis' | 'schedule'>('dashboard');
 
   // Alarm action states
-  const [actionAlarm, setActionAlarm] = useState<any>(null);
+  const [actionAlarm, setActionAlarm] = useState<Alarm | null>(null);
   const [actionType, setActionType] = useState<'ack' | 'resolve' | null>(null);
   const [notes, setNotes] = useState('');
   const [actionError, setActionError] = useState('');
 
   // Unit History state filters
   const [scheduleStatusFilter, setScheduleStatusFilter] = useState<'ALL' | 'OK' | 'NG'>('ALL');
-  const [selectedUnit, setSelectedUnit] = useState<any>(null);
+  const [selectedUnit, setSelectedUnit] = useState<UnitHistoryEntry | null>(null);
 
   // OEE Query States
   const [queryDate, setQueryDate] = useState(() => {
@@ -82,7 +122,6 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
   });
   const [queryShift, setQueryShift] = useState('ALL');
   const [isQuerying, setIsQuerying] = useState(false);
-  const [querySeed, setQuerySeed] = useState('default');
 
   // Fetch alarms for the specific machine
   const { data: allAlarms = [] } = useQuery({
@@ -92,11 +131,11 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
   });
 
   const machineAlarms = useMemo(() => {
-    return allAlarms.filter((a: any) => a.machineId === machine.id);
+    return allAlarms.filter((alarm) => alarm.machineId === machine.id);
   }, [allAlarms, machine.id]);
 
   const activeAlarmsCount = useMemo(() => {
-    return machineAlarms.filter((a: any) => a.status === 'ACTIVE').length;
+    return machineAlarms.filter((alarm) => alarm.status === 'ACTIVE').length;
   }, [machineAlarms]);
 
   // Mutations for Alarms
@@ -107,7 +146,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
       queryClient.invalidateQueries({ queryKey: ['alarms-list-machine'] });
       closeAction();
     },
-    onError: (err: any) => setActionError(err.response?.data?.error || t('alarms.ackError', 'Lỗi xác nhận')),
+    onError: (error) => setActionError(getRequestErrorMessage(error) || t('alarms.ackError', 'Lỗi xác nhận')),
   });
 
   const resolveMutation = useMutation({
@@ -117,7 +156,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
       queryClient.invalidateQueries({ queryKey: ['alarms-list-machine'] });
       closeAction();
     },
-    onError: (err: any) => setActionError(err.response?.data?.error || t('alarms.resolveError', 'Lỗi đóng sự cố')),
+    onError: (error) => setActionError(getRequestErrorMessage(error) || t('alarms.resolveError', 'Lỗi đóng sự cố')),
   });
 
   const closeAction = () => {
@@ -136,12 +175,12 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
 
   // Prepare general stats
   const live = machine.lastPlcData;
-  const temp = live?.temperature ?? live?.Temperature;
-  const press = live?.pressure ?? live?.Pressure;
   const speedVal = live?.speed ?? live?.Speed ?? 0;
   const prodQty = live?.productionCount ?? live?.ProductionCount ?? 0;
 
   // Render CPU, RAM, Uptime
+  // Retained for the telemetry extension points that consume this detail model.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const formatUptime = (seconds: number) => {
     if (!seconds) return `0 ${t('common.time.minuteName', 'phút')}`;
     const hrs = Math.floor(seconds / 3600);
@@ -154,7 +193,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
   const unitHistory = useMemo(() => {
     if (!history || history.length === 0) return [];
     
-    const list = [];
+    const list: UnitHistoryEntry[] = [];
     let unitIndex = 1;
     
     // Sort history chronologically (oldest first) so indices increment nicely
@@ -186,7 +225,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
 
         // Status: NG if active alarms existed
         const isNg = random() > 0.95; // 5% base defect rate
-        const status = isNg ? 'NG' : 'OK';
+        const status: UnitHistoryEntry['status'] = isNg ? 'NG' : 'OK';
 
         list.push({
           id: `UNIT-${machine.machineCode || 'MC'}-${10000 + unitIndex++}`,
@@ -276,7 +315,6 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
     setIsQuerying(true);
     setTimeout(() => {
       setIsQuerying(false);
-      setQuerySeed(`${queryDate}-${queryShift}`);
     }, 400);
   };
 
@@ -356,14 +394,14 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
   const tabClass = (tab: typeof activeTab) =>
     `flex items-center gap-2 px-5 py-3 border-b-2 font-bold text-xs uppercase tracking-wider transition-all duration-300 ${
       activeTab === tab
-        ? 'border-[#20DFF3] text-[#20DFF3] bg-[#20DFF3]/5 shadow-[0_-4px_12px_rgba(32,223,243,0.05)]'
-        : 'border-transparent text-slate-400 hover:text-white hover:border-slate-700'
+        ? 'machine-detail-tabs__tab is-active'
+        : 'machine-detail-tabs__tab'
     }`;
 
   return (
-    <div className="space-y-6">
+    <div className="machine-detail-tabs space-y-6">
       {/* Navigation Tabs */}
-      <div className="flex border-b border-[#2F7BFF]/25 bg-surface-container-lowest/80 rounded-t-xl overflow-hidden">
+      <div className="machine-detail-tabs__navigation flex border-b border-[#2F7BFF]/25 bg-surface-container-lowest/80 rounded-t-xl overflow-hidden">
         <button onClick={() => setActiveTab('dashboard')} className={tabClass('dashboard')}>
           <Cpu className="w-4 h-4" />
           {t('machines.detail.tabHome', 'Trang chủ')}
@@ -458,15 +496,15 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                       <AreaChart data={chartHistory}>
                         <defs>
                           <linearGradient id="colorProdHome" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#2F7BFF" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#2F7BFF" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(87, 126, 192, 0.1)" />
-                        <XAxis dataKey="time" stroke="#7183A8" fontSize={9} tickLine={false} />
-                        <YAxis stroke="#7183A8" fontSize={9} tickLine={false} />
-                        <Tooltip contentStyle={{ background: '#07112F', border: '1px solid #2F7BFF', borderRadius: '6px' }} />
-                        <Area type="monotone" dataKey="production" stroke="#2F7BFF" fillOpacity={1} fill="url(#colorProdHome)" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#343434" />
+                        <XAxis dataKey="time" stroke="#b0b0b0" fontSize={9} tickLine={false} />
+                        <YAxis stroke="#b0b0b0" fontSize={9} tickLine={false} />
+                        <Tooltip contentStyle={{ background: '#232323', border: '1px solid #454545', borderRadius: '6px' }} />
+                        <Area type="monotone" dataKey="production" stroke="#ef4444" fillOpacity={1} fill="url(#colorProdHome)" />
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
@@ -481,11 +519,11 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                 <div className="h-60 w-full">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <LineChart data={yieldHistory}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(87, 126, 192, 0.1)" />
-                      <XAxis dataKey="time" stroke="#7183A8" fontSize={9} tickLine={false} />
-                      <YAxis domain={[95, 101]} stroke="#7183A8" fontSize={9} tickLine={false} />
-                      <Tooltip contentStyle={{ background: '#07112F', border: '1px solid #38f26b', borderRadius: '6px' }} />
-                      <Line type="monotone" dataKey="yield" stroke="#38f26b" strokeWidth={2} dot={{ fill: '#38f26b', r: 3 }} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#343434" />
+                      <XAxis dataKey="time" stroke="#b0b0b0" fontSize={9} tickLine={false} />
+                      <YAxis domain={[95, 101]} stroke="#b0b0b0" fontSize={9} tickLine={false} />
+                      <Tooltip contentStyle={{ background: '#232323', border: '1px solid #454545', borderRadius: '6px' }} />
+                      <Line type="monotone" dataKey="yield" stroke="#38b785" strokeWidth={2} dot={{ fill: '#38b785', r: 3 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -499,23 +537,23 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                 <div>
                   <h3 className="font-extrabold text-white text-xs uppercase tracking-wider mb-4">{t('machines.detail.topAlarmsTitle', 'TOP 5 ALARMS')}</h3>
                   <div className="space-y-3">
-                    {machineAlarms.slice(0, 5).map((a: any, idx: number) => (
+                    {machineAlarms.slice(0, 5).map((alarm, idx) => (
                       <div key={idx} className="flex items-center justify-between p-2.5 rounded bg-slate-900/30 border border-border/30 animate-fade-in">
                         <div className="flex items-center gap-3">
                           <span className="w-5 h-5 rounded-full bg-slate-900 border border-border flex items-center justify-center text-[10px] font-black text-slate-400">
                             {idx + 1}
                           </span>
-                          <span className="font-semibold text-slate-200">{a.message}</span>
+                          <span className="font-semibold text-slate-200">{alarm.message}</span>
                         </div>
                         <span className="text-[10px] text-[#ff5c6c] font-black font-mono">
-                          {a.severity}
+                          {alarm.severity}
                         </span>
                       </div>
                     ))}
                     {machineAlarms.length === 0 && (
                       <div className="h-40 flex flex-col items-center justify-center gap-2 border border-dashed border-border/40 rounded-lg">
                         <Info className="w-6 h-6 text-slate-500" />
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">No data available</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('common.noData')}</span>
                       </div>
                     )}
                   </div>
@@ -529,11 +567,11 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                   {chartHistory.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <BarChart data={chartHistory}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(87, 126, 192, 0.1)" />
-                        <XAxis dataKey="time" stroke="#7183A8" fontSize={9} tickLine={false} />
-                        <YAxis stroke="#7183A8" fontSize={9} tickLine={false} />
-                        <Tooltip contentStyle={{ background: '#07112F', border: '1px solid #38f26b', borderRadius: '6px' }} />
-                        <Bar dataKey="production" fill="#38f26b" radius={[2, 2, 0, 0]} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#343434" />
+                        <XAxis dataKey="time" stroke="#b0b0b0" fontSize={9} tickLine={false} />
+                        <YAxis stroke="#b0b0b0" fontSize={9} tickLine={false} />
+                        <Tooltip contentStyle={{ background: '#232323', border: '1px solid #454545', borderRadius: '6px' }} />
+                        <Bar dataKey="production" fill="#38b785" radius={[2, 2, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -596,7 +634,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                   </thead>
                   <tbody>
                     {machineAlarms.length > 0 ? (
-                      machineAlarms.map((alarm: any) => (
+                      machineAlarms.map((alarm) => (
                         <tr key={alarm.id} className="border-b border-border/40 hover:bg-slate-900/30 transition-colors">
                           <td className="p-3">
                             <span className={`px-2 py-0.5 rounded font-black uppercase text-[9px] ${
@@ -742,11 +780,11 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                 <div className="h-60 w-full">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <BarChart data={oeeHourlyOutput}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(87, 126, 192, 0.1)" />
-                      <XAxis dataKey="hour" stroke="#7183A8" fontSize={9} tickLine={false} />
-                      <YAxis stroke="#7183A8" fontSize={9} tickLine={false} />
-                      <Tooltip contentStyle={{ background: '#07112F', border: '1px solid #2F7BFF', borderRadius: '6px' }} />
-                      <Bar dataKey="qty" fill="#2F7BFF" radius={[3, 3, 0, 0]} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#343434" />
+                      <XAxis dataKey="hour" stroke="#b0b0b0" fontSize={9} tickLine={false} />
+                      <YAxis stroke="#b0b0b0" fontSize={9} tickLine={false} />
+                      <Tooltip contentStyle={{ background: '#232323', border: '1px solid #454545', borderRadius: '6px' }} />
+                      <Bar dataKey="qty" fill="#ef4444" radius={[3, 3, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -758,11 +796,11 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                 <div className="h-60 w-full">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <LineChart data={oeeYieldTrend}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(87, 126, 192, 0.1)" />
-                      <XAxis dataKey="hour" stroke="#7183A8" fontSize={9} tickLine={false} />
-                      <YAxis domain={[95, 101]} stroke="#7183A8" fontSize={9} tickLine={false} />
-                      <Tooltip contentStyle={{ background: '#07112F', border: '1px solid #38f26b', borderRadius: '6px' }} />
-                      <Line type="monotone" dataKey="yield" stroke="#38f26b" strokeWidth={2} dot={{ fill: '#38f26b', r: 3 }} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#343434" />
+                      <XAxis dataKey="hour" stroke="#b0b0b0" fontSize={9} tickLine={false} />
+                      <YAxis domain={[95, 101]} stroke="#b0b0b0" fontSize={9} tickLine={false} />
+                      <Tooltip contentStyle={{ background: '#232323', border: '1px solid #454545', borderRadius: '6px' }} />
+                      <Line type="monotone" dataKey="yield" stroke="#38b785" strokeWidth={2} dot={{ fill: '#38b785', r: 3 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -774,11 +812,11 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                 <div className="h-60 w-full">
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <LineChart data={oeeCtTrend}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(87, 126, 192, 0.1)" />
-                      <XAxis dataKey="hour" stroke="#7183A8" fontSize={9} tickLine={false} />
-                      <YAxis domain={[2, 10]} stroke="#7183A8" fontSize={9} tickLine={false} />
-                      <Tooltip contentStyle={{ background: '#07112F', border: '1px solid #ffc547', borderRadius: '6px' }} />
-                      <Line type="monotone" dataKey="ct" stroke="#ffc547" strokeWidth={2} dot={{ fill: '#ffc547', r: 3 }} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#343434" />
+                      <XAxis dataKey="hour" stroke="#b0b0b0" fontSize={9} tickLine={false} />
+                      <YAxis domain={[2, 10]} stroke="#b0b0b0" fontSize={9} tickLine={false} />
+                      <Tooltip contentStyle={{ background: '#232323', border: '1px solid #454545', borderRadius: '6px' }} />
+                      <Line type="monotone" dataKey="ct" stroke="#ffb739" strokeWidth={2} dot={{ fill: '#ffb739', r: 3 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -836,12 +874,12 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                 <div className="flex items-center gap-2">
                   <select
                     value={scheduleStatusFilter}
-                    onChange={(e: any) => setScheduleStatusFilter(e.target.value)}
+                    onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setScheduleStatusFilter(event.target.value as typeof scheduleStatusFilter)}
                     className="bg-slate-900 border border-[#2F7BFF]/30 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-[#20DFF3] transition-all"
                   >
                     <option value="ALL">{t('unitHistory.statusAll', 'Tất cả trạng thái')}</option>
-                    <option value="OK">OK</option>
-                    <option value="NG">NG</option>
+                    <option value="OK">{t('unitHistory.statusOk')}</option>
+                    <option value="NG">{t('unitHistory.statusNg')}</option>
                   </select>
                 </div>
               </div>
@@ -853,11 +891,11 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                   <span className="text-[#18D7FF] font-black">{unitStats.total}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-slate-400">OK:</span>
+                  <span className="text-slate-400">{t('unitHistory.statOk')}</span>
                   <span className="text-[#38f26b] font-black">{unitStats.ok}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-slate-400">NG:</span>
+                  <span className="text-slate-400">{t('unitHistory.statNg')}</span>
                   <span className="text-[#ff5c6c] font-black">{unitStats.ng}</span>
                 </div>
               </div>
@@ -890,7 +928,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                           <td className="p-3 font-mono font-bold text-slate-200">{unit.id}</td>
                           <td className="p-3 font-mono text-slate-400">{unit.startTime.toLocaleTimeString(locale)}</td>
                           <td className="p-3 font-mono text-slate-400">{unit.endTime.toLocaleTimeString(locale)}</td>
-                          <td className="p-3 font-mono text-[#18d7ff] font-bold">{unit.cycleTimeSeconds.toFixed(1)}s</td>
+                          <td className="p-3 font-mono text-[#18d7ff] font-bold">{t('common.time.secondsShort', { value: unit.cycleTimeSeconds.toFixed(1) })}</td>
                           <td className="p-3 font-semibold">{unit.errorCount}</td>
                           <td className="p-3">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
@@ -1035,7 +1073,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="p-3 bg-slate-900/40 rounded-lg border border-border/10 flex justify-between items-center">
                     <span className="text-slate-400">{t('unitHistory.detail.cycleVal', 'Thời gian hoàn thành (s):')}</span>
-                    <span className="font-bold font-mono text-white">{selectedUnit.cycleTimeSeconds.toFixed(1)}s</span>
+                    <span className="font-bold font-mono text-white">{t('common.time.secondsShort', { value: selectedUnit.cycleTimeSeconds.toFixed(1) })}</span>
                   </div>
                   <div className="p-3 bg-slate-900/40 rounded-lg border border-border/10 flex justify-between items-center">
                     <span className="text-slate-400">{t('unitHistory.detail.errors', 'Số lỗi phát hiện:')}</span>
@@ -1055,11 +1093,11 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="p-3 bg-slate-900/40 rounded-lg border border-border/10">
                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">{t('unitHistory.detail.frontRobot', 'Robot trước (Alias R0)')}</span>
-                    <span className="text-base font-black text-white font-mono mt-1 block">{selectedUnit.frontRobotCount} cycles</span>
+                    <span className="text-base font-black text-white font-mono mt-1 block">{t('unitHistory.cycles', { count: selectedUnit.frontRobotCount })}</span>
                   </div>
                   <div className="p-3 bg-slate-900/40 rounded-lg border border-border/10">
                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">{t('unitHistory.detail.rearRobot', 'Robot sau (Alias R10)')}</span>
-                    <span className="text-base font-black text-white font-mono mt-1 block">{selectedUnit.rearRobotCount} cycles</span>
+                    <span className="text-base font-black text-white font-mono mt-1 block">{t('unitHistory.cycles', { count: selectedUnit.rearRobotCount })}</span>
                   </div>
                 </div>
               </div>

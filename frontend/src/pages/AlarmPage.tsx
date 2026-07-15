@@ -20,6 +20,14 @@ import { Dropdown } from '../shared/components/ui/Dropdown';
 import { StatCard } from '../shared/components/ui/StatCard';
 import { TechPanel } from '../shared/components/ui/TechPanel';
 import { usePermissions } from '../shared/hooks/usePermissions';
+import './modern-alarms.css';
+
+function getActionErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error !== 'object' || error === null) return fallback;
+
+  const response = (error as { response?: { data?: { error?: unknown } } }).response;
+  return typeof response?.data?.error === 'string' ? response.data.error : fallback;
+}
 
 export const AlarmPage = () => {
   const { t, i18n } = useTranslation();
@@ -60,7 +68,7 @@ export const AlarmPage = () => {
       invalidateAllAlarmsData();
       closeAction();
     },
-    onError: (err: any) => setActionError(err.response?.data?.error || 'Lỗi xác nhận'),
+    onError: (error) => setActionError(getActionErrorMessage(error, 'Lỗi xác nhận')),
   });
 
   const resolveMutation = useMutation({
@@ -70,7 +78,7 @@ export const AlarmPage = () => {
       invalidateAllAlarmsData();
       closeAction();
     },
-    onError: (err: any) => setActionError(err.response?.data?.error || 'Lỗi đóng sự cố'),
+    onError: (error) => setActionError(getActionErrorMessage(error, 'Lỗi đóng sự cố')),
   });
 
   const closeAction = () => {
@@ -94,12 +102,6 @@ export const AlarmPage = () => {
     LOW: { label: 'Thấp', icon: <Info className="h-3.5 w-3.5" />, variant: 'neutral' },
   };
 
-  const statusConfig: Record<string, { label: string; variant: 'primary' | 'success' | 'warning' | 'error' | 'info' | 'neutral' }> = {
-    ACTIVE: { label: 'Mới phát sinh', variant: 'error' },
-    ACKNOWLEDGED: { label: 'Đang xử lý', variant: 'warning' },
-    RESOLVED: { label: 'Đã khắc phục', variant: 'success' },
-  };
-
   const getSev = (s: string) => severityConfig[s.toUpperCase()] ?? severityConfig.LOW;
 
   const active = alarms.filter(a => a.status === 'ACTIVE').length;
@@ -108,26 +110,27 @@ export const AlarmPage = () => {
   const critical = alarms.filter(a => a.severity === 'CRITICAL').length;
 
   return (
-    <div className="space-y-6 text-white">
+    <div className="modern-alarms space-y-6">
       {/* Title */}
-      <div className="flex items-start justify-between">
+      <header className="modern-alarms__header">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-text-primary uppercase flex items-center gap-3">
-            <span className="h-3.5 w-3.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
+          <p className="modern-alarms__eyebrow">{t('common.mode.readOnly')}</p>
+          <h1 className="modern-alarms__title">
+            <span className="modern-alarms__title-mark" aria-hidden="true" />
             {t('alarms.title', 'Cảnh báo hệ thống')}
           </h1>
-          <p className="mt-2 text-base text-text-secondary">{t('alarms.subtitle', 'Giám sát sự cố kỹ thuật từ PLC — xác nhận và khắc phục bởi kỹ sư')}</p>
+          <p className="modern-alarms__subtitle">{t('alarms.subtitle', 'Giám sát sự cố kỹ thuật từ PLC — xác nhận và khắc phục bởi kỹ sư')}</p>
         </div>
         {critical > 0 && (
-          <Badge variant="error" dot className="px-3.5 py-2 text-xs font-black shadow-[0_0_12px_rgba(239,68,68,0.35)] animate-bounce">
+          <Badge variant="error" dot className="modern-alarms__critical px-3.5 py-2 text-xs font-bold">
             {critical} {t('alarms.criticalLabel', 'CRITICAL')}
           </Badge>
         )}
-      </div>
+      </header>
 
       {/* Overview Stat Cards Grid */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatCard label={t('alarms.total', 'Tổng cảnh báo')} value={alarms.length} accent="info" />
+      <div className="modern-alarms__stat-grid">
+        <StatCard label={t('alarms.total', 'Tổng cảnh báo')} value={alarms.length} accent="neutral" />
         <StatCard label={t('alarms.active', 'Đang active')} value={active} accent="error" />
         <StatCard label={t('alarms.acknowledged', 'Đang xử lý')} value={acknowledged} accent="warning" />
         <StatCard label={t('alarms.resolved', 'Đã khắc phục')} value={resolved} accent="success" />
@@ -137,13 +140,13 @@ export const AlarmPage = () => {
       <TechPanel
         title={t('alarms.filtersTitle', 'Bộ lọc sự cố')}
         extraHeader={
-          <span className="text-xs font-bold text-cyan-400/80">
+          <span className="modern-alarms__result-count">
             {alarms.length} {t('alarms.resultsLabel', 'kết quả')} · {t('alarms.refreshLabel', 'tự động cập nhật')}
           </span>
         }
       >
-        <div className="flex flex-wrap items-center gap-5">
-          <span className="text-xs font-black uppercase tracking-wider text-text-secondary">{t('alarms.filterLabel', 'Trạng thái:')}</span>
+        <div className="modern-alarms__filter-row">
+          <span className="modern-alarms__filter-label">{t('alarms.filterLabel', 'Trạng thái:')}</span>
           <Dropdown
             value={statusFilter}
             onChange={setStatusFilter}
@@ -214,26 +217,17 @@ export const AlarmPage = () => {
         </Modal>
       )}
 
-      {/* Main Alarms Panel Board */}
-      <div className="overflow-hidden rounded-none border border-[#14356a] bg-[#0A1129]/80 shadow-[0_4px_15px_rgba(0,0,0,0.35)] relative">
-        {/* Decorative corner highlights */}
-        <div className="absolute inset-0 pointer-events-none select-none z-0">
-          <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-cyan-400" />
-          <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-cyan-400" />
-          <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-cyan-400" />
-          <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-cyan-400" />
-        </div>
-
+      <section className="modern-alarms__table-panel">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-20 relative z-10">
-            <div className="h-9 w-9 animate-spin rounded-full border-4 border-cyan-500/25 border-t-cyan-400" />
-            <span className="text-sm font-bold text-cyan-400/80">{t('alarms.loading', 'Đang tải danh sách cảnh báo...')}</span>
+          <div className="modern-alarms__loading">
+            <div className="modern-alarms__loading-spinner" aria-hidden="true" />
+            <span>{t('alarms.loading', 'Đang tải danh sách cảnh báo...')}</span>
           </div>
         ) : (
-          <div className="overflow-x-auto relative z-10">
-            <table className="w-full border-collapse text-left">
+          <div className="modern-alarms__table-wrap">
+            <table className="modern-alarms__table">
               <thead>
-                <tr className="border-b border-[#14356a]/65 bg-[#070c1e]/90 text-[10px] font-black uppercase tracking-wider text-text-muted">
+                <tr>
                   <th className="px-6 py-4">{t('alarms.table.device', 'Thiết bị')}</th>
                   <th className="px-6 py-4">{t('alarms.table.severity', 'Mức độ')}</th>
                   <th className="px-6 py-4">{t('alarms.table.message', 'Nội dung sự cố')}</th>
@@ -243,47 +237,47 @@ export const AlarmPage = () => {
                   {canAcknowledge && <th className="px-6 py-4 text-center">{t('alarms.table.actions', 'Thao tác')}</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#14356a]/30">
+              <tbody>
                 {alarms.length > 0 ? alarms.map(alarm => {
                   const sev = getSev(alarm.severity);
                   // WCAG accessibility overrides: Critical alerts retain standard bright warnings
                   const isCritical = alarm.severity.toUpperCase() === 'CRITICAL';
                   const isHigh = alarm.severity.toUpperCase() === 'HIGH';
-                  const rowStyle = isCritical ? 'bg-red-500/5 hover:bg-red-500/10' : (isHigh ? 'bg-amber-500/5 hover:bg-amber-500/10' : 'hover:bg-[#070c1e]/40');
+                  const rowStyle = isCritical ? 'is-critical' : (isHigh ? 'is-high' : '');
 
                   return (
-                    <tr key={alarm.id} className={`transition-colors ${rowStyle}`}>
+                    <tr key={alarm.id} className={`modern-alarms__row ${rowStyle}`}>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2.5">
-                          <span className={`h-2.5 w-2.5 rounded-full ${isCritical ? 'bg-red-500 animate-ping' : isHigh ? 'bg-amber-400' : 'bg-cyan-400'}`} />
-                          <span className="text-sm font-black text-[#EEEEEE]">{tDynamic(alarm.machineName)}</span>
+                        <div className="modern-alarms__machine">
+                          <span className={`modern-alarms__machine-dot${isCritical ? ' is-critical' : isHigh ? ' is-high' : ''}`} />
+                          <span>{tDynamic(alarm.machineName)}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <Badge variant={sev.variant}>{sev.label}</Badge>
                       </td>
-                      <td className={`px-6 py-4 max-w-xs text-sm ${isCritical ? 'text-red-300 font-bold' : isHigh ? 'text-amber-200' : 'text-text-secondary'}`}>{tDynamic(alarm.message)}</td>
+                      <td className={`modern-alarms__message${isCritical ? ' is-critical' : isHigh ? ' is-high' : ''}`}>{tDynamic(alarm.message)}</td>
                       <td className="px-6 py-4">
-                        <StatusBadge status={alarm.status.toLowerCase() as any} size="sm" />
+                        <StatusBadge status={alarm.status.toLowerCase()} size="sm" />
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex flex-col gap-0.5 text-xs text-text-muted">
-                          <span className="flex items-center gap-1 font-bold">
-                            <Clock className="h-3 w-3 text-cyan-400/80" />
+                        <div className="modern-alarms__timestamp">
+                          <strong>
+                            <Clock className="h-3 w-3" />
                             {new Date(alarm.createdAt).toLocaleTimeString(locale)}
-                          </span>
+                          </strong>
                           <span>{new Date(alarm.createdAt).toLocaleDateString(locale)}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-xs">
                         {alarm.acknowledgedBy ? (
-                          <div className="space-y-1">
-                            <span className="flex items-center gap-1 font-bold text-text-secondary">
-                              <User className="h-3.5 w-3.5 text-cyan-400/80" />
+                          <div className="modern-alarms__handler">
+                            <strong>
+                              <User className="h-3.5 w-3.5" />
                               {alarm.acknowledgedBy}
-                            </span>
+                            </strong>
                             {alarm.notes && (
-                              <p className="truncate rounded border border-[#14356a] bg-[#070c1e]/90 px-2 py-1 text-[10px] text-text-muted">{tDynamic(alarm.notes)}</p>
+                              <p className="modern-alarms__note">{tDynamic(alarm.notes)}</p>
                             )}
                           </div>
                         ) : (
@@ -292,11 +286,11 @@ export const AlarmPage = () => {
                       </td>
                       {canAcknowledge && (
                         <td className="px-6 py-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
+                          <div className="modern-alarms__actions">
                             {alarm.status === 'ACTIVE' && (
                               <button
                                 onClick={() => { setActionAlarm(alarm); setActionType('ack'); }}
-                                className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-black text-red-400 transition-colors hover:bg-red-500/25 animate-pulse cursor-pointer shadow-[0_0_8px_rgba(239,68,68,0.2)]"
+                                className="modern-alarms__button modern-alarms__button--ack"
                               >
                                 {t('alarms.ackButton', 'Xử lý')}
                               </button>
@@ -304,13 +298,13 @@ export const AlarmPage = () => {
                             {alarm.status !== 'RESOLVED' && (
                               <button
                                 onClick={() => { setActionAlarm(alarm); setActionType('resolve'); }}
-                                className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-black text-emerald-400 transition-colors hover:bg-emerald-500/25 cursor-pointer shadow-[0_0_8px_rgba(16,185,129,0.2)]"
+                                className="modern-alarms__button modern-alarms__button--resolve"
                               >
                                 {t('alarms.resolveButton', 'Đóng lỗi')}
                               </button>
                             )}
                             {alarm.status === 'RESOLVED' && (
-                              <span className="flex items-center gap-1 text-xs font-black text-emerald-400">
+                              <span className="modern-alarms__closed">
                                 <CheckCircle className="h-4 w-4" /> {t('alarms.closed', 'Đã đóng')}
                               </span>
                             )}
@@ -321,9 +315,11 @@ export const AlarmPage = () => {
                   );
                 }) : (
                   <tr>
-                    <td colSpan={canAcknowledge ? 7 : 6} className="py-20 text-center">
-                      <BellOff className="mx-auto mb-4 h-12 w-12 text-cyan-400/50" />
-                      <p className="text-base font-bold text-text-secondary">{t('alarms.empty', 'Không có cảnh báo phù hợp với bộ lọc')}</p>
+                    <td colSpan={canAcknowledge ? 7 : 6}>
+                      <div className="modern-alarms__empty">
+                        <BellOff className="h-12 w-12" />
+                        <p>{t('alarms.empty', 'Không có cảnh báo phù hợp với bộ lọc')}</p>
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -331,7 +327,7 @@ export const AlarmPage = () => {
             </table>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 };

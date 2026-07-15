@@ -13,14 +13,21 @@ import { Badge } from '../shared/components/ui/Badge';
 import { usePermissions } from '../shared/hooks/usePermissions';
 import type { Machine } from '../features/machines/services/machines.api';
 import { SharedDashboardPage } from '../features/dashboard/components/SharedDashboardPage';
+import './modern-lines.css';
 
 export default function LinesPage() {
-  const { t } = useTranslation();
-  const { canEdit, canCreate, isViewer } = usePermissions();
+  const { isViewer } = usePermissions();
 
   if (isViewer) {
-    return <SharedDashboardPage role="viewer" hideBottomCharts={true} />;
+    return <SharedDashboardPage role="viewer" />;
   }
+
+  return <LineManagementPage />;
+}
+
+function LineManagementPage() {
+  const { t } = useTranslation();
+  const { canEdit, canCreate } = usePermissions();
 
   const [selectedLine, setSelectedLine] = useState<ProductionLine | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -74,25 +81,27 @@ export default function LinesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
-        <Loader2 size={40} className="animate-spin text-[#00ADB5]" />
+      <div className="modern-lines-page modern-lines-page--loading">
+        <Loader2 size={32} className="modern-lines-page__loading-icon animate-spin" />
       </div>
     );
   }
 
   if (isError) {
     return (
-      <EmptyState
-        icon={<WifiOff size={56} />}
-        title={t('linesPage.error.title')}
-        description={t('linesPage.error.description')}
-      />
+      <div className="modern-lines-page">
+        <EmptyState
+          icon={<WifiOff size={56} />}
+          title={t('linesPage.error.title')}
+          description={t('linesPage.error.description')}
+        />
+      </div>
     );
   }
 
   if (selectedLine) {
     return (
-      <div className="flex h-[calc(100vh-8rem)] flex-col overflow-hidden rounded-lg border border-[#14356a] bg-[#060a16] shadow-2xl">
+      <div className="modern-lines-page modern-lines-page--editor">
         <DiagramEditor
           lineId={selectedLine.id}
           readOnly={!canEdit}
@@ -103,8 +112,8 @@ export default function LinesPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col overflow-hidden">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="modern-lines-page">
+      <div className="modern-lines-page__intro">
         <div>
           <h1 className="text-3xl font-black tracking-tight text-text-primary">{t('linesPage.title', 'Dây chuyền lắp ráp')}</h1>
           <p className="mt-2 text-base text-text-secondary">{t('linesPage.description', 'Quản lý danh sách dây chuyền lắp ráp và chỉnh sửa sơ đồ kết nối PLC.')}</p>
@@ -113,7 +122,7 @@ export default function LinesPage() {
         {canCreate && (
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#00ADB5] hover:bg-[#00ADB5]/80 px-4 py-2.5 font-bold text-white transition-colors self-end sm:self-auto cursor-pointer text-sm shadow-[0_0_12px_rgba(0,173,181,0.35)]"
+            className="modern-lines-page__create-button"
           >
             <Plus size={18} />
             {t('linesPage.add', { defaultValue: 'Thêm dây chuyền' })}
@@ -121,18 +130,18 @@ export default function LinesPage() {
         )}
       </div>
 
-      <div className="flex-1 overflow-auto pr-1 bg-[#0A1129]/40 border border-[#14356a] rounded-xl shadow-2xl mb-6">
-        <table className="w-full text-left border-collapse">
+      <div className="modern-lines-page__table-panel">
+        <table className="modern-lines-page__table">
           <thead>
             <tr className="border-b border-[#14356a] bg-[#101625]/85">
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-16">STT</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider">Tên dây chuyền</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-28">Số máy</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-28">Trạng thái</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-28">OEE Chuyền</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-36">Sản lượng</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-32">Tốc độ UPH</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-28">Thao tác</th>
+              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-16">{t('linesPage.table.no')}</th>
+              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider">{t('linesPage.table.name')}</th>
+              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-28">{t('linesPage.table.machines')}</th>
+              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-28">{t('linesPage.table.status')}</th>
+              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-28">{t('linesPage.table.oee')}</th>
+              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-36">{t('linesPage.table.production')}</th>
+              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-32">{t('linesPage.table.uph')}</th>
+              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-28">{t('linesPage.table.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -280,7 +289,7 @@ function LineRow({ index, line, onClick, onDelete, canDelete }: LineRowProps) {
   return (
     <tr 
       onClick={onClick}
-      className={`border-b border-[#14356a]/40 cursor-pointer transition-all duration-200 ${rowBgClass}`}
+      className={`modern-lines-page__row${isError ? ' modern-lines-page__row--error' : ''} border-b border-[#14356a]/40 cursor-pointer transition-all duration-200 ${rowBgClass}`}
     >
       <td className="px-6 py-4.5 font-mono text-[#9CA3AF] text-center font-bold">
         {String(index + 1).padStart(2, '0')}
@@ -300,10 +309,10 @@ function LineRow({ index, line, onClick, onDelete, canDelete }: LineRowProps) {
         {lineOee}%
       </td>
       <td className="px-6 py-4.5 font-mono font-black text-center text-[#EEEEEE] text-sm">
-        {lineOutput.toLocaleString(locale)} <span className="text-[10px] font-bold text-[#9CA3AF]">pcs</span>
+        {lineOutput.toLocaleString(locale)} <span className="text-[10px] font-bold text-[#9CA3AF]">{t('linesPage.units.pieces')}</span>
       </td>
       <td className="px-6 py-4.5 font-mono font-black text-center text-[#38BDF8] text-sm">
-        {lineUph} <span className="text-[10px] font-bold text-[#9CA3AF]">p/h</span>
+        {lineUph} <span className="text-[10px] font-bold text-[#9CA3AF]">{t('linesPage.units.perHour')}</span>
       </td>
       <td className="px-6 py-4.5 text-center flex items-center justify-center gap-2">
         <button
@@ -311,21 +320,21 @@ function LineRow({ index, line, onClick, onDelete, canDelete }: LineRowProps) {
             e.stopPropagation();
             onClick();
           }}
-          className="px-3 py-1.5 bg-[#00ADB5]/10 hover:bg-[#00ADB5] border border-[#00ADB5]/30 text-[#00ADB5] hover:text-white text-xs font-black uppercase tracking-wider rounded transition-all cursor-pointer"
+          className="modern-lines-page__action-button"
         >
-          Sơ đồ
+          {t('linesPage.actions.diagram')}
         </button>
         {canDelete && (
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (window.confirm('Xóa dây chuyền này?')) {
+              if (window.confirm(t('linesPage.confirmDelete'))) {
                 onDelete(line.id);
               }
             }}
-            className="px-3 py-1.5 bg-[#EF4444]/10 hover:bg-[#EF4444] border border-[#EF4444]/30 text-[#EF4444] hover:text-white text-xs font-black uppercase tracking-wider rounded transition-all cursor-pointer"
+            className="modern-lines-page__action-button modern-lines-page__action-button--danger"
           >
-            Xóa
+            {t('common.actions.delete')}
           </button>
         )}
       </td>
