@@ -11,10 +11,12 @@ services:
       dockerfile: Dockerfile
     container_name: mkz-backend
     ports:
-      - "5165:8080"
+      - "127.0.0.1:5165:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Host=mkz-db;Port=5432;Database=plc_monitoring;Username=postgres;Password=${MKZ_DB_PASSWORD:-12345678}
+      # An unset password is intentionally inert: PostgreSQL refuses to start
+      # until a real MKZ_DB_PASSWORD is supplied by the deployment environment.
+      - ConnectionStrings__DefaultConnection=Host=mkz-db;Port=5432;Database=plc_monitoring;Username=postgres;Password=${MKZ_DB_PASSWORD:-}
       - Jwt__Key=${JWT_SECRET:-SUPER_SECRET_KEY_FOR_PRODUCTION_CHANGE_ME}
       - MqttServer__Port=1883
     depends_on:
@@ -22,6 +24,7 @@ services:
         condition: service_healthy
     networks:
       - mkz-network
+      - mkz-backend-db
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
@@ -38,15 +41,13 @@ services:
     container_name: mkz-db
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${MKZ_DB_PASSWORD:-12345678}
+      - POSTGRES_PASSWORD=${MKZ_DB_PASSWORD:-}
       - POSTGRES_DB=plc_monitoring
-    ports:
-      - "5432:5432"
     volumes:
       - mkz-db-data:/var/lib/postgresql/data
       - ../backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
-      - mkz-network
+      - mkz-backend-db
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -80,7 +81,7 @@ services:
       dockerfile: Dockerfile
     container_name: odysseus
     ports:
-      - "7000:7000"
+      - "127.0.0.1:7000:7000"
     environment:
       - AUTH_ENABLED=true
       - APP_BIND=0.0.0.0
@@ -88,17 +89,20 @@ services:
       - DATABASE_URL=sqlite:///./data/app.db
       - CHROMADB_HOST=chromadb
       - CHROMADB_PORT=8000
+      # Local-development FastEmbed download workaround. This is an Odysseus
+      # process setting; do not pass it to the ChromaDB server.
+      - HF_HUB_DISABLE_XET=${HF_HUB_DISABLE_XET:-}
       - SEARXNG_INSTANCE=http://searxng:8080
       # MKZ Integration
-      - MKZ_DB_HOST=mkz-db
-      - MKZ_DB_PORT=5432
-      - MKZ_DB_NAME=plc_monitoring
-      - MKZ_DB_USER=postgres
-      - MKZ_DB_PASSWORD=${MKZ_DB_PASSWORD:-12345678}
+      # The factory database is not exposed to Odysseus. Read-only data flows
+      # through the backend REST API on the shared MKZ network instead.
+      - MKZ_BACKEND_URL=http://mkz-backend:8080
     volumes:
       - odysseus-data:/app/data
       - odysseus-logs:/app/logs
     depends_on:
+      mkz-backend:
+        condition: service_healthy
       chromadb:
         condition: service_healthy
       searxng:
@@ -112,17 +116,20 @@ services:
   # ChromaDB (Vector Database for RAG)
   # ==========================================
   chromadb:
-    image: chromadb/chroma:0.5.5
+    image: chromadb/chroma@sha256:1e0b73a187a28757c572acba508c46f48c9e8b0acaf5c20e6d95cdedce1acdf6
     container_name: chromadb
     ports:
-      - "8100:8000"
+      - "127.0.0.1:8100:8000"
     volumes:
-      - chromadb-data:/chroma/chroma
+      - chromadb-data:/data
     networks:
       - odysseus-internal
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      # chromadb/chroma:latest does not include curl. Bash's TCP probe is
+      # available in the image and proves that the HTTP listener is accepting
+      # connections without depending on a stale v1 endpoint.
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8000'"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -169,20 +176,33 @@ services:
       dockerfile: Dockerfile.sync
     container_name: mkz-sync
     environment:
-      - MKZ_DB_HOST=mkz-db
-      - MKZ_DB_PORT=5432
-      - MKZ_DB_NAME=plc_monitoring
-      - MKZ_DB_USER=postgres
-      - MKZ_DB_PASSWORD=${MKZ_DB_PASSWORD:-12345678}
+      # Sync only uses the read-only REST API; it never opens the factory DB.
+      - MKZ_BACKEND_URL=http://mkz-backend:8080
+      - CHROMADB_HOST=chromadb
+      - CHROMADB_PORT=8000
+      - HF_HUB_DISABLE_XET=${HF_HUB_DISABLE_XET:-}
       - ODYSSEUS_ROOT=/app
-      - SYNC_INTERVAL_HOURS=1
-      - SYNC_RETENTION_DAYS=30
+      - SYNC_INTERVAL_SECONDS=${SYNC_INTERVAL_SECONDS:-3600}
     volumes:
       - odysseus-data:/app/data
     depends_on:
-      - mkz-db
+      mkz-backend:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
     networks:
       - mkz-network
+      - odysseus-internal
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        while true; do
+          if ! python /app/scripts/sync_mkz_to_odysseus.py; then
+            echo "MKZ sync failed; retrying after $${SYNC_INTERVAL_SECONDS}s" >&2
+          fi
+          sleep "$${SYNC_INTERVAL_SECONDS}"
+        done
     restart: unless-stopped
 
 # ==========================================
@@ -191,6 +211,10 @@ services:
 networks:
   mkz-network:
     driver: bridge
+  # Database-only network: Odysseus and the sync worker never join it.
+  mkz-backend-db:
+    driver: bridge
+    internal: true
   odysseus-internal:
     driver: bridge
 
