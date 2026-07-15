@@ -1,153 +1,112 @@
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Activity, CalendarClock, ClipboardList, RefreshCw, UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { queryKeys } from '../../app/queryKeys';
+import { Activity, Calendar, ClipboardList, User } from 'lucide-react';
 import { auditLogsApi } from '../../features/admin/services/auditLogs.api';
 import { useDynamicTranslation } from '../../shared/lib/translator';
-import { formatDateTime } from '../../shared/lib/utils';
-import { useUiStore } from '../../shared/store/ui.store';
-import { Badge, type BadgeVariant } from '../../shared/components/ui/Badge';
-import { Button } from '../../shared/components/ui/Button';
-import { DataState } from '../../shared/components/ui/DataState';
-import { PageHeader } from '../../shared/components/ui/PageHeader';
-import { Surface } from '../../shared/components/ui/Surface';
+import './admin-modern.css';
 
-function getActionVariant(action: string): BadgeVariant {
-  const normalizedAction = action.toUpperCase();
+type AuditTone = 'danger' | 'success' | 'warning' | 'neutral';
 
-  if (normalizedAction.includes('DELETE') || normalizedAction.includes('REVOKE') || normalizedAction.includes('FAILED')) {
-    return 'error';
-  }
-  if (normalizedAction.includes('CREATE') || normalizedAction.includes('LOGIN') || normalizedAction.includes('SUCCESS')) {
-    return 'success';
-  }
-  if (normalizedAction.includes('UPDATE') || normalizedAction.includes('EDIT') || normalizedAction.includes('REORDER')) {
-    return 'info';
-  }
-
+function actionTone(action: string): AuditTone {
+  const normalized = action.toUpperCase();
+  if (normalized.includes('DELETE') || normalized.includes('REVOKE') || normalized.includes('FAILED')) return 'danger';
+  if (normalized.includes('CREATE') || normalized.includes('ADD') || normalized.includes('APPROVE') || normalized.includes('SUCCESS')) return 'success';
+  if (normalized.includes('UPDATE') || normalized.includes('REORDER') || normalized.includes('EDIT')) return 'warning';
   return 'neutral';
 }
 
-export default function AuditLogPage() {
-  const { t } = useTranslation();
-  const { tDynamic } = useDynamicTranslation();
-  const refreshIntervalSeconds = useUiStore((state) => state.refreshIntervalSeconds);
-  const {
-    data: logs = [],
-    isError,
-    isFetching,
-    isLoading,
-    isSuccess,
-    refetch,
-  } = useQuery({
-    queryKey: queryKeys.admin.auditLogs(100),
-    queryFn: () => auditLogsApi.getAll(100),
-    refetchInterval: refreshIntervalSeconds > 0 ? refreshIntervalSeconds * 1000 : false,
-  });
-
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow={t('settings.sections.audit')}
-        title={t('pages.auditLogs.title')}
-        description={t('pages.auditLogs.subtitle')}
-        className="max-sm:flex-col max-sm:items-start"
-        actions={(
-          <>
-            {isSuccess && (
-              <Badge variant="neutral" size="md">
-                {t('pages.auditLogs.recordsCount', { count: logs.length })}
-              </Badge>
-            )}
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={isFetching && !isLoading}
-              startIcon={<RefreshCw size={16} aria-hidden="true" />}
-              onClick={() => {
-                void refetch();
-              }}
-            >
-              {t('common.actions.refresh')}
-            </Button>
-          </>
-        )}
-      />
-
-      {isLoading ? (
-        <DataState kind="loading" title={t('pages.auditLogs.loading')} />
-      ) : isError ? (
-        <DataState
-          kind="error"
-          title={t('pages.auditLogs.loadErrorTitle')}
-          description={t('pages.auditLogs.loadError')}
-          action={(
-            <Button
-              variant="secondary"
-              size="sm"
-              startIcon={<RefreshCw size={16} aria-hidden="true" />}
-              onClick={() => {
-                void refetch();
-              }}
-            >
-              {t('common.actions.retry')}
-            </Button>
-          )}
-        />
-      ) : logs.length === 0 ? (
-        <DataState
-          kind="empty"
-          icon={<ClipboardList aria-hidden="true" />}
-          title={t('pages.auditLogs.empty')}
-        />
-      ) : (
-        <Surface variant="default" padding="none" className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="data-table min-w-[720px]">
-              <caption className="sr-only">{t('pages.auditLogs.title')}</caption>
-              <thead>
-                <tr>
-                  <th scope="col" className="w-20">#</th>
-                  <th scope="col">{t('pages.auditLogs.columns.time')}</th>
-                  <th scope="col">{t('pages.auditLogs.columns.user')}</th>
-                  <th scope="col">{t('pages.auditLogs.columns.action')}</th>
-                  <th scope="col">{t('pages.auditLogs.columns.details')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((log) => (
-                  <tr key={log.id}>
-                    <td className="font-mono text-text-muted">{log.id}</td>
-                    <td>
-                      <time dateTime={log.createdAt} className="inline-flex items-center gap-2 whitespace-nowrap text-text-secondary">
-                        <CalendarClock size={16} aria-hidden="true" />
-                        {formatDateTime(log.createdAt)}
-                      </time>
-                    </td>
-                    <td>
-                      <span className="inline-flex items-center gap-2 font-medium text-text-primary">
-                        <UserRound size={16} className="text-text-muted" aria-hidden="true" />
-                        {log.username}
-                      </span>
-                    </td>
-                    <td>
-                      <Badge variant={getActionVariant(log.action)} size="sm">
-                        <Activity size={14} aria-hidden="true" />
-                        {log.action}
-                      </Badge>
-                    </td>
-                    <td className="max-w-lg break-words text-text-secondary">
-                      {log.details ? tDynamic(log.details) : t('common.values.dash')}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Surface>
-      )}
-    </div>
-  );
+function resolveLocale(language: string): string {
+  if (language === 'zh-CN' || language === 'zh') return 'zh-CN';
+  if (language === 'en') return 'en-US';
+  return 'vi-VN';
 }
 
-export { AuditLogPage };
+export const AuditLogPage: React.FC = () => {
+  const { t, i18n } = useTranslation();
+  const { tDynamic } = useDynamicTranslation();
+  const { data: logs = [], isLoading, error } = useQuery({
+    queryKey: ['auditLogs'],
+    queryFn: () => auditLogsApi.getAll(),
+    refetchInterval: 5000,
+  });
+  const locale = resolveLocale(i18n.language || 'vi');
+
+  if (isLoading) {
+    return (
+      <div className="admin-page admin-page__state">
+        <div className="admin-page__spinner" aria-hidden="true" />
+        <p>{t('pages.auditLogs.loading', 'Đang tải nhật ký hoạt động...')}</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="admin-page admin-page__error">
+        <h3>{t('pages.auditLogs.loadErrorTitle', 'Lỗi tải dữ liệu')}</h3>
+        <p>{t('pages.auditLogs.loadError', 'Không thể lấy nhật ký hệ thống. Kiểm tra quyền Admin.')}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="admin-page admin-audit-page">
+      <header className="admin-page__header">
+        <div>
+          <p>{t('pages.auditLogs.subtitle', 'Lịch sử ghi chép hoạt động vận hành và thay đổi cấu hình')}</p>
+          <h1>{t('titles.auditLogs', 'Nhật ký hệ thống')}</h1>
+        </div>
+        <div className="admin-page__record-count">
+          <ClipboardList aria-hidden="true" size={17} />
+          {t('pages.auditLogs.recordsCount', '{{count}} bản ghi', { count: logs.length })}
+        </div>
+      </header>
+
+      <section className="admin-page__panel admin-page__table-panel">
+        <div className="admin-page__table-wrap">
+          <table className="admin-audit-page__table">
+            <thead>
+              <tr>
+                <th scope="col">{t('pages.auditLogs.columns.id')}</th>
+                <th scope="col">{t('pages.auditLogs.columns.time', 'Thời gian')}</th>
+                <th scope="col">{t('pages.auditLogs.columns.user', 'Tài khoản')}</th>
+                <th scope="col">{t('pages.auditLogs.columns.action', 'Hành động')}</th>
+                <th scope="col">{t('pages.auditLogs.columns.details', 'Chi tiết')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logs.length > 0 ? logs.map((log) => (
+                <tr key={log.id}>
+                  <td className="admin-page__index">#{log.id}</td>
+                  <td>
+                    <span className="admin-audit-page__time"><Calendar aria-hidden="true" size={14} /> {new Date(log.createdAt).toLocaleString(locale)}</span>
+                  </td>
+                  <td>
+                    <span className="admin-audit-page__user"><User aria-hidden="true" size={14} /> {log.username}</span>
+                  </td>
+                  <td>
+                    <span className={`admin-page__badge admin-page__badge--${actionTone(log.action)}`}>
+                      <Activity aria-hidden="true" size={13} />
+                      {log.action}
+                    </span>
+                  </td>
+                  <td className="admin-audit-page__details">{tDynamic(log.details ?? '')}</td>
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan={5} className="admin-page__empty-state">
+                    <ClipboardList aria-hidden="true" size={36} />
+                    <p>{t('pages.auditLogs.empty', 'Chưa có nhật ký hoạt động nào')}</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default AuditLogPage;
