@@ -2,6 +2,7 @@ using System;
 using System.Data;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Npgsql;
 
 namespace backend.Services
@@ -9,11 +10,13 @@ namespace backend.Services
     public class DatabaseService
     {
         private readonly string _connectionString;
+        private readonly bool _isDevelopment;
 
-        public DatabaseService(IConfiguration configuration)
+        public DatabaseService(IConfiguration configuration, IHostEnvironment environment)
         {
             _connectionString = configuration.GetConnectionString("DefaultConnection")
                 ?? throw new ArgumentNullException("ConnectionStrings:DefaultConnection is missing in configuration.");
+            _isDevelopment = environment.IsDevelopment();
 
             // Initialize database schema and seed data synchronously during startup
             InitializeDatabase();
@@ -328,8 +331,18 @@ namespace backend.Services
                     ON CONFLICT (machine_id) DO NOTHING;";
                 ExecuteSync(conn, seedSimConfigsSql);
 
-                ExecuteSync(conn, "TRUNCATE machine_telemetry_history, machine_hourly_production, alarms CASCADE;");
-                ExecuteSync(conn, "UPDATE machines SET status = 'OFFLINE', plc_connected = false, production_count = 0, last_plc_data = NULL, uptime_seconds = 0, cpu_percent = 0.0, ram_percent = 0.0;");
+                if (_isDevelopment)
+                {
+                    ExecuteSync(conn, "TRUNCATE machine_telemetry_history, machine_hourly_production, alarms CASCADE;");
+                    ExecuteSync(conn, "UPDATE machines SET status = 'OFFLINE', plc_connected = false, production_count = 0, last_plc_data = NULL, uptime_seconds = 0, cpu_percent = 0.0, ram_percent = 0.0;");
+                    ExecuteSync(conn, @"
+                        INSERT INTO alarms (machine_id, severity, message, status, created_at)
+                        SELECT id, 'HIGH', 'Nhiệt độ vượt ngưỡng an toàn', 'ACTIVE', NOW()
+                        FROM machines
+                        WHERE approval_status = 'APPROVED'
+                        ORDER BY created_at, id
+                        LIMIT 1;");
+                }
 
                 Console.WriteLine("[DB] Database initialized successfully.");
             }
@@ -372,15 +385,25 @@ namespace backend.Services
         {
             try
             {
-                Guid machineId = Guid.TryParse(clientId, out var parsedGuid) ? parsedGuid : Guid.NewGuid();
+                Guid candidateMachineId = Guid.TryParse(clientId, out var parsedGuid) ? parsedGuid : Guid.NewGuid();
 
                 // On first insert: approval_status = 'PENDING' (admin must approve)
                 // On conflict: do NOT overwrite approval_status - keep whatever admin set.
+                // Resolve an existing machine by either its primary key or client_id so a GUID client can
+                // reconnect to a seeded machine without colliding with the primary key.
                 // Overwrite name/machine_code if they are null, empty, or currently equal to the client_id (raw GUID).
                 string sql = @"
+                    WITH target_machine AS (
+                        SELECT id
+                        FROM machines
+                        WHERE id = @id OR client_id = @clientId
+                        ORDER BY CASE WHEN client_id = @clientId THEN 0 ELSE 1 END
+                        LIMIT 1
+                    )
                     INSERT INTO machines (id, client_id, name, machine_code, ip, status, approval_status, cpu_percent, ram_percent, uptime_seconds, last_heartbeat)
-                    VALUES (@id, @clientId, @name, @machineCode, @ip, 'offline', 'PENDING', @cpu, @ram, @uptime, NOW())
-                    ON CONFLICT (client_id) DO UPDATE SET
+                    VALUES (COALESCE((SELECT id FROM target_machine), @id), @clientId, @name, @machineCode, @ip, 'offline', 'PENDING', @cpu, @ram, @uptime, NOW())
+                    ON CONFLICT (id) DO UPDATE SET
+                        client_id = EXCLUDED.client_id,
                         name = CASE 
                             WHEN machines.name IS NULL OR machines.name = '' OR machines.name = machines.client_id THEN EXCLUDED.name 
                             ELSE machines.name 
@@ -398,7 +421,7 @@ namespace backend.Services
 
                 await ExecuteNonQueryAsync(sql, p =>
                 {
-                    p.AddWithValue("id", machineId);
+                    p.AddWithValue("id", candidateMachineId);
                     p.AddWithValue("clientId", clientId);
                     p.AddWithValue("name", (object?)(name) ?? (clientId.Length >= 8 ? $"Machine {clientId[..8]}" : "Machine"));
                     p.AddWithValue("machineCode", (object?)(machineCode) ?? DBNull.Value);

@@ -286,93 +286,32 @@ namespace backend.Services
             try
             {
                 DateTime now = DateTime.UtcNow;
-                DateTime prodDate = now.Date;
-                int prodHour = now.Hour;
-
                 using var conn = _dbService.CreateConnection();
                 await conn.OpenAsync();
 
-                string checkSql = @"
-                    SELECT id, produced_qty_start, produced_qty_end, avg_cpu, avg_ram
-                    FROM machine_hourly_production
-                    WHERE machine_id = @machine_id AND prod_date = @prod_date AND prod_hour = @prod_hour";
+                string sql = @"
+                    INSERT INTO machine_hourly_production
+                    (machine_id, prod_date, prod_hour, produced_qty_start, produced_qty_end, hourly_qty,
+                     plc_run_time_start, plc_run_time_end, avg_cpu, avg_ram)
+                    VALUES
+                    (@machine_id, @prod_date, @prod_hour, @production_count, @production_count, 0,
+                     @uptime, @uptime, @avg_cpu, @avg_ram)
+                    ON CONFLICT (machine_id, prod_date, prod_hour) DO UPDATE SET
+                        produced_qty_end = EXCLUDED.produced_qty_end,
+                        hourly_qty = GREATEST(0, EXCLUDED.produced_qty_end - machine_hourly_production.produced_qty_start),
+                        plc_run_time_end = EXCLUDED.plc_run_time_end,
+                        avg_cpu = EXCLUDED.avg_cpu,
+                        avg_ram = EXCLUDED.avg_ram";
 
-                long existingId = -1;
-                int startQty = 0;
-
-                using (var cmd = new NpgsqlCommand(checkSql, conn))
-                {
-                    cmd.Parameters.AddWithValue("machine_id", machineId);
-                    cmd.Parameters.AddWithValue("prod_date", prodDate);
-                    cmd.Parameters.AddWithValue("prod_hour", prodHour);
-                    using var reader = await cmd.ExecuteReaderAsync();
-                    if (await reader.ReadAsync())
-                    {
-                        existingId = reader.GetInt64(0);
-                        startQty = reader.GetInt32(1);
-                    }
-                }
-
-                if (existingId == -1)
-                {
-                    try
-                    {
-                        string insertSql = @"
-                            INSERT INTO machine_hourly_production
-                            (machine_id, prod_date, prod_hour, produced_qty_start, produced_qty_end, hourly_qty, plc_run_time_start, plc_run_time_end, avg_cpu, avg_ram)
-                            VALUES (@machine_id, @prod_date, @prod_hour, @produced_qty_start, @produced_qty_end, @hourly_qty, 0, 0, @avg_cpu, @avg_ram)";
-
-                        using var cmdInsert = new NpgsqlCommand(insertSql, conn);
-                        cmdInsert.Parameters.AddWithValue("machine_id", machineId);
-                        cmdInsert.Parameters.AddWithValue("prod_date", prodDate);
-                        cmdInsert.Parameters.AddWithValue("prod_hour", prodHour);
-                        cmdInsert.Parameters.AddWithValue("produced_qty_start", state.ProductionCount);
-                        cmdInsert.Parameters.AddWithValue("produced_qty_end", state.ProductionCount);
-                        cmdInsert.Parameters.AddWithValue("hourly_qty", 0);
-                        cmdInsert.Parameters.AddWithValue("avg_cpu", state.CpuPercent);
-                        cmdInsert.Parameters.AddWithValue("avg_ram", state.RamPercent);
-                        await cmdInsert.ExecuteNonQueryAsync();
-                    }
-                    catch (PostgresException pgex) when (pgex.SqlState == "23505")
-                    {
-                        // Fallback if another thread inserted it between the check and insert
-                        string getSql = @"
-                            SELECT id, produced_qty_start
-                            FROM machine_hourly_production
-                            WHERE machine_id = @machine_id AND prod_date = @prod_date AND prod_hour = @prod_hour";
-                        using var cmdGet = new NpgsqlCommand(getSql, conn);
-                        cmdGet.Parameters.AddWithValue("machine_id", machineId);
-                        cmdGet.Parameters.AddWithValue("prod_date", prodDate);
-                        cmdGet.Parameters.AddWithValue("prod_hour", prodHour);
-                        using var reader = await cmdGet.ExecuteReaderAsync();
-                        if (await reader.ReadAsync())
-                        {
-                            existingId = reader.GetInt64(0);
-                            startQty = reader.GetInt32(1);
-                        }
-                    }
-                }
-
-                if (existingId != -1)
-                {
-                    string updateSql = @"
-                        UPDATE machine_hourly_production
-                        SET produced_qty_end = @produced_qty_end,
-                            hourly_qty = @hourly_qty,
-                            plc_run_time_end = @plc_run_time_end,
-                            avg_cpu = @avg_cpu,
-                            avg_ram = @avg_ram
-                        WHERE id = @id";
-
-                    using var cmdUpdate = new NpgsqlCommand(updateSql, conn);
-                    cmdUpdate.Parameters.AddWithValue("produced_qty_end", state.ProductionCount);
-                    cmdUpdate.Parameters.AddWithValue("hourly_qty", Math.Max(0, state.ProductionCount - startQty));
-                    cmdUpdate.Parameters.AddWithValue("plc_run_time_end", (int)state.UptimeSeconds);
-                    cmdUpdate.Parameters.AddWithValue("avg_cpu", state.CpuPercent);
-                    cmdUpdate.Parameters.AddWithValue("avg_ram", state.RamPercent);
-                    cmdUpdate.Parameters.AddWithValue("id", existingId);
-                    await cmdUpdate.ExecuteNonQueryAsync();
-                }
+                using var cmd = new NpgsqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("machine_id", machineId);
+                cmd.Parameters.AddWithValue("prod_date", now.Date);
+                cmd.Parameters.AddWithValue("prod_hour", now.Hour);
+                cmd.Parameters.AddWithValue("production_count", state.ProductionCount);
+                cmd.Parameters.AddWithValue("uptime", (int)state.UptimeSeconds);
+                cmd.Parameters.AddWithValue("avg_cpu", state.CpuPercent);
+                cmd.Parameters.AddWithValue("avg_ram", state.RamPercent);
+                await cmd.ExecuteNonQueryAsync();
             }
             catch (Exception ex)
             {

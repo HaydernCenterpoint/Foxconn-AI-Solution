@@ -54,7 +54,10 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<TelemetryIngestion
 builder.Services.AddSingleton<SyncService>();
 
 builder.Services.AddHostedService<MqttServerService>();
-// builder.Services.AddHostedService<SimulationService>();
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddHostedService<SimulationService>();
+}
 
 // Configure JWT Bearer Authentication
 var keyStr = builder.Configuration["Jwt:Key"] ?? "SUPER_SECRET_KEY_FOR_DEVELOPMENT_MKZ_AUTO_LINE_SYSTEM_123456789";
