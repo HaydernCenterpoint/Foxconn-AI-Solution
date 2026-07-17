@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createInstance } from 'i18next';
 import { I18nextProvider, initReactI18next } from 'react-i18next';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { en } from '../../../app/i18n/en';
 import { vi } from '../../../app/i18n/vi';
@@ -28,6 +29,7 @@ const viewModel = {
   ],
   pendingOrders: [
     { id: '1002', machineId: 'machine-2', machineName: 'Welder B', severity: 'HIGH', message: 'Temperature exceeded limit', status: 'ACTIVE', createdAt: '2026-07-14T10:00:00Z' },
+    { id: '1003', machineId: 'machine-1', machineName: 'Press A', severity: 'LOW', message: 'Inspection completed', status: 'RESOLVED', createdAt: '2026-07-14T09:30:00Z' },
   ],
   topProducts: [
     { id: 'machine-1', name: 'Press A', quantity: 400 },
@@ -51,6 +53,10 @@ describe('ModernDashboard', () => {
       fallbackLng: 'vi',
       interpolation: { escapeValue: false },
     });
+  });
+
+  beforeEach(async () => {
+    await testI18n.changeLanguage('vi');
   });
 
   it('renders live production data with operational navigation', async () => {
@@ -82,5 +88,56 @@ describe('ModernDashboard', () => {
 
     expect(screen.getByRole('heading', { name: 'Production overview' })).toBeInTheDocument();
     await testI18n.changeLanguage('vi');
+  });
+
+  it('preserves dashboard search and active-alarm filtering', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <I18nextProvider i18n={testI18n}>
+        <MemoryRouter>
+          <ModernDashboard viewModel={viewModel} username="Lan" basePath="/admin" />
+        </MemoryRouter>
+      </I18nextProvider>,
+    );
+
+    expect(screen.getByText('Inspection completed')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: vi.dashboardPage.modern.filter }));
+
+    expect(screen.queryByText('Inspection completed')).not.toBeInTheDocument();
+    expect(screen.getByText('Temperature exceeded limit')).toBeInTheDocument();
+
+    await user.type(screen.getByRole('textbox', { name: vi.dashboardPage.modern.searchAria }), 'Welder B');
+
+    expect(screen.getByText('Welder B')).toBeInTheDocument();
+    expect(screen.queryByText('Assembly')).not.toBeInTheDocument();
+  });
+
+  it('announces loading and error states with distinct semantics', () => {
+    const { container, rerender } = render(
+      <I18nextProvider i18n={testI18n}>
+        <MemoryRouter>
+          <ModernDashboard viewModel={viewModel} username="Lan" basePath="/admin" isLoading />
+        </MemoryRouter>
+      </I18nextProvider>,
+    );
+    const dashboard = container.querySelector('.modern-dashboard');
+
+    expect.soft(dashboard).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByText(vi.dashboardPage.modern.loading)).toHaveAttribute('role', 'status');
+    expect.soft(container.querySelector('.modern-dashboard__skeleton')).toBeInTheDocument();
+
+    rerender(
+      <I18nextProvider i18n={testI18n}>
+        <MemoryRouter>
+          <ModernDashboard viewModel={viewModel} username="Lan" basePath="/admin" isError />
+        </MemoryRouter>
+      </I18nextProvider>,
+    );
+
+    expect(dashboard).not.toHaveAttribute('aria-busy');
+    expect.soft(screen.getByText(vi.dashboardPage.modern.loadError)).toHaveAttribute('role', 'alert');
+    expect(container.querySelector('.modern-dashboard__skeleton')).not.toBeInTheDocument();
   });
 });

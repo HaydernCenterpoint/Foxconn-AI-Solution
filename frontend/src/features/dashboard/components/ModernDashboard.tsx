@@ -125,6 +125,24 @@ function PanelEmpty({ children }: { children: ReactNode }) {
   return <p className="modern-dashboard__empty">{children}</p>;
 }
 
+function DashboardSkeleton() {
+  return (
+    <div className="modern-dashboard__skeleton" aria-hidden="true">
+      <div className="modern-dashboard__skeleton-kpis">
+        <span />
+        <span />
+        <span />
+      </div>
+      <div className="modern-dashboard__skeleton-layout">
+        <span className="is-wide" />
+        <span />
+        <span className="is-wide" />
+        <span />
+      </div>
+    </div>
+  );
+}
+
 export function ModernDashboard({
   viewModel,
   username,
@@ -172,7 +190,7 @@ export function ModernDashboard({
   ];
 
   return (
-    <div className="modern-dashboard">
+    <div className="modern-dashboard" aria-busy={isLoading || undefined}>
       <header className="modern-dashboard__intro">
         <div>
           <p>{t('dashboardPage.modern.welcome')}</p>
@@ -191,11 +209,13 @@ export function ModernDashboard({
       </header>
 
       {(isLoading || isError) && (
-        <div className={`modern-dashboard__notice ${isError ? 'is-error' : ''}`} role="status">
+        <div className={`modern-dashboard__notice ${isError ? 'is-error' : ''}`} role={isError ? 'alert' : 'status'}>
           {isError ? t('dashboardPage.modern.loadError') : t('dashboardPage.modern.loading')}
         </div>
       )}
 
+      {isLoading ? <DashboardSkeleton /> : (
+        <div className="modern-dashboard__loaded">
       <div className="modern-dashboard__kpi-grid">
         {viewModel.kpis.map((kpi) => {
           const meta = KPI_META[kpi.id];
@@ -407,6 +427,8 @@ export function ModernDashboard({
           </Link>
         </aside>
       </div>
+        </div>
+      )}
     </div>
   );
 }
