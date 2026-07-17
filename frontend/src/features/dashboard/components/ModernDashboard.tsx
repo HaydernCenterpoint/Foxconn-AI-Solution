@@ -48,13 +48,12 @@ interface ModernDashboardProps {
 
 interface KpiMeta {
   icon: LucideIcon;
-  accent: 'red' | 'amber' | 'lime';
 }
 
 const KPI_META: Record<DashboardKpiCard['id'], KpiMeta> = {
-  'total-production': { icon: Wrench, accent: 'red' },
-  'production-efficiency': { icon: Gauge, accent: 'amber' },
-  'active-alarms': { icon: CircleAlert, accent: 'lime' },
+  'total-production': { icon: Wrench },
+  'production-efficiency': { icon: Gauge },
+  'active-alarms': { icon: CircleAlert },
 };
 
 const KPI_LABEL_KEYS: Record<DashboardKpiCard['id'], string> = {
@@ -186,8 +185,8 @@ export function ModernDashboard({
   const hasTrendData = viewModel.trend.some((point) => point.hasData);
   const activeLineCount = viewModel.lineStatuses.filter((line) => line.status === 'active').length;
   const defectsData = [
-    { name: t('dashboardPage.modern.goodTotal'), value: viewModel.defects.nonDefectiveTotal, color: '#3b3b3b' },
-    { name: t('dashboardPage.modern.defectEstimate'), value: viewModel.defects.total, color: '#ef4444' },
+    { name: t('dashboardPage.modern.goodTotal'), value: viewModel.defects.nonDefectiveTotal, color: 'var(--md-accent-muted)' },
+    { name: t('dashboardPage.modern.defectEstimate'), value: viewModel.defects.total, color: 'var(--md-danger)' },
   ];
 
   return (
@@ -221,6 +220,7 @@ export function ModernDashboard({
         {viewModel.kpis.map((kpi) => {
           const meta = KPI_META[kpi.id];
           const Icon = meta.icon;
+          const tone = kpi.id === 'active-alarms' && kpi.value > 0 ? 'critical' : 'primary';
           const unit = kpi.unit === '%'
             ? '%'
             : kpi.unit === 'alarms'
@@ -228,7 +228,7 @@ export function ModernDashboard({
               : t('dashboardPage.modern.unit');
 
           return (
-            <article className={`modern-dashboard__kpi modern-dashboard__kpi--${meta.accent}`} key={kpi.id}>
+            <article className={`modern-dashboard__kpi modern-dashboard__kpi--${tone}`} key={kpi.id}>
               <span className="modern-dashboard__kpi-icon"><Icon aria-hidden="true" size={20} /></span>
               <div>
                 <h2>{t(KPI_LABEL_KEYS[kpi.id])}</h2>
@@ -271,15 +271,20 @@ export function ModernDashboard({
                 >
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} barGap={0}>
-                      <CartesianGrid vertical={false} stroke="#343434" strokeDasharray="3 3" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#b0b0b0', fontSize: 10 }} />
-                      <YAxis axisLine={false} tickLine={false} width={40} tick={{ fill: '#b0b0b0', fontSize: 10 }} />
-                      <Tooltip cursor={{ fill: '#ffffff0a' }} contentStyle={{ background: '#232323', border: '1px solid #454545', borderRadius: 8 }} />
-                      <Bar dataKey="threshold" fill="#343434" radius={[3, 3, 0, 0]} />
-                      <Bar dataKey="current" fill="#777777" radius={[3, 3, 0, 0]}>
+                      <CartesianGrid vertical={false} stroke="var(--md-grid)" strokeDasharray="3 3" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--md-muted)', fontSize: 10 }} />
+                      <YAxis axisLine={false} tickLine={false} width={40} tick={{ fill: 'var(--md-muted)', fontSize: 10 }} />
+                      <Tooltip
+                        cursor={{ fill: 'var(--md-hover)' }}
+                        contentStyle={{ background: 'var(--md-surface-raised)', border: '1px solid var(--md-border-strong)', borderRadius: 6, color: 'var(--md-text)' }}
+                        itemStyle={{ color: 'var(--md-text)' }}
+                        labelStyle={{ color: 'var(--md-muted)' }}
+                      />
+                      <Bar dataKey="threshold" fill="var(--md-bar-track)" radius={[2, 2, 0, 0]} />
+                      <Bar dataKey="current" fill="var(--md-bar)" radius={[2, 2, 0, 0]}>
                         {chartData.map((point) => (
                           <Cell
-                            fill={point.current === hourlyPeak ? '#ef4444' : '#777777'}
+                            fill={point.current === hourlyPeak ? 'var(--md-accent)' : 'var(--md-bar)'}
                             key={point.name}
                           />
                         ))}
@@ -309,7 +314,11 @@ export function ModernDashboard({
                       <Pie data={defectsData} dataKey="value" innerRadius="65%" outerRadius="91%" startAngle={112} endAngle={-248} stroke="none">
                         {defectsData.map((entry) => <Cell fill={entry.color} key={entry.name} />)}
                       </Pie>
-                      <Tooltip contentStyle={{ background: '#232323', border: '1px solid #454545', borderRadius: 8 }} />
+                      <Tooltip
+                        contentStyle={{ background: 'var(--md-surface-raised)', border: '1px solid var(--md-border-strong)', borderRadius: 6, color: 'var(--md-text)' }}
+                        itemStyle={{ color: 'var(--md-text)' }}
+                        labelStyle={{ color: 'var(--md-muted)' }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                   <div>
@@ -334,64 +343,69 @@ export function ModernDashboard({
                     <AreaChart data={viewModel.trend.filter((point) => point.hasData)}>
                       <defs>
                         <linearGradient id="modern-dashboard-trend" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0" stopColor="#ef4444" stopOpacity="0.32" />
-                          <stop offset="1" stopColor="#ef4444" stopOpacity="0" />
+                          <stop offset="0" stopColor="var(--md-accent)" stopOpacity="0.3" />
+                          <stop offset="1" stopColor="var(--md-accent)" stopOpacity="0" />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid vertical={false} stroke="#343434" strokeDasharray="3 3" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#b0b0b0', fontSize: 10 }} />
-                      <YAxis axisLine={false} tickLine={false} width={40} tick={{ fill: '#b0b0b0', fontSize: 10 }} />
-                      <Tooltip contentStyle={{ background: '#232323', border: '1px solid #454545', borderRadius: 8 }} />
-                      <Area dataKey="production" type="monotone" stroke="#ef4444" strokeWidth={2} fill="url(#modern-dashboard-trend)" />
+                      <CartesianGrid vertical={false} stroke="var(--md-grid)" strokeDasharray="3 3" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--md-muted)', fontSize: 10 }} />
+                      <YAxis axisLine={false} tickLine={false} width={40} tick={{ fill: 'var(--md-muted)', fontSize: 10 }} />
+                      <Tooltip
+                        contentStyle={{ background: 'var(--md-surface-raised)', border: '1px solid var(--md-border-strong)', borderRadius: 6, color: 'var(--md-text)' }}
+                        itemStyle={{ color: 'var(--md-text)' }}
+                        labelStyle={{ color: 'var(--md-muted)' }}
+                      />
+                      <Area dataKey="production" type="monotone" stroke="var(--md-accent)" strokeWidth={2} fill="url(#modern-dashboard-trend)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               ) : <PanelEmpty>{t('dashboardPage.modern.noTrendData')}</PanelEmpty>}
             </Panel>
 
-            <Panel
-              title={t('dashboardPage.modern.recentAlerts')}
-              className="modern-dashboard__alarms-panel"
-              action={(
-                <button
-                  type="button"
-                  className={onlyActiveAlerts ? 'is-active' : ''}
-                  aria-pressed={onlyActiveAlerts}
-                  onClick={() => setOnlyActiveAlerts((value) => !value)}
-                >
-                  <SlidersHorizontal aria-hidden="true" size={14} /> {onlyActiveAlerts ? t('dashboardPage.modern.open') : t('dashboardPage.modern.filter')}
-                </button>
-              )}
-            >
-              {visibleAlarms.length > 0 ? (
-                <div className="modern-dashboard__alarm-table">
-                  <table>
-                    <caption className="modern-dashboard__sr-only">{t('dashboardPage.modern.recentAlerts')}</caption>
-                    <thead>
-                      <tr>
-                        <th scope="col">{t('dashboardPage.modern.machine')}</th>
-                        <th scope="col">{t('dashboardPage.modern.content')}</th>
-                        <th scope="col">{t('dashboardPage.modern.time')}</th>
-                        <th scope="col">{t('dashboardPage.modern.status')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visibleAlarms.slice(0, 4).map((alarm) => (
-                        <tr key={alarm.id}>
-                          <td><Link to={alarmsRoute}><b>{alarm.machineName}</b><small>{alarm.severity}</small></Link></td>
-                          <td>{alarm.message}</td>
-                          <td>{formatAlarmDate(alarm.createdAt, locale, t('common.notAvailable'))}</td>
-                          <td><span className={`modern-dashboard__alarm-status modern-dashboard__alarm-status--${alarm.status.toLocaleLowerCase()}`}>{alarm.status}</span></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : <PanelEmpty>{t('dashboardPage.modern.noMatchingAlerts')}</PanelEmpty>}
-            </Panel>
         </div>
 
         <aside className="modern-dashboard__rail">
+          <Panel
+            title={t('dashboardPage.modern.recentAlerts')}
+            className="modern-dashboard__alarms-panel"
+            action={(
+              <button
+                type="button"
+                className={onlyActiveAlerts ? 'is-active' : ''}
+                aria-pressed={onlyActiveAlerts}
+                onClick={() => setOnlyActiveAlerts((value) => !value)}
+              >
+                <SlidersHorizontal aria-hidden="true" size={14} /> {onlyActiveAlerts ? t('dashboardPage.modern.open') : t('dashboardPage.modern.filter')}
+              </button>
+            )}
+          >
+            {visibleAlarms.length > 0 ? (
+              <div className="modern-dashboard__alarm-table">
+                <table>
+                  <caption className="modern-dashboard__sr-only">{t('dashboardPage.modern.recentAlerts')}</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">{t('dashboardPage.modern.machine')}</th>
+                      <th scope="col">{t('dashboardPage.modern.content')}</th>
+                      <th scope="col">{t('dashboardPage.modern.time')}</th>
+                      <th scope="col">{t('dashboardPage.modern.status')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleAlarms.slice(0, 4).map((alarm) => (
+                      <tr key={alarm.id}>
+                        <td><Link to={alarmsRoute}><b>{alarm.machineName}</b><small>{alarm.severity}</small></Link></td>
+                        <td>{alarm.message}</td>
+                        <td>{formatAlarmDate(alarm.createdAt, locale, t('common.notAvailable'))}</td>
+                        <td><span className={`modern-dashboard__alarm-status modern-dashboard__alarm-status--${alarm.status.toLocaleLowerCase()}`}>{alarm.status}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <PanelEmpty>{t('dashboardPage.modern.noMatchingAlerts')}</PanelEmpty>}
+          </Panel>
+
           <Panel title={t('dashboardPage.modern.lineStatus')} className="modern-dashboard__lines-panel">
             {visibleLines.length > 0 ? (
               <div className="modern-dashboard__line-list">
