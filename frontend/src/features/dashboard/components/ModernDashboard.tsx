@@ -153,6 +153,7 @@ export function ModernDashboard({
   const { i18n, t } = useTranslation();
   const [search, setSearch] = useState('');
   const [onlyActiveAlerts, setOnlyActiveAlerts] = useState(false);
+  const showLoading = isLoading && !isError;
   const locale = resolveLocale(i18n.resolvedLanguage ?? i18n.language);
   const query = search.trim().toLocaleLowerCase();
   const machinesRoute = routeFor(basePath, 'machines');
@@ -190,7 +191,7 @@ export function ModernDashboard({
   ];
 
   return (
-    <div className="modern-dashboard" aria-busy={isLoading || undefined}>
+    <div className="modern-dashboard" aria-busy={showLoading || undefined}>
       <header className="modern-dashboard__intro">
         <div>
           <p>{t('dashboardPage.modern.welcome')}</p>
@@ -208,13 +209,13 @@ export function ModernDashboard({
         </label>
       </header>
 
-      {(isLoading || isError) && (
-        <div className={`modern-dashboard__notice ${isError ? 'is-error' : ''}`} role={isError ? 'alert' : 'status'}>
-          {isError ? t('dashboardPage.modern.loadError') : t('dashboardPage.modern.loading')}
+      {(showLoading || isError) && (
+        <div className={`modern-dashboard__notice ${isError ? 'is-error' : ''}`} role={showLoading ? 'status' : 'alert'}>
+          {showLoading ? t('dashboardPage.modern.loading') : t('dashboardPage.modern.loadError')}
         </div>
       )}
 
-      {isLoading ? <DashboardSkeleton /> : (
+      {showLoading ? <DashboardSkeleton /> : (
         <div className="modern-dashboard__loaded">
       <div className="modern-dashboard__kpi-grid">
         {viewModel.kpis.map((kpi) => {

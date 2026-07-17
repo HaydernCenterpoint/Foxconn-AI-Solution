@@ -103,15 +103,21 @@ describe('ModernDashboard', () => {
 
     expect(screen.getByText('Inspection completed')).toBeInTheDocument();
 
+    const searchBox = screen.getByRole('textbox', { name: vi.dashboardPage.modern.searchAria });
+    await user.type(searchBox, 'Welder B');
+
+    expect(screen.getByText('Temperature exceeded limit')).toBeInTheDocument();
+    expect(screen.queryByText('Inspection completed')).not.toBeInTheDocument();
+    expect(screen.queryByText('Assembly')).not.toBeInTheDocument();
+
+    await user.clear(searchBox);
+
+    expect(screen.getByText('Inspection completed')).toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: vi.dashboardPage.modern.filter }));
 
     expect(screen.queryByText('Inspection completed')).not.toBeInTheDocument();
     expect(screen.getByText('Temperature exceeded limit')).toBeInTheDocument();
-
-    await user.type(screen.getByRole('textbox', { name: vi.dashboardPage.modern.searchAria }), 'Welder B');
-
-    expect(screen.getByText('Welder B')).toBeInTheDocument();
-    expect(screen.queryByText('Assembly')).not.toBeInTheDocument();
   });
 
   it('announces loading and error states with distinct semantics', () => {
@@ -125,7 +131,8 @@ describe('ModernDashboard', () => {
     const dashboard = container.querySelector('.modern-dashboard');
 
     expect.soft(dashboard).toHaveAttribute('aria-busy', 'true');
-    expect(screen.getByText(vi.dashboardPage.modern.loading)).toHaveAttribute('role', 'status');
+    expect(screen.getByRole('status')).toHaveTextContent(vi.dashboardPage.modern.loading);
+    expect(screen.queryByText('1.200')).not.toBeInTheDocument();
     expect.soft(container.querySelector('.modern-dashboard__skeleton')).toBeInTheDocument();
 
     rerender(
@@ -137,7 +144,21 @@ describe('ModernDashboard', () => {
     );
 
     expect(dashboard).not.toHaveAttribute('aria-busy');
-    expect.soft(screen.getByText(vi.dashboardPage.modern.loadError)).toHaveAttribute('role', 'alert');
+    expect(screen.getByRole('alert')).toHaveTextContent(vi.dashboardPage.modern.loadError);
+    expect(screen.getByText('1.200')).toBeInTheDocument();
     expect(container.querySelector('.modern-dashboard__skeleton')).not.toBeInTheDocument();
+
+    rerender(
+      <I18nextProvider i18n={testI18n}>
+        <MemoryRouter>
+          <ModernDashboard viewModel={viewModel} username="Lan" basePath="/admin" isLoading isError />
+        </MemoryRouter>
+      </I18nextProvider>,
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent(vi.dashboardPage.modern.loadError);
+    expect.soft(dashboard).not.toHaveAttribute('aria-busy');
+    expect.soft(container.querySelector('.modern-dashboard__skeleton')).not.toBeInTheDocument();
+    expect.soft(screen.queryByText('1.200')).toBeInTheDocument();
   });
 });
