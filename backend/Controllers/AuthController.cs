@@ -1,11 +1,7 @@
-using System;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
 using backend.Services;
 using backend.Security;
 using Npgsql;
@@ -61,12 +57,13 @@ namespace backend.Controllers
                     // Log audit action
                     await _auditService.LogAuditAsync(request.Username, "LOGIN", "User logged in successfully");
 
-                    string token = GenerateJwtToken(request.Username, role);
+                    var issued = FiiSso.Issue(request.Username, role, _configuration);
+                    FiiSso.WriteCookie(Response, issued, _configuration);
                     return Ok(new
                     {
-                        token = token,
-                        username = request.Username,
-                        role = role
+                        token = issued.Value,
+                        username = request.Username.Trim().ToLowerInvariant(),
+                        role = role.Trim().ToUpperInvariant()
                     });
                 }
             }
@@ -76,27 +73,25 @@ namespace backend.Controllers
             return Unauthorized(new { error = "Invalid username or password" });
         }
 
-        private string GenerateJwtToken(string username, string role)
+        [Authorize]
+        [HttpGet("session")]
+        public IActionResult Session()
         {
-            var keyStr = _configuration["Jwt:Key"] ?? "SUPER_SECRET_KEY_FOR_DEVELOPMENT_MKZ_AUTO_LINE_SYSTEM_123456789";
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyStr));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var claims = new[]
+            var session = FiiSso.ReadSession(User);
+            if (session is null)
             {
-                new Claim(ClaimTypes.Name, username),
-                new Claim(ClaimTypes.Role, role)
-            };
+                return Unauthorized(new { error = "Invalid session" });
+            }
 
-            var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"] ?? "MKZ_PLC_Server",
-                audience: _configuration["Jwt:Audience"] ?? "MKZ_PLC_Client",
-                claims: claims,
-                expires: DateTime.Now.AddHours(2),
-                signingCredentials: creds
-            );
+            return Ok(session);
+        }
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+        [AllowAnonymous]
+        [HttpPost("logout")]
+        public IActionResult Logout()
+        {
+            FiiSso.ClearCookie(Response, _configuration);
+            return Ok(new { ok = true });
         }
     }
 }

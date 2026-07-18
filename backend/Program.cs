@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using backend.Configuration;
 using backend.Middleware;
@@ -60,7 +59,7 @@ builder.Services.AddHostedService<MqttServerService>();
 // builder.Services.AddHostedService<SimulationService>();
 
 // Configure JWT Bearer Authentication
-var keyStr = builder.Configuration["Jwt:Key"] ?? "SUPER_SECRET_KEY_FOR_DEVELOPMENT_MKZ_AUTO_LINE_SYSTEM_123456789";
+var signingKey = FiiSso.SigningKey(builder.Configuration);
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -76,26 +75,28 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "MKZ_PLC_Server",
         ValidAudience = builder.Configuration["Jwt:Audience"] ?? "MKZ_PLC_Client",
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyStr))
+        IssuerSigningKey = signingKey,
+        ClockSkew = TimeSpan.Zero
+    };
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var cookieToken = FiiSso.CookieToken(context.Request);
+            if (cookieToken is not null)
+            {
+                context.Token = cookieToken;
+            }
+
+            return Task.CompletedTask;
+        }
     };
 });
 
 builder.Services.AddAuthorization();
 
 // Configure CORS Whitelist
-var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
-    ?? new[] { "http://localhost:5173" };
-
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-    {
-        policy.WithOrigins(allowedOrigins)
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials();
-    });
-});
+builder.Services.AddFiiCors(builder.Configuration);
 
 // Configure Health Checks
 builder.Services.AddHealthChecks()
