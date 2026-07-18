@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { Check, Globe, ChevronDown } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Check, ChevronDown, Globe } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   changeLanguage,
@@ -7,6 +7,7 @@ import {
   languageOptions,
   type SupportedLanguage,
 } from '../../../app/i18n';
+import './language-selector.css';
 
 interface Props {
   compact?: boolean;
@@ -17,152 +18,149 @@ export function LanguageSelector({ compact = false, className = '' }: Props) {
   const { i18n, t } = useTranslation();
   const currentLanguage = isSupportedLanguage(i18n.language) ? i18n.language : 'vi';
   const [isOpen, setIsOpen] = useState(false);
+  const listboxId = useId();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const optionRefs = useRef<Array<HTMLLIElement | null>>([]);
+  const currentOption = languageOptions.find((option) => option.code === currentLanguage) ?? languageOptions[0];
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const selectedIndex = languageOptions.findIndex((option) => option.code === currentLanguage);
+    const focusOption = window.requestAnimationFrame(() => {
+      optionRefs.current[Math.max(0, selectedIndex)]?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(focusOption);
+  }, [currentLanguage, isOpen]);
+
+  const closeAndRestoreFocus = () => {
+    setIsOpen(false);
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  };
+
   const handleSelect = (code: SupportedLanguage) => {
     void changeLanguage(code);
-    setIsOpen(false);
+    closeAndRestoreFocus();
   };
 
-  const currentOption = languageOptions.find((opt) => opt.code === currentLanguage) || languageOptions[0];
+  const handleOptionKeyDown = (event: React.KeyboardEvent<HTMLLIElement>, index: number) => {
+    const lastIndex = languageOptions.length - 1;
+    let nextIndex: number;
 
-  const getLangMeta = (code: SupportedLanguage) => {
-    switch (code) {
-      case 'vi':
-        return {
-          badge: 'VI',
-          flag: '🇻🇳',
-          textColor: 'text-red-600 dark:text-red-400',
-          bgColor: 'bg-red-500/10 dark:bg-red-500/20',
-          borderColor: 'border-red-500/20'
-        };
-      case 'en':
-        return {
-          badge: 'EN',
-          flag: '🇺🇸',
-          textColor: 'text-blue-600 dark:text-blue-400',
-          bgColor: 'bg-blue-500/10 dark:bg-blue-500/20',
-          borderColor: 'border-blue-500/20'
-        };
-      case 'zh-CN':
-        return {
-          badge: 'ZH',
-          flag: '🇨🇳',
-          textColor: 'text-amber-600 dark:text-amber-400',
-          bgColor: 'bg-amber-500/10 dark:bg-amber-500/20',
-          borderColor: 'border-amber-500/20'
-        };
+    switch (event.key) {
+      case 'ArrowDown':
+        nextIndex = index === lastIndex ? 0 : index + 1;
+        break;
+      case 'ArrowUp':
+        nextIndex = index === 0 ? lastIndex : index - 1;
+        break;
+      case 'Home':
+        nextIndex = 0;
+        break;
+      case 'End':
+        nextIndex = lastIndex;
+        break;
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        handleSelect(languageOptions[index].code);
+        return;
+      case 'Escape':
+        event.preventDefault();
+        closeAndRestoreFocus();
+        return;
+      case 'Tab':
+        setIsOpen(false);
+        return;
+      default:
+        return;
     }
-  };
 
-  const currentMeta = getLangMeta(currentOption.code);
+    event.preventDefault();
+    optionRefs.current[nextIndex]?.focus();
+  };
 
   return (
-    <div ref={dropdownRef} className={`relative inline-block text-left ${className}`} style={{ zIndex: 100 }}>
-      <div className="flex items-center gap-2">
-        {!compact && (
-          <span className="text-[10px] font-bold uppercase tracking-wider opacity-70" style={{ color: 'var(--color-on-surface-variant)' }}>
-            {t('common.language.label')}
-          </span>
-        )}
-        <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          className={`group inline-flex h-9 items-center justify-between gap-2 text-xs font-semibold transition-all duration-300 active:scale-95 cursor-pointer focus:outline-none ${
-            compact ? 'px-1' : 'rounded-xl border px-3 shadow-sm hover:shadow'
-          }`}
-          style={{
-            minWidth: compact ? 'auto' : '9.5rem',
-            backgroundColor: compact ? 'transparent' : (isOpen ? 'var(--color-surface-container-high)' : 'var(--color-surface-container-low)'),
-            borderColor: compact ? 'transparent' : (isOpen ? 'var(--color-primary)' : 'var(--color-outline-variant)'),
-            color: 'var(--color-on-surface)',
-            boxShadow: compact ? 'none' : (isOpen ? '0 0 0 2px rgba(26, 115, 232, 0.2)' : 'var(--shadow-1)'),
-          }}
-          aria-expanded={isOpen}
-          aria-haspopup="listbox"
-        >
-          <div className="flex items-center gap-1.5 truncate">
-            <Globe 
-              size={13} 
-              className="shrink-0 transition-transform duration-500 ease-out group-hover:rotate-45"
-              style={{ color: isOpen ? 'var(--color-primary)' : 'var(--color-on-surface-variant)' }} 
-            />
-            {!compact && (
-              <span className="truncate pr-1 text-xs font-bold leading-none">
-                {currentOption.label}
-              </span>
-            )}
-            <span className={`px-1 py-0.5 rounded text-[9px] font-extrabold tracking-wide border leading-none shrink-0 ${currentMeta.bgColor} ${currentMeta.textColor} ${currentMeta.borderColor}`}>
-              {currentMeta.badge}
-            </span>
-          </div>
-          <ChevronDown
-            size={12}
-            className={`shrink-0 transition-transform duration-300 ease-in-out ${isOpen ? 'rotate-180 text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)]'}`}
-          />
-        </button>
-      </div>
+    <div
+      ref={dropdownRef}
+      className={`language-selector${compact ? ' language-selector--compact' : ''}${className ? ` ${className}` : ''}`}
+    >
+      {!compact && <span className="language-selector__field-label">{t('common.language.label')}</span>}
+
+      <button
+        type="button"
+        ref={triggerRef}
+        className={`language-selector__trigger${isOpen ? ' language-selector__trigger--open' : ''}`}
+        onClick={() => setIsOpen((open) => !open)}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            setIsOpen(true);
+          } else if (event.key === 'Escape' && isOpen) {
+            event.preventDefault();
+            closeAndRestoreFocus();
+          }
+        }}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-controls={listboxId}
+      >
+        <Globe size={16} strokeWidth={1.8} aria-hidden="true" />
+        {!compact && <span className="language-selector__current-label">{currentOption.label}</span>}
+        <span className="language-selector__code">{currentOption.shortLabel}</span>
+        <ChevronDown
+          size={14}
+          strokeWidth={1.8}
+          className={`language-selector__chevron${isOpen ? ' language-selector__chevron--open' : ''}`}
+          aria-hidden="true"
+        />
+      </button>
 
       <ul
-        className="absolute right-0 mt-2 w-52 origin-top-right overflow-hidden rounded-xl border p-1.5 shadow-xl transition-all duration-200 ease-out backdrop-blur-md"
+        id={listboxId}
+        className={`language-selector__menu${isOpen ? ' language-selector__menu--open' : ''}`}
         role="listbox"
-        style={{
-          boxShadow: 'var(--shadow-4)',
-          transform: isOpen ? 'scale(1) translateY(0)' : 'scale(0.95) translateY(-8px)',
-          opacity: isOpen ? 1 : 0,
-          visibility: isOpen ? 'visible' : 'hidden',
-          pointerEvents: isOpen ? 'auto' : 'none',
-          backgroundColor: '#07142C',
-          borderColor: 'rgba(32, 198, 226, 0.25)',
-        }}
+        aria-label={t('common.language.label')}
       >
-        <div className="px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider opacity-60 border-b border-outline-variant/30 mb-1" style={{ color: 'var(--color-on-surface-variant)' }}>
-          {t('common.language.current', { defaultValue: 'CHỌN NGÔN NGỮ' })}
-        </div>
-        {languageOptions.map((option) => {
+        <li role="presentation" className="language-selector__menu-heading">
+          <span>{t('common.language.label')}</span>
+          <strong>{currentOption.shortLabel}</strong>
+        </li>
+
+        {languageOptions.map((option, index) => {
           const isSelected = option.code === currentLanguage;
-          const meta = getLangMeta(option.code);
+
           return (
             <li
               key={option.code}
+              ref={(element) => {
+                optionRefs.current[index] = element;
+              }}
+              className={`language-selector__option${isSelected ? ' language-selector__option--selected' : ''}`}
               role="option"
               aria-selected={isSelected}
+              tabIndex={isOpen && isSelected ? 0 : -1}
               onClick={() => handleSelect(option.code)}
-              className="group flex cursor-pointer items-center justify-between rounded-lg px-2.5 py-2 text-xs font-semibold transition-all duration-150 relative overflow-hidden hover:bg-surface-container-high"
-              style={{
-                backgroundColor: isSelected ? 'var(--color-accent-container)' : 'transparent',
-                color: isSelected ? 'var(--color-primary)' : 'var(--color-on-surface)',
-              }}
+              onKeyDown={(event) => handleOptionKeyDown(event, index)}
             >
-              <div 
-                className={`absolute left-0 top-0 bottom-0 w-[3px] bg-primary transition-transform duration-200 ${isSelected ? 'scale-y-100' : 'scale-y-0 group-hover:scale-y-100'}`} 
-                style={{ backgroundColor: 'var(--color-primary)' }}
-              />
-              
-              <div className="flex items-center gap-2 pl-1.5">
-                <span className="font-semibold text-xs transition-transform duration-200 group-hover:translate-x-0.5">
-                  {option.label}
-                </span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <span className={`px-1 py-0.5 rounded text-[8px] font-extrabold border leading-none ${meta.bgColor} ${meta.textColor} ${meta.borderColor}`}>
-                  {meta.badge}
-                </span>
-                {isSelected && (
-                  <Check size={13} style={{ color: 'var(--color-primary)' }} className="shrink-0 animate-in zoom-in-50 duration-200" />
-                )}
-              </div>
+              <span className="language-selector__option-label">{option.label}</span>
+              <span className="language-selector__option-end">
+                <span className="language-selector__code">{option.shortLabel}</span>
+                {isSelected && <Check size={15} strokeWidth={2.2} aria-hidden="true" />}
+              </span>
             </li>
           );
         })}
