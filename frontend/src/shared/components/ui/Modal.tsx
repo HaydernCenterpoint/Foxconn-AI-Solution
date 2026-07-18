@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { IconButton } from './IconButton';
 
 type ModalSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
 
@@ -26,6 +27,14 @@ interface ModalProps {
   closeOnEscape?: boolean;
 }
 
+function getFocusableElements(container: HTMLElement) {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  ).filter((element) => !element.hasAttribute('hidden'));
+}
+
 export function Modal({
   open,
   onClose,
@@ -38,56 +47,105 @@ export function Modal({
   closeOnEscape = true,
 }: ModalProps) {
   const { t } = useTranslation();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const titleId = useId();
+  const subtitleId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+
+    const previouslyFocusedElement = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const focusTimer = window.setTimeout(() => {
+      closeButtonRef.current?.focus();
+    }, 0);
+
+    const handleDocumentKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (closeOnEscape && event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleDocumentKeyDown);
+
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.removeEventListener('keydown', handleDocumentKeyDown);
+      document.body.style.overflow = previousBodyOverflow;
+      if (previouslyFocusedElement?.isConnected) {
+        previouslyFocusedElement.focus();
+      }
+    };
+  }, [closeOnEscape, onClose, open]);
 
   if (!open) return null;
 
-  const handleOverlayClick = () => {
-    if (closeOnOverlayClick) {
-      onClose();
-    }
-  };
+  const handleDialogKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Tab') return;
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (closeOnEscape && e.key === 'Escape') {
-      onClose();
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const focusableElements = getFocusableElements(dialog);
+    if (focusableElements.length === 0) {
+      event.preventDefault();
+      dialog.focus();
+      return;
+    }
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault();
+      lastElement.focus();
+    } else if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
     }
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      onClick={handleOverlayClick}
-      onKeyDown={handleKeyDown}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
+      className="ui-modal-backdrop"
+      onMouseDown={(event) => {
+        if (closeOnOverlayClick && event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
     >
       <div
-        className="w-full max-h-[calc(100dvh-2rem)] overflow-hidden flex flex-col rounded-xl shadow-xl border border-border bg-surface-1"
+        ref={dialogRef}
+        className="ui-modal"
         style={{ maxWidth: SIZE_MAP[size] }}
-        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={subtitle ? subtitleId : undefined}
+        tabIndex={-1}
+        onKeyDown={handleDialogKeyDown}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
-          <div>
-            <h2 id="modal-title" className="text-lg font-semibold tracking-wide text-text-primary">
-              {title}
-            </h2>
-            {subtitle && <p className="mt-1 text-xs text-text-secondary">{subtitle}</p>}
+        <div className="ui-modal__header">
+          <div className="ui-modal__heading">
+            <h2 id={titleId} className="ui-modal__title">{title}</h2>
+            {subtitle && <p id={subtitleId} className="ui-modal__subtitle">{subtitle}</p>}
           </div>
-          <button
-            type="button"
+          <IconButton
+            ref={closeButtonRef}
+            icon={<X size={20} aria-hidden="true" />}
+            label={t('common.aria.close')}
+            variant="ghost"
             onClick={onClose}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-3 hover:text-text-primary"
-            aria-label={t('common.aria.close')}
-            title={t('common.aria.close')}
-          >
-            <X size={20} />
-          </button>
+          />
         </div>
-        <div className="flex-1 overflow-y-auto p-6 text-sm text-text-primary">{children}</div>
-        {footer && (
-          <div className="flex items-center justify-end gap-3 border-t border-border-subtle px-6 py-4">{footer}</div>
-        )}
+        <div className="ui-modal__body">{children}</div>
+        {footer && <div className="ui-modal__footer">{footer}</div>}
       </div>
     </div>
   );

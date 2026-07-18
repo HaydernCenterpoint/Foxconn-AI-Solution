@@ -36,12 +36,8 @@ const AlarmPage = lazy(() => import('../pages/AlarmPage'));
 
 // ── Shared simulation page ───────────────────────────────────────────
 const SimulationPage = lazy(() => import('../pages/SimulationPage'));
-const UnderDevelopmentPage = lazy(() => import('../pages/UnderDevelopmentPage'));
 const ReportsPage = lazy(() => import('../pages/ReportsPage'));
-
-const SystemPage = () => {
-  return <UnderDevelopmentPage title="Cấu hình hệ thống" />;
-};
+const SystemPage = lazy(() => import('../pages/SystemPage'));
 
 // ── Role-based routing gates ─────────────────────────────────────────
 const DashboardPage = () => {

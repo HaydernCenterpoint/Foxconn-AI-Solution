@@ -1,101 +1,137 @@
+/* ============================================================
+   ENTERPRISE DARK — SINGLE SOURCE OF TRUTH for design tokens.
+   Do NOT define @theme or --color-* anywhere else.
+   See frontend/THIET-KE-ENTERPRISE-DARK.md for the contract.
+   ============================================================ */
 @theme {
-  /* Primary Colors - Corporate FII Cobalt Blue */
+  /* --- Accent & Brand --- */
   --color-primary: #1C64F2;
   --color-primary-hover: #3F83F8;
   --color-primary-light: rgba(28, 100, 242, 0.15);
   --color-on-primary: #FFFFFF;
 
-  /* Secondary Colors - FII Crimson Red */
   --color-secondary: #D00B27;
   --color-secondary-hover: #E52E46;
   --color-on-secondary: #FFFFFF;
 
-  /* Surface Colors */
-  --color-surface: #0A1129;
-  --color-surface-dim: #0A1129;
-  --color-surface-container-lowest: #040812;
-  --color-surface-container-low: #0A1129;
-  --color-surface-container: #0A1129;
-  --color-surface-container-high: #0A1129;
-  --color-surface-container-highest: #14356a;
+  --color-accent: #1C64F2;
+  --color-accent-container: rgba(28, 100, 242, 0.15);
 
-  /* Background */
-  --color-background: #060a16;
-  --color-background-secondary: #0A1129;
+  /* --- Background & Surface (opaque, flat) --- */
+  --color-background: #050B14;
+  --color-background-secondary: #0B1220;
+  --color-surface-container-lowest: #030712;
+  --color-surface-container-low: #0B1220;
+  --color-surface: #111A2E;
+  --color-surface-dim: #0D1524;
+  --color-surface-container: #111A2E;
+  --color-surface-container-high: #1B2740;
+  --color-surface-container-highest: #26344F;
 
-  /* Text Colors */
-  --color-on-surface: #EEEEEE;
-  --color-on-surface-variant: #9CA3AF;
-  --color-text-primary: #EEEEEE;
-  --color-text-secondary: #9CA3AF;
-  --color-text-muted: #9CA3AF;
-  --color-outline: #14356a;
-  --color-outline-variant: #00ADB5;
-  --color-edge: #00ADB5;
-  --color-edge-selected: #38BDF8;
+  /* --- Text --- */
+  --color-on-surface: #F1F5F9;
+  --color-on-surface-variant: #94A3B8;
+  --color-text-primary: #F1F5F9;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted: #64748B;
 
-  /* Status Colors */
-  --color-running: #00E676;
-  --color-running-container: rgba(0, 230, 118, 0.15);
-  --color-success: #00E676;
-  --color-success-container: rgba(0, 230, 118, 0.15);
+  /* --- Border --- */
+  --color-outline: rgba(148, 163, 184, 0.14);
+  --color-outline-variant: rgba(28, 100, 242, 0.35);
+  --color-scrim: rgba(3, 7, 18, 0.64);
+
+  /* --- Status (one color each) --- */
+  --color-running: #10B981;
+  --color-running-container: rgba(16, 185, 129, 0.15);
+  --color-success: #10B981;
+  --color-success-container: rgba(16, 185, 129, 0.15);
   --color-error: #EF4444;
   --color-error-container: rgba(239, 68, 68, 0.15);
   --color-warn: #F59E0B;
   --color-warn-container: rgba(245, 158, 11, 0.15);
-  --color-idle: #38BDF8;
-  --color-idle-container: rgba(56, 189, 248, 0.15);
-  --color-offline: #9CA3AF;
-  --color-offline-container: rgba(156, 163, 175, 0.15);
-  --color-information: #38BDF8;
-  --color-information-container: rgba(56, 189, 248, 0.15);
+  --color-idle: #3B82F6;
+  --color-idle-container: rgba(59, 130, 246, 0.15);
+  --color-information: #3B82F6;
+  --color-information-container: rgba(59, 130, 246, 0.15);
+  --color-offline: #64748B;
+  --color-offline-container: rgba(100, 116, 139, 0.15);
   --color-maintenance: #8B5CF6;
   --color-maintenance-container: rgba(139, 92, 246, 0.15);
 
-  /* Accent */
-  --color-accent: #00ADB5;
-  --color-accent-container: rgba(0, 173, 181, 0.15);
+  /* xyflow diagram edge colors (map to accent, no cyan) */
+  --color-edge: #1C64F2;
+  --color-edge-selected: #3B82F6;
 
-  /* Shadows - Corporate Subtle Glows */
-  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.2);
-  --shadow-2: 0 4px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  --shadow-3: 0 10px 15px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  --shadow-4: 0 20px 25px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  --shadow-5: 0 25px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  /* --- Shadows (soft black, no neon) --- */
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-2: 0 4px 6px rgba(0, 0, 0, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-3: 0 10px 15px rgba(0, 0, 0, 0.40), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-4: 0 20px 25px rgba(0, 0, 0, 0.50);
+  --shadow-5: 0 25px 50px rgba(0, 0, 0, 0.60);
+  --shadow-error: 0 0 12px rgba(239, 68, 68, 0.45);
 
-  /* Typography */
-  --font-family-sans: 'Google Sans', 'Product Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-family-mono: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --font-sans: 'Google Sans', 'Product Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  /* --- Typography --- */
+  --font-family-sans: 'Inter', 'Noto Sans', 'Noto Sans SC', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-family-mono: 'Roboto Mono', SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --font-sans: var(--font-family-sans);
+  --font-mono: var(--font-family-mono);
 
-  /* Border Radius */
+  /* --- Border Radius (3 tiers; xs/xl kept as aliases, do not use new) --- */
   --radius-extra-small: 2px;
   --radius-small: 4px;
-  --radius-medium: 6px;
-  --radius-large: 8px;
+  --radius-medium: 8px;
+  --radius-large: 12px;
   --radius-extra-large: 12px;
 
-  /* Spacing Base Unit */
-  --spacing: 0.2rem;
+  /* --- Spacing ladder (integer 4/8) --- */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
 
-  /* Spacing Tokens */
-  --spacing-xs: 4.8px;
-  --spacing-sm: 9.6px;
-  --spacing-md: 19.2px;
-  --spacing-lg: 28.8px;
-  --spacing-xl: 38.4px;
-  --spacing-2xl: 57.6px;
-
-  /* Typography Font Sizes */
-  --text-xs: 0.9375rem;
-  --text-sm: 1.09375rem;
-  --text-base: 1.25rem;
-  --text-lg: 1.40625rem;
-  --text-xl: 1.5625rem;
-  --text-2xl: 1.875rem;
-  --text-3xl: 2.34375rem;
-  --text-4xl: 2.8125rem;
+  /* --- Type ramp (integer, root 16px) --- */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-3xl: 2.5rem;
+  --text-4xl: 3rem;
   --text-5xl: 3.75rem;
-  --text-6xl: 4.6875rem;
+  --text-6xl: 4.5rem;
+
+  /* --- Semantic aliases used across components --- */
+  --color-surface-1: var(--color-surface);
+  --color-surface-2: var(--color-surface-dim);
+  --color-surface-3: var(--color-surface-container);
+  --color-surface-4: var(--color-surface-container-high);
+  --color-border: var(--color-outline);
+  --color-border-subtle: rgba(148, 163, 184, 0.08);
+  --color-border-strong: rgba(28, 100, 242, 0.55);
+}
+
+/* Compat aliases (formerly in the deleted tokens.css) + focus ring.
+   Single :root site; do not redefine these elsewhere. */
+:root {
+  --color-bg: var(--color-background);
+  --color-panel: var(--color-surface);
+  --color-panel-soft: var(--color-surface-container);
+  --color-light: var(--color-on-surface);
+  --color-sidebar: var(--color-background);
+  --color-hover: var(--color-surface-container-high);
+  --color-muted: var(--color-on-surface-variant);
+  --color-subtle: var(--color-on-surface-variant);
+  --color-on-accent: var(--color-on-primary);
+  --color-accent-hover: var(--color-primary-hover);
+  --color-accent-light: var(--color-accent-container);
+
+  --shadow-panel: var(--shadow-2);
+  --shadow-soft: var(--shadow-3);
+  --shadow-small: var(--shadow-1);
+  --shadow-medium: var(--shadow-4);
+
+  --focus-ring: 0 0 0 3px rgba(28, 100, 242, 0.45);
 }

@@ -1,3 +1,4 @@
+import type { Edge, Node } from '@xyflow/react';
 import { api } from '../../../shared/services/apiClient';
 import type { AddMachineToLineRequest, LineRequest, ProductionLine } from '../../../shared/types/domain';
 import {
@@ -8,8 +9,8 @@ import {
 } from '../../../shared/services/normalize';
 
 export interface DiagramLayoutData {
-  nodes: any[];
-  edges: any[];
+  nodes: Node[];
+  edges: Edge[];
 }
 
 export interface DiagramLayout {

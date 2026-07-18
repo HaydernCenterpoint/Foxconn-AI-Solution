@@ -70,8 +70,7 @@ export function getMockDataForUrl(url: string, method: string): unknown {
     }
   }
 
-  // Fallbacks for POST/PUT/DELETE
-  return { success: true, message: 'Action simulated successfully' };
+  return undefined;
 }
 
 function getMockMachinesForLine(lineId: string): Record<string, unknown>[] {

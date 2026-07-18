@@ -7,6 +7,7 @@ export const queryTimings = {
   reports: 10_000,
   machineConfig: 8_000,
   appShellSummary: 10_000,
+  system: 10_000,
 } as const;
 
 export const queryBehavior = {

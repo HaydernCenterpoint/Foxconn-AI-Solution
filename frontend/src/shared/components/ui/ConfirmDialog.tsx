@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Button } from './Button';
 import { Modal } from './Modal';
 
 interface ConfirmDialogProps {
@@ -25,32 +26,16 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   const { t } = useTranslation();
-  const confirmClassName = confirmTone === 'danger'
-    ? 'btn-danger'
-    : 'btn-primary';
   const resolvedConfirmLabel = confirmLabel ?? t('common.actions.confirm');
   const resolvedCancelLabel = cancelLabel ?? t('common.actions.cancel');
 
   return (
     <Modal open={open} onClose={onCancel} title={title} size="sm">
       <div className="space-y-6">
-        <p className="text-sm text-muted">{description}</p>
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="btn btn-secondary"
-          >
-            {resolvedCancelLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={isPending}
-            className={`btn disabled:opacity-50 ${confirmClassName}`}
-          >
-            {resolvedConfirmLabel}
-          </button>
+        <p className="text-sm text-text-secondary">{description}</p>
+        <div className="flex flex-wrap justify-end gap-3">
+          <Button variant="secondary" onClick={onCancel}>{resolvedCancelLabel}</Button>
+          <Button variant={confirmTone} loading={isPending} onClick={onConfirm}>{resolvedConfirmLabel}</Button>
         </div>
       </div>
     </Modal>

@@ -1,14 +1,18 @@
 using System;
 using System.Data;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using Mkz.Fusion.Contracts;
 using Npgsql;
+using NpgsqlTypes;
 
 namespace backend.Services
 {
     public class DatabaseService
     {
         private readonly string _connectionString;
+        private static readonly JsonSerializerOptions FusionJsonSerializerOptions = new(JsonSerializerDefaults.Web);
 
         public DatabaseService(IConfiguration configuration)
         {
@@ -284,6 +288,28 @@ namespace backend.Services
                     CREATE INDEX IF NOT EXISTS idx_machine_telemetry_machine_seq 
                     ON machine_telemetry(machine_id, sequence DESC);");
 
+                ExecuteSync(conn, @"
+                    CREATE TABLE IF NOT EXISTS fusion_outbox (
+                        id UUID PRIMARY KEY,
+                        schema_version INTEGER NOT NULL,
+                        event_type VARCHAR(100) NOT NULL,
+                        event_key VARCHAR(512) NOT NULL UNIQUE,
+                        payload JSONB NOT NULL,
+                        occurred_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                        status VARCHAR(16) NOT NULL,
+                        attempts INTEGER NOT NULL DEFAULT 0,
+                        available_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                        locked_at TIMESTAMP WITH TIME ZONE NULL,
+                        lock_id UUID NULL,
+                        delivered_at TIMESTAMP WITH TIME ZONE NULL,
+                        last_error TEXT NULL,
+                        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );");
+
+                ExecuteSync(conn, @"
+                    CREATE INDEX IF NOT EXISTS idx_fusion_outbox_dispatch
+                    ON fusion_outbox (status, available_at, created_at);");
+
 
                 // ─── 12. Seed default users ──────────────────────────────────────────────
                 long count = 0;
@@ -494,6 +520,122 @@ namespace backend.Services
             {
                 Console.WriteLine($"[DB] SaveTelemetryHistoryAsync failed: {ex.Message}");
             }
+        }
+
+        public async Task<bool> PersistTelemetryAndFusionOutboxAsync(
+            TelemetryCaptureInput input,
+            bool captureEnabled)
+        {
+            try
+            {
+                await using var connection = CreateConnection();
+                await connection.OpenAsync();
+                await using var transaction = await connection.BeginTransactionAsync();
+
+                try
+                {
+                    const string rawTelemetrySql = @"
+                        INSERT INTO machine_telemetry (machine_id, raw_json, sequence, created_at)
+                        VALUES (@machineId, CAST(@rawJson AS jsonb), @sequence, @occurredAt)";
+
+                    await using (var rawTelemetryCommand = new NpgsqlCommand(rawTelemetrySql, connection, transaction))
+                    {
+                        rawTelemetryCommand.Parameters.AddWithValue("machineId", input.MachineId);
+                        rawTelemetryCommand.Parameters.AddWithValue("rawJson", input.RawTelemetryJson);
+                        rawTelemetryCommand.Parameters.AddWithValue("sequence", input.Sequence);
+                        rawTelemetryCommand.Parameters.AddWithValue("occurredAt", input.OccurredAt.UtcDateTime);
+                        await rawTelemetryCommand.ExecuteNonQueryAsync();
+                    }
+
+                    if (captureEnabled)
+                    {
+                        var context = await ReadMachineContextAsync(connection, transaction, input.MachineId);
+                        if (context is null)
+                        {
+                            await transaction.RollbackAsync();
+                            Console.WriteLine($"[DB] Fusion capture skipped because machine {input.MachineId} was not found.");
+                            return false;
+                        }
+
+                        var fusionEvent = TelemetryFusionEventFactory.Create(input, context.Machine, context.Line);
+                        await InsertFusionOutboxAsync(connection, transaction, fusionEvent);
+                    }
+
+                    await transaction.CommitAsync();
+                    return true;
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DB] PersistTelemetryAndFusionOutboxAsync failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        private static async Task<MachineContext?> ReadMachineContextAsync(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            Guid machineId)
+        {
+            const string sql = @"
+                SELECT m.id, m.client_id, m.machine_code, m.name, l.id, l.name
+                FROM machines m
+                LEFT JOIN line_machines lm ON lm.machine_id = m.id
+                LEFT JOIN production_lines l ON l.id = lm.line_id
+                WHERE m.id = @machineId
+                ORDER BY lm.sequence_order NULLS LAST
+                LIMIT 1";
+
+            await using var command = new NpgsqlCommand(sql, connection, transaction);
+            command.Parameters.AddWithValue("machineId", machineId);
+            await using var reader = await command.ExecuteReaderAsync();
+            if (!await reader.ReadAsync()) return null;
+
+            var machine = new MachineSnapshot(
+                reader.GetGuid(0),
+                reader.IsDBNull(1) ? null : reader.GetString(1),
+                reader.IsDBNull(2) ? null : reader.GetString(2),
+                reader.IsDBNull(3) ? machineId.ToString() : reader.GetString(3));
+
+            LineSnapshot? line = null;
+            if (!reader.IsDBNull(4))
+            {
+                var lineId = reader.GetGuid(4);
+                line = new LineSnapshot(lineId, reader.IsDBNull(5) ? lineId.ToString() : reader.GetString(5));
+            }
+
+            return new MachineContext(machine, line);
+        }
+
+        private static async Task InsertFusionOutboxAsync(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            TelemetryFusionEvent fusionEvent)
+        {
+            const string sql = @"
+                INSERT INTO fusion_outbox
+                    (id, schema_version, event_type, event_key, payload, occurred_at, status, available_at)
+                VALUES
+                    (@id, @schemaVersion, @eventType, @eventKey, @payload, @occurredAt, 'PENDING', @availableAt)
+                ON CONFLICT (event_key) DO NOTHING";
+
+            await using var command = new NpgsqlCommand(sql, connection, transaction);
+            command.Parameters.AddWithValue("id", fusionEvent.EventId);
+            command.Parameters.AddWithValue("schemaVersion", fusionEvent.SchemaVersion);
+            command.Parameters.AddWithValue("eventType", "telemetry");
+            command.Parameters.AddWithValue("eventKey", fusionEvent.EventKey);
+            command.Parameters.AddWithValue(
+                "payload",
+                NpgsqlDbType.Jsonb,
+                JsonSerializer.Serialize(fusionEvent, FusionJsonSerializerOptions));
+            command.Parameters.AddWithValue("occurredAt", fusionEvent.OccurredAt.UtcDateTime);
+            command.Parameters.AddWithValue("availableAt", DateTime.UtcNow);
+            await command.ExecuteNonQueryAsync();
         }
 
         public async Task InsertRawTelemetryAsync(string machineId, string rawJson, long sequence = 0, DateTime? createdAt = null)

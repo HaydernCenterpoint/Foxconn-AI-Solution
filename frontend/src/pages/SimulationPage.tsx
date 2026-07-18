@@ -1,170 +1,218 @@
-import React from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ExternalLink, Play, RotateCcw, Square } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getSimulationConfigs, toggleSimulation, resetSimulation } from '../features/simulation/services/simulation.api';
+import { useTranslation } from 'react-i18next';
+import { getSimulationConfigs, resetSimulation, toggleSimulation } from '../features/simulation/services/simulation.api';
 import type { SimulationConfig } from '../shared/types/machine';
+import { Badge } from '../shared/components/ui/Badge';
+import { Button } from '../shared/components/ui/Button';
+import { ConfirmDialog } from '../shared/components/ui/ConfirmDialog';
+import { DataState } from '../shared/components/ui/DataState';
+import { PageHeader } from '../shared/components/ui/PageHeader';
+import { Surface } from '../shared/components/ui/Surface';
+import { useUiStore } from '../shared/store/ui.store';
 
 function asSimulationConfigs(data: Record<string, unknown>[] | undefined): SimulationConfig[] {
   return (data ?? []) as unknown as SimulationConfig[];
 }
-import {
-  Play,
-  Square,
-  RotateCcw,
-  Settings2
-} from 'lucide-react';
+
+function formatDate(value: string | undefined, locale: string) {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString(locale);
+}
 
 export const SimulationPage: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const addToast = useUiStore((state) => state.addToast);
+  const [resetTarget, setResetTarget] = useState<SimulationConfig | null>(null);
 
-  // Query: Get all simulation configs
-  const { data: configsRaw, isLoading, error } = useQuery({
+  const locale = i18n.language === 'zh' || i18n.language === 'zh-CN'
+    ? 'zh-CN'
+    : i18n.language === 'en'
+      ? 'en-US'
+      : 'vi-VN';
+
+  const configsQuery = useQuery({
     queryKey: ['simulationConfigs'],
     queryFn: getSimulationConfigs,
-    refetchInterval: 2000,
+    refetchInterval: 2_000,
   });
-  const configs = asSimulationConfigs(configsRaw);
+  const configs = asSimulationConfigs(configsQuery.data);
 
-  // Mutation: Toggle simulation
+  const invalidateConfigs = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['simulationConfigs'] });
+    await queryClient.invalidateQueries({ queryKey: ['simulation-all-telemetry'] });
+  };
+
   const toggleMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await toggleSimulation(id);
+    mutationFn: (machineId: string) => toggleSimulation(machineId),
+    onSuccess: async () => {
+      await invalidateConfigs();
+      addToast('success', t('simulation.toggleSuccess', { defaultValue: 'Simulation state updated' }));
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['simulationConfigs'] });
-    }
+    onError: () => {
+      addToast('error', t('simulation.toggleError', { defaultValue: 'Unable to update simulation state' }));
+    },
   });
 
-  // Mutation: Reset simulation data
   const resetMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await resetSimulation(id);
+    mutationFn: (machineId: string) => resetSimulation(machineId),
+    onSuccess: async () => {
+      await invalidateConfigs();
+      addToast('success', t('simulation.resetSuccess', { defaultValue: 'Simulation reset request completed' }));
+      setResetTarget(null);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['simulationConfigs'] });
-    }
+    onError: () => {
+      addToast('error', t('simulation.resetError', { defaultValue: 'Unable to reset the simulation' }));
+    },
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <div className="w-10 h-10 border-4 border-brand-blue-200 border-t-brand-blue-800 rounded-full animate-spin"></div>
-        <p className="text-slate-500 text-sm font-medium">Đang tải bộ giả lập...</p>
-      </div>
-    );
-  }
+  const pageHeader = (
+    <PageHeader
+      eyebrow={t('simulation.eyebrow', { defaultValue: 'Test data controls' })}
+      title={t('simulation.title', { defaultValue: 'Simulation' })}
+      description={t('simulation.subtitle', { defaultValue: 'Start, stop, or reset backend simulation configurations. Values below are configured ranges, not live production telemetry.' })}
+    />
+  );
 
-  if (error || !configs) {
-    return (
-      <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl max-w-2xl mx-auto mt-8">
-        <h3 className="font-bold text-lg">Lỗi tải dữ liệu</h3>
-        <p className="text-sm mt-1">Không thể kết nối với API mô phỏng. Đảm bảo backend đang hoạt động.</p>
+  let content: React.ReactNode;
+  if (configsQuery.isLoading) {
+    content = (
+      <Surface variant="raised">
+        <DataState
+          kind="loading"
+          title={t('simulation.loading', { defaultValue: 'Loading simulation configurations' })}
+          description={t('simulation.loadingDescription', { defaultValue: 'Retrieving configured simulation controls from the service.' })}
+        />
+      </Surface>
+    );
+  } else if (configsQuery.isError) {
+    content = (
+      <Surface variant="raised">
+        <DataState
+          kind="error"
+          title={t('simulation.errorTitle', { defaultValue: 'Simulation configurations are unavailable' })}
+          description={t('simulation.errorDescription', { defaultValue: 'The simulation service could not be reached.' })}
+          action={<Button variant="secondary" size="sm" onClick={() => void configsQuery.refetch()}>{t('common.actions.retry', { defaultValue: 'Retry' })}</Button>}
+        />
+      </Surface>
+    );
+  } else if (configs.length === 0) {
+    content = (
+      <Surface variant="raised">
+        <DataState
+          kind="empty"
+          title={t('simulation.emptyTitle', { defaultValue: 'No simulation configurations found' })}
+          description={t('simulation.emptyDescription', { defaultValue: 'The simulation service did not return configured machines.' })}
+        />
+      </Surface>
+    );
+  } else {
+    content = (
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {configs.map((config) => {
+          const isToggling = toggleMutation.isPending && toggleMutation.variables === config.machineId;
+          const isResetting = resetMutation.isPending && resetMutation.variables === config.machineId;
+          return (
+            <Surface key={config.machineId} variant="raised" padding="lg" className="flex min-w-0 flex-col gap-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="truncate title-small text-text-primary">{config.machineName || config.machineId}</h2>
+                  <p className="mt-1 font-mono text-xs text-text-muted">{config.machineIp || '—'}</p>
+                </div>
+                <Badge variant={config.enabled ? 'success' : 'neutral'} size="sm" dot>
+                  {config.enabled
+                    ? t('simulation.enabled', { defaultValue: 'Enabled' })
+                    : t('simulation.disabled', { defaultValue: 'Stopped' })}
+                </Badge>
+              </div>
+
+              <dl className="grid grid-cols-2 gap-3 border-y border-border py-4 text-sm">
+                <div>
+                  <dt className="text-xs text-text-muted">{t('simulation.temperatureRange', { defaultValue: 'Temperature range' })}</dt>
+                  <dd className="mt-1 font-mono text-text-primary">{config.temperatureMin}–{config.temperatureMax} {t('simulation.temperatureUnit')}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-text-muted">{t('simulation.pressureRange', { defaultValue: 'Pressure range' })}</dt>
+                  <dd className="mt-1 font-mono text-text-primary">{config.pressureMin}–{config.pressureMax} {t('simulation.pressureUnit')}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-text-muted">{t('simulation.speedRange', { defaultValue: 'Speed range' })}</dt>
+                  <dd className="mt-1 font-mono text-text-primary">{config.speedMin}–{config.speedMax}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-text-muted">{t('simulation.errorProbability', { defaultValue: 'Error probability' })}</dt>
+                  <dd className="mt-1 font-mono text-text-primary">{Number.isFinite(config.errorProbability) ? `${(config.errorProbability * 100).toFixed(0)}%` : '—'}</dd>
+                </div>
+              </dl>
+
+              <div className="text-xs text-text-muted">
+                {t('simulation.updatedAt', { defaultValue: 'Configuration updated' })}: {formatDate(config.updatedAt, locale)}
+              </div>
+
+              <div className="mt-auto flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  loading={isToggling}
+                  startIcon={config.enabled ? <Square size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}
+                  onClick={() => toggleMutation.mutate(config.machineId)}
+                >
+                  {config.enabled
+                    ? t('simulation.stop', { defaultValue: 'Stop simulation' })
+                    : t('simulation.start', { defaultValue: 'Start simulation' })}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={isToggling || isResetting}
+                  startIcon={<RotateCcw size={14} aria-hidden="true" />}
+                  onClick={() => setResetTarget(config)}
+                >
+                  {t('simulation.reset', { defaultValue: 'Reset' })}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  startIcon={<ExternalLink size={14} aria-hidden="true" />}
+                  onClick={() => navigate(`/machines/${config.machineId}`)}
+                >
+                  {t('simulation.machineDetails', { defaultValue: 'Machine details' })}
+                </Button>
+              </div>
+            </Surface>
+          );
+        })}
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Title */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Giả lập vận hành</h1>
-        <p className="text-slate-500 text-sm mt-0.5">Quản lý và điều chỉnh bộ tạo lập dữ liệu tự động cho từng trạm máy.</p>
-      </div>
-
-      {/* Grid of simulators */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {configs.map((config) => {
-          const isEnabled = config.enabled;
-
-          return (
-            <div
-              key={config.machineId}
-              className={`bg-white rounded-2xl border shadow-sm p-5 space-y-4 flex flex-col justify-between transition-all ${
-                isEnabled ? 'border-brand-blue-500/30 ring-1 ring-brand-blue-500/10' : 'border-slate-200/80'
-              }`}
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    isEnabled ? 'bg-brand-blue-50 text-brand-blue-700' : 'bg-slate-100 text-slate-500'
-                  }`}>
-                    {isEnabled ? 'ĐANG GIẢ LẬP' : 'DỪNG GIẢ LẬP'}
-                  </span>
-
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => navigate(`/machines/${config.machineId}`)}
-                      className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors"
-                      title="Cấu hình chi tiết"
-                    >
-                      <Settings2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-bold text-slate-800 text-sm">{config.machineName}</h3>
-                  <p className="text-[10px] text-slate-400 font-semibold mt-0.5">IP: {config.machineIp || '0.0.0.0'}</p>
-                </div>
-              </div>
-
-              {/* Simulation metrics overview */}
-              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 grid grid-cols-2 gap-y-2 gap-x-4 text-xs font-semibold text-slate-600">
-                <div>
-                  <p className="text-[10px] text-slate-400 font-normal">Nhiệt độ:</p>
-                  <p className="text-slate-700">{config.temperatureMin} - {config.temperatureMax}°C</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-slate-400 font-normal">Áp suất:</p>
-                  <p className="text-slate-700">{config.pressureMin} - {config.pressureMax} bar</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-slate-400 font-normal">Tốc độ:</p>
-                  <p className="text-slate-700">{config.speedMin} - {config.speedMax} pcs/m</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-slate-400 font-normal">Lỗi ngẫu nhiên:</p>
-                  <p className="text-slate-700">{(config.errorProbability * 100).toFixed(0)}%</p>
-                </div>
-              </div>
-
-              {/* Actions toggling */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                <button
-                  onClick={() => toggleMutation.mutate(config.machineId)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold shadow transition-all ${
-                    isEnabled
-                      ? 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'
-                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200'
-                  }`}
-                >
-                  {isEnabled ? (
-                    <>
-                      <Square className="w-3.5 h-3.5 shrink-0" />
-                      <span>Dừng phát</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-3.5 h-3.5 shrink-0" />
-                      <span>Bật giả lập</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => resetMutation.mutate(config.machineId)}
-                  className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 p-2 rounded-xl"
-                  title="Reset sản lượng"
-                >
-                  <RotateCcw className="w-4 h-4 shrink-0" />
-                </button>
-              </div>
-            </div>
-          );
+      {pageHeader}
+      {content}
+      <ConfirmDialog
+        open={Boolean(resetTarget)}
+        title={t('simulation.resetConfirmTitle', { defaultValue: 'Reset simulation state?' })}
+        description={t('simulation.resetConfirmDescription', {
+          defaultValue: 'Send a reset request for {{name}}. This action cannot be undone from this page.',
+          name: resetTarget?.machineName || resetTarget?.machineId || '',
         })}
-      </div>
+        confirmLabel={t('simulation.reset', { defaultValue: 'Reset' })}
+        confirmTone="danger"
+        isPending={resetMutation.isPending}
+        onCancel={() => {
+          if (!resetMutation.isPending) setResetTarget(null);
+        }}
+        onConfirm={() => {
+          if (resetTarget) resetMutation.mutate(resetTarget.machineId);
+        }}
+      />
     </div>
   );
 };
+
 export default SimulationPage;

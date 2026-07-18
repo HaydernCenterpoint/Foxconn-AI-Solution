@@ -1,19 +1,34 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
-type BadgeVariant = 'primary' | 'success' | 'warning' | 'error' | 'info' | 'neutral' | 'running' | 'idle' | 'offline' | 'disconnected' | 'warn';
+export type BadgeVariant =
+  | 'primary'
+  | 'success'
+  | 'warning'
+  | 'warn'
+  | 'error'
+  | 'info'
+  | 'information'
+  | 'neutral'
+  | 'running'
+  | 'idle'
+  | 'offline'
+  | 'disconnected'
+  | 'maintenance';
 
-const VARIANT_STYLES: Record<BadgeVariant, { bg: string; color: string }> = {
-  primary: { bg: 'var(--color-primary-light)', color: 'var(--color-primary)' },
-  success: { bg: 'var(--color-success-container)', color: 'var(--color-success)' },
-  warning: { bg: 'var(--color-warn-container)', color: 'var(--color-warn)' },
-  warn: { bg: 'var(--color-warn-container)', color: 'var(--color-warn)' },
-  error: { bg: 'var(--color-error-container)', color: 'var(--color-error)' },
-  info: { bg: 'var(--color-info-container)', color: 'var(--color-info)' },
-  neutral: { bg: 'var(--color-surface-container-high)', color: 'var(--color-on-surface-variant)' },
-  running: { bg: 'var(--color-running-container)', color: 'var(--color-running)' },
-  idle: { bg: 'var(--color-idle-container)', color: 'var(--color-idle)' },
-  offline: { bg: 'var(--color-offline-container)', color: 'var(--color-offline)' },
-  disconnected: { bg: 'var(--color-offline-container)', color: 'var(--color-offline)' },
+const VARIANT_STYLES: Record<BadgeVariant, { backgroundColor: string; color: string }> = {
+  primary: { backgroundColor: 'var(--color-primary-light)', color: 'var(--color-primary)' },
+  success: { backgroundColor: 'var(--color-success-container)', color: 'var(--color-success)' },
+  warning: { backgroundColor: 'var(--color-warn-container)', color: 'var(--color-warn)' },
+  warn: { backgroundColor: 'var(--color-warn-container)', color: 'var(--color-warn)' },
+  error: { backgroundColor: 'var(--color-error-container)', color: 'var(--color-error)' },
+  info: { backgroundColor: 'var(--color-information-container)', color: 'var(--color-information)' },
+  information: { backgroundColor: 'var(--color-information-container)', color: 'var(--color-information)' },
+  neutral: { backgroundColor: 'var(--color-surface-container-high)', color: 'var(--color-on-surface-variant)' },
+  running: { backgroundColor: 'var(--color-running-container)', color: 'var(--color-running)' },
+  idle: { backgroundColor: 'var(--color-idle-container)', color: 'var(--color-idle)' },
+  offline: { backgroundColor: 'var(--color-offline-container)', color: 'var(--color-offline)' },
+  disconnected: { backgroundColor: 'var(--color-offline-container)', color: 'var(--color-offline)' },
+  maintenance: { backgroundColor: 'var(--color-maintenance-container)', color: 'var(--color-maintenance)' },
 };
 
 interface BadgeProps {
@@ -24,14 +39,17 @@ interface BadgeProps {
   className?: string;
 }
 
-export function Badge({ variant = 'primary', children, size = 'md', dot, className = '' }: BadgeProps) {
+export function Badge({ variant = 'primary', children, size = 'md', dot = false, className = '' }: BadgeProps) {
   const style = VARIANT_STYLES[variant];
-
-  const sizeClasses = size === 'sm' ? 'text-[10px] px-2.5 py-0.5' : size === 'lg' ? 'text-sm px-4 py-1.5' : 'text-xs px-3 py-1';
+  const badgeStyle: CSSProperties = {
+    backgroundColor: style.backgroundColor,
+    color: style.color,
+    borderColor: 'var(--color-outline)',
+  };
 
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-md font-medium ${sizeClasses} ${className}`} style={{ backgroundColor: style.bg, color: style.color }}>
-      {dot && <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: style.color }} />}
+    <span className={`ui-badge ui-badge--${size} ${className}`.trim()} style={badgeStyle}>
+      {dot && <span className="ui-badge__dot" style={{ backgroundColor: style.color }} aria-hidden="true" />}
       {children}
     </span>
   );

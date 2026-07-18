@@ -14,7 +14,7 @@ export interface Machine {
   createdAt: string;
   lineNames?: string;
   sequenceOrder?: number;
-  lastPlcData?: any;
+  lastPlcData?: unknown;
   lineId?: string | null;
 }
 
