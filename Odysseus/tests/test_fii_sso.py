@@ -763,6 +763,34 @@ def test_invalid_or_colliding_shared_cookie_is_rejected(
         assert response.headers["location"] == LOGIN_URL == app_auth_module.FII_MAIN_LOGIN_URL
 
 
+def test_enabled_shared_sso_rejects_native_session_on_page_without_shared_cookie(
+    app_auth_module, monkeypatch
+):
+    validated = []
+
+    def validate(token):
+        validated.append(token)
+        return True
+
+    response, _, calls = _dispatch(
+        app_auth_module,
+        monkeypatch,
+        path="/private",
+        cookies={app_auth_module.SESSION_COOKIE: "old-native-session"},
+        manager=_auth_manager(
+            validate_token=validate,
+            get_username_for_token=lambda _token: "native.user",
+        ),
+    )
+
+    assert calls == []
+    assert validated == []
+    assert (response.status_code, response.headers["location"]) == (
+        302,
+        LOGIN_URL,
+    )
+
+
 @pytest.mark.parametrize(
     "case",
     ["native-session", "missing-cookie-auth-exempt", "cors-before-invalid-cookie"],

@@ -405,7 +405,7 @@ if AUTH_ENABLED:
                         status_code=401, content={"error": "Invalid FII session"}
                     )
                 return RedirectResponse(url=FII_MAIN_LOGIN_URL, status_code=302)
-            if FII_SSO_ENABLED and path == "/login":
+            if FII_SSO_ENABLED and not path.startswith("/api/"):
                 return RedirectResponse(url=FII_MAIN_LOGIN_URL, status_code=302)
             if _is_auth_exempt(path):
                 return await call_next(request)
