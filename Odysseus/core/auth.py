@@ -713,8 +713,8 @@ class AuthManager:
                 self._save_sessions()
         return revoked
 
-    def status(self, token: Optional[str]) -> Dict[str, Any]:
-        username = self.get_username_for_token(token)
+    def status_for_user(self, username: Optional[str]) -> Dict[str, Any]:
+        username = normalize_known_username(self.users, username)
         authenticated = username is not None
         result = {
             "configured": self.is_configured,
@@ -725,3 +725,6 @@ class AuthManager:
         if authenticated:
             result["privileges"] = self.get_privileges(username)
         return result
+
+    def status(self, token: Optional[str]) -> Dict[str, Any]:
+        return self.status_for_user(self.get_username_for_token(token))

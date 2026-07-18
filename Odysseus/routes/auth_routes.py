@@ -175,8 +175,14 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
 
     @router.get("/status")
     async def auth_status(request: Request):
-        token = request.cookies.get(SESSION_COOKIE)
-        result = auth_manager.status(token)
+        if (
+            getattr(request.state, "fii_sso", False)
+            and getattr(request.state, "current_user", None)
+        ):
+            result = auth_manager.status_for_user(request.state.current_user)
+        else:
+            token = request.cookies.get(SESSION_COOKIE)
+            result = auth_manager.status(token)
         result["signup_enabled"] = auth_manager.signup_enabled
         # Include the caller's effective privileges so the frontend can
         # hide / dim UI controls the user isn't allowed to use. Admins get

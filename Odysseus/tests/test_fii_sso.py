@@ -1,8 +1,10 @@
+import asyncio
 import base64
 import hashlib
 import hmac
 import json
 from collections import UserString
+from types import SimpleNamespace
 
 import pytest
 
@@ -373,6 +375,52 @@ def test_change_password_rejects_fii_sso_shadow_without_mutation(tmp_path):
 
     assert manager.change_password("factory.user", "old", "new") is False
     assert manager.users["factory.user"] == before
+
+
+def test_status_for_user_returns_shared_identity_shape(tmp_path):
+    manager = AuthManager(str(tmp_path / "auth.json"))
+    assert manager.ensure_fii_sso_user("factory.engineer", "ENGINEER") is True
+
+    result = manager.status_for_user("factory.engineer")
+
+    assert result == {
+        "configured": True,
+        "authenticated": True,
+        "username": "factory.engineer",
+        "is_admin": False,
+        "privileges": manager.get_privileges("factory.engineer"),
+    }
+
+
+def test_auth_status_uses_shared_request_identity(tmp_path):
+    from routes.auth_routes import setup_auth_routes
+
+    auth_manager = AuthManager(str(tmp_path / "auth.json"))
+    assert auth_manager.ensure_fii_sso_user("factory.engineer", "ENGINEER") is True
+    router = setup_auth_routes(auth_manager)
+    endpoint = next(
+        route.endpoint
+        for route in router.routes
+        if route.path == "/api/auth/status"
+    )
+    request = SimpleNamespace(
+        cookies={},
+        state=SimpleNamespace(
+            fii_sso=True,
+            current_user="factory.engineer",
+        ),
+    )
+
+    result = asyncio.run(endpoint(request=request))
+
+    assert result == {
+        "configured": True,
+        "authenticated": True,
+        "username": "factory.engineer",
+        "is_admin": False,
+        "privileges": auth_manager.get_privileges("factory.engineer"),
+        "signup_enabled": False,
+    }
 
 
 def test_missing_sso_cookie_preserves_native_session_fallback(
