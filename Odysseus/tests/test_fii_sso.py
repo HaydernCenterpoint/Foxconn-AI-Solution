@@ -2,6 +2,7 @@ import base64
 import hashlib
 import hmac
 import json
+from collections import UserString
 
 import pytest
 
@@ -14,6 +15,7 @@ ISSUER = "MKZ_PLC_Server"
 AUDIENCE = "MKZ_PLC_Client"
 NOW = 1_700_000_000
 OTHER_SECRET = "different-fii-secret-that-is-also-at-least-32-bytes"
+TRAILING_SPACE_SECRET = "fii-secret-keeps-exact-trailing-bytes-12345 "
 
 
 def _b64url(value):
@@ -65,6 +67,20 @@ def test_validate_fii_sso_rejects_malformed_segments(segment_index):
         validate_fii_sso(".".join(segments), SECRET, ISSUER, AUDIENCE, now=NOW)
 
 
+@pytest.mark.parametrize("signature_form", ["padded", "standard-base64"])
+def test_validate_fii_sso_rejects_non_jwt_base64url_signature(signature_form):
+    segments = _token().split(".")
+    if signature_form == "padded":
+        segments[2] += "="
+    else:
+        standard_signature = segments[2].translate(str.maketrans("-_", "+/"))
+        assert standard_signature != segments[2]
+        segments[2] = standard_signature
+
+    with pytest.raises(FiiSsoError):
+        validate_fii_sso(".".join(segments), SECRET, ISSUER, AUDIENCE, now=NOW)
+
+
 @pytest.mark.parametrize("segment_index", [0, 1])
 def test_validate_fii_sso_rejects_non_object_json_segments(segment_index):
     segments = _token().split(".")
@@ -88,6 +104,16 @@ def test_validate_fii_sso_rejects_short_secret():
         validate_fii_sso(
             _token(secret=short_secret), short_secret, ISSUER, AUDIENCE, now=NOW
         )
+
+
+def test_validate_fii_sso_uses_secret_bytes_without_trimming():
+    assert validate_fii_sso(
+        _token(secret=TRAILING_SPACE_SECRET),
+        TRAILING_SPACE_SECRET,
+        ISSUER,
+        AUDIENCE,
+        now=NOW,
+    ) == ("admin", "ADMIN")
 
 
 def test_validate_fii_sso_rejects_tampered_signature():
@@ -254,6 +280,29 @@ def test_ensure_fii_sso_user_rejects_blank_reserved_or_invalid_role(
     manager = AuthManager(str(tmp_path / "auth.json"))
 
     assert manager.ensure_fii_sso_user(username, role) is False
+    assert manager.users == {}
+
+
+@pytest.mark.parametrize(
+    ("username", "role"),
+    [
+        (UserString("factory.user"), "GUEST"),
+        ("factory.user", UserString("GUEST")),
+    ],
+)
+def test_ensure_fii_sso_user_rejects_non_string_identity_inputs(
+    tmp_path, username, role
+):
+    manager = AuthManager(str(tmp_path / "auth.json"))
+
+    assert manager.ensure_fii_sso_user(username, role) is False
+    assert manager.users == {}
+
+
+def test_ensure_fii_sso_user_rejects_subject_over_255_characters(tmp_path):
+    manager = AuthManager(str(tmp_path / "auth.json"))
+
+    assert manager.ensure_fii_sso_user(f" {'x' * 256} ", "GUEST") is False
     assert manager.users == {}
 
 

@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import json
 import math
+import re
 import time
 
 
@@ -26,6 +27,8 @@ def _decode_json(segment):
 
 
 def _decode_segment(segment):
+    if re.fullmatch(r"[A-Za-z0-9_-]+", segment) is None:
+        raise FiiSsoError("Malformed FII SSO token")
     try:
         encoded = segment.encode("ascii")
         padding = b"=" * (-len(encoded) % 4)
@@ -38,7 +41,7 @@ def validate_fii_sso(token, secret, issuer, audience, now=None):
     """Return the normalized username and role from a shared FII JWT."""
     if not isinstance(secret, str):
         raise FiiSsoError("Invalid FII SSO secret")
-    secret_bytes = secret.strip().encode("utf-8")
+    secret_bytes = secret.encode("utf-8")
     if len(secret_bytes) < 32:
         raise FiiSsoError("FII SSO secret must be at least 32 bytes")
     if not isinstance(token, str):

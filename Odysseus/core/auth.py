@@ -291,10 +291,13 @@ class AuthManager:
 
     def ensure_fii_sso_user(self, username: str, role: str) -> bool:
         """Create the passwordless local shadow for a shared FII identity."""
-        username = str(username or "").strip().lower()
-        role = str(role or "").strip().upper()
+        if not isinstance(username, str) or not isinstance(role, str):
+            return False
+        username = username.strip().lower()
+        role = role.strip().upper()
         if (
             not username
+            or len(username) > 255
             or username in RESERVED_USERNAMES
             or role not in {"ADMIN", "ENGINEER", "GUEST"}
         ):
