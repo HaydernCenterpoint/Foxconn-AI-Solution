@@ -18,7 +18,7 @@ const testStorage = vi.hoisted(() => {
 import { render, screen } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../../../app/i18n';
 import { useAuthStore } from '../../store/auth.store';
 import { Sidebar } from './Sidebar';
