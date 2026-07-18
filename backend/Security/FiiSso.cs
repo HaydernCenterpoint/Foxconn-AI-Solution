@@ -24,6 +24,11 @@ public static class FiiSso
         DateTimeOffset? issuedAt = null)
     {
         var normalizedUsername = username.Trim().ToLowerInvariant();
+        if (normalizedUsername.Length == 0)
+        {
+            throw new ArgumentException("Username must contain a non-whitespace subject.", nameof(username));
+        }
+
         var normalizedRole = role.Trim().ToUpperInvariant();
         if (!IsAllowedRole(normalizedRole))
         {

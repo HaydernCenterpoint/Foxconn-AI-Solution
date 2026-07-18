@@ -149,6 +149,22 @@ public class FiiSsoTests
     }
 
     [Theory]
+    [InlineData("")]
+    [InlineData("   \t\r\n")]
+    public void Issue_RejectsBlankNormalizedSubject(string username)
+    {
+        var configuration = Configuration(new Dictionary<string, string?>
+        {
+            ["Jwt:Key"] = SigningSecret
+        });
+
+        var exception = Assert.Throws<ArgumentException>(() =>
+            FiiSso.Issue(username, "GUEST", configuration));
+
+        Assert.Equal("username", exception.ParamName);
+    }
+
+    [Theory]
     [InlineData("ADMIN")]
     [InlineData("ENGINEER")]
     [InlineData("GUEST")]
@@ -270,6 +286,42 @@ public class FiiSsoTests
         var session = FiiSso.ReadSession(principal);
 
         Assert.Equal(new FiiSsoSession("factory.user", "ADMIN", expiresAt), session);
+    }
+
+    [Fact]
+    public void Issue_ValidatedPrincipal_ComposesWithReadSession()
+    {
+        var issuedAt = DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+            .AddMinutes(-1);
+        var configuration = Configuration(new Dictionary<string, string?>
+        {
+            ["Jwt:Key"] = SigningSecret,
+            ["Jwt:Issuer"] = "composition-issuer",
+            ["Jwt:Audience"] = "composition-audience"
+        });
+        var token = FiiSso.Issue("  Factory.User  ", " engineer ", configuration, issuedAt);
+        var principal = new JwtSecurityTokenHandler().ValidateToken(
+            token.Value,
+            new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidIssuer = "composition-issuer",
+                ValidateAudience = true,
+                ValidAudience = "composition-audience",
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.Zero,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = FiiSso.SigningKey(configuration),
+                ValidAlgorithms = [SecurityAlgorithms.HmacSha256]
+            },
+            out _);
+
+        var session = FiiSso.ReadSession(principal);
+
+        Assert.True(principal.Identity?.IsAuthenticated);
+        Assert.Equal(
+            new FiiSsoSession("factory.user", "ENGINEER", token.ExpiresAt.ToUnixTimeSeconds()),
+            session);
     }
 
     [Fact]
