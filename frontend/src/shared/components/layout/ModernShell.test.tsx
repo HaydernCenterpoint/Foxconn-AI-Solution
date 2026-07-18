@@ -157,6 +157,15 @@ describe('ModernShell', () => {
     expect(assistantLink).toHaveAttribute('rel', 'noreferrer');
   });
 
+  it('provides an FII Data Fusion link to the Open Data Fusion window', () => {
+    renderViewerShell();
+
+    const dataFusionLink = screen.getByRole('link', { name: 'FII Data Fusion' });
+    expect(dataFusionLink).toHaveAttribute('href', 'http://localhost:5173');
+    expect(dataFusionLink).toHaveAttribute('target', '_blank');
+    expect(dataFusionLink).toHaveAttribute('rel', 'noreferrer');
+  });
+
   it('reports the backend as offline when the summary request fails', async () => {
     dashboardApiMock.getSummary.mockRejectedValue(new Error('Backend unavailable'));
     const { container } = renderViewerShell();

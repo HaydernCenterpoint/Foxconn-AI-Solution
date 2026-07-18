@@ -181,6 +181,7 @@ export const zhCN = {
     reports: '报告',
     productionAnalysis: '产量分析',
     fiiAssistant: 'FII Assistant',
+    fiiDataFusion: 'FII Data Fusion',
     system: '系统',
   },
   titles: {

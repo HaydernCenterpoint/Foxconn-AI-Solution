@@ -181,6 +181,7 @@ export const en = {
     reports: 'Reports',
     productionAnalysis: 'Production Analysis',
     fiiAssistant: 'FII Assistant',
+    fiiDataFusion: 'FII Data Fusion',
     system: 'System',
   },
   titles: {

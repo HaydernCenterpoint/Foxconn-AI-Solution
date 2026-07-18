@@ -181,6 +181,7 @@ export const vi = {
     reports: 'Báo cáo',
     productionAnalysis: 'Phân tích sản lượng',
     fiiAssistant: 'FII Assistant',
+    fiiDataFusion: 'FII Data Fusion',
     system: 'Hệ thống',
   },
   titles: {

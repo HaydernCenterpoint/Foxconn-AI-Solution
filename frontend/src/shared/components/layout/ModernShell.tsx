@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ClipboardList,
   Clock3,
+  DatabaseZap,
   Factory,
   FileText,
   LayoutDashboard,
@@ -48,6 +49,7 @@ interface ShellNavigationItem {
 }
 
 const ODYSSEUS_URL = import.meta.env.VITE_ODYSSEUS_URL?.trim() || 'http://localhost:7000';
+const FII_DATA_FUSION_URL = import.meta.env.VITE_FII_DATA_FUSION_URL?.trim() || 'http://localhost:5173';
 
 const viewerNavigation: ShellNavigationItem[] = [
   { to: '/', labelKey: 'navigation.overview', icon: LayoutDashboard },
@@ -397,6 +399,20 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
               </NavLink>
             );
           })}
+
+          <a
+            className="modern-shell__nav-link modern-shell__nav-link--assistant"
+            href={FII_DATA_FUSION_URL}
+            target="_blank"
+            rel="noreferrer"
+            title={t('navigation.fiiDataFusion')}
+            aria-label={t('navigation.fiiDataFusion')}
+            onClick={() => setMobileNavigationOpen(false)}
+          >
+            <DatabaseZap size={18} strokeWidth={1.75} aria-hidden="true" />
+            <span className="modern-shell__nav-label">{t('navigation.fiiDataFusion')}</span>
+            <ArrowUpRight className="modern-shell__nav-external-icon" size={15} strokeWidth={1.9} aria-hidden="true" />
+          </a>
 
           <a
             className="modern-shell__nav-link modern-shell__nav-link--assistant"
