@@ -289,6 +289,38 @@ class AuthManager:
         logger.info(f"Created user '{username}' (admin={is_admin})")
         return True
 
+    def ensure_fii_sso_user(self, username: str, role: str) -> bool:
+        """Create the passwordless local shadow for a shared FII identity."""
+        username = str(username or "").strip().lower()
+        role = str(role or "").strip().upper()
+        if (
+            not username
+            or username in RESERVED_USERNAMES
+            or role not in {"ADMIN", "ENGINEER", "GUEST"}
+        ):
+            return False
+        with self._config_lock:
+            users = self._config.setdefault("users", {})
+            existing = users.get(username)
+            if username in users and (
+                not isinstance(existing, dict)
+                or existing.get("auth_source") != "fii_sso"
+            ):
+                return False
+            is_admin = role == "ADMIN"
+            users[username] = {
+                "created": existing.get("created", time.time())
+                if existing
+                else time.time(),
+                "is_admin": is_admin,
+                "auth_source": "fii_sso",
+                "privileges": dict(
+                    ADMIN_PRIVILEGES if is_admin else DEFAULT_PRIVILEGES
+                ),
+            }
+            self._save()
+        return True
+
     def delete_user(self, username: str, requesting_user: str) -> bool:
         """Delete a user. Only admins can delete, and can't delete themselves.
 
@@ -574,9 +606,13 @@ class AuthManager:
 
     def verify_password(self, username: str, password: str) -> bool:
         username = username.strip().lower()
-        if username not in self.users:
+        user = self.users.get(username)
+        if not isinstance(user, dict) or user.get("auth_source") == "fii_sso":
             return False
-        return _verify_password(password, self.users[username]["password_hash"])
+        password_hash = user.get("password_hash")
+        if not isinstance(password_hash, str):
+            return False
+        return _verify_password(password, password_hash)
 
     def create_session(self, username: str, password: str) -> Optional[str]:
         """Verify credentials and return a session token, or None."""
