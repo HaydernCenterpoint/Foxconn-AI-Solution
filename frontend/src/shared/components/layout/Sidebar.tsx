@@ -1,9 +1,10 @@
 import {
   BellOff,
+  Bot,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
-  ExternalLink,
+  DatabaseZap,
   Factory,
   FileText,
   Gauge,
@@ -80,7 +81,14 @@ export function Sidebar({
   const isExpanded = isDrawer || !collapsed;
   const isViewerMode = !location.pathname.startsWith('/admin');
   const visibleAdminItems = role === 'ADMIN' ? adminNavItems : [];
-  const odfWebUrl = getOpenDataFusionUrl(import.meta.env.VITE_ODF_WEB_URL);
+  const dataFusionUrl = getOpenDataFusionUrl(
+    import.meta.env.VITE_FII_DATA_FUSION_URL?.trim()
+      || import.meta.env.VITE_ODF_WEB_URL?.trim()
+      || 'http://localhost:5173',
+  );
+  const assistantUrl = getOpenDataFusionUrl(
+    import.meta.env.VITE_ODYSSEUS_URL?.trim() || 'http://localhost:7000',
+  );
 
   useEffect(() => {
     if (!isDrawer) return;
@@ -147,20 +155,25 @@ export function Sidebar({
     );
   };
 
-  const renderOpenDataFusionLink = () => {
-    if (!odfWebUrl) return null;
-    const label = t('navigation.dataFusion');
+  const renderExternalLink = (
+    url: string | null,
+    labelKey: string,
+    Icon: LucideIcon,
+  ) => {
+    if (!url) return null;
+    const label = t(labelKey);
 
     return (
       <a
-        href={odfWebUrl}
-        target="_self"
+        href={url}
+        target="_blank"
+        rel="noreferrer"
         title={!isExpanded ? label : undefined}
         aria-label={label}
         onClick={onNavigate}
         className={`app-sidebar__nav-link ${!isExpanded ? 'is-collapsed' : ''}`.trim()}
       >
-        <span className="app-sidebar__nav-icon"><ExternalLink size={18} aria-hidden="true" /></span>
+        <span className="app-sidebar__nav-icon"><Icon size={18} aria-hidden="true" /></span>
         {isExpanded && <span className="app-sidebar__nav-label">{label}</span>}
       </a>
     );
@@ -203,12 +216,14 @@ export function Sidebar({
         {isViewerMode ? (
           <>
             {viewerNavItems.map((item) => renderNavItem(item, item.to === '/alarms'))}
-            {renderOpenDataFusionLink()}
+            {renderExternalLink(dataFusionUrl, 'navigation.fiiDataFusion', DatabaseZap)}
+            {renderExternalLink(assistantUrl, 'navigation.fiiAssistant', Bot)}
           </>
         ) : (
           <>
             {baseNavItems.map((item) => renderNavItem(item, item.to === '/admin/alarms'))}
-            {renderOpenDataFusionLink()}
+            {renderExternalLink(dataFusionUrl, 'navigation.fiiDataFusion', DatabaseZap)}
+            {renderExternalLink(assistantUrl, 'navigation.fiiAssistant', Bot)}
             {visibleAdminItems.length > 0 && (
               <>
                 <div className="app-sidebar__divider" role="separator" />

@@ -187,6 +187,8 @@ export const vi = {
     simulation: 'Giả lập',
     reports: 'Báo cáo',
     productionAnalysis: 'Phân tích sản lượng',
+    fiiDataFusion: 'FII Data Fusion',
+    fiiAssistant: 'FII Assistant',
     system: 'Hệ thống',
     dataFusion: 'Hợp nhất dữ liệu',
   },
@@ -226,6 +228,7 @@ export const vi = {
     errors: {
       sessionExpired: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
       serverRejected: 'Backend từ chối đăng nhập. Kiểm tra tài khoản hoặc mật khẩu.',
+      logoutFailed: 'Đăng xuất máy chủ chưa hoàn tất. Phiên dùng chung có thể còn hiệu lực cho đến khi hết hạn.',
     },
     permissionDeniedTitle: 'Không có quyền truy cập',
     permissionDeniedDescription: 'Bạn không có quyền xem hoặc thao tác trên khu vực này.',

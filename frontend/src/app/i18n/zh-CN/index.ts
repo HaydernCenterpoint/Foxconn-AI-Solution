@@ -187,6 +187,8 @@ export const zhCN = {
     simulation: '模拟',
     reports: '报告',
     productionAnalysis: '产量分析',
+    fiiDataFusion: 'FII Data Fusion',
+    fiiAssistant: 'FII Assistant',
     system: '系统',
     dataFusion: '数据融合',
   },
@@ -226,6 +228,7 @@ export const zhCN = {
     errors: {
       sessionExpired: '登录会话已过期。请重新登录。',
       serverRejected: '后端拒绝登录请求。请检查账号或密码。',
+      logoutFailed: '服务器退出未完成。共享会话可能会持续有效，直到过期。',
     },
     permissionDeniedTitle: '无权访问',
     permissionDeniedDescription: '您无权查看或操作此区域。',

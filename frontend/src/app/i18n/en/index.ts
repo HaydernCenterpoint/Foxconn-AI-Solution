@@ -187,6 +187,8 @@ export const en = {
     simulation: 'Simulation',
     reports: 'Reports',
     productionAnalysis: 'Production Analysis',
+    fiiDataFusion: 'FII Data Fusion',
+    fiiAssistant: 'FII Assistant',
     system: 'System',
     dataFusion: 'Data Fusion',
   },
@@ -226,6 +228,7 @@ export const en = {
     errors: {
       sessionExpired: 'Your session has expired. Please sign in again.',
       serverRejected: 'The backend rejected the sign-in request. Check the account or password.',
+      logoutFailed: 'Server logout did not complete. The shared session may remain active until it expires.',
     },
     permissionDeniedTitle: 'Access denied',
     permissionDeniedDescription: 'You do not have permission to view or operate this area.',

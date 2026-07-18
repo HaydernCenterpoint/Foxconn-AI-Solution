@@ -1,10 +1,11 @@
 import { Bell, Eye, LogOut, Menu, Moon, RefreshCw, Sun, Wifi, WifiOff } from 'lucide-react';
 import { useEffect, useRef, useState, type RefObject } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import logoUrl from '../../../assets/Foxconn_Industrial_Internet.png';
 import type { RefreshScope } from '../../../app/refresh';
 import { routeMetaByPath } from '../../../app/routeMeta';
+import { authApi } from '../../../features/auth/services/auth.api';
 import { IconButton } from '../ui/IconButton';
 import { LanguageControl } from '../ui/LanguageControl';
 import { LocalizedDateTime } from '../ui/LocalizedDateTime';
@@ -31,8 +32,9 @@ export function Topbar({
 }: Props) {
   const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const { username, role, logout, isAuthenticated } = useAuthStore();
-  const { notifications, clearNotifications, theme, setTheme } = useUiStore();
+  const { notifications, clearNotifications, theme, setTheme, addToast } = useUiStore();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -68,6 +70,18 @@ export function Topbar({
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      addToast('error', t('auth.errors.logoutFailed'));
+    } finally {
+      logout();
+      setUserMenuOpen(false);
+      navigate('/login', { replace: true });
+    }
+  };
 
   return (
     <header className="app-topbar">
@@ -190,7 +204,7 @@ export function Topbar({
                   <span>{username}</span>
                   <span>{roleLabel}</span>
                 </div>
-                <button type="button" className="app-topbar__logout-action" onClick={() => logout()} role="menuitem">
+                <button type="button" className="app-topbar__logout-action" onClick={() => void handleLogout()} role="menuitem">
                   <LogOut size={17} aria-hidden="true" />
                   <span>{t('common.aria.logout')}</span>
                 </button>
@@ -209,7 +223,7 @@ export function Topbar({
             label={t('common.aria.logout')}
             variant="ghost"
             className="app-topbar__mobile-logout"
-            onClick={() => logout()}
+            onClick={() => void handleLogout()}
           />
         )}
       </div>
