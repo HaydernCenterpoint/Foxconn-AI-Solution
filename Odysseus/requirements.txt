@@ -16,7 +16,7 @@ numpy
 # still degrades to keyword fallback if they're ever missing.
 # chromadb-client is the lightweight HTTP client (talks to a standalone
 # ChromaDB service); fastembed runs local ONNX embeddings.
-chromadb-client
+chromadb-client==1.5.9
 fastembed
 youtube-transcript-api
 # Markdown rendering for research reports (src/visual_report.py).
@@ -44,8 +44,6 @@ qrcode[pil]
 croniter
 pytest
 pytest-asyncio
-# PostgreSQL adapter for MKZ factory integration
-psycopg2-binary>=2.9.9
 # starlette.testclient prefers httpx2 since Starlette 1.2.0 and warns on every
 # TestClient import when only classic httpx is present. Runtime code keeps
 # using `httpx` above; this is test-client only.
