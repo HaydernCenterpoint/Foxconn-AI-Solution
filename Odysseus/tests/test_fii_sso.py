@@ -134,6 +134,26 @@ def test_validate_fii_sso_requires_exact_issuer_and_audience(claim, value):
         )
 
 
+@pytest.mark.parametrize(
+    ("issuer", "audience"),
+    [
+        (None, AUDIENCE),
+        ("   ", AUDIENCE),
+        (ISSUER, None),
+        (ISSUER, "   "),
+    ],
+)
+def test_validate_fii_sso_rejects_blank_identity_configuration(issuer, audience):
+    with pytest.raises(FiiSsoError):
+        validate_fii_sso(
+            _token({"iss": issuer, "aud": audience}),
+            SECRET,
+            issuer,
+            audience,
+            now=NOW,
+        )
+
+
 @pytest.mark.parametrize("expiration", [NOW - 1, NOW])
 def test_validate_fii_sso_requires_expiration_strictly_in_future(expiration):
     with pytest.raises(FiiSsoError):
@@ -155,6 +175,18 @@ def test_validate_fii_sso_requires_expiration_strictly_in_future(expiration):
 def test_validate_fii_sso_rejects_missing_or_invalid_expiration(token):
     with pytest.raises(FiiSsoError):
         validate_fii_sso(token, SECRET, ISSUER, AUDIENCE, now=NOW)
+
+
+@pytest.mark.parametrize(
+    "not_before",
+    [NOW + 1, True, "later", float("nan"), None],
+    ids=["future", "boolean", "string", "not-finite", "null"],
+)
+def test_validate_fii_sso_rejects_invalid_or_future_not_before(not_before):
+    with pytest.raises(FiiSsoError):
+        validate_fii_sso(
+            _token({"nbf": not_before}), SECRET, ISSUER, AUDIENCE, now=NOW
+        )
 
 
 @pytest.mark.parametrize(
@@ -262,6 +294,23 @@ def test_ensure_fii_sso_user_updates_admin_to_guest_and_preserves_created(tmp_pa
     assert "password_hash" not in user
 
 
+def test_ensure_fii_sso_user_saves_only_on_create_or_change(
+    tmp_path, monkeypatch
+):
+    manager = AuthManager(str(tmp_path / "auth.json"))
+    saves = []
+    monkeypatch.setattr(manager, "_save", lambda: saves.append(True))
+
+    assert manager.ensure_fii_sso_user("factory.user", "GUEST") is True
+    assert len(saves) == 1
+
+    assert manager.ensure_fii_sso_user("factory.user", "GUEST") is True
+    assert len(saves) == 1
+
+    assert manager.ensure_fii_sso_user("factory.user", "ADMIN") is True
+    assert len(saves) == 2
+
+
 @pytest.mark.parametrize(
     ("username", "role"),
     [
@@ -315,6 +364,15 @@ def test_verify_password_always_rejects_fii_sso_shadow_users(
     monkeypatch.setattr("core.auth._verify_password", lambda password, hashed: True)
 
     assert manager.verify_password("factory.user", "anything") is False
+
+
+def test_change_password_rejects_fii_sso_shadow_without_mutation(tmp_path):
+    manager = AuthManager(str(tmp_path / "auth.json"))
+    assert manager.ensure_fii_sso_user("factory.user", "GUEST") is True
+    before = json.loads(json.dumps(manager.users["factory.user"]))
+
+    assert manager.change_password("factory.user", "old", "new") is False
+    assert manager.users["factory.user"] == before
 
 
 def test_missing_sso_cookie_preserves_native_session_fallback(

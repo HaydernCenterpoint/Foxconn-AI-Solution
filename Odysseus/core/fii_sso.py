@@ -44,6 +44,13 @@ def validate_fii_sso(token, secret, issuer, audience, now=None):
     secret_bytes = secret.encode("utf-8")
     if len(secret_bytes) < 32:
         raise FiiSsoError("FII SSO secret must be at least 32 bytes")
+    if (
+        not isinstance(issuer, str)
+        or not issuer.strip()
+        or not isinstance(audience, str)
+        or not audience.strip()
+    ):
+        raise FiiSsoError("Invalid FII SSO issuer or audience configuration")
     if not isinstance(token, str):
         raise FiiSsoError("Malformed FII SSO token")
     segments = token.split(".")
@@ -74,6 +81,15 @@ def validate_fii_sso(token, secret, issuer, audience, now=None):
     current_time = time.time() if now is None else now
     if expiration <= current_time:
         raise FiiSsoError("Expired FII SSO token")
+    if "nbf" in payload:
+        not_before = payload["nbf"]
+        if (
+            isinstance(not_before, bool)
+            or not isinstance(not_before, (int, float))
+            or not math.isfinite(not_before)
+            or not_before > current_time
+        ):
+            raise FiiSsoError("Invalid FII SSO not-before time")
     subject = payload.get("sub")
     if not isinstance(subject, str):
         raise FiiSsoError("Invalid FII SSO subject")

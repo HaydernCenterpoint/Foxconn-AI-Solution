@@ -311,7 +311,7 @@ class AuthManager:
             ):
                 return False
             is_admin = role == "ADMIN"
-            users[username] = {
+            desired = {
                 "created": existing.get("created", time.time())
                 if existing
                 else time.time(),
@@ -321,6 +321,9 @@ class AuthManager:
                     ADMIN_PRIVILEGES if is_admin else DEFAULT_PRIVILEGES
                 ),
             }
+            if existing == desired:
+                return True
+            users[username] = desired
             self._save()
         return True
 
@@ -509,9 +512,7 @@ class AuthManager:
 
     def change_password(self, username: str, current_password: str, new_password: str) -> bool:
         username = username.strip().lower()
-        if username not in self.users:
-            return False
-        if not _verify_password(current_password, self.users[username]["password_hash"]):
+        if not self.verify_password(username, current_password):
             return False
         with self._config_lock:
             self._config["users"][username]["password_hash"] = _hash_password(new_password)
