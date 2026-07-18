@@ -1,0 +1,224 @@
+{
+  "realm": "open-data-fusion",
+  "displayName": "Open Data Fusion (local development)",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": true,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "client": {
+      "open-data-fusion-api": [
+        { "name": "data:read", "description": "Read governed industrial data" },
+        { "name": "data:ingest", "description": "Submit connector ingestion payloads" },
+        { "name": "relations:review", "description": "Review contextualization candidates" },
+        { "name": "audit:read", "description": "Read governed audit history" },
+        { "name": "platform:admin", "description": "Create and administer platform tenant boundaries" },
+        { "name": "writeback:request", "description": "Request a governed industrial write-back" },
+        { "name": "writeback:approve", "description": "Approve or reject a write-back requested by another identity" },
+        { "name": "writeback:execute", "description": "Execute a fully approved and policy-safe write-back" }
+      ]
+    }
+  },
+  "clients": [
+    {
+      "clientId": "open-data-fusion-api",
+      "name": "Open Data Fusion API",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    },
+    {
+      "clientId": "open-data-fusion-connector",
+      "name": "Open Data Fusion Connector",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${ODF_CONNECTOR_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": true,
+      "protocolMappers": [
+        {
+          "name": "Open Data Fusion API audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "open-data-fusion-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "open-data-fusion-web",
+      "name": "Open Data Fusion Web",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "bearerOnly": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": true,
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://127.0.0.1:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/*##http://127.0.0.1:5173/*"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "basic",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "protocolMappers": [
+        {
+          "name": "Open Data Fusion API audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "open-data-fusion-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "harper.dennis",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Harper",
+      "lastName": "Dennis",
+      "email": "harper.dennis@example.test",
+      "clientRoles": {
+        "open-data-fusion-api": ["data:read", "data:ingest", "relations:review", "audit:read", "platform:admin", "writeback:request", "writeback:execute"]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${ODF_DEMO_USER_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "riley.chen",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Riley",
+      "lastName": "Chen",
+      "email": "riley.chen@example.test",
+      "clientRoles": {
+        "open-data-fusion-api": ["data:read", "relations:review", "writeback:approve"]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${ODF_DEMO_USER_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "monica.reyes",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Monica",
+      "lastName": "Reyes",
+      "email": "monica.reyes@example.test",
+      "clientRoles": {
+        "open-data-fusion-api": ["data:read", "audit:read", "writeback:approve"]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${ODF_DEMO_USER_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "samantha.lee",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Samantha",
+      "lastName": "Lee",
+      "email": "samantha.lee@example.test",
+      "clientRoles": {
+        "open-data-fusion-api": ["data:read"]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${ODF_DEMO_USER_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "alex.morgan",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Alex",
+      "lastName": "Morgan",
+      "email": "alex.morgan@example.test",
+      "clientRoles": {
+        "open-data-fusion-api": ["data:read", "audit:read", "writeback:approve"]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${ODF_DEMO_USER_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "service-account-open-data-fusion-connector",
+      "enabled": true,
+      "serviceAccountClientId": "open-data-fusion-connector",
+      "clientRoles": {
+        "open-data-fusion-api": ["data:read", "data:ingest", "audit:read"]
+      }
+    }
+  ]
+}
