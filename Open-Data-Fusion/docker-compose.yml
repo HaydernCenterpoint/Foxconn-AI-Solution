@@ -1,0 +1,325 @@
+name: open-data-fusion
+
+services:
+  odf-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${ODF_POSTGRES_DB:-odf}"
+      POSTGRES_USER: "${ODF_POSTGRES_ADMIN_USER:-odf_migrator}"
+      POSTGRES_PASSWORD: "${ODF_POSTGRES_ADMIN_PASSWORD:?Set ODF_POSTGRES_ADMIN_PASSWORD via a secret manager or environment variable}"
+      POSTGRES_INITDB_ARGS: "--data-checksums --auth-host=scram-sha-256"
+      TZ: UTC
+    command:
+      - postgres
+      - -c
+      - password_encryption=scram-sha-256
+      - -c
+      - timezone=UTC
+      - -c
+      - log_timezone=UTC
+      - -c
+      - log_min_duration_statement=1000
+    ports:
+      - "127.0.0.1:${ODF_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - odf-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    shm_size: 256mb
+
+  odf-redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: "${ODF_REDIS_PASSWORD:?Set ODF_REDIS_PASSWORD via a secret manager or environment variable}"
+    command:
+      - sh
+      - -ec
+      - >-
+        exec redis-server --appendonly yes --appendfsync everysec --save 60 1000
+        --maxmemory-policy noeviction --requirepass "$$REDIS_PASSWORD"
+    ports:
+      - "127.0.0.1:${ODF_REDIS_PORT:-6379}:6379"
+    volumes:
+      - odf-redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  migrate:
+    image: postgres:17-alpine
+    # The workers profile includes this one-shot gate so a publisher cannot
+    # start against a database whose migration manifest has not been verified.
+    profiles: ["migrate", "workers"]
+    restart: "no"
+    depends_on:
+      odf-postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: odf-postgres
+      PGPORT: "5432"
+      PGDATABASE: "${ODF_POSTGRES_DB:-odf}"
+      PGUSER: "${ODF_POSTGRES_ADMIN_USER:-odf_migrator}"
+      PGPASSWORD: "${ODF_POSTGRES_ADMIN_PASSWORD:?Set ODF_POSTGRES_ADMIN_PASSWORD via a secret manager or environment variable}"
+      PGTZ: UTC
+    volumes:
+      - ./infra/postgres/migrations:/migrations:ro
+      - ./infra/postgres/scripts:/scripts:ro
+    entrypoint: ["/bin/sh", "/scripts/migrate.sh"]
+
+  # Preview-only build contexts. They stay inactive until the profile is
+  # selected; PostgreSQL-backed production-like validation uses the overlay.
+  api:
+    profiles: ["application-preview"]
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      ODF_AUTH_MODE: development
+      ODF_DEV_USER: local-user
+      # The preview profile deliberately uses the real single-instance SQLite
+      # data profile. PostgreSQL multi-replica validation uses the overlay.
+      ODF_WORKSPACE_PERSISTENCE: sqlite
+      ODF_DATA_PERSISTENCE: sqlite
+      ODF_DATABASE_PATH: /var/lib/odf/open-data-fusion.db
+      ODF_RAW_LANDING_PATH: /var/lib/odf/raw
+      ODF_OBJECT_STORE_PATH: /var/lib/odf/objects
+      ODF_OBJECT_STORE_MAX_BYTES: "52428800"
+      # API instances require the same Redis Streams transport in production.
+      ODF_REDIS_URL: "redis://:${ODF_REDIS_PASSWORD:?Set ODF_REDIS_PASSWORD via a secret manager or environment variable}@odf-redis:6379/0"
+      ODF_SHARED_EVENTS_REQUIRED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${ODF_OTEL_EXPORTER_OTLP_ENDPOINT:-}"
+      PORT: "4310"
+    ports:
+      - "127.0.0.1:${ODF_API_PORT:-4310}:4310"
+    volumes:
+      - odf-api-preview-data:/var/lib/odf
+    depends_on:
+      odf-postgres:
+        condition: service_healthy
+      odf-redis:
+        condition: service_healthy
+    secrets:
+      - odf_metrics_token
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4310/ready').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  web:
+    profiles: ["application-preview"]
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${ODF_WEB_PORT:-8088}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  outbox-worker:
+    profiles: ["workers"]
+    build:
+      context: .
+      dockerfile: Dockerfile.outbox
+    restart: unless-stopped
+    environment:
+      # Required by the worker process. Supply URLs for a login that inherits
+      # odf_outbox_publisher; never use the migrator/superuser URL here.
+      ODF_POSTGRES_URL: "${ODF_POSTGRES_URL:-}"
+      ODF_REDIS_URL: "${ODF_REDIS_URL:-}"
+      ODF_OUTBOX_DB_POOL_SIZE: "${ODF_OUTBOX_DB_POOL_SIZE:-5}"
+      ODF_OUTBOX_BATCH_SIZE: "${ODF_OUTBOX_BATCH_SIZE:-50}"
+      ODF_OUTBOX_LEASE_MS: "${ODF_OUTBOX_LEASE_MS:-30000}"
+      ODF_OUTBOX_POLL_MS: "${ODF_OUTBOX_POLL_MS:-1000}"
+      ODF_OUTBOX_MAX_ATTEMPTS: "${ODF_OUTBOX_MAX_ATTEMPTS:-12}"
+      ODF_OUTBOX_MAX_RETRY_DELAY_MS: "${ODF_OUTBOX_MAX_RETRY_DELAY_MS:-300000}"
+      ODF_OUTBOX_METRICS_PORT: "9465"
+      ODF_OUTBOX_HEALTH_FILE: /tmp/odf-outbox-health.json
+      ODF_OUTBOX_HEALTH_MAX_AGE_MS: "${ODF_OUTBOX_HEALTH_MAX_AGE_MS:-30000}"
+    expose:
+      - "9465"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      odf-postgres:
+        condition: service_healthy
+      odf-redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          const fs = require('node:fs'); const file = process.env.ODF_OUTBOX_HEALTH_FILE || '/tmp/odf-outbox-health.json'; const maximumAge = Number(process.env.ODF_OUTBOX_HEALTH_MAX_AGE_MS || 30000); const heartbeat = JSON.parse(fs.readFileSync(file, 'utf8')); if (!Number.isFinite(heartbeat.lastSuccessAt) || !Number.isFinite(maximumAge) || maximumAge <= 0 || heartbeat.lastSuccessAt > Date.now() || Date.now() - heartbeat.lastSuccessAt > maximumAge) process.exit(1);
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  pipeline-worker:
+    profiles: ["workers"]
+    build:
+      context: .
+      dockerfile: Dockerfile.pipeline
+    restart: unless-stopped
+    environment:
+      # Use a dedicated application login, never the migrator/superuser URL.
+      ODF_POSTGRES_URL: "${ODF_PIPELINE_POSTGRES_URL:-}"
+      # JSON array of explicit tenantId/projectId UUID pairs. Empty fails closed.
+      ODF_PIPELINE_SCOPES: "${ODF_PIPELINE_SCOPES:-[]}"
+      ODF_PIPELINE_ACTOR_ID: "${ODF_PIPELINE_ACTOR_ID:-pipeline-worker}"
+      # Disabled is the safe default; opt in to the bounded built-in DAG only.
+      ODF_PIPELINE_EXECUTOR: "${ODF_PIPELINE_EXECUTOR:-disabled}"
+      ODF_PIPELINE_DB_POOL_SIZE: "${ODF_PIPELINE_DB_POOL_SIZE:-10}"
+      ODF_PIPELINE_BATCH_SIZE: "${ODF_PIPELINE_BATCH_SIZE:-20}"
+      ODF_PIPELINE_MAX_SCOPES_PER_POLL: "${ODF_PIPELINE_MAX_SCOPES_PER_POLL:-1}"
+      ODF_PIPELINE_CONCURRENCY: "${ODF_PIPELINE_CONCURRENCY:-4}"
+      ODF_PIPELINE_QUALITY_RULE_PAGE_SIZE: "${ODF_PIPELINE_QUALITY_RULE_PAGE_SIZE:-100}"
+      ODF_PIPELINE_MAX_QUALITY_RULES: "${ODF_PIPELINE_MAX_QUALITY_RULES:-1000}"
+      ODF_PIPELINE_POLL_MS: "${ODF_PIPELINE_POLL_MS:-1000}"
+      ODF_PIPELINE_RETRY_BASE_MS: "${ODF_PIPELINE_RETRY_BASE_MS:-250}"
+      ODF_PIPELINE_RETRY_MAX_MS: "${ODF_PIPELINE_RETRY_MAX_MS:-30000}"
+      ODF_PIPELINE_SHUTDOWN_GRACE_MS: "${ODF_PIPELINE_SHUTDOWN_GRACE_MS:-30000}"
+      ODF_PIPELINE_METRICS_PORT: "9466"
+    expose:
+      - "9466"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      odf-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:9466/healthz').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      # A healthy response requires the first successful PostgreSQL polling
+      # cycle, rather than merely a live PID.
+      start_period: 45s
+
+  edge-agent:
+    profiles: ["edge"]
+    build:
+      context: .
+      dockerfile: Dockerfile.edge
+    restart: unless-stopped
+    environment:
+      ODF_EDGE_CONFIG: /etc/open-data-fusion/edge-agent.json
+      ODF_EDGE_CLIENT_ID: "${ODF_EDGE_CLIENT_ID:-open-data-fusion-connector}"
+      ODF_EDGE_CLIENT_SECRET: "${ODF_EDGE_CLIENT_SECRET:-}"
+      ODF_EDGE_POSTGRES_URL: "${ODF_EDGE_POSTGRES_URL:-}"
+      ODF_EDGE_OPCUA_USERNAME: "${ODF_EDGE_OPCUA_USERNAME:-}"
+      ODF_EDGE_OPCUA_PASSWORD: "${ODF_EDGE_OPCUA_PASSWORD:-}"
+    volumes:
+      - type: bind
+        source: "${ODF_EDGE_CONFIG_PATH:-./apps/edge-agent/config.example.json}"
+        target: /etc/open-data-fusion/edge-agent.json
+        read_only: true
+      - odf-edge-data:/workspace/data/edge
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.kill(1, 0)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  otel-storage-init:
+    image: alpine:3.21.3
+    profiles: ["observability"]
+    restart: "no"
+    network_mode: none
+    command: ["sh", "-ec", "chown 10001:10001 /var/lib/otel && chmod 0700 /var/lib/otel"]
+    volumes:
+      - odf-otel-data:/var/lib/otel
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.121.0
+    profiles: ["observability"]
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./infra/observability/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+      - odf-otel-data:/var/lib/otel
+    ports:
+      - "127.0.0.1:${ODF_OTLP_GRPC_PORT:-4317}:4317"
+      - "127.0.0.1:${ODF_OTLP_HTTP_PORT:-4318}:4318"
+      - "127.0.0.1:${ODF_OTEL_METRICS_PORT:-9464}:9464"
+    depends_on:
+      otel-storage-init:
+        condition: service_completed_successfully
+      odf-postgres:
+        condition: service_healthy
+      odf-redis:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v3.3.0
+    profiles: ["observability"]
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/observability/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./infra/observability/slo.yml:/etc/prometheus/slo.yml:ro
+      - odf-prometheus-data:/prometheus
+    secrets:
+      - odf_metrics_token
+    ports:
+      - "127.0.0.1:${ODF_PROMETHEUS_PORT:-9090}:9090"
+    depends_on:
+      otel-collector:
+        condition: service_started
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    profiles: ["observability"]
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: "${ODF_GRAFANA_ADMIN_USER:-admin}"
+      GF_SECURITY_ADMIN_PASSWORD: "${ODF_GRAFANA_ADMIN_PASSWORD:?Set ODF_GRAFANA_ADMIN_PASSWORD via a secret manager or environment variable}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./infra/observability/grafana-datasource.yml:/etc/grafana/provisioning/datasources/prometheus.yaml:ro
+      - odf-grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${ODF_GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      prometheus:
+        condition: service_started
+
+volumes:
+  odf-postgres-data:
+  odf-redis-data:
+  odf-api-preview-data:
+  odf-edge-data:
+  odf-otel-data:
+  odf-prometheus-data:
+  odf-grafana-data:
+
+secrets:
+  # Docker Compose reads this value from the host environment and exposes it
+  # only as a mounted file. Production deployments map the same secret from
+  # their secret manager rather than using the Compose environment source.
+  odf_metrics_token:
+    environment: ODF_METRICS_TOKEN
