@@ -361,7 +361,7 @@ async function insertTargetData(
     created_at: workspace.createdAt,
     updated_by: workspace.updatedBy,
     updated_at: workspace.updatedAt,
-  }))); 
+  })));
 
   await insertBatches(client, [
     'INSERT INTO odf.workspace_scopes',

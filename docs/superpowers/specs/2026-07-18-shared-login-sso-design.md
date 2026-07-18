@@ -1,7 +1,7 @@
 # Shared Login for FII Frontend, FII AE AI, and FII Data Fusion
 
-**Date:** 2026-07-18  
-**Status:** Approved design  
+**Date:** 2026-07-18
+**Status:** Approved design
 **Scope:** Same-host deployment, currently `localhost` on separate ports
 
 ## Goal
@@ -142,4 +142,3 @@ Implementation is complete only when all of the following pass with fresh eviden
 - Automatic ODF workspace/project membership grants
 - A new Keycloak/OIDC deployment
 - Password synchronization between user databases
-

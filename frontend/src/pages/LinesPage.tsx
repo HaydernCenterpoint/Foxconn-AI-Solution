@@ -263,15 +263,15 @@ function LineRow({ index, line, onClick, onDelete, canDelete }: LineRowProps) {
 
   const getLineMetrics = (m: Machine | null) => {
     if (!m) return { lineOee: 0, lineOutput: 0, lineUph: 0, isError: false, isRunning: false, isIdle: false };
-    
+
     const isRunning = m.status === 'running';
     const isIdle = m.status === 'idle';
     const isError = m.status === 'error';
-    
+
     const prodQty = m.lastPlcData?.productionCount ?? 0;
     const oeeVal = Number(m.lastPlcData?.production?.oee ?? m.lastPlcData?.tags?.oee ?? 0);
     const uphVal = Number(m.lastPlcData?.production?.uph ?? m.lastPlcData?.tags?.uph ?? 0);
-    
+
     return { lineOee: oeeVal, lineOutput: prodQty, lineUph: uphVal, isError, isRunning, isIdle };
   };
 
@@ -282,12 +282,12 @@ function LineRow({ index, line, onClick, onDelete, canDelete }: LineRowProps) {
 
   const numMachines = machines ? machines.length : 0;
 
-  const rowBgClass = isError 
-    ? 'hover:bg-rose-950/20 bg-rose-950/5' 
+  const rowBgClass = isError
+    ? 'hover:bg-rose-950/20 bg-rose-950/5'
     : 'hover:bg-cyan-950/20';
 
   return (
-    <tr 
+    <tr
       onClick={onClick}
       className={`modern-lines-page__row${isError ? ' modern-lines-page__row--error' : ''} border-b border-[#14356a]/40 cursor-pointer transition-all duration-200 ${rowBgClass}`}
     >

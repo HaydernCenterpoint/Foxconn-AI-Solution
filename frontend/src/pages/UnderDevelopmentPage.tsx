@@ -17,7 +17,7 @@ export default function UnderDevelopmentPage({ title }: { title: string }) {
           {title.toUpperCase()}
         </h2>
         <div className="mx-auto mb-5 h-px w-full max-w-xs bg-[#3b3b3b]" />
-        
+
         <p className="text-sm font-semibold uppercase leading-relaxed tracking-[0.03em] text-[#d4d4d4]">
           {t('underDevelopment.description')}
         </p>

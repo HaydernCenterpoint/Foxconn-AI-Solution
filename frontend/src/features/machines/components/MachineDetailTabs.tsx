@@ -192,10 +192,10 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
   // Dynamic unit history list based on real hourly production
   const unitHistory = useMemo(() => {
     if (!history || history.length === 0) return [];
-    
+
     const list: UnitHistoryEntry[] = [];
     let unitIndex = 1;
-    
+
     // Sort history chronologically (oldest first) so indices increment nicely
     const sortedHistory = [...history].sort((a, b) => {
       const timeA = new Date(`${a.prodDate}T${String(a.prodHour).padStart(2, '0')}:00:00Z`).getTime();
@@ -219,8 +219,8 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
 
         // Determine shift
         const hour = startTime.getHours();
-        const shift = (hour >= 6 && hour < 18) 
-          ? t('common.time.shiftMorning', 'Ca sáng') 
+        const shift = (hour >= 6 && hour < 18)
+          ? t('common.time.shiftMorning', 'Ca sáng')
           : t('common.time.shiftNight', 'Ca tối');
 
         // Status: NG if active alarms existed
@@ -242,7 +242,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
         });
       }
     }
-    
+
     // Sort final list descending (newest first)
     return list.sort((a, b) => b.startTime.getTime() - a.startTime.getTime()).slice(0, 100);
   }, [history, machine.id, machine.machineCode, locale, t]);
@@ -332,27 +332,27 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
     }
 
     const inputQty = filteredHistory.reduce((sum, h) => sum + h.hourlyQty, 0);
-    
+
     // Calculate yield based on alarms in query date
     const activeAlarmsInFilter = machineAlarms.filter(a => {
       const alarmDate = new Date(a.createdAt).toISOString().split('T')[0];
       return alarmDate === queryDate;
     }).length;
-    
+
     const yieldVal = inputQty === 0 ? 100 : Math.max(90, Math.min(100, 100 - (activeAlarmsInFilter * 5.0 / Math.max(1, inputQty)) * 100));
     const uphVal = Math.round(inputQty / filteredHistory.length);
-    
+
     const totalPlcRunTime = filteredHistory.reduce((sum, h) => {
       const diff = h.plcRunTimeEnd - h.plcRunTimeStart;
       return sum + (diff > 0 ? diff : 0);
     }, 0);
     const maxPossibleRunTime = filteredHistory.length * 3600;
-    
+
     let avail = maxPossibleRunTime > 0 ? (totalPlcRunTime / maxPossibleRunTime) * 100 : 0;
     if (avail <= 0 || avail > 100) {
       avail = inputQty > 0 ? 92.4 : 0;
     }
-    
+
     const perf = inputQty > 0 ? 94.6 : 0;
     const qual = yieldVal;
     const oeeVal = (avail * perf * qual) / 10000;
@@ -427,7 +427,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
 
       {/* Content Area */}
       <div className="transition-all duration-300">
-        
+
         {/* TAB: DASHBOARD */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6 animate-fade-in">
