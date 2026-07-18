@@ -396,12 +396,16 @@ if AUTH_ENABLED:
                     request.state.current_user = username
                     request.state.api_token = False
                     request.state.fii_sso = True
+                    if path == "/login":
+                        return RedirectResponse(url="/", status_code=302)
                     return await call_next(request)
             except FiiSsoError:
                 if path.startswith("/api/"):
                     return JSONResponse(
                         status_code=401, content={"error": "Invalid FII session"}
                     )
+                return RedirectResponse(url=FII_MAIN_LOGIN_URL, status_code=302)
+            if FII_SSO_ENABLED and path == "/login":
                 return RedirectResponse(url=FII_MAIN_LOGIN_URL, status_code=302)
             if _is_auth_exempt(path):
                 return await call_next(request)

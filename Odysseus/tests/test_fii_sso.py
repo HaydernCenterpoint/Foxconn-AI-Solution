@@ -678,6 +678,51 @@ def test_valid_shared_cookie_flows_through_actual_app_middleware(
     assert app_auth_module.SESSION_COOKIE not in response.headers.get("set-cookie", "")
 
 
+def test_enabled_shared_sso_redirects_login_to_main_app_without_cookie(
+    app_auth_module, monkeypatch
+):
+    response, _, calls = _dispatch(app_auth_module, monkeypatch, path="/login")
+
+    assert calls == []
+    assert (response.status_code, response.headers["location"]) == (
+        302,
+        LOGIN_URL,
+    )
+
+
+def test_enabled_shared_sso_redirects_valid_shared_login_to_root(
+    app_auth_module, monkeypatch
+):
+    ensured = []
+    token = _token(
+        {"sub": " Factory.Engineer ", "role": "engineer", "exp": 4_000_000_000}
+    )
+    response, _, calls = _dispatch(
+        app_auth_module,
+        monkeypatch,
+        path="/login",
+        cookies={"fii_sso": token},
+        manager=_auth_manager(
+            ensure_fii_sso_user=lambda username, role: ensured.append(
+                (username, role)
+            ) or True
+        ),
+    )
+
+    assert ensured == [("factory.engineer", "ENGINEER")]
+    assert calls == []
+    assert (response.status_code, response.headers["location"]) == (302, "/")
+
+
+def test_disabled_shared_sso_keeps_native_login_routes_reachable(tmp_path, monkeypatch):
+    module = _load_app_auth_module(tmp_path, enabled=False, secret="")
+
+    for path in ("/login", "/api/auth/login"):
+        response, request, calls = _dispatch(module, monkeypatch, path=path)
+        assert calls == [request]
+        assert json.loads(response.body) == {"ok": True}
+
+
 @pytest.mark.parametrize(
     ("path", "shared_cookie", "ensure_result"),
     [
