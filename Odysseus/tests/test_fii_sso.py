@@ -2,14 +2,25 @@ import asyncio
 import base64
 import hashlib
 import hmac
+import importlib
+import importlib.util
 import json
+import logging
+import mimetypes
+import os
+import sys
+import types
 from collections import UserString
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from core.auth import ADMIN_PRIVILEGES, DEFAULT_PRIVILEGES, AuthManager
 from core.fii_sso import FiiSsoError, resolve_fii_sso, validate_fii_sso
+from tests.helpers.import_state import preserve_import_state
 
 
 SECRET = "test-fii-secret-that-is-at-least-32-bytes-long"
@@ -18,6 +29,137 @@ AUDIENCE = "MKZ_PLC_Client"
 NOW = 1_700_000_000
 OTHER_SECRET = "different-fii-secret-that-is-also-at-least-32-bytes"
 TRAILING_SPACE_SECRET = "fii-secret-keeps-exact-trailing-bytes-12345 "
+APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
+LOGIN_URL = "https://fii.example.test/login"
+_APP_ENV = {
+    "AUTH_ENABLED": "true",
+    "LOCALHOST_BYPASS": "false",
+    "FII_SSO_ENABLED": "true",
+    "FII_JWT_SECRET": SECRET,
+    "FII_JWT_ISSUER": ISSUER,
+    "FII_JWT_AUDIENCE": AUDIENCE,
+    "FII_MAIN_LOGIN_URL": LOGIN_URL,
+}
+
+
+class _StopAfterAuthImport(Exception):
+    pass
+
+
+def _stop_after_auth_import():
+    raise _StopAfterAuthImport
+
+
+def _load_app_auth_module(data_dir, *, enabled=True, secret=SECRET):
+    """Execute real app.py through AuthMiddleware without booting the app."""
+    with pytest.MonkeyPatch.context() as patch:
+        environment = dict(os.environ) | _APP_ENV
+        environment.update(FII_SSO_ENABLED=str(enabled).lower(), FII_JWT_SECRET=secret)
+        patch.setattr(os, "environ", environment)
+
+        import core.auth as core_auth
+        import core.constants as core_constants
+        import dotenv
+
+        root_logger = logging.Logger("_fii_sso_app_import")
+        patch.setattr(core_auth, "AuthManager", lambda: SimpleNamespace(
+            users={}, is_configured=False,
+        ))
+        patch.setattr(core_constants, "DATA_DIR", str(data_dir))
+        patch.setattr(dotenv, "load_dotenv", lambda **kwargs: False)
+        patch.setattr(logging, "getLogger", lambda name=None: root_logger)
+        patch.setattr(asyncio, "set_event_loop_policy", lambda _policy: None)
+        patch.setattr(mimetypes, "add_type", lambda *_args, **_kwargs: None)
+
+        youtube_stub = types.ModuleType("services.youtube")
+        youtube_stub.init_youtube = _stop_after_auth_import
+        spec = importlib.util.spec_from_file_location("_fii_sso_app_under_test", APP_PATH)
+        module = importlib.util.module_from_spec(spec)
+        try:
+            with preserve_import_state("services", "services.youtube"):
+                services = importlib.import_module("services")
+                sys.modules["services.youtube"] = youtube_stub
+                services.youtube = youtube_stub
+                try:
+                    spec.loader.exec_module(module)
+                except _StopAfterAuthImport:
+                    pass
+                else:
+                    raise AssertionError("app.py did not reach the auth boundary")
+        finally:
+            for handler in root_logger.handlers:
+                handler.close()
+        return module
+
+
+@pytest.fixture(scope="module")
+def app_auth_module(tmp_path_factory):
+    return _load_app_auth_module(tmp_path_factory.mktemp("fii-app-import"))
+
+
+def _process_state():
+    services = sys.modules.get("services")
+    root_logger = logging.getLogger()
+    return (
+        dict(os.environ),
+        services,
+        sys.modules.get("services.youtube"),
+        getattr(services, "youtube", None),
+        root_logger,
+        tuple(root_logger.handlers),
+        root_logger.level,
+        asyncio.get_event_loop_policy(),
+        mimetypes._db,
+        mimetypes.inited,
+        mimetypes.add_type,
+    )
+
+
+def _unexpected_auth_call(*_args, **_kwargs):
+    pytest.fail("unexpected native or shared authentication call")
+
+
+def _auth_manager(**overrides):
+    defaults = {
+        "is_configured": True,
+        "ensure_fii_sso_user": _unexpected_auth_call,
+        "validate_token": _unexpected_auth_call,
+        "get_username_for_token": _unexpected_auth_call,
+    }
+    return SimpleNamespace(**(defaults | overrides))
+
+
+def _dispatch(
+    module, monkeypatch, path="/api/private", cookies=None, manager=None,
+    method="GET", headers=None,
+):
+    manager = manager or _auth_manager()
+    monkeypatch.setattr(module, "auth_manager", manager)
+    headers = dict(headers or {})
+    if cookies:
+        headers["cookie"] = "; ".join(f"{k}={v}" for k, v in cookies.items())
+    raw_headers = [(name.lower().encode(), value.encode()) for name, value in headers.items()]
+    request = Request(
+        {
+            "type": "http", "method": method, "path": path,
+            "query_string": b"", "headers": raw_headers,
+        }
+    )
+    calls = []
+
+    async def call_next(forwarded_request):
+        calls.append(forwarded_request)
+        return JSONResponse({"ok": True})
+
+    middleware = module.AuthMiddleware(None)
+    response = asyncio.run(middleware.dispatch(request, call_next))
+    return response, request, calls
+
+
+def test_app_auth_import_harness_restores_process_state(tmp_path):
+    before = _process_state()
+    _load_app_auth_module(tmp_path)
+    assert _process_state() == before
 
 
 def _b64url(value):
@@ -438,3 +580,124 @@ def test_missing_sso_cookie_preserves_native_session_fallback(
     assert resolve_fii_sso({}, True, SECRET, ISSUER, AUDIENCE) is None
     assert manager.validate_token(native_token) is True
     assert manager.get_username_for_token(native_token) == "native.user"
+
+
+def test_valid_shared_cookie_flows_through_actual_app_middleware(
+    app_auth_module, monkeypatch
+):
+    ensured = []
+
+    def ensure(username, role):
+        ensured.append((username, role))
+        return True
+
+    token = _token(
+        {"sub": " Factory.Engineer ", "role": "engineer", "exp": 4_000_000_000}
+    )
+    response, request, calls = _dispatch(
+        app_auth_module,
+        monkeypatch,
+        cookies={"fii_sso": token},
+        manager=_auth_manager(ensure_fii_sso_user=ensure),
+    )
+    assert ensured == [("factory.engineer", "ENGINEER")]
+    assert calls == [request]
+    assert (
+        request.state.current_user,
+        request.state.api_token,
+        request.state.fii_sso,
+    ) == ("factory.engineer", False, True)
+    assert json.loads(response.body) == {"ok": True}
+    assert app_auth_module.SESSION_COOKIE not in response.headers.get("set-cookie", "")
+
+
+@pytest.mark.parametrize(
+    ("path", "shared_cookie", "ensure_result"),
+    [
+        ("/api/private", "not-a-jwt", True),
+        (
+            "/api/private",
+            _token(
+                {
+                    "sub": "native.collision",
+                    "role": "GUEST",
+                    "exp": 4_000_000_000,
+                }
+            ),
+            False,
+        ),
+        ("/private", "not-a-jwt", True),
+    ],
+    ids=["invalid-api", "native-collision-api", "invalid-page"],
+)
+def test_invalid_or_colliding_shared_cookie_is_rejected(
+    app_auth_module, monkeypatch, path, shared_cookie, ensure_result
+):
+    response, _, calls = _dispatch(
+        app_auth_module,
+        monkeypatch,
+        path=path,
+        cookies={"fii_sso": shared_cookie},
+        manager=_auth_manager(ensure_fii_sso_user=lambda *_args: ensure_result),
+    )
+    assert calls == []
+    if path.startswith("/api/"):
+        assert (response.status_code, response.body) == (
+            401, b'{"error":"Invalid FII session"}',
+        )
+        assert response.headers["content-type"] == "application/json"
+    else:
+        assert (response.status_code, response.body) == (302, b"")
+        assert response.headers["location"] == LOGIN_URL == app_auth_module.FII_MAIN_LOGIN_URL
+
+
+@pytest.mark.parametrize(
+    "case",
+    ["native-session", "missing-cookie-auth-exempt", "cors-before-invalid-cookie"],
+)
+def test_native_and_pre_auth_fallbacks_reach_downstream(
+    app_auth_module, monkeypatch, case
+):
+    validated = []
+
+    def validate(token):
+        validated.append(token)
+        return token == "native-session"
+
+    if case == "native-session":
+        options = {
+            "cookies": {app_auth_module.SESSION_COOKIE: "native-session"},
+            "manager": _auth_manager(
+                validate_token=validate,
+                get_username_for_token=lambda _token: "native.user",
+            ),
+        }
+    elif case == "missing-cookie-auth-exempt":
+        options = {"path": "/api/health"}
+    else:
+        options = {
+            "method": "OPTIONS",
+            "headers": {"Access-Control-Request-Method": "POST"},
+            "cookies": {"fii_sso": "not-a-jwt"},
+        }
+
+    response, request, calls = _dispatch(app_auth_module, monkeypatch, **options)
+    assert calls == [request]
+    assert json.loads(response.body) == {"ok": True}
+    if case == "native-session":
+        assert validated == ["native-session"]
+        assert (request.state.current_user, request.state.api_token) == ("native.user", False)
+        assert not hasattr(request.state, "fii_sso")
+
+
+def test_app_rejects_enabled_shared_sso_with_short_secret(tmp_path):
+    message = "FII_JWT_SECRET must be at least 32 bytes when FII_SSO_ENABLED=true"
+    with pytest.raises(RuntimeError, match=f"^{message}$"):
+        _load_app_auth_module(tmp_path, enabled=True, secret="x" * 31)
+
+
+def test_app_allows_disabled_shared_sso_with_empty_secret(tmp_path):
+    module = _load_app_auth_module(tmp_path, enabled=False, secret="")
+
+    assert module.FII_SSO_ENABLED is False
+    assert module.FII_JWT_SECRET == ""
