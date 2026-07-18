@@ -2,7 +2,6 @@ import asyncio
 import base64
 import hashlib
 import hmac
-import importlib
 import importlib.util
 import json
 import logging
@@ -15,6 +14,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from fastapi import HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -71,15 +71,17 @@ def _load_app_auth_module(data_dir, *, enabled=True, secret=SECRET):
         patch.setattr(asyncio, "set_event_loop_policy", lambda _policy: None)
         patch.setattr(mimetypes, "add_type", lambda *_args, **_kwargs: None)
 
+        services_stub = types.ModuleType("services")
+        services_stub.__path__ = []
         youtube_stub = types.ModuleType("services.youtube")
         youtube_stub.init_youtube = _stop_after_auth_import
+        services_stub.youtube = youtube_stub
         spec = importlib.util.spec_from_file_location("_fii_sso_app_under_test", APP_PATH)
         module = importlib.util.module_from_spec(spec)
         try:
             with preserve_import_state("services", "services.youtube"):
-                services = importlib.import_module("services")
+                sys.modules["services"] = services_stub
                 sys.modules["services.youtube"] = youtube_stub
-                services.youtube = youtube_stub
                 try:
                     spec.loader.exec_module(module)
                 except _StopAfterAuthImport:
@@ -98,12 +100,16 @@ def app_auth_module(tmp_path_factory):
 
 
 def _process_state():
-    services = sys.modules.get("services")
+    service_modules = {
+        name: module
+        for name, module in sys.modules.items()
+        if name == "services" or name.startswith("services.")
+    }
+    services = service_modules.get("services")
     root_logger = logging.getLogger()
     return (
         dict(os.environ),
-        services,
-        sys.modules.get("services.youtube"),
+        service_modules,
         getattr(services, "youtube", None),
         root_logger,
         tuple(root_logger.handlers),
@@ -158,8 +164,12 @@ def _dispatch(
 
 def test_app_auth_import_harness_restores_process_state(tmp_path):
     before = _process_state()
-    _load_app_auth_module(tmp_path)
+    module = _load_app_auth_module(tmp_path)
     assert _process_state() == before
+    assert all(
+        not isinstance(handler, logging.FileHandler) or handler.stream is None
+        for handler in module._root_logger.handlers
+    )
 
 
 def _b64url(value):
@@ -534,26 +544,28 @@ def test_status_for_user_returns_shared_identity_shape(tmp_path):
     }
 
 
+def _auth_route_endpoint(router, path, method="GET"):
+    return next(
+        route.endpoint
+        for route in router.routes
+        if route.path == path and method in route.methods
+    )
+
+
+def _shared_request(username):
+    return SimpleNamespace(
+        cookies={}, state=SimpleNamespace(fii_sso=True, current_user=username)
+    )
+
+
 def test_auth_status_uses_shared_request_identity(tmp_path):
     from routes.auth_routes import setup_auth_routes
 
     auth_manager = AuthManager(str(tmp_path / "auth.json"))
     assert auth_manager.ensure_fii_sso_user("factory.engineer", "ENGINEER") is True
     router = setup_auth_routes(auth_manager)
-    endpoint = next(
-        route.endpoint
-        for route in router.routes
-        if route.path == "/api/auth/status"
-    )
-    request = SimpleNamespace(
-        cookies={},
-        state=SimpleNamespace(
-            fii_sso=True,
-            current_user="factory.engineer",
-        ),
-    )
-
-    result = asyncio.run(endpoint(request=request))
+    endpoint = _auth_route_endpoint(router, "/api/auth/status")
+    result = asyncio.run(endpoint(request=_shared_request("factory.engineer")))
 
     assert result == {
         "configured": True,
@@ -563,6 +575,54 @@ def test_auth_status_uses_shared_request_identity(tmp_path):
         "privileges": auth_manager.get_privileges("factory.engineer"),
         "signup_enabled": False,
     }
+
+
+def test_shared_admin_can_list_users(tmp_path):
+    from routes.auth_routes import setup_auth_routes
+
+    auth_manager = AuthManager(str(tmp_path / "auth.json"))
+    assert auth_manager.ensure_fii_sso_user("factory.admin", "ADMIN") is True
+    endpoint = _auth_route_endpoint(
+        setup_auth_routes(auth_manager), "/api/auth/users"
+    )
+
+    result = asyncio.run(endpoint(request=_shared_request(" Factory.Admin ")))
+
+    assert result == {"users": auth_manager.list_users()}
+
+
+@pytest.mark.parametrize(
+    ("path", "method", "body"),
+    [
+        (
+            "/api/auth/change-password",
+            "POST",
+            {"current_password": "old", "new_password": "new-password-long-enough"},
+        ),
+        ("/api/auth/2fa/setup", "POST", None),
+        ("/api/auth/2fa/confirm", "POST", {"code": "000000"}),
+        ("/api/auth/2fa/disable", "POST", {"password": "password"}),
+        ("/api/auth/2fa/status", "GET", None),
+    ],
+)
+def test_shared_identity_cannot_manage_native_credentials(
+    tmp_path, path, method, body
+):
+    from routes.auth_routes import setup_auth_routes
+
+    auth_manager = AuthManager(str(tmp_path / "auth.json"))
+    assert auth_manager.ensure_fii_sso_user("factory.user", "GUEST") is True
+    before = json.loads(json.dumps(auth_manager.users))
+    endpoint = _auth_route_endpoint(setup_auth_routes(auth_manager), path, method)
+    arguments = {"request": _shared_request("factory.user")}
+    if body:
+        arguments["body"] = SimpleNamespace(**body)
+
+    with pytest.raises(HTTPException) as raised:
+        asyncio.run(endpoint(**arguments))
+
+    assert raised.value.status_code == 401
+    assert auth_manager.users == before
 
 
 def test_missing_sso_cookie_preserves_native_session_fallback(
@@ -586,11 +646,17 @@ def test_valid_shared_cookie_flows_through_actual_app_middleware(
     app_auth_module, monkeypatch
 ):
     ensured = []
+    thread_calls = []
 
     def ensure(username, role):
         ensured.append((username, role))
         return True
 
+    async def to_thread(function, *args):
+        thread_calls.append((function, args))
+        return function(*args)
+
+    monkeypatch.setattr(app_auth_module.asyncio, "to_thread", to_thread)
     token = _token(
         {"sub": " Factory.Engineer ", "role": "engineer", "exp": 4_000_000_000}
     )
@@ -601,6 +667,7 @@ def test_valid_shared_cookie_flows_through_actual_app_middleware(
         manager=_auth_manager(ensure_fii_sso_user=ensure),
     )
     assert ensured == [("factory.engineer", "ENGINEER")]
+    assert thread_calls == [(ensure, ("factory.engineer", "ENGINEER"))]
     assert calls == [request]
     assert (
         request.state.current_user,
@@ -701,3 +768,9 @@ def test_app_allows_disabled_shared_sso_with_empty_secret(tmp_path):
 
     assert module.FII_SSO_ENABLED is False
     assert module.FII_JWT_SECRET == ""
+
+
+def test_app_trims_shared_secret_at_configuration_boundary(tmp_path):
+    module = _load_app_auth_module(tmp_path, secret=f"  {SECRET}\t")
+
+    assert module.FII_JWT_SECRET == SECRET

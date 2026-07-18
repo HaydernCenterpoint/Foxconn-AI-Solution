@@ -387,7 +387,9 @@ if AUTH_ENABLED:
                 )
                 if fii_identity:
                     username, role = fii_identity
-                    if not auth_manager.ensure_fii_sso_user(username, role):
+                    if not await asyncio.to_thread(
+                        auth_manager.ensure_fii_sso_user, username, role
+                    ):
                         raise FiiSsoError(
                             "FII SSO identity conflicts with a local user"
                         )
