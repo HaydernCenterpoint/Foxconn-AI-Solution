@@ -1,5 +1,7 @@
 import type { User, UserManager, UserManagerSettings } from "oidc-client-ts";
 
+type AuthMode = "oidc" | "factory" | "disabled";
+
 export interface SessionIdentity {
   userId: string;
   displayName: string;
@@ -8,6 +10,7 @@ export interface SessionIdentity {
 
 export interface BrowserAuthSession {
   enabled: boolean;
+  mode: AuthMode;
   authenticated: boolean;
   identity: SessionIdentity | null;
   expiresAt?: number;
@@ -35,16 +38,26 @@ interface EnabledConfiguration {
   postLogoutRedirectUri: string;
   scope: string;
   userClaim: string;
+  mode: "oidc";
+}
+
+interface FactoryConfiguration {
+  enabled: true;
+  mode: "factory";
+  loginUrl: string;
+  loginLabel: string;
 }
 
 interface DisabledConfiguration {
   enabled: false;
+  mode: "disabled";
 }
 
-type BrowserAuthConfiguration = EnabledConfiguration | DisabledConfiguration;
+type BrowserAuthConfiguration = EnabledConfiguration | FactoryConfiguration | DisabledConfiguration;
 
 const DISABLED_SESSION: BrowserAuthSession = {
   enabled: false,
+  mode: "disabled",
   authenticated: false,
   identity: null,
 };
@@ -105,10 +118,40 @@ function localApplicationUrl(value: string, fallbackPath: string, label: string)
   }
 }
 
+function isTruthyBoolean(value: string): boolean {
+  return /^(1|true|yes|on)$/iu.test(value.trim());
+}
+
+function parseSharedLoginUrl(value: string): string {
+  const currentWindow = browserWindow();
+  try {
+    const url = new URL(value || "/login", currentWindow.location.origin);
+    return url.toString();
+  } catch (error) {
+    throw new OidcConfigurationError(`VITE_FII_LOGIN_URL must be a valid URL: ${String(error)}`);
+  }
+}
+
+function parseSharedLoginLabel(value: string): string {
+  return value.trim() || "FII Data Fusion";
+}
+
 function readConfiguration(): BrowserAuthConfiguration {
   const authority = environmentValue("VITE_OIDC_AUTHORITY");
   const clientId = environmentValue("VITE_OIDC_CLIENT_ID");
-  if (!authority && !clientId) return { enabled: false };
+  const fiiSsoEnabled = isTruthyBoolean(environmentValue("VITE_FII_SSO"));
+  if (!authority && !clientId && !fiiSsoEnabled) return { enabled: false, mode: "disabled" };
+  if (fiiSsoEnabled && (authority || clientId)) {
+    throw new OidcConfigurationError("Only one authentication mode can be enabled at once (OIDC or FII SSO)");
+  }
+  if (fiiSsoEnabled) {
+    return {
+      enabled: true,
+      mode: "factory",
+      loginUrl: parseSharedLoginUrl(environmentValue("VITE_FII_LOGIN_URL")),
+      loginLabel: parseSharedLoginLabel(environmentValue("VITE_FII_APP_NAME")),
+    };
+  }
   if (!authority || !clientId) {
     throw new OidcConfigurationError(
       "OIDC authentication requires both VITE_OIDC_AUTHORITY and VITE_OIDC_CLIENT_ID",
@@ -126,6 +169,7 @@ function readConfiguration(): BrowserAuthConfiguration {
 
   return {
     enabled: true,
+    mode: "oidc",
     authority: validatedAuthority(authority),
     clientId,
     redirectUri: localApplicationUrl(
@@ -214,9 +258,10 @@ function activeUser(user: User | null): user is User {
 }
 
 function sessionFromUser(user: User | null, userClaim: string): BrowserAuthSession {
-  if (!activeUser(user)) return { enabled: true, authenticated: false, identity: null };
+  if (!activeUser(user)) return { enabled: true, mode: "oidc", authenticated: false, identity: null };
   const session: BrowserAuthSession = {
     enabled: true,
+    mode: "oidc",
     authenticated: true,
     identity: identityFromUser(user, userClaim),
   };
@@ -298,9 +343,40 @@ async function processSignoutCallback(manager: UserManager, url: string): Promis
   }
 }
 
+async function checkSharedSession(): Promise<BrowserAuthSession> {
+  try {
+    const response = await fetch("/api/v1/auth/session", {
+      credentials: "include",
+      cache: "no-store",
+    });
+    if (!response.ok) return { enabled: true, mode: "factory", authenticated: false, identity: null };
+    const payload = await response.json() as {
+      userId?: unknown;
+      displayName?: unknown;
+      email?: unknown;
+    };
+    const userId = typeof payload.userId === "string" ? payload.userId.trim() : "";
+    if (!userId) return { enabled: true, mode: "factory", authenticated: false, identity: null };
+    const displayName = typeof payload.displayName === "string" && payload.displayName.trim() ? payload.displayName.trim() : userId;
+    return {
+      enabled: true,
+      mode: "factory",
+      authenticated: true,
+      identity: {
+        userId,
+        displayName,
+        email: typeof payload.email === "string" ? payload.email : undefined,
+      },
+    };
+  } catch {
+    return { enabled: true, mode: "factory", authenticated: false, identity: null };
+  }
+}
+
 async function initializeOnce(): Promise<BrowserAuthSession> {
   const config = getConfiguration();
   if (!config.enabled) return DISABLED_SESSION;
+  if (config.mode === "factory") return checkSharedSession();
 
   try {
     const manager = await getManager(config);
@@ -346,10 +422,19 @@ export async function getSessionIdentity(): Promise<SessionIdentity | null> {
   return session.authenticated ? session.identity : null;
 }
 
+export async function getLoginLabel(): Promise<string> {
+  const config = getConfiguration();
+  return config.mode === "factory" ? config.loginLabel : "FII Data Fusion";
+}
+
 async function signInOnce(): Promise<void> {
   const session = await initialize();
   const config = getConfiguration();
-  if (!config.enabled) throw new OidcConfigurationError("OIDC authentication is not configured");
+  if (!config.enabled) throw new OidcConfigurationError("Authentication is not configured");
+  if (config.mode === "factory") {
+    browserWindow().location.assign(config.loginUrl);
+    return;
+  }
   if (session.authenticated) return;
   const manager = await getManager(config);
   await manager.signinRedirect({ state: { returnUrl: currentRoute() } });
@@ -366,7 +451,10 @@ export function signIn(): Promise<void> {
 async function signOutOnce(): Promise<void> {
   await initialize();
   const config = getConfiguration();
-  if (!config.enabled) throw new OidcConfigurationError("OIDC authentication is not configured");
+  if (!config.enabled) throw new OidcConfigurationError("Authentication is not configured");
+  if (config.mode === "factory") {
+    throw new OidcConfigurationError("Sign-out is not supported in FII SSO mode");
+  }
   const manager = await getManager(config);
   await manager.signoutRedirect({
     state: { returnUrl: currentRoute() },

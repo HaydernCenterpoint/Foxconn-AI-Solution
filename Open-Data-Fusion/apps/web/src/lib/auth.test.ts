@@ -67,6 +67,9 @@ const ENVIRONMENT_KEYS = [
   "VITE_OIDC_REDIRECT_URI",
   "VITE_OIDC_POST_LOGOUT_REDIRECT_URI",
   "VITE_OIDC_USER_CLAIM",
+  "VITE_FII_SSO",
+  "VITE_FII_LOGIN_URL",
+  "VITE_FII_APP_NAME",
 ] as const;
 
 function configureOidc(): void {
@@ -109,13 +112,15 @@ describe("OIDC browser session", () => {
     oidcMocks.addUserSignedOut.mockReset();
     window.sessionStorage.clear();
     window.history.replaceState({}, "", "/");
+    vi.restoreAllMocks();
   });
 
-  it("stays disabled unless authority and client ID are both configured", async () => {
+  it("stays disabled unless auth is configured", async () => {
     const auth = await import("./auth");
 
     await expect(auth.initialize()).resolves.toEqual({
       enabled: false,
+      mode: "disabled",
       authenticated: false,
       identity: null,
     });
@@ -148,8 +153,8 @@ describe("OIDC browser session", () => {
     const secondInitialization = auth.initialize();
     expect(secondInitialization).toBe(firstInitialization);
     await expect(Promise.all([firstInitialization, secondInitialization])).resolves.toEqual([
-      { enabled: true, authenticated: false, identity: null },
-      { enabled: true, authenticated: false, identity: null },
+      { enabled: true, mode: "oidc", authenticated: false, identity: null },
+      { enabled: true, mode: "oidc", authenticated: false, identity: null },
     ]);
 
     expect(oidcMocks.managerSettings).toHaveLength(1);
@@ -199,6 +204,7 @@ describe("OIDC browser session", () => {
     expect(window.location.hash).toBe("#pump");
     expect(session).toEqual({
       enabled: true,
+      mode: "oidc",
       authenticated: true,
       identity: {
         userId: "harper.dennis",
@@ -223,7 +229,7 @@ describe("OIDC browser session", () => {
     oidcMocks.signinSilent.mockResolvedValue(authenticatedUser({ access_token: "renewed-token" }));
     const auth = await import("./auth");
 
-    await expect(auth.initialize()).resolves.toMatchObject({ enabled: true, authenticated: true });
+    await expect(auth.initialize()).resolves.toMatchObject({ enabled: true, mode: "oidc", authenticated: true });
     await expect(auth.getAccessToken()).resolves.toBe("renewed-token");
     expect(oidcMocks.signinSilent).toHaveBeenCalledTimes(1);
   });
@@ -269,11 +275,94 @@ describe("OIDC browser session", () => {
 
     await expect(auth.initialize()).resolves.toEqual({
       enabled: true,
+      mode: "oidc",
       authenticated: false,
       identity: null,
     });
     expect(oidcMocks.signoutRedirectCallback).toHaveBeenCalledTimes(1);
     expect(window.location.pathname).toBe("/signed-out");
     expect(window.location.search).toBe("?complete=yes");
+  });
+
+  it("supports shared session mode when FII SSO is enabled", async () => {
+    vi.stubEnv("VITE_FII_SSO", "true");
+    vi.stubEnv("VITE_FII_LOGIN_URL", "/fii/login");
+    vi.stubEnv("VITE_FII_APP_NAME", "FII Data Fusion");
+
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      userId: "factory-user",
+      displayName: "Factory User",
+      email: "factory.user@example.local",
+    }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const auth = await import("./auth");
+    const session = await auth.initialize();
+
+    expect(session).toEqual({
+      enabled: true,
+      mode: "factory",
+      authenticated: true,
+      identity: {
+        userId: "factory-user",
+        displayName: "Factory User",
+        email: "factory.user@example.local",
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/auth/session", {
+      credentials: "include",
+      cache: "no-store",
+    });
+    await expect(auth.getSessionIdentity()).resolves.toEqual({
+      userId: "factory-user",
+      displayName: "Factory User",
+      email: "factory.user@example.local",
+    });
+  });
+
+  it("redirects to shared login url on signIn in factory mode", async () => {
+    vi.stubEnv("VITE_FII_SSO", "on");
+    vi.stubEnv("VITE_FII_LOGIN_URL", "https://fii.example.test/login");
+
+    const fetchMock = vi.fn().mockResolvedValue(new Response("", { status: 401 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const auth = await import("./auth");
+    await auth.initialize();
+
+    const assign = vi.fn();
+    Object.defineProperty(window, "location", {
+      value: { ...window.location, assign },
+      writable: true,
+    });
+
+    await auth.signIn();
+
+    expect(assign).toHaveBeenCalledWith("https://fii.example.test/login");
+  });
+
+  it("ignores FII login URL without an explicit FII SSO toggle", async () => {
+    vi.stubEnv("VITE_FII_LOGIN_URL", "/login");
+    const auth = await import("./auth");
+
+    await expect(auth.initialize()).resolves.toEqual({
+      enabled: false,
+      mode: "disabled",
+      authenticated: false,
+      identity: null,
+    });
+  });
+
+  it("rejects combined OIDC and FII SSO configuration", async () => {
+    vi.stubEnv("VITE_OIDC_AUTHORITY", "https://identity.example.test/realms/odf");
+    vi.stubEnv("VITE_OIDC_CLIENT_ID", "open-data-fusion-web");
+    vi.stubEnv("VITE_FII_SSO", "true");
+    const auth = await import("./auth");
+
+    await expect(auth.initialize()).rejects.toThrow(
+      "Only one authentication mode can be enabled at once (OIDC or FII SSO)",
+    );
   });
 });

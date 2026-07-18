@@ -17,6 +17,7 @@ describe("authenticated API transport", () => {
     vi.resetModules();
     authMocks.initialize.mockReset().mockResolvedValue({
       enabled: true,
+      mode: "oidc",
       authenticated: true,
       identity: { userId: "harper.dennis", displayName: "Harper Dennis" },
     });
@@ -39,6 +40,31 @@ describe("authenticated API transport", () => {
     expect(headers["x-odf-user"]).toBeUndefined();
     expect(headers["x-odf-tenant-id"]).toBe(workspaceContext.tenantId);
     expect(headers["x-odf-project-id"]).toBe(workspaceContext.projectId);
+  });
+
+  it("skips bearer token and sends cookie auth for factory sessions", async () => {
+    authMocks.initialize.mockResolvedValue({
+      enabled: true,
+      mode: "factory",
+      authenticated: true,
+      identity: { userId: "factory.user", displayName: "Factory User" },
+    });
+    authMocks.getAccessToken.mockReset();
+
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "workspace-1" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const api = await import("./api");
+
+    await api.getWorkspace("workspace-1", workspaceContext, undefined, "forged.development-user");
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const headers = init.headers as Record<string, string>;
+    expect(headers.Authorization).toBeUndefined();
+    expect(headers["x-odf-user"]).toBe("forged.development-user");
+    expect(init.credentials).toBe("include");
   });
 
   it("parses authenticated SSE frames over fetch without putting identity in the URL", async () => {
@@ -85,6 +111,53 @@ describe("authenticated API transport", () => {
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer verified-access-token");
     expect((init.headers as Record<string, string>)["x-odf-tenant-id"]).toBe(workspaceContext.tenantId);
     expect((init.headers as Record<string, string>)["x-odf-project-id"]).toBe(workspaceContext.projectId);
+    unsubscribe();
+  });
+
+  it("uses cookie credentials and no bearer token for SSE in factory mode", async () => {
+    authMocks.initialize.mockResolvedValue({
+      enabled: true,
+      mode: "factory",
+      authenticated: true,
+      identity: { userId: "factory.user", displayName: "Factory User" },
+    });
+    authMocks.getAccessToken.mockReset();
+
+    const encoder = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode("event: presence.updated\ndata: {\"workspaceId\":\"workspace-1\",\"users\":[],\"occurredAt\":\"2026-07-10T00:00:00.000Z\"}\n\n"));
+        controller.close();
+      },
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(body, {
+      status: 200,
+      headers: { "content-type": "text/event-stream; charset=utf-8" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const api = await import("./api");
+
+    const presence = vi.fn();
+    const members = vi.fn();
+    let unsubscribe: () => void = () => undefined;
+    const received = new Promise<void>((resolve) => {
+      unsubscribe = api.subscribeToWorkspaceEvents("workspace-1", workspaceContext, {
+        onWorkspaceUpdated: vi.fn(),
+        onPresenceUpdated: (event) => {
+          presence(event);
+          unsubscribe();
+          resolve();
+        },
+        onMembersUpdated: members,
+      }, "development.user");
+    });
+
+    await received;
+    expect(presence).toHaveBeenCalled();
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/v1/workspaces/workspace-1/events");
+    expect(init.credentials).toBe("include");
+    expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
     unsubscribe();
   });
 });

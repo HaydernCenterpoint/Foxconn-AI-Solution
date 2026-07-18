@@ -69,13 +69,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...(init?.body === undefined ? {} : { "Content-Type": "application/json" }),
     ...providedHeaders,
   };
-  const accessToken = await getAccessToken();
+  const session = await initializeAuth();
+  const accessToken = session.mode === "factory" ? null : await getAccessToken();
   if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
     delete headers["x-odf-user"];
   }
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
+    credentials: session.mode === "factory" ? "include" : init?.credentials,
     headers,
   });
 
@@ -595,7 +597,7 @@ export function subscribeToWorkspaceEvents(
     .then((session) => {
       if (disposed) return;
       if (session.enabled) {
-        void runAuthenticatedEventStream(id, context, handlers, controller.signal);
+        void runAuthenticatedEventStream(id, context, handlers, session.mode, controller.signal);
         return;
       }
       if (typeof EventSource === "undefined") return;
@@ -721,20 +723,21 @@ async function runAuthenticatedEventStream(
   id: string,
   context: WorkspaceRequestContext,
   handlers: WorkspaceEventHandlers,
+  mode: "oidc" | "factory" | "disabled",
   signal: AbortSignal,
 ): Promise<void> {
   let delay = 1_000;
   const url = `${API_BASE}/api/v1/workspaces/${encodeURIComponent(id)}/events`;
   while (!signal.aborted) {
     try {
-      const accessToken = await getAccessToken();
-      if (!accessToken) throw new Error("No active OIDC access token");
+      const accessToken = mode === "factory" ? null : await getAccessToken();
       const response = await fetch(url, {
         headers: {
           Accept: "text/event-stream",
-          Authorization: `Bearer ${accessToken}`,
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           ...platformHeaders(context),
         },
+        credentials: mode === "factory" ? "include" : undefined,
         cache: "no-store",
         signal,
       });

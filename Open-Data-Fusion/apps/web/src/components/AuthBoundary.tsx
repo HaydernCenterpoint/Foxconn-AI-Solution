@@ -56,7 +56,7 @@ export function AuthBoundary({ children }: { children: ReactNode }) {
         <div className="auth-gate-card">
           <ShieldCheck size={34} />
           <span className="auth-gate-eyebrow">Identity configuration</span>
-          <h1>Open Data Fusion could not verify this session</h1>
+          <h1>Could not verify this session</h1>
           <p>{error}</p>
           <button type="button" onClick={() => window.location.reload()}><RefreshCw size={16} /> Reload</button>
         </div>
@@ -67,7 +67,7 @@ export function AuthBoundary({ children }: { children: ReactNode }) {
   if (!session) {
     return (
       <main className="auth-gate" aria-busy="true">
-        <div className="auth-gate-card"><span className="auth-gate-spinner" /><p>Checking your Open Data Fusion session…</p></div>
+        <div className="auth-gate-card"><span className="auth-gate-spinner" /><p>Checking your FII Data Fusion session…</p></div>
       </main>
     );
   }
@@ -88,9 +88,11 @@ export function AuthBoundary({ children }: { children: ReactNode }) {
         <div className="auth-gate-card">
           <ShieldCheck size={34} />
           <span className="auth-gate-eyebrow">Secure industrial workspace</span>
-          <h1>Sign in to Open Data Fusion</h1>
+          <h1>Sign in to {session.mode === "factory" ? "FII Data Fusion" : "Open Data Fusion"}</h1>
           <p>Your identity provider verifies the account; workspace roles determine what you can edit.</p>
-          <button type="button" disabled={redirecting} onClick={() => void startSignIn()}><LogIn size={16} /> {redirecting ? "Redirecting…" : "Continue to sign in"}</button>
+          <button type="button" disabled={redirecting} onClick={() => void startSignIn()}>
+            <LogIn size={16} /> {redirecting ? "Opening…" : session.mode === "factory" ? "Open FII Data Fusion" : "Continue to sign in"}
+          </button>
         </div>
       </main>
     );

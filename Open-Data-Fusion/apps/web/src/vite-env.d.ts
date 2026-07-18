@@ -9,6 +9,9 @@ interface ImportMetaEnv {
   readonly VITE_OIDC_USER_CLAIM?: string;
   readonly VITE_OIDC_REDIRECT_URI?: string;
   readonly VITE_OIDC_POST_LOGOUT_REDIRECT_URI?: string;
+  readonly VITE_FII_SSO?: string;
+  readonly VITE_FII_LOGIN_URL?: string;
+  readonly VITE_FII_APP_NAME?: string;
 }
 
 interface ImportMeta {
