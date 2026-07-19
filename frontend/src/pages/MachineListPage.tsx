@@ -1,123 +1,70 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Eye, Pencil, Plus, Search, ShieldOff, Trash2, Undo2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import type { AxiosError } from 'axios';
+import {
+  Activity,
+  Check,
+  CircleAlert,
+  Edit3,
+  Eye,
+  MonitorCog,
+  Plus,
+  RefreshCw,
+  Search,
+  Server,
+  ShieldCheck,
+  Trash2,
+  WifiOff,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { machinesApi, type Machine, type MachineRequest } from '../features/machines/services/machines.api';
+import {
+  machinesApi,
+  type Machine,
+  type MachineRequest,
+} from '../features/machines/services/machines.api';
 import { linesApi } from '../features/production-lines/services/lines.api';
-import { Button } from '../shared/components/ui/Button';
-import { ConfirmDialog } from '../shared/components/ui/ConfirmDialog';
-import { DataState } from '../shared/components/ui/DataState';
-import { Dropdown } from '../shared/components/ui/Dropdown';
 import { Modal } from '../shared/components/ui/Modal';
-import { PageHeader } from '../shared/components/ui/PageHeader';
-import { Badge, type BadgeVariant } from '../shared/components/ui/Badge';
-import { StatusBadge } from '../shared/components/ui/StatusBadge';
-import { Surface } from '../shared/components/ui/Surface';
-import { usePermissions } from '../shared/hooks/usePermissions';
 import { useDynamicTranslation } from '../shared/lib/translator';
-import { useUiStore } from '../shared/store/ui.store';
+import { usePermissions } from '../shared/hooks/usePermissions';
+import './machine-list-page.css';
 
-type DestructiveMachineAction = 'reject' | 'revoke' | 'delete';
-
-interface PendingMachineAction {
-  machine: Machine;
-  kind: DestructiveMachineAction;
+interface ApiErrorPayload {
+  error?: string;
 }
 
-function approvalVariant(status?: string): BadgeVariant {
-  switch (status?.toUpperCase()) {
-    case 'APPROVED':
-      return 'success';
-    case 'PENDING':
-      return 'warning';
-    case 'REJECTED':
+type MachineState = 'running' | 'idle' | 'error' | 'offline' | 'maintenance' | 'unknown';
+
+function normalizeMachineState(status: string | undefined): MachineState {
+  switch (status?.trim().toLowerCase()) {
+    case 'running':
+    case 'active':
+      return 'running';
+    case 'idle':
+    case 'stopped':
+      return 'idle';
+    case 'error':
       return 'error';
+    case 'offline':
+    case 'disconnected':
+      return 'offline';
+    case 'maintenance':
+      return 'maintenance';
     default:
-      return 'neutral';
+      return 'unknown';
   }
 }
 
-function actionCopy(kind: DestructiveMachineAction, t: ReturnType<typeof useTranslation>['t']) {
-  if (kind === 'delete') {
-    return {
-      title: t('machines.deleteConfirmTitle', { defaultValue: 'Delete machine?' }),
-      description: t('machines.deleteConfirmDescription', { defaultValue: 'This removes the machine record and cannot be undone from this page.' }),
-      confirmLabel: t('common.actions.delete', { defaultValue: 'Delete' }),
-    };
-  }
-
-  if (kind === 'reject') {
-    return {
-      title: t('machines.rejectConfirmTitle', { defaultValue: 'Reject machine registration?' }),
-      description: t('machines.rejectConfirmDescription', { defaultValue: 'The machine will no longer be approved for operation.' }),
-      confirmLabel: t('common.actions.reject', { defaultValue: 'Reject' }),
-    };
-  }
-
-  return {
-    title: t('machines.revokeConfirmTitle', { defaultValue: 'Revoke machine approval?' }),
-    description: t('machines.revokeConfirmDescription', { defaultValue: 'The machine will need to be approved again before it can operate as an approved station.' }),
-    confirmLabel: t('common.actions.revoke', { defaultValue: 'Revoke' }),
-  };
+function readApiError(error: unknown): string | undefined {
+  return (error as AxiosError<ApiErrorPayload>)?.response?.data?.error;
 }
 
-interface MachineActionButtonsProps {
-  machine: Machine;
-  canManage: boolean;
-  isApproving: boolean;
-  isConfirming: boolean;
-  onView: () => void;
-  onEdit: () => void;
-  onApprove: () => void;
-  onConfirm: (kind: DestructiveMachineAction) => void;
-  t: ReturnType<typeof useTranslation>['t'];
-}
-
-function MachineActionButtons({
-  machine,
-  canManage,
-  isApproving,
-  isConfirming,
-  onView,
-  onEdit,
-  onApprove,
-  onConfirm,
-  t,
-}: MachineActionButtonsProps) {
-  const approval = machine.approvalStatus?.toUpperCase();
-
+function ConnectionState({ connected, label }: { connected: boolean; label: string }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button size="sm" variant="secondary" startIcon={<Eye size={14} aria-hidden="true" />} onClick={onView}>
-        {t('common.actions.view', { defaultValue: 'View' })}
-      </Button>
-      {canManage && (
-        <>
-          {approval === 'PENDING' && (
-            <>
-              <Button size="sm" loading={isApproving} startIcon={<Check size={14} aria-hidden="true" />} onClick={onApprove}>
-                {t('common.actions.approve', { defaultValue: 'Approve' })}
-              </Button>
-              <Button size="sm" variant="danger" disabled={isApproving || isConfirming} startIcon={<ShieldOff size={14} aria-hidden="true" />} onClick={() => onConfirm('reject')}>
-                {t('common.actions.reject', { defaultValue: 'Reject' })}
-              </Button>
-            </>
-          )}
-          {approval === 'APPROVED' && (
-            <Button size="sm" variant="secondary" disabled={isConfirming} startIcon={<Undo2 size={14} aria-hidden="true" />} onClick={() => onConfirm('revoke')}>
-              {t('common.actions.revoke', { defaultValue: 'Revoke' })}
-            </Button>
-          )}
-          <Button size="sm" variant="ghost" startIcon={<Pencil size={14} aria-hidden="true" />} onClick={onEdit}>
-            {t('common.actions.edit', { defaultValue: 'Edit' })}
-          </Button>
-          <Button size="sm" variant="danger" disabled={isConfirming} startIcon={<Trash2 size={14} aria-hidden="true" />} onClick={() => onConfirm('delete')}>
-            {t('common.actions.delete', { defaultValue: 'Delete' })}
-          </Button>
-        </>
-      )}
-    </div>
+    <span className={`machine-list-page__connection${connected ? ' is-connected' : ' is-disconnected'}`}>
+      <span aria-hidden="true" />
+      {label}
+    </span>
   );
 }
 
@@ -128,45 +75,65 @@ export const MachineListPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const addToast = useUiStore((state) => state.addToast);
-
   const [search, setSearch] = useState('');
+
   const statusFilter = searchParams.get('status') || '';
-  const [showForm, setShowForm] = useState(false);
-  const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
-  const [pendingAction, setPendingAction] = useState<PendingMachineAction | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingMachineId, setEditingMachineId] = useState<string | null>(null);
+
   const [machineName, setMachineName] = useState('');
   const [machineCode, setMachineCode] = useState('');
   const [machineIp, setMachineIp] = useState('');
   const [clientId, setClientId] = useState('');
-  const [lineId, setLineId] = useState('');
+  const [lineId, setLineId] = useState<string>('');
   const [formError, setFormError] = useState('');
 
+  const handleStatusFilterChange = (value: string) => {
+    if (value) {
+      setSearchParams({ status: value });
+    } else {
+      setSearchParams({});
+    }
+  };
 
-
-  const linesQuery = useQuery({
+  const { data: lines } = useQuery({
     queryKey: ['productionLines-shared'],
     queryFn: linesApi.getAll,
   });
 
-  const machinesQuery = useQuery({
+  const {
+    data: machinesData,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ['machines-list-shared'],
     queryFn: machinesApi.getAll,
     refetchInterval: 2_000,
   });
+  const machines = machinesData ?? [];
 
-  const invalidateMachines = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['machines-list-shared'] }),
-      queryClient.invalidateQueries({ queryKey: ['machines', 'list'] }),
-      queryClient.invalidateQueries({ queryKey: ['machines-all-selector'] }),
-    ]);
-  };
+  const approveMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await machinesApi.approve(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['machines-list-shared'] });
+    },
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await machinesApi.revoke(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['machines-list-shared'] });
+    },
+  });
 
   const closeForm = () => {
-    if (createMachineMutation.isPending || updateMachineMutation.isPending) return;
-    setShowForm(false);
-    setEditingMachine(null);
+    setShowAddForm(false);
+    setEditingMachineId(null);
     setMachineName('');
     setMachineCode('');
     setMachineIp('');
@@ -176,399 +143,250 @@ export const MachineListPage = () => {
   };
 
   const createMachineMutation = useMutation({
-    mutationFn: (payload: MachineRequest) => machinesApi.create(payload),
-    onSuccess: async () => {
-      await invalidateMachines();
-      addToast('success', t('machines.createSuccess', { defaultValue: 'Machine created' }));
+    mutationFn: async (newMachine: MachineRequest) => {
+      await machinesApi.create(newMachine);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['machines-list-shared'] });
       closeForm();
     },
     onError: (error: unknown) => {
-      const responseError = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      const message = responseError || t('machines.createError', { defaultValue: 'Unable to create the machine' });
-      setFormError(message);
-      addToast('error', message);
+      setFormError(readApiError(error) || t('common.errors.unknown'));
     },
   });
 
   const updateMachineMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: MachineRequest }) => machinesApi.update(id, payload),
-    onSuccess: async () => {
-      await invalidateMachines();
-      addToast('success', t('machines.updateSuccess', { defaultValue: 'Machine updated' }));
+    mutationFn: async ({ id, data }: { id: string; data: MachineRequest }) => {
+      await machinesApi.update(id, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['machines-list-shared'] });
       closeForm();
     },
     onError: (error: unknown) => {
-      const responseError = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      const message = responseError || t('machines.updateError', { defaultValue: 'Unable to update the machine' });
-      setFormError(message);
-      addToast('error', message);
+      setFormError(readApiError(error) || t('common.errors.unknown'));
     },
   });
 
-  const approveMutation = useMutation({
-    mutationFn: (id: string) => machinesApi.approve(id),
-    onSuccess: async () => {
-      await invalidateMachines();
-      addToast('success', t('machines.approveSuccess', { defaultValue: 'Machine approved' }));
+  const deleteMachineMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await machinesApi.delete(id);
     },
-    onError: () => {
-      addToast('error', t('machines.approveError', { defaultValue: 'Unable to approve the machine' }));
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['machines-list-shared'] });
     },
   });
 
-  const destructiveMutation = useMutation({
-    mutationFn: ({ id, kind }: { id: string; kind: DestructiveMachineAction }) => {
-      if (kind === 'reject') return machinesApi.reject(id);
-      if (kind === 'revoke') return machinesApi.revoke(id);
-      return machinesApi.delete(id);
-    },
-    onSuccess: async (_result, variables) => {
-      await invalidateMachines();
-      const messageKey = variables.kind === 'delete'
-        ? 'machines.deleteSuccess'
-        : variables.kind === 'reject'
-          ? 'machines.rejectSuccess'
-          : 'machines.revokeSuccess';
-      const fallback = variables.kind === 'delete'
-        ? 'Machine deleted'
-        : variables.kind === 'reject'
-          ? 'Machine rejected'
-          : 'Machine approval revoked';
-      addToast('success', t(messageKey, { defaultValue: fallback }));
-      setPendingAction(null);
-    },
-    onError: (_error, variables) => {
-      const messageKey = variables.kind === 'delete'
-        ? 'machines.deleteError'
-        : variables.kind === 'reject'
-          ? 'machines.rejectError'
-          : 'machines.revokeError';
-      const fallback = variables.kind === 'delete'
-        ? 'Unable to delete the machine'
-        : variables.kind === 'reject'
-          ? 'Unable to reject the machine'
-          : 'Unable to revoke machine approval';
-      addToast('error', t(messageKey, { defaultValue: fallback }));
-    },
-  });
-
-  const handleStatusFilterChange = (value: string) => {
-    setSearchParams(value ? { status: value } : {});
-  };
-
-  const openCreateForm = () => {
-    setEditingMachine(null);
-    setMachineName('');
-    setMachineCode('');
-    setMachineIp('');
-    setClientId('');
-    setLineId('');
-    setFormError('');
-    setShowForm(true);
-  };
-
-  const openEditForm = (machine: Machine) => {
-    setEditingMachine(machine);
+  const handleEditClick = (machine: Machine) => {
+    setEditingMachineId(machine.id);
     setMachineName(machine.name);
     setMachineCode(machine.machineCode || '');
     setMachineIp(machine.ip || '');
     setClientId(machine.clientId || '');
     setLineId('');
     setFormError('');
-    setShowForm(true);
+    setShowAddForm(true);
   };
 
-  const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleFormSubmit = (event: FormEvent) => {
     event.preventDefault();
-    const name = machineName.trim();
-    if (!name) return;
+    if (!machineName) return;
 
-    setFormError('');
-    const payload: MachineRequest = {
-      name,
-      machineCode: machineCode.trim() || undefined,
-      ip: machineIp.trim() || undefined,
-      clientId: clientId.trim() || undefined,
-      lineId: editingMachine ? undefined : lineId || undefined,
+    const data: MachineRequest = {
+      name: machineName,
+      machineCode: machineCode || undefined,
+      ip: machineIp || undefined,
+      clientId: clientId || undefined,
+      lineId: lineId || undefined,
     };
 
-    if (editingMachine) {
-      updateMachineMutation.mutate({ id: editingMachine.id, payload });
+    if (editingMachineId) {
+      updateMachineMutation.mutate({ id: editingMachineId, data });
     } else {
-      createMachineMutation.mutate(payload);
+      createMachineMutation.mutate(data);
     }
   };
 
-  const machines = useMemo(() => machinesQuery.data ?? [], [machinesQuery.data]);
-  const filteredMachines = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
-    return machines.filter((machine) => {
-      const matchesSearch = !normalizedSearch
-        || machine.name.toLowerCase().includes(normalizedSearch)
-        || (machine.machineCode || '').toLowerCase().includes(normalizedSearch)
-        || (machine.ip || '').toLowerCase().includes(normalizedSearch)
-        || (machine.clientId || '').toLowerCase().includes(normalizedSearch);
-      const matchesStatus = !statusFilter || machine.status.toLowerCase() === statusFilter.toLowerCase();
-      return matchesSearch && matchesStatus;
-    });
-  }, [machines, search, statusFilter]);
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  const filteredMachines = machines.filter((machine) => {
+    const matchesSearch = !normalizedSearch || [
+      machine.name,
+      machine.machineCode,
+      machine.ip,
+      machine.clientId,
+      machine.lineNames,
+    ].some((value) => value?.toLocaleLowerCase().includes(normalizedSearch));
+    const matchesStatus = !statusFilter || machine.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
-  const isFormPending = createMachineMutation.isPending || updateMachineMutation.isPending;
-  const confirmCopy = pendingAction ? actionCopy(pendingAction.kind, t) : null;
+  const runningCount = machines.filter((machine) => normalizeMachineState(machine.status) === 'running').length;
+  const attentionCount = machines.filter((machine) => {
+    const state = normalizeMachineState(machine.status);
+    return state === 'error' || state === 'offline';
+  }).length;
+  const pendingCount = machines.filter((machine) => machine.approvalStatus === 'PENDING').length;
+  const isSaving = createMachineMutation.isPending || updateMachineMutation.isPending;
 
-  const pageHeader = (
-    <PageHeader
-      eyebrow={t('machines.eyebrow', { defaultValue: 'Asset administration' })}
-      title={t('machines.title', { defaultValue: 'Machines' })}
-      description={t('machines.adminSubtitle', { defaultValue: 'Register stations, review approval status, and maintain machine connection details.' })}
-      actions={canCreate ? (
-        <Button startIcon={<Plus size={16} aria-hidden="true" />} onClick={openCreateForm}>
-          {t('machines.add', { defaultValue: 'Add machine' })}
-        </Button>
-      ) : undefined}
-    />
-  );
-
-  const filters = (
-    <Surface variant="quiet" className="toolbar" padding="md">
-      <label className="relative min-w-0 flex-1 basis-60">
-        <span className="sr-only">{t('machines.searchLabel', { defaultValue: 'Search machines' })}</span>
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" aria-hidden="true" />
-        <input
-          className="field pl-10"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder={t('machines.searchPlaceholder', { defaultValue: 'Search by name, code, IP, or client ID' })}
-        />
-      </label>
-      <Dropdown
-        value={statusFilter}
-        onChange={handleStatusFilterChange}
-        labelPrefix={t('machines.statusFilter', { defaultValue: 'Status' })}
-        options={[
-          { value: '', label: t('machines.filterAllStatus', { defaultValue: 'All statuses' }) },
-          { value: 'running', label: t('status.running', { defaultValue: 'Running' }) },
-          { value: 'idle', label: t('status.idle', { defaultValue: 'Idle' }) },
-          { value: 'stopped', label: t('status.stopped', { defaultValue: 'Stopped' }) },
-          { value: 'error', label: t('status.error', { defaultValue: 'Error' }) },
-          { value: 'offline', label: t('status.offline', { defaultValue: 'Offline' }) },
-        ]}
-      />
-    </Surface>
-  );
-
-  let machineContent: React.ReactNode;
-  if (machinesQuery.isLoading) {
-    machineContent = (
-      <Surface variant="raised">
-        <DataState
-          kind="loading"
-          title={t('machines.loading', { defaultValue: 'Loading machines' })}
-          description={t('machines.loadingDescription', { defaultValue: 'Retrieving machine registration and connection records.' })}
-        />
-      </Surface>
-    );
-  } else if (machinesQuery.isError) {
-    machineContent = (
-      <Surface variant="raised">
-        <DataState
-          kind="error"
-          title={t('machines.queryErrorTitle', { defaultValue: 'Machines are unavailable' })}
-          description={t('machines.queryErrorDescription', { defaultValue: 'The machine service could not be reached. No machine data is shown.' })}
-          action={(
-            <Button variant="secondary" size="sm" onClick={() => void machinesQuery.refetch()}>
-              {t('common.actions.retry', { defaultValue: 'Retry' })}
-            </Button>
-          )}
-        />
-      </Surface>
-    );
-  } else if (filteredMachines.length === 0) {
-    const hasFilters = Boolean(search.trim() || statusFilter);
-    machineContent = (
-      <Surface variant="raised">
-        <DataState
-          kind="empty"
-          title={hasFilters
-            ? t('machines.emptyFilteredTitle', { defaultValue: 'No machines match the current filters' })
-            : t('machines.emptyTitle', { defaultValue: 'No machines registered' })}
-          description={hasFilters
-            ? t('machines.emptyFilteredDescription', { defaultValue: 'Change or clear the filters to view other machine records.' })
-            : t('machines.emptyDescription', { defaultValue: 'Register a machine when a new PLC client or station is ready for setup.' })}
-          action={hasFilters ? (
-            <Button variant="secondary" size="sm" onClick={() => {
-              setSearch('');
-              handleStatusFilterChange('');
-            }}>
-              {t('common.actions.clearFilters', { defaultValue: 'Clear filters' })}
-            </Button>
-          ) : canCreate ? (
-            <Button size="sm" startIcon={<Plus size={16} aria-hidden="true" />} onClick={openCreateForm}>
-              {t('machines.add', { defaultValue: 'Add machine' })}
-            </Button>
-          ) : undefined}
-        />
-      </Surface>
-    );
-  } else {
-    machineContent = (
-      <Surface variant="raised" padding="none" className="overflow-hidden">
-        <div className="hidden overflow-x-auto md:block">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>{t('machines.table.name', { defaultValue: 'Machine' })}</th>
-                <th>{t('machines.table.code', { defaultValue: 'Station code' })}</th>
-                <th>{t('machines.table.ip', { defaultValue: 'IP address' })}</th>
-                <th>{t('machines.table.status', { defaultValue: 'Status' })}</th>
-                <th>{t('machines.table.plcConnected', { defaultValue: 'PLC connection' })}</th>
-                <th>{t('machines.table.approval', { defaultValue: 'Approval' })}</th>
-                <th className="text-right">{t('machines.table.actions', { defaultValue: 'Actions' })}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredMachines.map((machine) => {
-                const isApproving = approveMutation.isPending && approveMutation.variables === machine.id;
-                const isConfirming = destructiveMutation.isPending && destructiveMutation.variables?.id === machine.id;
-                return (
-                  <tr key={machine.id}>
-                    <td>
-                      <div>
-                        <p className="font-semibold text-text-primary">{tDynamic(machine.name)}</p>
-                        {machine.lineNames && <p className="mt-1 text-xs text-text-muted">{machine.lineNames}</p>}
-                      </div>
-                    </td>
-                    <td className="font-mono text-xs">{machine.machineCode || '—'}</td>
-                    <td className="font-mono text-xs">{machine.ip || '—'}</td>
-                    <td><StatusBadge status={machine.status} size="sm" /></td>
-                    <td>
-                      <Badge variant={machine.plcConnected ? 'success' : 'offline'} size="sm" dot>
-                        {machine.plcConnected
-                          ? t('machines.plcConnected', { defaultValue: 'Connected' })
-                          : t('machines.plcDisconnected', { defaultValue: 'Disconnected' })}
-                      </Badge>
-                    </td>
-                    <td><Badge variant={approvalVariant(machine.approvalStatus)} size="sm">{machine.approvalStatus || '—'}</Badge></td>
-                    <td>
-                      <div className="flex justify-end">
-                        <MachineActionButtons
-                          machine={machine}
-                          canManage={canCreate}
-                          isApproving={isApproving}
-                          isConfirming={isConfirming}
-                          onView={() => navigate(`/machines/${machine.id}`)}
-                          onEdit={() => openEditForm(machine)}
-                          onApprove={() => approveMutation.mutate(machine.id)}
-                          onConfirm={(kind) => setPendingAction({ machine, kind })}
-                          t={t}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="space-y-3 p-3 md:hidden">
-          {filteredMachines.map((machine) => {
-            const isApproving = approveMutation.isPending && approveMutation.variables === machine.id;
-            const isConfirming = destructiveMutation.isPending && destructiveMutation.variables?.id === machine.id;
-            return (
-              <Surface key={machine.id} variant="quiet" padding="md" className="space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-text-primary">{tDynamic(machine.name)}</p>
-                    <p className="mt-1 font-mono text-xs text-text-muted">{machine.machineCode || '—'}</p>
-                  </div>
-                  <StatusBadge status={machine.status} size="sm" />
-                </div>
-                <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-y border-border py-3 text-sm">
-                  <div>
-                    <dt className="text-xs text-text-muted">{t('machines.table.ip', { defaultValue: 'IP address' })}</dt>
-                    <dd className="mt-1 font-mono text-text-primary">{machine.ip || '—'}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-text-muted">{t('machines.table.approval', { defaultValue: 'Approval' })}</dt>
-                    <dd className="mt-1"><Badge variant={approvalVariant(machine.approvalStatus)} size="sm">{machine.approvalStatus || '—'}</Badge></dd>
-                  </div>
-                  <div className="col-span-2">
-                    <dt className="text-xs text-text-muted">{t('machines.table.plcConnected', { defaultValue: 'PLC connection' })}</dt>
-                    <dd className="mt-1"><Badge variant={machine.plcConnected ? 'success' : 'offline'} size="sm" dot>{machine.plcConnected ? t('machines.plcConnected', { defaultValue: 'Connected' }) : t('machines.plcDisconnected', { defaultValue: 'Disconnected' })}</Badge></dd>
-                  </div>
-                </dl>
-                <MachineActionButtons
-                  machine={machine}
-                  canManage={canCreate}
-                  isApproving={isApproving}
-                  isConfirming={isConfirming}
-                  onView={() => navigate(`/machines/${machine.id}`)}
-                  onEdit={() => openEditForm(machine)}
-                  onApprove={() => approveMutation.mutate(machine.id)}
-                  onConfirm={(kind) => setPendingAction({ machine, kind })}
-                  t={t}
-                />
-              </Surface>
-            );
-          })}
-        </div>
-      </Surface>
-    );
-  }
+  const approvalLabel = (approvalStatus: Machine['approvalStatus']) => {
+    switch (approvalStatus) {
+      case 'APPROVED':
+        return t('machines.approved');
+      case 'REJECTED':
+        return t('machines.rejected');
+      default:
+        return t('machines.pending');
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      {pageHeader}
-      {filters}
-      {machineContent}
+    <div className="machine-list-page">
+      <header className="machine-list-page__hero">
+        <div className="machine-list-page__hero-copy">
+          <span className="machine-list-page__eyebrow">
+            <MonitorCog aria-hidden="true" size={16} />
+            {t('navigation.equipment')}
+          </span>
+          <h1>{t('machines.title')}</h1>
+          <p>{t(canCreate ? 'machines.adminSubtitle' : 'machines.viewerSubtitle')}</p>
+        </div>
+
+        {canCreate && (
+          <button
+            type="button"
+            className="machine-list-page__primary-action"
+            onClick={() => setShowAddForm(true)}
+          >
+            <Plus aria-hidden="true" size={17} />
+            {t('machines.add')}
+          </button>
+        )}
+      </header>
+
+      <section className="machine-list-page__metrics" aria-label={t('machines.listTitle')}>
+        <article>
+          <span className="machine-list-page__metric-icon"><MonitorCog aria-hidden="true" size={18} /></span>
+          <div><small>{t('status.total')}</small><strong>{machines.length}</strong></div>
+        </article>
+        <article>
+          <span className="machine-list-page__metric-icon is-success"><Activity aria-hidden="true" size={18} /></span>
+          <div><small>{t('status.running')}</small><strong>{runningCount}</strong></div>
+        </article>
+        <article>
+          <span className="machine-list-page__metric-icon is-danger"><CircleAlert aria-hidden="true" size={18} /></span>
+          <div><small>{t('status.error')} / {t('status.offline')}</small><strong>{attentionCount}</strong></div>
+        </article>
+        <article>
+          <span className="machine-list-page__metric-icon is-warning"><ShieldCheck aria-hidden="true" size={18} /></span>
+          <div><small>{t('machines.pending')}</small><strong>{pendingCount}</strong></div>
+        </article>
+      </section>
+
+      <section className="machine-list-page__toolbar" aria-label={t('machines.filtersTitle')}>
+        <label className="machine-list-page__search">
+          <Search aria-hidden="true" size={17} />
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t('machines.searchPlaceholder')}
+            aria-label={t('machines.searchPlaceholder')}
+          />
+        </label>
+
+        <label className="machine-list-page__filter">
+          <span>{t('machines.filterStatus')}</span>
+          <select
+            value={statusFilter}
+            onChange={(event) => handleStatusFilterChange(event.target.value)}
+          >
+            <option value="">{t('machines.filterAllStatus')}</option>
+            <option value="running">{t('status.running')}</option>
+            <option value="idle">{t('status.idle')}</option>
+            <option value="error">{t('status.error')}</option>
+            <option value="offline">{t('status.offline')}</option>
+          </select>
+        </label>
+
+        <div className="machine-list-page__result-count" aria-live="polite">
+          <strong>{filteredMachines.length}</strong>
+          <span>/ {machines.length}</span>
+          <small>{t('machines.listTitle')}</small>
+        </div>
+      </section>
 
       {canCreate && (
         <Modal
-          open={showForm}
+          open={showAddForm}
           onClose={closeForm}
-          title={editingMachine
-            ? t('machines.editModal.title', { defaultValue: 'Edit machine' })
-            : t('machines.addModal.title', { defaultValue: 'Add machine' })}
-          subtitle={editingMachine
-            ? t('machines.editModal.subtitle', { defaultValue: 'Update the registered machine connection details.' })
-            : t('machines.addModal.subtitle', { defaultValue: 'Register a machine before it is approved for operations.' })}
+          title={editingMachineId ? t('machines.editModal.title') : t('machines.addModal.title')}
           size="md"
-          footer={(
+          footer={
             <>
-              <Button variant="secondary" disabled={isFormPending} onClick={closeForm}>
-                {t('common.actions.cancel', { defaultValue: 'Cancel' })}
-              </Button>
-              <Button type="submit" form="machine-form" loading={isFormPending}>
-                {editingMachine ? t('common.actions.save', { defaultValue: 'Save changes' }) : t('common.actions.create', { defaultValue: 'Create machine' })}
-              </Button>
+              <button type="button" onClick={closeForm} className="machine-list-page__modal-secondary">
+                {t('common.actions.cancel')}
+              </button>
+              <button
+                type="submit"
+                form="machine-form"
+                disabled={isSaving}
+                className="machine-list-page__modal-primary"
+              >
+                {isSaving ? t('common.status.loading') : t('common.actions.save')}
+              </button>
             </>
-          )}
+          }
         >
-          <form id="machine-form" className="space-y-4" onSubmit={handleFormSubmit}>
-            {formError && <div className="rounded-md border border-error bg-error-container px-3 py-2 text-sm text-error" role="alert">{formError}</div>}
-            <label className="block space-y-2">
-              <span className="label-small text-text-secondary">{t('machines.form.name', { defaultValue: 'Machine name' })}</span>
-              <input className="field" value={machineName} onChange={(event) => setMachineName(event.target.value)} required autoFocus />
+          <form id="machine-form" onSubmit={handleFormSubmit} className="machine-list-page__form">
+            {formError && <div className="machine-list-page__form-error" role="alert">{formError}</div>}
+
+            <label>
+              <span>{t('machines.form.name')} *</span>
+              <input
+                type="text"
+                value={machineName}
+                onChange={(event) => setMachineName(event.target.value)}
+                placeholder={t('machines.form.namePlaceholder')}
+                required
+              />
             </label>
-            <label className="block space-y-2">
-              <span className="label-small text-text-secondary">{t('machines.form.code', { defaultValue: 'Station code' })}</span>
-              <input className="field" value={machineCode} onChange={(event) => setMachineCode(event.target.value)} />
+
+            <label>
+              <span>{t('machines.form.code')}</span>
+              <input
+                type="text"
+                value={machineCode}
+                onChange={(event) => setMachineCode(event.target.value)}
+                placeholder={t('machines.form.codePlaceholder')}
+              />
             </label>
-            <label className="block space-y-2">
-              <span className="label-small text-text-secondary">{t('machines.form.ip', { defaultValue: 'IP address' })}</span>
-              <input className="field font-mono" value={machineIp} onChange={(event) => setMachineIp(event.target.value)} inputMode="url" />
+
+            <label>
+              <span>{t('machines.table.ip')}</span>
+              <input
+                type="text"
+                value={machineIp}
+                onChange={(event) => setMachineIp(event.target.value)}
+                placeholder={t('machines.form.ipPlaceholder')}
+              />
             </label>
-            <label className="block space-y-2">
-              <span className="label-small text-text-secondary">{t('machines.form.clientId', { defaultValue: 'PLC client ID' })}</span>
-              <input className="field font-mono" value={clientId} onChange={(event) => setClientId(event.target.value)} />
+
+            <label>
+              <span>{t('machines.form.clientId')}</span>
+              <input
+                type="text"
+                value={clientId}
+                onChange={(event) => setClientId(event.target.value)}
+                placeholder={t('machines.form.clientIdPlaceholder')}
+              />
             </label>
-            {!editingMachine && (
-              <label className="block space-y-2">
-                <span className="label-small text-text-secondary">{t('machines.form.line', { defaultValue: 'Assign to production line' })}</span>
-                <select className="field" value={lineId} onChange={(event) => setLineId(event.target.value)}>
-                  <option value="">{t('machines.form.noLine', { defaultValue: 'Do not assign yet' })}</option>
-                  {(linesQuery.data ?? []).map((line) => (
+
+            {!editingMachineId && (
+              <label>
+                <span>{t('machines.form.line')}</span>
+                <select value={lineId} onChange={(event) => setLineId(event.target.value)}>
+                  <option value="">{t('machines.form.noLine')}</option>
+                  {lines?.map((line) => (
                     <option key={line.id} value={line.id}>{tDynamic(line.name)}</option>
                   ))}
                 </select>
@@ -578,24 +396,181 @@ export const MachineListPage = () => {
         </Modal>
       )}
 
-      <ConfirmDialog
-        open={Boolean(pendingAction)}
-        title={confirmCopy?.title ?? ''}
-        description={pendingAction
-          ? `${tDynamic(pendingAction.machine.name)} — ${confirmCopy?.description ?? ''}`
+      <section className="machine-list-page__inventory" aria-labelledby="machine-list-title">
+        <header className="machine-list-page__inventory-head">
+          <div>
+            <span className="machine-list-page__inventory-marker" aria-hidden="true" />
+            <div>
+              <h2 id="machine-list-title">{t('machines.listTitle')}</h2>
+              <p>{t('machines.subtitle')}</p>
+            </div>
+          </div>
+          <span>{filteredMachines.length} / {machines.length}</span>
+        </header>
+
+        {isLoading ? (
+          <div className="machine-list-page__loading" role="status">
+            <span>{t('machines.loading')}</span>
+            {Array.from({ length: 5 }).map((_, index) => (
+              <div aria-hidden="true" key={index}>
+                <i /><i /><i /><i />
+              </div>
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="machine-list-page__empty-state is-error" role="alert">
+            <WifiOff aria-hidden="true" size={28} />
+            <h3>{t('machines.errorTitle')}</h3>
+            <p>{t('machines.errorDescription')}</p>
+            <button type="button" onClick={() => void refetch()}>
+              <RefreshCw aria-hidden="true" size={15} />
+              {t('common.aria.refresh')}
+            </button>
+          </div>
+        ) : filteredMachines.length === 0 ? (
+          <div className="machine-list-page__empty-state">
+            <MonitorCog aria-hidden="true" size={28} />
+            <h3>{t('common.table.noData')}</h3>
+          </div>
+        ) : (
+          <div className="machine-list-page__table-wrap">
+            <table aria-label={t('machines.listTitle')}>
+              <thead>
+                <tr>
+                  <th scope="col">{t('machines.table.name')}</th>
+                  <th scope="col">{t('machines.table.code')}</th>
+                  <th scope="col">{t('machines.table.ip')}</th>
+                  <th scope="col">{t('machines.table.status')}</th>
+                  <th scope="col">{t('machines.table.serverConnected')}</th>
+                  <th scope="col">{t('machines.table.plcConnected')}</th>
+                  <th scope="col">{t('machines.table.approval')}</th>
+                  <th scope="col">{t('machines.table.actions')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredMachines.map((machine) => {
+                  const machineState = normalizeMachineState(machine.status);
+                  const serverConnected = machineState !== 'offline';
+                  const approvalStatus = machine.approvalStatus || 'PENDING';
+
+                  return (
+                    <tr key={machine.id}>
+                      <td>
+                        <div className="machine-list-page__identity">
+                          <span className={`machine-list-page__machine-icon is-${machineState}`}>
+                            <MonitorCog aria-hidden="true" size={18} />
+                          </span>
+                          <span>
+                            <strong>{tDynamic(machine.name)}</strong>
+                            <small>{machine.clientId || t('common.notAvailable')} · {machine.lineNames || t('machines.form.noLine')}</small>
+                          </span>
+                        </div>
+                      </td>
+                      <td><code>{machine.machineCode || t('common.notAvailable')}</code></td>
+                      <td><code>{machine.ip || t('common.notAvailable')}</code></td>
+                      <td>
+                        <span className={`machine-list-page__state is-${machineState}`}>
+                          <span aria-hidden="true" />
+                          {t(`common.machineStatus.${machineState}`, { defaultValue: machine.status })}
+                        </span>
+                      </td>
+                      <td>
+                        <ConnectionState
+                          connected={serverConnected}
+                          label={t(serverConnected ? 'machines.status.serverConnected' : 'machines.status.serverDisconnected')}
+                        />
+                      </td>
+                      <td>
+                        <ConnectionState
+                          connected={Boolean(machine.plcConnected)}
+                          label={t(machine.plcConnected ? 'machines.connected' : 'machines.disconnected')}
+                        />
+                      </td>
+                      <td>
+                        <div className="machine-list-page__approval-stack">
+                          <span className={`machine-list-page__approval is-${approvalStatus.toLocaleLowerCase()}`}>
+                            {approvalLabel(approvalStatus)}
+                          </span>
+                          {canCreate && (
+                            approvalStatus === 'PENDING' ? (
+                              <button
+                                type="button"
+                                className="machine-list-page__approval-action is-approve"
+                                onClick={() => approveMutation.mutate(machine.id)}
+                                disabled={approveMutation.isPending}
+                                title={t('common.actions.approve')}
+                                aria-label={t('common.actions.approve')}
+                              >
+                                <Check aria-hidden="true" size={13} />
+                                {t('common.actions.approve')}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="machine-list-page__approval-action is-revoke"
+                                onClick={() => revokeMutation.mutate(machine.id)}
+                                disabled={revokeMutation.isPending}
+                                title={t('common.actions.revoke')}
+                                aria-label={t('common.actions.revoke')}
+                              >
+                                {t('common.actions.revoke')}
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="machine-list-page__actions">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/machines/${machine.id}`)}
+                            title={t('common.actions.view')}
+                            aria-label={t('common.actions.view')}
+                          >
+                            <Eye aria-hidden="true" size={16} />
+                          </button>
+                          {canCreate && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleEditClick(machine)}
+                                title={t('common.actions.edit')}
+                                aria-label={t('common.actions.edit')}
+                              >
+                                <Edit3 aria-hidden="true" size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                className="is-danger"
+                                onClick={() => {
+                                  if (window.confirm(t('common.confirm.delete'))) {
+                                    deleteMachineMutation.mutate(machine.id);
+                                  }
+                                }}
+                                title={t('common.actions.delete')}
+                                aria-label={t('common.actions.delete')}
+                              >
+                                <Trash2 aria-hidden="true" size={16} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <span className="machine-list-page__sr-only" aria-live="polite">
+        {approveMutation.isPending || revokeMutation.isPending || deleteMachineMutation.isPending
+          ? t('common.status.loading')
           : ''}
-        confirmLabel={confirmCopy?.confirmLabel}
-        confirmTone="danger"
-        isPending={destructiveMutation.isPending}
-        onCancel={() => {
-          if (!destructiveMutation.isPending) setPendingAction(null);
-        }}
-        onConfirm={() => {
-          if (pendingAction) {
-            destructiveMutation.mutate({ id: pendingAction.machine.id, kind: pendingAction.kind });
-          }
-        }}
-      />
+      </span>
+      <Server className="machine-list-page__decorative-server" aria-hidden="true" />
     </div>
   );
 };

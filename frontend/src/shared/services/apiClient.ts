@@ -8,8 +8,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1000;
 const RETRYABLE_STATUSES = new Set([502, 503, 504]);
-const SAFE_RETRY_METHODS = new Set(['get', 'head', 'options']);
-const SILENT_URL_PREFIXES = ['/dashboard/summary', '/alarms', '/simulation', '/health', '/telemetry'];
+const SILENT_URL_PREFIXES = ['/dashboard/summary', '/alarms', '/simulation'];
 
 interface RetryableConfig extends InternalAxiosRequestConfig {
   _retryCount?: number;
@@ -35,10 +34,6 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function isSafeReadRequest(config: InternalAxiosRequestConfig): boolean {
-  return SAFE_RETRY_METHODS.has((config.method ?? 'get').toLowerCase());
-}
-
 api.interceptors.response.use(
   (res) => res,
   async (err: AxiosError) => {
@@ -57,20 +52,20 @@ api.interceptors.response.use(
     const isRetryableStatus = err.response?.status != null && RETRYABLE_STATUSES.has(err.response.status);
     const currentRetry = config?._retryCount ?? 0;
 
-    if (config && isSafeReadRequest(config) && (isNetworkError || isTimeout || isRetryableStatus) && currentRetry < MAX_RETRIES) {
+    if (config && (isNetworkError || isTimeout || isRetryableStatus) && currentRetry < MAX_RETRIES) {
       config._retryCount = currentRetry + 1;
       await delay(RETRY_DELAY_MS * config._retryCount);
       return api(config);
     }
 
-    if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_API_MOCKS === 'true' && isNetworkError && config && isSafeReadRequest(config)) {
+    if (import.meta.env.DEV && config && (isNetworkError || isTimeout || isRetryableStatus)) {
       const url = config.url || '';
       const method = config.method?.toLowerCase() || 'get';
       const { getMockDataForUrl } = await import('./apiClient.mock');
       const mockData = getMockDataForUrl(url, method);
 
       if (mockData !== undefined) {
-        console.warn(`[Axios Simulator Mode] Read request to ${url} failed. Returning explicitly enabled mock data.`);
+        console.warn(`[Axios Simulator Mode] Request to ${url} failed. Returning simulated data...`);
         return Promise.resolve({
           data: mockData,
           status: 200,

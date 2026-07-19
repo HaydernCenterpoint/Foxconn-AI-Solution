@@ -1,427 +1,282 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import React, { useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { Plus, RefreshCw, ShieldCheck, Trash2, UserRound, UsersRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { queryKeys } from '../../app/queryKeys';
-import { UserRoleBadge } from '../../features/admin/components/UserRoleBadge';
-import { getApiErrorMessage } from '../../features/admin/lib/apiError';
+import {
+  AlertTriangle,
+  ChevronDown,
+  Shield,
+  ShieldCheck,
+  Trash2,
+  UserCheck,
+  UserPlus,
+  Users,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import { usersApi, type CreateUserRequest, type User } from '../../features/admin/services/users.api';
 import { useAuthStore } from '../../shared/store/auth.store';
-import { useUiStore } from '../../shared/store/ui.store';
-import { Button } from '../../shared/components/ui/Button';
-import { ConfirmDialog } from '../../shared/components/ui/ConfirmDialog';
-import { DataState } from '../../shared/components/ui/DataState';
-import { IconButton } from '../../shared/components/ui/IconButton';
-import { Modal } from '../../shared/components/ui/Modal';
-import { PageHeader } from '../../shared/components/ui/PageHeader';
-import { StatCard } from '../../shared/components/ui/StatCard';
-import { Surface } from '../../shared/components/ui/Surface';
-import { Badge } from '../../shared/components/ui/Badge';
+import './admin-modern.css';
 
-interface CreateUserFormData {
-  username: string;
-  password: string;
-  role: CreateUserRequest['role'];
+type Role = CreateUserRequest['role'];
+
+interface RoleMeta {
+  icon: LucideIcon;
+  tone: 'red' | 'amber' | 'neutral';
 }
 
-const initialFormValues: CreateUserFormData = {
-  username: '',
-  password: '',
-  role: 'GUEST',
+const ROLE_META: Record<Role, RoleMeta> = {
+  ADMIN: { icon: ShieldCheck, tone: 'red' },
+  ENGINEER: { icon: Shield, tone: 'amber' },
+  GUEST: { icon: UserCheck, tone: 'neutral' },
 };
 
-export function UserManagementPage() {
-  const { i18n, t } = useTranslation();
+function extractErrorMessage(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null || !('response' in error)) return undefined;
+  const response = error.response;
+  if (typeof response !== 'object' || response === null || !('data' in response)) return undefined;
+  const data = response.data;
+  if (typeof data !== 'object' || data === null || !('error' in data)) return undefined;
+  return typeof data.error === 'string' ? data.error : undefined;
+}
+
+function Modal({ children }: { children: ReactNode }) {
+  return <div className="admin-modal__backdrop">{children}</div>;
+}
+
+export const UserManagementPage: React.FC = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const currentUsername = useAuthStore((state) => state.username);
-  const addToast = useUiStore((state) => state.addToast);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [roleInput, setRoleInput] = useState<Role>('GUEST');
   const [formError, setFormError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
-  const [deleteError, setDeleteError] = useState('');
-  const createFormId = useId();
-  const usernameId = useId();
-  const passwordId = useId();
-  const roleId = useId();
-  const usernameErrorId = useId();
-  const passwordErrorId = useId();
-  const roleErrorId = useId();
 
-  const schema = useMemo(
-    () => z.object({
-      username: z.string().trim().min(1, t('pages.users.validation.usernamePasswordRequired')),
-      password: z.string().min(1, t('pages.users.validation.usernamePasswordRequired')),
-      role: z.enum(['ADMIN', 'ENGINEER', 'GUEST']),
-    }),
-    [t],
-  );
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    trigger,
-    formState: { errors, isSubmitted },
-  } = useForm<CreateUserFormData>({
-    defaultValues: initialFormValues,
-    mode: 'onBlur',
-    resolver: zodResolver(schema),
-  });
-
-  useEffect(() => {
-    if (isSubmitted) {
-      void trigger();
-    }
-  }, [i18n.language, isSubmitted, trigger]);
-
-  const {
-    data: users = [],
-    isError,
-    isFetching,
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: queryKeys.admin.users(),
+  const { data: users = [], isLoading, error } = useQuery({
+    queryKey: ['users'],
     queryFn: usersApi.getAll,
   });
 
   const createMutation = useMutation({
     mutationFn: (newUser: CreateUserRequest) => usersApi.create(newUser),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.admin.users() }),
-        queryClient.invalidateQueries({ queryKey: ['audit-logs'] }),
-      ]);
-      addToast('success', t('pages.users.createSuccess', { defaultValue: t('common.success') }));
-      setIsCreateModalOpen(false);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setShowAddForm(false);
+      setUsernameInput('');
+      setPasswordInput('');
+      setRoleInput('GUEST');
       setFormError('');
-      reset(initialFormValues);
     },
-    onError: (error) => {
-      setFormError(getApiErrorMessage(error, t('errors.unknown')));
+    onError: (requestError) => {
+      setFormError(extractErrorMessage(requestError) || t('pages.users.toasts.createError', 'Lỗi khi tạo tài khoản'));
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => usersApi.delete(id),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.admin.users() }),
-        queryClient.invalidateQueries({ queryKey: ['audit-logs'] }),
-      ]);
-      addToast('success', t('settings.users.deleteSuccess'));
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
       setDeleteTarget(null);
-      setDeleteError('');
-    },
-    onError: (error) => {
-      setDeleteError(getApiErrorMessage(error, t('settings.users.deleteError')));
     },
   });
 
-  const openCreateModal = () => {
-    reset(initialFormValues);
-    setFormError('');
-    createMutation.reset();
-    setIsCreateModalOpen(true);
+  const handleCreate = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!usernameInput.trim() || !passwordInput.trim()) {
+      setFormError(t('pages.users.validation.usernamePasswordRequired', 'Tên tài khoản và mật khẩu là bắt buộc'));
+      return;
+    }
+    createMutation.mutate({ username: usernameInput, password: passwordInput, role: roleInput });
   };
 
-  const closeCreateModal = () => {
-    if (createMutation.isPending) return;
-    setIsCreateModalOpen(false);
-    setFormError('');
-    reset(initialFormValues);
+  const roleLabel = (role: Role) => {
+    if (role === 'ADMIN') return t('pages.users.roles.admin', 'Quản trị viên');
+    if (role === 'ENGINEER') return t('pages.users.roles.engineer', 'Kỹ sư');
+    return t('pages.users.roles.guest', 'Khách');
   };
 
-  const isCurrentUser = (username: string) =>
-    Boolean(currentUsername && username.toLowerCase() === currentUsername.toLowerCase());
+  const counts = {
+    admins: users.filter((user) => user.role === 'ADMIN').length,
+    engineers: users.filter((user) => user.role === 'ENGINEER').length,
+    guests: users.filter((user) => user.role === 'GUEST').length,
+  };
 
-  const roleCounts = useMemo(
-    () => ({
-      admin: users.filter((user) => user.role === 'ADMIN').length,
-      engineer: users.filter((user) => user.role === 'ENGINEER').length,
-      guest: users.filter((user) => user.role === 'GUEST').length,
-    }),
-    [users],
-  );
+  if (isLoading) {
+    return (
+      <div className="admin-page admin-page__state">
+        <div className="admin-page__spinner" aria-hidden="true" />
+        <p>{t('pages.users.loading', 'Đang tải danh sách tài khoản...')}</p>
+      </div>
+    );
+  }
 
-  const unavailableValue = t('common.notAvailable');
-  const deleteDescription = deleteTarget
-    ? `${t('pages.users.deleteDescription', { username: deleteTarget.username })}${deleteError ? ` ${deleteError}` : ''}`
-    : '';
+  if (error) {
+    return (
+      <div className="admin-page admin-page__error">
+        <h3>{t('pages.users.loadErrorTitle', 'Lỗi tải dữ liệu')}</h3>
+        <p>{t('pages.users.loadError', 'Không thể lấy danh sách người dùng. Kiểm tra quyền Admin.')}</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow={t('settings.sections.users')}
-        title={t('titles.users')}
-        description={t('pages.users.subtitle')}
-        className="max-sm:flex-col max-sm:items-start"
-        actions={(
-          <>
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={isFetching && !isLoading}
-              startIcon={<RefreshCw size={16} aria-hidden="true" />}
-              onClick={() => {
-                void refetch();
-              }}
-            >
-              {t('common.actions.refresh')}
-            </Button>
-            <Button startIcon={<Plus size={16} aria-hidden="true" />} onClick={openCreateModal}>
-              {t('pages.users.addAccount')}
-            </Button>
-          </>
-        )}
-      />
+    <div className="admin-page admin-users-page">
+      <header className="admin-page__header">
+        <div>
+          <p>{t('pages.users.subtitle', 'Tạo tài khoản, phân quyền và quản lý truy cập hệ thống')}</p>
+          <h1>{t('titles.users', 'Quản lý người dùng')}</h1>
+        </div>
+        <button
+          type="button"
+          className="admin-page__primary-action"
+          onClick={() => {
+            setShowAddForm(true);
+            setFormError('');
+          }}
+        >
+          <UserPlus aria-hidden="true" size={17} />
+          {t('pages.users.addAccount', 'Thêm tài khoản')}
+        </button>
+      </header>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label={t('pages.users.totalAccounts')}
-          value={isError ? unavailableValue : users.length}
-          icon={<UsersRound size={18} />}
-          accent="primary"
-          loading={isLoading}
-        />
-        <StatCard
-          label={t('pages.users.roles.admin')}
-          value={isError ? unavailableValue : roleCounts.admin}
-          icon={<ShieldCheck size={18} />}
-          accent="info"
-          loading={isLoading}
-        />
-        <StatCard
-          label={t('pages.users.roles.engineer')}
-          value={isError ? unavailableValue : roleCounts.engineer}
-          icon={<UserRound size={18} />}
-          accent="warning"
-          loading={isLoading}
-        />
-        <StatCard
-          label={t('pages.users.roles.guest')}
-          value={isError ? unavailableValue : roleCounts.guest}
-          icon={<UserRound size={18} />}
-          accent="neutral"
-          loading={isLoading}
-        />
-      </div>
+      <section className="admin-page__stats" aria-label={t('titles.users', 'User management')}>
+        {[
+          { label: t('pages.users.totalAccounts', 'Tổng tài khoản'), value: users.length, tone: 'neutral' },
+          { label: t('pages.users.roles.admin', 'Quản trị viên'), value: counts.admins, tone: 'red' },
+          { label: t('pages.users.roles.engineer', 'Kỹ sư'), value: counts.engineers, tone: 'amber' },
+          { label: t('pages.users.roles.guest', 'Khách'), value: counts.guests, tone: 'muted' },
+        ].map((stat) => (
+          <article className={`admin-page__stat admin-page__stat--${stat.tone}`} key={stat.label}>
+            <span>{stat.label}</span>
+            <strong>{stat.value}</strong>
+          </article>
+        ))}
+      </section>
 
-      {isLoading ? (
-        <DataState kind="loading" title={t('pages.users.loading')} />
-      ) : isError ? (
-        <DataState
-          kind="error"
-          title={t('pages.users.loadErrorTitle')}
-          description={t('pages.users.loadError')}
-          action={(
-            <Button
-              variant="secondary"
-              size="sm"
-              startIcon={<RefreshCw size={16} aria-hidden="true" />}
-              onClick={() => {
-                void refetch();
-              }}
-            >
-              {t('common.actions.retry')}
-            </Button>
-          )}
-        />
-      ) : users.length === 0 ? (
-        <DataState
-          kind="empty"
-          icon={<UsersRound aria-hidden="true" />}
-          title={t('pages.users.empty')}
-          action={(
-            <Button size="sm" startIcon={<Plus size={16} aria-hidden="true" />} onClick={openCreateModal}>
-              {t('pages.users.addAccount')}
-            </Button>
-          )}
-        />
-      ) : (
-        <Surface variant="default" padding="none" className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="data-table min-w-[680px]">
-              <caption className="sr-only">{t('pages.users.listTitle')}</caption>
-              <thead>
-                <tr>
-                  <th scope="col">{t('pages.users.columns.id')}</th>
-                  <th scope="col">{t('pages.users.columns.username')}</th>
-                  <th scope="col">{t('pages.users.columns.role')}</th>
-                  <th scope="col" className="text-right">{t('pages.users.columns.actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => {
-                  const isSelf = isCurrentUser(user.username);
+      <section className="admin-page__panel admin-page__table-panel">
+        <div className="admin-page__table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col" className="is-center">#</th>
+                <th scope="col">{t('pages.users.table.username', 'Tên tài khoản')}</th>
+                <th scope="col">{t('pages.users.table.role', 'Quyền hạn')}</th>
+                <th scope="col" className="is-center">{t('pages.users.table.actions', 'Thao tác')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user, index) => {
+                const isCurrent = user.username === currentUsername;
+                const meta = ROLE_META[user.role];
+                const RoleIcon = meta.icon;
+                return (
+                  <tr key={user.id}>
+                    <td className="is-center admin-page__index">{index + 1}</td>
+                    <td>
+                      <div className="admin-page__user-cell">
+                        <b>{user.username}</b>
+                        {isCurrent && <em>{t('pages.users.table.activeSelf', 'Tài khoản của bạn')}</em>}
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`admin-page__badge admin-page__badge--${meta.tone}`}>
+                        <RoleIcon aria-hidden="true" size={14} />
+                        {roleLabel(user.role)}
+                      </span>
+                    </td>
+                    <td className="is-center">
+                      {!isCurrent && (
+                        <button
+                          type="button"
+                          className="admin-page__delete-button"
+                          onClick={() => setDeleteTarget(user)}
+                          title={t('common.actions.delete', 'Xóa')}
+                        >
+                          <Trash2 aria-hidden="true" size={15} />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-                  return (
-                    <tr key={user.id}>
-                      <td className="font-mono text-text-muted">{user.id}</td>
-                      <td>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium text-text-primary">{user.username}</span>
-                          {isSelf && <Badge variant="primary" size="sm">{t('pages.users.self')}</Badge>}
-                        </div>
-                      </td>
-                      <td><UserRoleBadge role={user.role} /></td>
-                      <td className="text-right">
-                        {isSelf ? (
-                          <span className="text-xs text-text-muted">{t('pages.users.cannotDeleteSelf')}</span>
-                        ) : (
-                          <IconButton
-                            variant="danger"
-                            size="sm"
-                            icon={<Trash2 size={16} aria-hidden="true" />}
-                            label={t('pages.users.deleteAria', { username: user.username })}
-                            onClick={() => {
-                              setDeleteError('');
-                              setDeleteTarget(user);
-                            }}
-                          />
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+      {showAddForm && (
+        <Modal>
+          <div className="admin-modal" role="dialog" aria-modal="true" aria-labelledby="create-user-title">
+            <header className="admin-modal__header">
+              <h2 id="create-user-title"><Users aria-hidden="true" size={18} /> {t('pages.users.createTitle', 'Thêm người dùng mới')}</h2>
+              <button type="button" onClick={() => setShowAddForm(false)} aria-label={t('common.actions.close', 'Đóng')}><X aria-hidden="true" size={18} /></button>
+            </header>
+            {formError && <p className="admin-modal__error">{formError}</p>}
+            <form onSubmit={handleCreate} className="admin-modal__form">
+              <label>
+                <span>{t('pages.users.username', 'Tên tài khoản')}</span>
+                <input
+                  type="text"
+                  value={usernameInput}
+                  onChange={(event) => setUsernameInput(event.target.value)}
+                  placeholder={t('pages.users.usernamePlaceholder', 'ví dụ: engineer02')}
+                  required
+                />
+              </label>
+              <label>
+                <span>{t('pages.users.password', 'Mật khẩu')}</span>
+                <input
+                  type="password"
+                  value={passwordInput}
+                  onChange={(event) => setPasswordInput(event.target.value)}
+                  placeholder={t('pages.users.validation.passwordMin', 'Tối thiểu 6 ký tự')}
+                  required
+                />
+              </label>
+              <label>
+                <span>{t('pages.users.role', 'Vai trò')}</span>
+                <span className="admin-modal__select-wrap">
+                  <select value={roleInput} onChange={(event) => setRoleInput(event.target.value as Role)}>
+                    <option value="ADMIN">{roleLabel('ADMIN')} {t('pages.users.roleCode', { role: 'ADMIN' })}</option>
+                    <option value="ENGINEER">{roleLabel('ENGINEER')} {t('pages.users.roleCode', { role: 'ENGINEER' })}</option>
+                    <option value="GUEST">{roleLabel('GUEST')} {t('pages.users.roleCode', { role: 'GUEST' })}</option>
+                  </select>
+                  <ChevronDown aria-hidden="true" size={15} />
+                </span>
+              </label>
+              <footer className="admin-modal__actions">
+                <button type="button" className="admin-modal__secondary" onClick={() => setShowAddForm(false)}>{t('common.actions.cancel', 'Hủy')}</button>
+                <button type="submit" className="admin-modal__primary" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? t('pages.users.createPending', 'Đang tạo...') : t('pages.users.createButton', 'Tạo tài khoản')}
+                </button>
+              </footer>
+            </form>
           </div>
-        </Surface>
+        </Modal>
       )}
 
-      <Modal
-        open={isCreateModalOpen}
-        onClose={closeCreateModal}
-        title={t('pages.users.createTitle')}
-        subtitle={t('pages.users.subtitle')}
-        size="md"
-        footer={(
-          <>
-            <Button variant="secondary" onClick={closeCreateModal} disabled={createMutation.isPending}>
-              {t('common.actions.cancel')}
-            </Button>
-            <Button type="submit" form={createFormId} loading={createMutation.isPending}>
-              {createMutation.isPending ? t('pages.users.createPending') : t('pages.users.createButton')}
-            </Button>
-          </>
-        )}
-      >
-        <form
-          id={createFormId}
-          className="space-y-5"
-          noValidate
-          aria-busy={createMutation.isPending || undefined}
-          onChange={() => {
-            if (formError) setFormError('');
-          }}
-          onSubmit={handleSubmit((data) => {
-            setFormError('');
-            createMutation.mutate({
-              username: data.username.trim(),
-              password: data.password,
-              role: data.role,
-            });
-          })}
-        >
-          {formError && (
-            <div className="rounded-md border border-error bg-error-container px-3 py-2 text-sm text-error" role="alert">
-              {formError}
-            </div>
-          )}
-
-          <div>
-            <label htmlFor={usernameId} className="mb-2 block text-sm font-semibold text-text-primary">
-              {t('pages.users.username')}
-            </label>
-            <input
-              {...register('username')}
-              id={usernameId}
-              type="text"
-              autoComplete="username"
-              disabled={createMutation.isPending}
-              aria-invalid={Boolean(errors.username)}
-              aria-describedby={errors.username ? usernameErrorId : undefined}
-              placeholder={t('pages.users.usernamePlaceholder')}
-              className="field"
-            />
-            {errors.username && (
-              <p id={usernameErrorId} className="mt-2 text-sm text-error" role="alert">
-                {errors.username.message}
-              </p>
-            )}
+      {deleteTarget && (
+        <Modal>
+          <div className="admin-modal admin-modal--danger" role="dialog" aria-modal="true" aria-labelledby="delete-user-title">
+            <header className="admin-modal__header">
+              <h2 id="delete-user-title"><AlertTriangle aria-hidden="true" size={18} /> {t('pages.users.deleteConfirmTitle', 'Xác nhận xóa tài khoản')}</h2>
+            </header>
+            <p className="admin-modal__copy">
+              {t('pages.users.deleteWarning', 'Hành động này không thể hoàn tác. Bạn có chắc chắn muốn xóa tài khoản ')} <b>{deleteTarget.username}</b>?
+            </p>
+            <footer className="admin-modal__actions">
+              <button type="button" className="admin-modal__secondary" onClick={() => setDeleteTarget(null)}>{t('common.actions.cancel', 'Hủy')}</button>
+              <button type="button" className="admin-modal__danger" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(deleteTarget.id)}>
+                {deleteMutation.isPending ? t('common.status.loading', 'Đang xóa...') : t('common.actions.delete', 'Xóa')}
+              </button>
+            </footer>
           </div>
-
-          <div>
-            <label htmlFor={passwordId} className="mb-2 block text-sm font-semibold text-text-primary">
-              {t('pages.users.password')}
-            </label>
-            <input
-              {...register('password')}
-              id={passwordId}
-              type="password"
-              autoComplete="new-password"
-              disabled={createMutation.isPending}
-              aria-invalid={Boolean(errors.password)}
-              aria-describedby={errors.password ? passwordErrorId : undefined}
-              placeholder={t('pages.users.passwordPlaceholder')}
-              className="field"
-            />
-            {errors.password && (
-              <p id={passwordErrorId} className="mt-2 text-sm text-error" role="alert">
-                {errors.password.message}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor={roleId} className="mb-2 block text-sm font-semibold text-text-primary">
-              {t('pages.users.role')}
-            </label>
-            <select
-              {...register('role')}
-              id={roleId}
-              disabled={createMutation.isPending}
-              aria-invalid={Boolean(errors.role)}
-              aria-describedby={errors.role ? roleErrorId : undefined}
-              className="field"
-            >
-              <option value="ADMIN">{t('pages.users.roles.admin')}</option>
-              <option value="ENGINEER">{t('pages.users.roles.engineer')}</option>
-              <option value="GUEST">{t('pages.users.roles.guest')}</option>
-            </select>
-            {errors.role && (
-              <p id={roleErrorId} className="mt-2 text-sm text-error" role="alert">
-                {errors.role.message}
-              </p>
-            )}
-          </div>
-        </form>
-      </Modal>
-
-      <ConfirmDialog
-        open={Boolean(deleteTarget)}
-        title={t('pages.users.deleteTitle')}
-        description={deleteDescription}
-        confirmLabel={t('common.actions.delete')}
-        cancelLabel={t('common.actions.cancel')}
-        confirmTone="danger"
-        isPending={deleteMutation.isPending}
-        onCancel={() => {
-          if (!deleteMutation.isPending) {
-            setDeleteTarget(null);
-            setDeleteError('');
-          }
-        }}
-        onConfirm={() => {
-          if (deleteTarget) deleteMutation.mutate(deleteTarget.id);
-        }}
-      />
+        </Modal>
+      )}
     </div>
   );
-}
+};
 
 export default UserManagementPage;

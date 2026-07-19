@@ -1,35 +1,12 @@
-import type { CSSProperties, ReactNode } from 'react';
+import React from 'react';
 
 interface TechPanelProps {
-  children: ReactNode;
+  children: React.ReactNode;
   className?: string;
   alertSeverity?: 'error' | 'warning' | 'info' | 'normal';
   title?: string;
-  extraHeader?: ReactNode;
+  extraHeader?: React.ReactNode;
 }
-
-const SEVERITY_STYLES = {
-  normal: {
-    background: 'var(--color-surface)',
-    border: 'var(--color-outline)',
-    accent: 'var(--color-on-surface-variant)',
-  },
-  info: {
-    background: 'var(--color-surface)',
-    border: 'var(--color-information)',
-    accent: 'var(--color-information)',
-  },
-  warning: {
-    background: 'var(--color-warn-container)',
-    border: 'var(--color-warn)',
-    accent: 'var(--color-warn)',
-  },
-  error: {
-    background: 'var(--color-error-container)',
-    border: 'var(--color-error)',
-    accent: 'var(--color-error)',
-  },
-} as const;
 
 export function TechPanel({
   children,
@@ -38,27 +15,49 @@ export function TechPanel({
   title,
   extraHeader,
 }: TechPanelProps) {
-  const severity = SEVERITY_STYLES[alertSeverity];
-  const style = {
-    '--tech-panel-background': severity.background,
-    '--tech-panel-border': severity.border,
-    '--tech-panel-accent': severity.accent,
-  } as CSSProperties;
+  let borderColorClass = 'border-[#3d3d3d]';
+  let accentColorClass = 'bg-[#ef4444]';
+  let backgroundClass = 'bg-[#1d1d1d]';
+  let titleColorClass = 'text-[#f8f8f8]';
+  let dotColorClass = 'bg-[#ef4444]';
+
+  if (alertSeverity === 'error') {
+    borderColorClass = 'border-[#7c3639]';
+    accentColorClass = 'bg-[#ef4444]';
+    backgroundClass = 'bg-[#221b1c]';
+    titleColorClass = 'text-[#ffd9d9]';
+    dotColorClass = 'bg-[#ff737b]';
+  } else if (alertSeverity === 'warning') {
+    borderColorClass = 'border-[#6a5529]';
+    accentColorClass = 'bg-[#e7b950]';
+    backgroundClass = 'bg-[#211f1a]';
+    titleColorClass = 'text-[#ffe8ae]';
+    dotColorClass = 'bg-[#e7b950]';
+  } else if (alertSeverity === 'info') {
+    borderColorClass = 'border-[#3d4f62]';
+    accentColorClass = 'bg-[#8aa9c8]';
+    backgroundClass = 'bg-[#1d2024]';
+    titleColorClass = 'text-[#e6edf4]';
+    dotColorClass = 'bg-[#8aa9c8]';
+  }
 
   return (
-    <section className={`ui-tech-panel ui-tech-panel--${alertSeverity} ${className}`.trim()} style={style}>
-      {(title || extraHeader) && (
-        <header className="ui-tech-panel__header">
-          {title ? (
-            <h3 className="ui-tech-panel__title">
-              {alertSeverity !== 'normal' && <span className="ui-tech-panel__status-dot" aria-hidden="true" />}
-              {title}
-            </h3>
-          ) : <span />}
-          {extraHeader && <div className="ui-tech-panel__extra">{extraHeader}</div>}
+    <section className={`relative overflow-hidden rounded-2xl border ${borderColorClass} ${backgroundClass} p-4 md:p-5 ${className}`}>
+      <div className={`absolute inset-y-0 left-0 w-1 ${accentColorClass}`} aria-hidden="true" />
+
+      {title && (
+        <header className="relative z-10 mb-4 flex items-center justify-between gap-3 border-b border-[#373737] pb-3">
+          <h3 className={`flex items-center gap-2 text-[15px] font-semibold ${titleColorClass}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${dotColorClass}`} aria-hidden="true" />
+            {title}
+          </h3>
+          {extraHeader && <div className="flex items-center">{extraHeader}</div>}
         </header>
       )}
-      <div className="ui-tech-panel__body">{children}</div>
+
+      <div className="relative z-10 h-full w-full">
+        {children}
+      </div>
     </section>
   );
 }

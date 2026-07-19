@@ -49,8 +49,13 @@ export function Modal({
   const { t } = useTranslation();
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
   const titleId = useId();
   const subtitleId = useId();
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -68,7 +73,7 @@ export function Modal({
     const handleDocumentKeyDown = (event: globalThis.KeyboardEvent) => {
       if (closeOnEscape && event.key === 'Escape') {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
       }
     };
 
@@ -82,7 +87,7 @@ export function Modal({
         previouslyFocusedElement.focus();
       }
     };
-  }, [closeOnEscape, onClose, open]);
+  }, [closeOnEscape, open]);
 
   if (!open) return null;
 
