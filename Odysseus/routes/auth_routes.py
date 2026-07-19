@@ -12,7 +12,13 @@ import re
 from pathlib import Path
 
 from core.atomic_io import atomic_write_json, atomic_write_text
-from core.auth import AuthManager, RESERVED_USERNAMES, SetAdminResult, TOKEN_TTL
+from core.auth import (
+    AuthManager,
+    RESERVED_USERNAMES,
+    SetAdminResult,
+    TOKEN_TTL,
+    normalize_known_username,
+)
 from src.constants import DEEP_RESEARCH_DIR, MEMORY_FILE, PASSWORD_MIN_LENGTH, SKILLS_DIR
 from src.rate_limiter import RateLimiter
 from src.settings_scrub import scrub_settings
@@ -91,9 +97,17 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
     _signup_limiter = RateLimiter(max_requests=3, window_seconds=300)
     _setup_limiter = RateLimiter(max_requests=3, window_seconds=300)
 
-    def _get_current_user(request: Request) -> Optional[str]:
+    def _get_native_user(request: Request) -> Optional[str]:
         token = request.cookies.get(SESSION_COOKIE)
         return auth_manager.get_username_for_token(token)
+
+    def _get_effective_user(request: Request) -> Optional[str]:
+        state = getattr(request, "state", None)
+        if getattr(state, "fii_sso", False):
+            return normalize_known_username(
+                auth_manager.users, getattr(state, "current_user", None)
+            )
+        return _get_native_user(request)
 
     @router.post("/setup")
     async def first_run_setup(body: SetupRequest, request: Request):
@@ -175,8 +189,14 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
 
     @router.get("/status")
     async def auth_status(request: Request):
-        token = request.cookies.get(SESSION_COOKIE)
-        result = auth_manager.status(token)
+        if (
+            getattr(request.state, "fii_sso", False)
+            and getattr(request.state, "current_user", None)
+        ):
+            result = auth_manager.status_for_user(request.state.current_user)
+        else:
+            token = request.cookies.get(SESSION_COOKIE)
+            result = auth_manager.status(token)
         result["signup_enabled"] = auth_manager.signup_enabled
         # Include the caller's effective privileges so the frontend can
         # hide / dim UI controls the user isn't allowed to use. Admins get
@@ -197,7 +217,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
 
     @router.post("/change-password")
     async def change_password(body: ChangePasswordRequest, request: Request):
-        user = _get_current_user(request)
+        user = _get_native_user(request)
         if not user:
             raise HTTPException(401, "Not authenticated")
         if len(body.new_password) < PASSWORD_MIN_LENGTH:
@@ -216,7 +236,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
     @router.post("/2fa/setup")
     async def totp_setup(request: Request):
         """Generate a TOTP secret and return the QR code URI."""
-        user = _get_current_user(request)
+        user = _get_native_user(request)
         if not user:
             raise HTTPException(401, "Not authenticated")
         if auth_manager.totp_enabled(user):
@@ -239,7 +259,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
     @router.post("/2fa/confirm")
     async def totp_confirm(body: TotpVerifyRequest, request: Request):
         """Verify a TOTP code to confirm 2FA setup. Returns backup codes."""
-        user = _get_current_user(request)
+        user = _get_native_user(request)
         if not user:
             raise HTTPException(401, "Not authenticated")
         if not auth_manager.totp_confirm_enable(user, body.code):
@@ -253,7 +273,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
     @router.post("/2fa/disable")
     async def totp_disable(body: TotpDisableRequest, request: Request):
         """Disable 2FA. Requires password confirmation."""
-        user = _get_current_user(request)
+        user = _get_native_user(request)
         if not user:
             raise HTTPException(401, "Not authenticated")
         if not auth_manager.totp_disable(user, body.password):
@@ -263,7 +283,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
     @router.get("/2fa/status")
     async def totp_status(request: Request):
         """Check if 2FA is enabled for the current user."""
-        user = _get_current_user(request)
+        user = _get_native_user(request)
         if not user:
             raise HTTPException(401, "Not authenticated")
         return {"enabled": auth_manager.totp_enabled(user)}
@@ -271,14 +291,14 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
     # Admin-only routes
     @router.get("/users")
     async def list_users(request: Request):
-        user = _get_current_user(request)
+        user = _get_effective_user(request)
         if not user or not auth_manager.is_admin(user):
             raise HTTPException(403, "Admin only")
         return {"users": auth_manager.list_users()}
 
     @router.post("/users")
     async def admin_create_user(body: CreateUserRequest, request: Request):
-        user = _get_current_user(request)
+        user = _get_effective_user(request)
         if not user or not auth_manager.is_admin(user):
             raise HTTPException(403, "Admin only")
         if len(body.password) < PASSWORD_MIN_LENGTH:
@@ -294,7 +314,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
 
     @router.put("/users/{username}/privileges")
     async def update_user_privileges(username: str, request: Request):
-        user = _get_current_user(request)
+        user = _get_effective_user(request)
         if not user or not auth_manager.is_admin(user):
             raise HTTPException(403, "Admin only")
         body = await request.json()
@@ -305,7 +325,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
 
     @router.put("/users/{username}/rename")
     async def rename_user(username: str, body: RenameUserRequest, request: Request):
-        user = _get_current_user(request)
+        user = _get_effective_user(request)
         if not user or not auth_manager.is_admin(user):
             raise HTTPException(403, "Admin only")
         old_username = (username or "").strip().lower()
@@ -534,7 +554,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
         is allowed while another admin exists; the `self` flag tells the UI to
         reload the acting user into the normal-user view.
         """
-        user = _get_current_user(request)
+        user = _get_effective_user(request)
         if not user or not auth_manager.is_admin(user):
             raise HTTPException(403, "Admin only")
         result = auth_manager.set_admin(username, body.is_admin, user)
@@ -561,7 +581,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
 
         This endpoint is kept for backward compatibility and may be removed in future versions.
         """
-        user = _get_current_user(request)
+        user = _get_effective_user(request)
         if not user or not auth_manager.is_admin(user):
             raise HTTPException(403, "Admin only")
         auth_manager.signup_enabled = not auth_manager.signup_enabled
@@ -570,7 +590,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
     @router.put("/open-signup")
     async def set_signup_enabled(body: SetOpenRegistrationRequest, request: Request):
         """Set open signup enabled state. Admin only."""
-        user = _get_current_user(request)
+        user = _get_effective_user(request)
         if not user or not auth_manager.is_admin(user):
             raise HTTPException(403, "Admin only")
         auth_manager.signup_enabled = body.enabled
@@ -578,7 +598,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
 
     @router.delete("/users")
     async def admin_delete_user(body: DeleteUserRequest, request: Request):
-        user = _get_current_user(request)
+        user = _get_effective_user(request)
         if not user or not auth_manager.is_admin(user):
             raise HTTPException(403, "Admin only")
 
@@ -618,7 +638,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
     @router.post("/features")
     async def set_features(request: Request):
         """Admin only: update feature toggles."""
-        user = _get_current_user(request)
+        user = _get_effective_user(request)
         if not user or not auth_manager.is_admin(user):
             raise HTTPException(403, "Admin only")
         body = await request.json()
@@ -636,7 +656,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
         """Returns app settings. Admins get the full set; non-admins get
         a scrubbed copy with secret keys blanked. The frontend uses this
         for keybinds + TTS prefs, so it stays callable without admin."""
-        user = _get_current_user(request)
+        user = _get_effective_user(request)
         settings = _load_settings()
         if user and auth_manager.is_admin(user):
             return settings
@@ -645,7 +665,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
     @router.post("/settings")
     async def set_settings(request: Request):
         """Admin only: update app settings."""
-        user = _get_current_user(request)
+        user = _get_effective_user(request)
         if not user or not auth_manager.is_admin(user):
             raise HTTPException(403, "Admin only")
         body = await request.json()
@@ -679,7 +699,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
     @router.get("/integrations")
     async def list_integrations_route(request: Request):
         """List all integrations (admin only, keys masked)."""
-        user = _get_current_user(request)
+        user = _get_effective_user(request)
         if not user or not auth_manager.is_admin(user):
             raise HTTPException(403, "Admin only")
         items = load_integrations()
@@ -695,7 +715,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
     @router.post("/integrations")
     async def create_integration(request: Request):
         """Create a new integration (admin only)."""
-        user = _get_current_user(request)
+        user = _get_effective_user(request)
         if not user or not auth_manager.is_admin(user):
             raise HTTPException(403, "Admin only")
         body = await request.json()
@@ -705,7 +725,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
     @router.put("/integrations/{integration_id}")
     async def update_integration_route(integration_id: str, request: Request):
         """Update an existing integration (admin only)."""
-        user = _get_current_user(request)
+        user = _get_effective_user(request)
         if not user or not auth_manager.is_admin(user):
             raise HTTPException(403, "Admin only")
         body = await request.json()
@@ -717,7 +737,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
     @router.delete("/integrations/{integration_id}")
     async def delete_integration_route(integration_id: str, request: Request):
         """Delete an integration (admin only)."""
-        user = _get_current_user(request)
+        user = _get_effective_user(request)
         if not user or not auth_manager.is_admin(user):
             raise HTTPException(403, "Admin only")
         ok = delete_integration(integration_id)
@@ -728,7 +748,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
     @router.post("/integrations/{integration_id}/test")
     async def test_integration_route(integration_id: str, request: Request):
         """Test connectivity to an integration (admin only)."""
-        user = _get_current_user(request)
+        user = _get_effective_user(request)
         if not user or not auth_manager.is_admin(user):
             raise HTTPException(403, "Admin only")
         integ = get_integration(integration_id)

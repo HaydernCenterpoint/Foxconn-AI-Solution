@@ -289,6 +289,44 @@ class AuthManager:
         logger.info(f"Created user '{username}' (admin={is_admin})")
         return True
 
+    def ensure_fii_sso_user(self, username: str, role: str) -> bool:
+        """Create the passwordless local shadow for a shared FII identity."""
+        if not isinstance(username, str) or not isinstance(role, str):
+            return False
+        username = username.strip().lower()
+        role = role.strip().upper()
+        if (
+            not username
+            or len(username) > 255
+            or username in RESERVED_USERNAMES
+            or role not in {"ADMIN", "ENGINEER", "GUEST"}
+        ):
+            return False
+        with self._config_lock:
+            users = self._config.setdefault("users", {})
+            existing = users.get(username)
+            if username in users and (
+                not isinstance(existing, dict)
+                or existing.get("auth_source") != "fii_sso"
+            ):
+                return False
+            is_admin = role == "ADMIN"
+            desired = {
+                "created": existing.get("created", time.time())
+                if existing
+                else time.time(),
+                "is_admin": is_admin,
+                "auth_source": "fii_sso",
+                "privileges": dict(
+                    ADMIN_PRIVILEGES if is_admin else DEFAULT_PRIVILEGES
+                ),
+            }
+            if existing == desired:
+                return True
+            users[username] = desired
+            self._save()
+        return True
+
     def delete_user(self, username: str, requesting_user: str) -> bool:
         """Delete a user. Only admins can delete, and can't delete themselves.
 
@@ -474,9 +512,7 @@ class AuthManager:
 
     def change_password(self, username: str, current_password: str, new_password: str) -> bool:
         username = username.strip().lower()
-        if username not in self.users:
-            return False
-        if not _verify_password(current_password, self.users[username]["password_hash"]):
+        if not self.verify_password(username, current_password):
             return False
         with self._config_lock:
             self._config["users"][username]["password_hash"] = _hash_password(new_password)
@@ -574,9 +610,13 @@ class AuthManager:
 
     def verify_password(self, username: str, password: str) -> bool:
         username = username.strip().lower()
-        if username not in self.users:
+        user = self.users.get(username)
+        if not isinstance(user, dict) or user.get("auth_source") == "fii_sso":
             return False
-        return _verify_password(password, self.users[username]["password_hash"])
+        password_hash = user.get("password_hash")
+        if not isinstance(password_hash, str):
+            return False
+        return _verify_password(password, password_hash)
 
     def create_session(self, username: str, password: str) -> Optional[str]:
         """Verify credentials and return a session token, or None."""
@@ -673,8 +713,8 @@ class AuthManager:
                 self._save_sessions()
         return revoked
 
-    def status(self, token: Optional[str]) -> Dict[str, Any]:
-        username = self.get_username_for_token(token)
+    def status_for_user(self, username: Optional[str]) -> Dict[str, Any]:
+        username = normalize_known_username(self.users, username)
         authenticated = username is not None
         result = {
             "configured": self.is_configured,
@@ -685,3 +725,6 @@ class AuthManager:
         if authenticated:
             result["privileges"] = self.get_privileges(username)
         return result
+
+    def status(self, token: Optional[str]) -> Dict[str, Any]:
+        return self.status_for_user(self.get_username_for_token(token))
