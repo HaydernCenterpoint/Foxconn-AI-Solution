@@ -57,7 +57,10 @@ describe('LoginPage', () => {
   it('keeps the redesigned login shell accessible and validates required credentials', async () => {
     renderLogin();
 
-    expect(screen.getByRole('main', { name: 'FII Production Monitoring' })).toHaveClass('grid-flow-dense');
+    const login = screen.getByRole('main', { name: 'FII Production Monitoring' });
+    expect(login).toHaveClass('grid-flow-dense');
+    expect(login.parentElement).toHaveClass('min-h-[100dvh]', 'w-full');
+    expect(login.parentElement).not.toHaveClass('px-4');
     expect(screen.getByRole('heading', { name: 'Sign in', level: 2 })).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Forgot password?' })[0]);

@@ -118,7 +118,7 @@ export default function LoginPage() {
   const proofLines = [t('common.systemDescription'), t('auth.subtitle'), t('common.systemName')];
 
   return (
-    <AuthScreen showLanguageControl>
+    <AuthScreen showLanguageControl fullBleed>
       <main ref={pageRef} className="login-experience grid grid-flow-dense lg:grid-cols-12" aria-labelledby="login-heading">
         <section className="login-hero login-stack-card lg:col-span-7">
           <div className="login-hero__image" aria-hidden="true" />
