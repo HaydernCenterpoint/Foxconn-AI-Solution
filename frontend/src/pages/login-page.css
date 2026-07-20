@@ -1,23 +1,17 @@
-@import url('https://fonts.cdnfonts.com/css/cabinet-grotesk');
-
 .login-experience {
-  width: min(74rem, 100%);
-  max-width: 100%;
-  min-height: 42rem;
+  width: 100%;
+  min-height: 100dvh;
   min-width: 0;
   grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 2rem;
   background: #0a111d;
-  box-shadow: 0 2.5rem 7.5rem rgba(0, 0, 0, 0.48);
   isolation: isolate;
 }
 
 .login-experience,
 .login-experience * {
   box-sizing: border-box;
-  font-family: 'Cabinet Grotesk', var(--font-family-sans);
+  font-family: 'Google Sans', var(--font-family-sans);
 }
 
 .login-hero {
@@ -464,10 +458,6 @@
 }
 
 @media (max-width: 639px) {
-  .login-experience {
-    border-radius: 1.25rem;
-  }
-
   .login-hero__copy {
     min-height: 28rem;
     padding: 1.5rem;
