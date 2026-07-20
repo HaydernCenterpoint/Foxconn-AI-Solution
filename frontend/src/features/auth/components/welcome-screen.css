@@ -1,0 +1,491 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+
+.welcome-experience {
+  position: relative;
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+  overflow-y: auto;
+  background: #070b13;
+  color: #fff;
+  isolation: isolate;
+}
+
+.welcome-experience,
+.welcome-experience * {
+  box-sizing: border-box;
+  font-family: 'Outfit', var(--font-family-sans);
+}
+
+.welcome-experience__image,
+.welcome-experience__wash {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+}
+
+.welcome-experience__image {
+  background-image: url('https://picsum.photos/seed/foxconn-control-room/1920/1080');
+  background-position: center;
+  background-size: cover;
+  filter: grayscale(0.92) contrast(1.28) saturate(0.65);
+}
+
+.welcome-experience__wash {
+  z-index: -1;
+  background:
+    radial-gradient(circle at 76% 42%, rgba(28, 100, 242, 0.18), transparent 24%),
+    radial-gradient(circle at 8% 92%, rgba(216, 13, 47, 0.4), transparent 30%),
+    linear-gradient(102deg, rgba(4, 9, 18, 0.97) 0 48%, rgba(4, 9, 18, 0.84) 66%, rgba(4, 9, 18, 0.94) 100%);
+}
+
+.welcome-nav {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: clamp(1.25rem, 3vw, 2.25rem) clamp(1.5rem, 5vw, 5rem);
+}
+
+.welcome-nav__brand,
+.welcome-nav__status {
+  display: flex;
+  align-items: center;
+}
+
+.welcome-nav__brand {
+  gap: 0.9rem;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.welcome-nav__logo-frame {
+  display: inline-flex;
+  width: 7.5rem;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 0.45rem 0.75rem;
+}
+
+.welcome-nav__logo-frame img,
+.welcome-visual-card__logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.welcome-nav__status {
+  gap: 0.6rem;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.welcome-nav__status > span {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #e30a32;
+  box-shadow: 0 0 0 0.35rem rgba(227, 10, 50, 0.14);
+}
+
+.welcome-layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1.15fr) minmax(22rem, 0.85fr);
+  align-items: center;
+  gap: clamp(3rem, 7vw, 8rem);
+  padding: clamp(1.75rem, 3vw, 3rem) clamp(1.5rem, 7vw, 7rem) clamp(2.25rem, 4vw, 4rem);
+}
+
+.welcome-copy {
+  min-width: 0;
+}
+
+.welcome-copy__eyebrow {
+  margin: 0 0 1.5rem;
+  color: #ff3357;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.welcome-copy h1 {
+  max-width: 46rem;
+  margin: 0;
+  color: #fff;
+  font-size: clamp(3rem, 6vw, 6.5rem);
+  font-weight: 600;
+  letter-spacing: -0.06em;
+  line-height: 0.92;
+  text-wrap: balance;
+}
+
+.welcome-copy__lede {
+  max-width: 38rem;
+  margin: 1.75rem 0 0;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: clamp(1rem, 1.25vw, 1.2rem);
+  line-height: 1.65;
+}
+
+.welcome-copy__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: 2.25rem;
+}
+
+.welcome-experience .welcome-copy__next {
+  min-height: 3.25rem;
+  border-color: #fff;
+  border-radius: 999px;
+  background: #fff;
+  color: #07111f;
+  padding-inline: 1.5rem;
+  transition: transform 240ms ease, background-color 240ms ease;
+}
+
+.welcome-experience .welcome-copy__next:hover:not(:disabled) {
+  border-color: #f1f5f9;
+  background: #f1f5f9;
+  color: #07111f;
+  transform: translateY(-2px);
+}
+
+.welcome-feedback {
+  width: min(100%, 24rem);
+  height: 1.75rem;
+  overflow: hidden;
+}
+
+.welcome-feedback__track {
+  animation: welcome-feedback-cycle 4.5s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+.welcome-feedback p {
+  display: flex;
+  height: 1.75rem;
+  align-items: center;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.54);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.welcome-accordion {
+  display: grid;
+  max-width: 46rem;
+  grid-auto-flow: dense;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-top: clamp(2.5rem, 6vh, 4.5rem);
+  transition: grid-template-columns 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.welcome-accordion:has(.welcome-accordion__item:nth-child(1):hover) {
+  grid-template-columns: 1.6fr 0.7fr 0.7fr;
+}
+
+.welcome-accordion:has(.welcome-accordion__item:nth-child(2):hover) {
+  grid-template-columns: 0.7fr 1.6fr 0.7fr;
+}
+
+.welcome-accordion:has(.welcome-accordion__item:nth-child(3):hover) {
+  grid-template-columns: 0.7fr 0.7fr 1.6fr;
+}
+
+.welcome-accordion__item {
+  display: flex;
+  min-width: 0;
+  min-height: 4.25rem;
+  align-items: center;
+  gap: 0.75rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(8, 17, 32, 0.54);
+  padding: 0.9rem 1rem;
+  backdrop-filter: blur(0.8rem);
+}
+
+.welcome-accordion__item > span {
+  width: 0.22rem;
+  height: 1.8rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #e30a32;
+}
+
+.welcome-accordion__item strong {
+  overflow: hidden;
+  color: #fff;
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.welcome-status-stack {
+  position: relative;
+  display: grid;
+  width: min(100%, 32rem);
+  min-height: 28rem;
+  justify-self: end;
+}
+
+.welcome-stack-card {
+  grid-area: 1 / 1;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.32);
+}
+
+.welcome-visual-card {
+  position: relative;
+  width: 88%;
+  height: 87%;
+  align-self: start;
+  justify-self: start;
+  background: #111827;
+}
+
+.welcome-visual-card__image {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(7, 11, 19, 0.05), rgba(7, 11, 19, 0.82)),
+    url('https://picsum.photos/seed/foxconn-automation/1000/1200') center / cover;
+  filter: grayscale(0.65) contrast(1.18);
+  transform-origin: center;
+  transition: transform 700ms ease-out;
+}
+
+.welcome-visual-card:hover .welcome-visual-card__image {
+  transform: scale(1.05);
+}
+
+.welcome-visual-card__caption {
+  position: absolute;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.welcome-visual-card__logo {
+  display: inline-flex;
+  width: 6.5rem;
+  height: 2.65rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 0.45rem 0.65rem;
+}
+
+.welcome-progress-card {
+  position: relative;
+  width: 78%;
+  align-self: end;
+  justify-self: end;
+  background: #f4f1eb;
+  color: #07111f;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  transform: translate(1rem, 1rem);
+  transition: transform 300ms ease;
+}
+
+.welcome-progress-card:hover {
+  transform: translate(1rem, 0.5rem);
+}
+
+.welcome-progress-card__status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.welcome-progress-card__status > span {
+  display: inline-flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(216, 13, 47, 0.1);
+  color: #d80d2f;
+}
+
+.welcome-progress-card__status p,
+.welcome-progress-card > p {
+  margin: 0;
+}
+
+.welcome-progress-card__status p {
+  color: #d80d2f;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.welcome-progress-card > strong {
+  display: block;
+  margin-top: 1.5rem;
+  color: #07111f;
+  font-size: clamp(1.35rem, 2vw, 2rem);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.welcome-progress {
+  height: 0.28rem;
+  overflow: hidden;
+  margin-top: 1.5rem;
+  background: #d8d4cb;
+}
+
+.welcome-progress__fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #d80d2f;
+  transform-origin: left;
+}
+
+.welcome-progress-card > p {
+  margin-top: 1rem;
+  color: #697281;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.welcome-marquee {
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(4, 10, 20, 0.72);
+  padding: 0.85rem 0;
+}
+
+.welcome-marquee__track {
+  display: flex;
+  width: max-content;
+  animation: welcome-marquee 20s linear infinite;
+}
+
+.welcome-marquee span {
+  display: inline-flex;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.welcome-marquee span::after {
+  width: 0.25rem;
+  height: 0.25rem;
+  border-radius: 50%;
+  margin: 0 1.5rem;
+  background: #e30a32;
+  content: '';
+}
+
+@keyframes welcome-marquee {
+  to { transform: translateX(-50%); }
+}
+
+@keyframes welcome-feedback-cycle {
+  0%, 26% { transform: translateY(0); }
+  33%, 59% { transform: translateY(-1.75rem); }
+  66%, 92% { transform: translateY(-3.5rem); }
+  100% { transform: translateY(0); }
+}
+
+@media (max-width: 960px) {
+  .welcome-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .welcome-status-stack {
+    width: min(100%, 38rem);
+    justify-self: start;
+  }
+}
+
+@media (max-width: 639px) {
+  .welcome-nav__brand > span:last-child,
+  .welcome-nav__status,
+  .welcome-feedback {
+    display: none;
+  }
+
+  .welcome-layout {
+    gap: 3.5rem;
+    padding: 2.5rem 1.5rem 4rem;
+  }
+
+  .welcome-copy h1 {
+    font-size: clamp(3rem, 15vw, 4.25rem);
+  }
+
+  .welcome-accordion,
+  .welcome-accordion:has(.welcome-accordion__item:hover) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .welcome-status-stack {
+    min-height: 25rem;
+  }
+
+  .welcome-visual-card {
+    width: 92%;
+  }
+
+  .welcome-progress-card {
+    width: 88%;
+    transform: translate(0.5rem, 0.5rem);
+  }
+
+  .welcome-progress-card:hover {
+    transform: translate(0.5rem, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-feedback__track,
+  .welcome-marquee__track {
+    animation: none;
+  }
+
+  .welcome-visual-card__image,
+  .welcome-progress-card,
+  .welcome-experience .welcome-copy__next {
+    transition: none;
+  }
+}
