@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Fusion.Adapter.Configuration;
 
@@ -25,6 +27,12 @@ public sealed class ClientCredentialsAccessTokenProvider : IAccessTokenProvider,
         try
         {
             if (IsTokenUsable()) return _accessToken!;
+
+            if (_options.Mode.Equals("factory", StringComparison.OrdinalIgnoreCase))
+            {
+                _accessToken = CreateFactoryToken();
+                return _accessToken;
+            }
 
             if (string.IsNullOrWhiteSpace(_options.TokenEndpoint) ||
                 string.IsNullOrWhiteSpace(_options.ClientId) ||
@@ -81,4 +89,37 @@ public sealed class ClientCredentialsAccessTokenProvider : IAccessTokenProvider,
     }
 
     private bool IsTokenUsable() => !string.IsNullOrWhiteSpace(_accessToken) && _expiresAt > DateTimeOffset.UtcNow;
+
+    private string CreateFactoryToken()
+    {
+        var key = Encoding.UTF8.GetBytes(_options.FactorySecret);
+        var subject = _options.FactorySubject.Trim();
+        var issuer = _options.FactoryIssuer.Trim();
+        var audience = _options.FactoryAudience.Trim();
+        var role = _options.FactoryRole.Trim().ToUpperInvariant();
+        if (key.Length < 32 || string.IsNullOrWhiteSpace(subject) || string.IsNullOrWhiteSpace(issuer) ||
+            string.IsNullOrWhiteSpace(audience) || role is not ("ADMIN" or "ENGINEER" or "GUEST"))
+        {
+            throw new InvalidOperationException("ODF factory authentication requires a 32-byte secret, subject, issuer, audience, and supported role.");
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var header = EncodeBase64Url(JsonSerializer.SerializeToUtf8Bytes(new { alg = "HS256", typ = "JWT" }));
+        var payload = EncodeBase64Url(JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            sub = subject,
+            role,
+            iss = issuer,
+            aud = audience,
+            iat = now.ToUnixTimeSeconds(),
+            exp = now.AddMinutes(5).ToUnixTimeSeconds()
+        }));
+        var signingInput = $"{header}.{payload}";
+        var signature = HMACSHA256.HashData(key, Encoding.ASCII.GetBytes(signingInput));
+        _expiresAt = now.AddMinutes(4);
+        return $"{signingInput}.{EncodeBase64Url(signature)}";
+    }
+
+    private static string EncodeBase64Url(ReadOnlySpan<byte> value) =>
+        Convert.ToBase64String(value).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 }

@@ -12,7 +12,8 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // Initialize CryptoHelper from configuration
-var mqttEncryptionKey = builder.Configuration["Mqtt:EncryptionKey"] ?? "PLC_MQTT_SECRET_KEY_2026_!@#";
+var mqttEncryptionKey = builder.Configuration["Mqtt:EncryptionKey"]
+    ?? throw new InvalidOperationException("Mqtt:EncryptionKey is required.");
 CryptoHelper.Initialize(mqttEncryptionKey);
 
 // Add services to the container.

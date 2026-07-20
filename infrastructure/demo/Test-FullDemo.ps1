@@ -80,6 +80,88 @@ function Get-HttpStatus {
     }
 }
 
+function ConvertTo-MqttRemainingLength {
+    param([Parameter(Mandatory)][int]$Value)
+
+    $bytes = [System.Collections.Generic.List[byte]]::new()
+    do {
+        $encoded = $Value % 128
+        $Value = [Math]::Floor($Value / 128)
+        if ($Value -gt 0) { $encoded = $encoded -bor 128 }
+        $bytes.Add([byte]$encoded)
+    } while ($Value -gt 0)
+    return ,$bytes.ToArray()
+}
+
+function Add-MqttString {
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.List[byte]]$Buffer,
+        [Parameter(Mandatory)][string]$Value
+    )
+
+    $bytes = [Text.Encoding]::UTF8.GetBytes($Value)
+    if ($bytes.Length -gt 65535) { throw 'MQTT string is too long.' }
+    $Buffer.Add([byte]($bytes.Length -shr 8))
+    $Buffer.Add([byte]($bytes.Length -band 255))
+    $Buffer.AddRange($bytes)
+}
+
+function Send-MqttMessage {
+    param(
+        [Parameter(Mandatory)][string]$Topic,
+        [Parameter(Mandatory)][string]$Payload
+    )
+
+    $client = [Net.Sockets.TcpClient]::new()
+    $stream = $null
+    try {
+        $client.ReceiveTimeout = 5000
+        $client.SendTimeout = 5000
+        $client.Connect('127.0.0.1', 1883)
+        $stream = $client.GetStream()
+
+        $connectBody = [System.Collections.Generic.List[byte]]::new()
+        Add-MqttString -Buffer $connectBody -Value 'MQTT'
+        $connectBody.AddRange([byte[]](4, 2, 0, 30))
+        Add-MqttString -Buffer $connectBody -Value "fii-demo-smoke-$PID"
+        $connectPacket = [System.Collections.Generic.List[byte]]::new()
+        $connectPacket.Add([byte]0x10)
+        $connectPacket.AddRange([byte[]](ConvertTo-MqttRemainingLength -Value $connectBody.Count))
+        $connectPacket.AddRange($connectBody)
+        $connectBytes = $connectPacket.ToArray()
+        $stream.Write($connectBytes, 0, $connectBytes.Length)
+
+        $connAck = [byte[]]::new(4)
+        $offset = 0
+        while ($offset -lt $connAck.Length) {
+            $read = $stream.Read($connAck, $offset, $connAck.Length - $offset)
+            if ($read -eq 0) { throw 'MQTT broker closed the connection before CONNACK.' }
+            $offset += $read
+        }
+        if ($connAck[0] -ne 0x20 -or $connAck[3] -ne 0) {
+            throw "MQTT broker rejected the smoke client (code $($connAck[3]))."
+        }
+
+        $publishBody = [System.Collections.Generic.List[byte]]::new()
+        Add-MqttString -Buffer $publishBody -Value $Topic
+        $publishBody.AddRange([Text.Encoding]::UTF8.GetBytes($Payload))
+        $publishPacket = [System.Collections.Generic.List[byte]]::new()
+        $publishPacket.Add([byte]0x30)
+        $publishPacket.AddRange([byte[]](ConvertTo-MqttRemainingLength -Value $publishBody.Count))
+        $publishPacket.AddRange($publishBody)
+        $publishBytes = $publishPacket.ToArray()
+        $stream.Write($publishBytes, 0, $publishBytes.Length)
+        $stream.Flush()
+        Start-Sleep -Milliseconds 100
+    }
+    finally {
+        if ($null -ne $stream) { $stream.Dispose() }
+        $client.Dispose()
+    }
+}
+
 $backendHealth = Get-Json -Name 'Backend health' -Uri "$backendUrl/api/health"
 if ([string]$backendHealth.status -ne 'Healthy') {
     throw "Backend reported '$($backendHealth.status)'."
@@ -129,6 +211,65 @@ if (-not $odfSession.authenticated -or [string]$odfSession.identity.userId -ne $
     throw 'Open Data Fusion did not accept the shared login through its web proxy.'
 }
 
+$authHeaders = @{ Authorization = "Bearer $($login.token)" }
+$smokeClientId = 'fii-demo-smoke-client'
+$machines = Invoke-RestMethod -Uri "$backendUrl/api/machines" -WebSession $browser -TimeoutSec 10
+$smokeMachine = $machines | Where-Object { [string]$_.clientId -eq $smokeClientId } | Select-Object -First 1
+if ($null -eq $smokeMachine) {
+    $machineBody = @{
+        name = 'FII Demo Smoke Machine'
+        machineCode = 'FII-SMOKE-01'
+        ip = '127.0.0.1'
+        clientId = $smokeClientId
+    } | ConvertTo-Json -Compress
+    $smokeMachine = Invoke-RestMethod -Method Post -Uri "$backendUrl/api/machines" -Headers $authHeaders `
+        -ContentType 'application/json' -Body $machineBody -TimeoutSec 10
+}
+$machineId = [string]$smokeMachine.id
+if ([string]$smokeMachine.approvalStatus -ne 'APPROVED') {
+    Invoke-RestMethod -Method Post -Uri "$backendUrl/api/machines/$machineId/approve" -Headers $authHeaders `
+        -WebSession $browser -TimeoutSec 10 | Out-Null
+}
+$telemetry = @{
+    protocolVersion = 1
+    messageId = [guid]::NewGuid().ToString()
+    messageType = 'telemetry'
+    clientId = $smokeClientId
+    sentAt = [DateTimeOffset]::UtcNow.ToString('O')
+    payload = @{
+        machineId = $machineId
+        machineName = 'FII Demo Smoke Machine'
+        sequence = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+        status = 'RUNNING'
+        plcConnected = $true
+        production = @{ qty = 42; time = 1.5; uph = 480; oee = 91.2; yieldRate = 98.7 }
+    }
+} | ConvertTo-Json -Depth 6 -Compress
+Send-MqttMessage -Topic "client/$smokeClientId/telemetry" -Payload $telemetry
+
+$odfScopeHeaders = @{ 'x-odf-tenant-id' = 'demo'; 'x-odf-project-id' = 'north-plant' }
+$assetExternalId = [uri]::EscapeDataString("mkz:machine:$machineId")
+$fusionTelemetry = $null
+$lastFusionError = $null
+$fusionDeadline = (Get-Date).AddSeconds(45)
+do {
+    try {
+        $candidate = Invoke-RestMethod -Uri "$odfWebUrl/api/v1/assets/$assetExternalId/telemetry/latest" `
+            -Headers $odfScopeHeaders -WebSession $browser -TimeoutSec 10
+        if (@($candidate.series | Where-Object { $null -ne $_.point }).Count -gt 0) {
+            $fusionTelemetry = $candidate
+            break
+        }
+    }
+    catch {
+        $lastFusionError = $_.Exception.Message
+    }
+    Start-Sleep -Seconds 1
+} while ((Get-Date) -lt $fusionDeadline)
+if ($null -eq $fusionTelemetry) {
+    throw "Telemetry did not traverse Backend -> Fusion Adapter -> Open Data Fusion. Last error: $lastFusionError"
+}
+
 Invoke-RestMethod -Method Post -Uri "$backendUrl/api/auth/logout" -WebSession $browser -TimeoutSec 10 | Out-Null
 if ((Get-HttpStatus -Uri "$odysseusUrl/api/auth/users" -WebSession $browser) -ne 401) {
     throw 'Odysseus remained authenticated after global logout.'
@@ -166,5 +307,6 @@ if ($ragExports.Count -eq 0) {
     Odysseus = $odysseusHealth.status
     OpenDataFusion = $odfReady.readiness
     SharedSso = 'Passed'
+    FusionTelemetry = 'Passed'
     FactoryRagDocuments = $ragExports.Count
 }
