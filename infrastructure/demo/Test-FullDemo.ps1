@@ -64,6 +64,15 @@ function Assert-Web {
     }
 }
 
+function Assert-NoViteHmrClient {
+    param([Parameter(Mandatory)][string]$Uri)
+
+    $response = Invoke-WebRequest -Uri $Uri -UseBasicParsing -TimeoutSec 10
+    if ($response.Content -match '/@vite/client') {
+        throw "Operations UI at '$Uri' is running with the Vite HMR client enabled."
+    }
+}
+
 function Get-HttpStatus {
     param(
         [Parameter(Mandatory)][string]$Uri,
@@ -168,6 +177,7 @@ if ([string]$backendHealth.status -ne 'Healthy') {
 }
 
 Assert-Web -Name 'Operations UI' -Uri $frontendUrl
+Assert-NoViteHmrClient -Uri $frontendUrl
 
 $odysseusHealth = Get-Json -Name 'Odysseus health' -Uri "$odysseusUrl/api/health"
 if ([string]$odysseusHealth.status -ne 'healthy') {

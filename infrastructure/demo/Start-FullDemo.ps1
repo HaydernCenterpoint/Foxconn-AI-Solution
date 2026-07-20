@@ -327,16 +327,35 @@ if (-not (Test-Path -LiteralPath $vite)) {
     }
 }
 
+$frontendEnvironment = @{
+    VITE_API_URL = "$backendUrl/api"
+    VITE_ODYSSEUS_URL = $odysseusUrl
+    VITE_FII_DATA_FUSION_URL = $odfWebUrl
+}
+$previousFrontendEnvironment = @{}
+try {
+    foreach ($entry in $frontendEnvironment.GetEnumerator()) {
+        $previousFrontendEnvironment[$entry.Key] = [Environment]::GetEnvironmentVariable($entry.Key, 'Process')
+        [Environment]::SetEnvironmentVariable($entry.Key, [string]$entry.Value, 'Process')
+    }
+
+    Write-Host '[build] Operations UI production bundle' -ForegroundColor DarkCyan
+    & $npm --prefix $frontendRoot run build -- --mode full
+    if ($LASTEXITCODE -ne 0) {
+        throw "Frontend production build exited with code $LASTEXITCODE."
+    }
+}
+finally {
+    foreach ($entry in $previousFrontendEnvironment.GetEnumerator()) {
+        [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, 'Process')
+    }
+}
+
 $frontendProcess = @{
     Name = 'frontend'
     FilePath = $npm
-    ArgumentList = @('--prefix', $frontendRoot, 'run', 'dev', '--', '--mode', 'full', '--host', '127.0.0.1', '--port', [string]$FrontendPort, '--strictPort')
+    ArgumentList = @('--prefix', $frontendRoot, 'run', 'preview', '--', '--host', '127.0.0.1', '--port', [string]$FrontendPort, '--strictPort')
     WorkingDirectory = $repositoryRoot
-    Environment = @{
-        VITE_API_URL = "$backendUrl/api"
-        VITE_ODYSSEUS_URL = $odysseusUrl
-        VITE_FII_DATA_FUSION_URL = $odfWebUrl
-    }
 }
 $null = Start-LoggedProcess @frontendProcess
 Wait-HttpReady -Name 'Operations UI' -Uri $frontendUrl
