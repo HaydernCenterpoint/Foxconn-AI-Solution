@@ -63,7 +63,7 @@ Trên Windows, sau khi đã chạy `Odysseus/launch-windows.ps1` ít nhất mộ
 .\infrastructure\demo\Test-FullDemo.ps1
 ```
 
-Launcher mặc định dùng Operations UI `3001`, backend `5166`, Odysseus `7000`, ODF web `58088` và ODF API `54310`; truyền tham số port tương ứng nếu môi trường dùng cổng khác. Thêm `-WithClientPlc` khi cần mở cả ứng dụng WPF. Log dịch vụ được ghi vào `.runtime-logs/`.
+Launcher mặc định dùng cùng hostname `localhost`: Operations UI `3001`, backend `5166`, Odysseus `7000`, ODF web `58088` và ODF API `54310`. Đăng nhập Operations UI một lần (`admin` / `admin123` ở dữ liệu demo) sẽ mở Odysseus và Data Fusion bằng cùng phiên; `Test-FullDemo.ps1` kiểm tra cả đăng nhập lẫn đăng xuất dùng chung. Truyền tham số port tương ứng nếu môi trường dùng cổng khác; thêm `-WithClientPlc` khi cần mở cả ứng dụng WPF. Log dịch vụ được ghi vào `.runtime-logs/`.
 
 Khởi động end-to-end theo thứ tự an toàn:
 

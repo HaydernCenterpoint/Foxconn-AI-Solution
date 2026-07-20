@@ -25,6 +25,8 @@ describe('demo API mode', () => {
       import('./apiClient.mock'),
     ]);
 
+    expect(api.defaults.withCredentials).toBe(true);
+
     const [dashboard, machine, report, health] = await Promise.all([
       api.get<Record<string, unknown>>('/dashboard/summary'),
       api.get<Record<string, unknown>>('/machines/L1-M1'),

@@ -64,18 +64,18 @@ export function AppRouter() {
       <Route path="/login" element={withSuspense(<LoginPage />)} />
 
       {/* Presentation slideshow layout */}
-      <Route path="/slideshow" element={withSuspense(<SlideshowPage />)} />
+      <Route path="/slideshow" element={withSuspense(<ProtectedRoute><SlideshowPage /></ProtectedRoute>)} />
 
       {/* Authenticated Admin/Engineer shell */}
-      <Route path="admin" element={<AppLayout />}>
-        <Route index element={withSuspense(<ProtectedRoute><DashboardPage /></ProtectedRoute>)} />
-        <Route path="lines" element={withSuspense(<ProtectedRoute><LinesPage /></ProtectedRoute>)} />
-        <Route path="machines" element={withSuspense(<ProtectedRoute><MachineListPage /></ProtectedRoute>)} />
-        <Route path="machines/:id" element={withSuspense(<ProtectedRoute><MachineDetailPage /></ProtectedRoute>)} />
-        <Route path="alarms" element={withSuspense(<ProtectedRoute><AlarmPage /></ProtectedRoute>)} />
-        <Route path="settings" element={withSuspense(<ProtectedRoute><SettingsPage /></ProtectedRoute>)} />
-        <Route path="reports" element={withSuspense(<ProtectedRoute><ReportsPage /></ProtectedRoute>)} />
-        <Route path="system" element={withSuspense(<ProtectedRoute><SystemPage /></ProtectedRoute>)} />
+      <Route path="admin" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+        <Route index element={withSuspense(<DashboardPage />)} />
+        <Route path="lines" element={withSuspense(<LinesPage />)} />
+        <Route path="machines" element={withSuspense(<MachineListPage />)} />
+        <Route path="machines/:id" element={withSuspense(<MachineDetailPage />)} />
+        <Route path="alarms" element={withSuspense(<AlarmPage />)} />
+        <Route path="settings" element={withSuspense(<SettingsPage />)} />
+        <Route path="reports" element={withSuspense(<ReportsPage />)} />
+        <Route path="system" element={withSuspense(<SystemPage />)} />
         <Route path="simulation" element={withSuspense(<ProtectedRoute allowedRoles={['ADMIN', 'ENGINEER']}><SimulationPage /></ProtectedRoute>)} />
         <Route path="users" element={withSuspense(<ProtectedRoute allowedRoles={['ADMIN']}><AdminUserManagementPage /></ProtectedRoute>)} />
         <Route path="audit-logs" element={withSuspense(<ProtectedRoute allowedRoles={['ADMIN']}><AdminAuditLogPage /></ProtectedRoute>)} />
@@ -85,8 +85,8 @@ export function AppRouter() {
         <Route path="dashboard" element={<Navigate to="/admin" replace />} />
       </Route>
 
-      {/* Public viewer routes (read-only, no auth) */}
-      <Route element={withSuspense(<ViewerLayout />)}>
+      {/* Authenticated viewer routes */}
+      <Route element={withSuspense(<ProtectedRoute><ViewerLayout /></ProtectedRoute>)}>
         <Route index element={withSuspense(<ViewerDashboardPage />)} />
         <Route path="lines" element={withSuspense(<LinesPage />)} />
         <Route path="machines" element={withSuspense(<MachineListPage />)} />

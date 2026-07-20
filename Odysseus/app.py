@@ -69,6 +69,7 @@ from core.constants import (
 from core.database import SessionLocal, ApiToken
 from core.middleware import SecurityHeadersMiddleware, is_cors_preflight
 from core.auth import AuthManager, normalize_known_username
+from core.fii_sso import FiiSsoError, resolve_fii_sso
 from core.exceptions import (
     SessionNotFoundError, InvalidFileUploadError,
     LLMServiceError, WebSearchError,
@@ -250,6 +251,13 @@ auth_manager = AuthManager()
 app.state.auth_manager = auth_manager
 AUTH_ENABLED = os.getenv("AUTH_ENABLED", "true").lower() != "false"
 LOCALHOST_BYPASS = os.getenv("LOCALHOST_BYPASS", "false").lower() == "true"
+FII_SSO_ENABLED = os.getenv("FII_SSO_ENABLED", "false").lower() == "true"
+FII_JWT_SECRET = os.getenv("FII_JWT_SECRET", "").strip()
+FII_JWT_ISSUER = os.getenv("FII_JWT_ISSUER", "MKZ_PLC_Server")
+FII_JWT_AUDIENCE = os.getenv("FII_JWT_AUDIENCE", "MKZ_PLC_Client")
+FII_MAIN_LOGIN_URL = os.getenv("FII_MAIN_LOGIN_URL", "http://localhost:3001/login")
+if FII_SSO_ENABLED and len(FII_JWT_SECRET.encode()) < 32:
+    raise RuntimeError("FII_JWT_SECRET must be at least 32 bytes when FII_SSO_ENABLED=true")
 if LOCALHOST_BYPASS:
     logger.warning("LOCALHOST_BYPASS is enabled, loopback requests bypass authentication. Do not expose this instance to a network.")
 
@@ -364,6 +372,27 @@ if AUTH_ENABLED:
             # is sent. Let real preflights through (only OPTIONS w/ the ACRM
             # header; never a credentialed request).
             if is_cors_preflight(request.method, request.headers):
+                return await call_next(request)
+            try:
+                sso_identity = resolve_fii_sso(
+                    request.cookies,
+                    FII_SSO_ENABLED,
+                    FII_JWT_SECRET,
+                    FII_JWT_ISSUER,
+                    FII_JWT_AUDIENCE,
+                )
+                if sso_identity:
+                    sso_username, sso_role = sso_identity
+                    if not auth_manager.ensure_fii_sso_user(sso_username, sso_role):
+                        raise FiiSsoError("FII identity conflicts with a native Odysseus user")
+            except FiiSsoError:
+                if path.startswith("/api/"):
+                    return JSONResponse(status_code=401, content={"error": "Invalid FII session"})
+                return RedirectResponse(url=FII_MAIN_LOGIN_URL, status_code=302)
+            if sso_identity:
+                request.state.current_user = sso_username
+                request.state.api_token = False
+                request.state.fii_sso = True
                 return await call_next(request)
             if _is_auth_exempt(path):
                 return await call_next(request)

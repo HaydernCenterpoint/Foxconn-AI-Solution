@@ -17,7 +17,10 @@ services:
       # An unset password is intentionally inert: PostgreSQL refuses to start
       # until a real MKZ_DB_PASSWORD is supplied by the deployment environment.
       - ConnectionStrings__DefaultConnection=Host=mkz-db;Port=5432;Database=plc_monitoring;Username=postgres;Password=${MKZ_DB_PASSWORD:-}
-      - Jwt__Key=${JWT_SECRET:-SUPER_SECRET_KEY_FOR_PRODUCTION_CHANGE_ME}
+      - Jwt__Key=${JWT_SECRET:?Set JWT_SECRET to at least 32 bytes}
+      - Jwt__Issuer=${FII_JWT_ISSUER:-MKZ_PLC_Server}
+      - Jwt__Audience=${FII_JWT_AUDIENCE:-MKZ_PLC_Client}
+      - FiiSso__SecureCookie=false
       - MqttServer__Port=1883
     depends_on:
       mkz-db:
@@ -84,6 +87,11 @@ services:
       - "127.0.0.1:7000:7000"
     environment:
       - AUTH_ENABLED=true
+      - FII_SSO_ENABLED=true
+      - FII_JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET to at least 32 bytes}
+      - FII_JWT_ISSUER=${FII_JWT_ISSUER:-MKZ_PLC_Server}
+      - FII_JWT_AUDIENCE=${FII_JWT_AUDIENCE:-MKZ_PLC_Client}
+      - FII_MAIN_LOGIN_URL=${FII_MAIN_LOGIN_URL:-http://localhost:3001/login}
       - APP_BIND=0.0.0.0
       - APP_PORT=7000
       - DATABASE_URL=sqlite:///./data/app.db

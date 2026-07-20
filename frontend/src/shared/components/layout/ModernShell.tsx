@@ -30,6 +30,7 @@ import { queryTimings } from '../../../app/queryOptions';
 import { queryClient } from '../../../app/queryClient';
 import { routeMetaByPath } from '../../../app/routeMeta';
 import { invalidateRefreshScope } from '../../../app/refresh';
+import { authApi } from '../../../features/auth/services/auth.api';
 import { dashboardApi } from '../../../features/dashboard/services/dashboard.api';
 import foxconnLogo from '../../../assets/Foxconn_Industrial_Internet.png';
 import { LanguageSelector } from '../i18n/LanguageSelector';
@@ -48,8 +49,12 @@ interface ShellNavigationItem {
   icon: LucideIcon;
 }
 
-const ODYSSEUS_URL = import.meta.env.VITE_ODYSSEUS_URL?.trim() || 'http://localhost:7000';
-const FII_DATA_FUSION_URL = import.meta.env.VITE_FII_DATA_FUSION_URL?.trim() || 'http://localhost:5173';
+const localServiceUrl = (port: number) =>
+  typeof window === 'undefined'
+    ? `http://localhost:${port}`
+    : `${window.location.protocol}//${window.location.hostname}:${port}`;
+const ODYSSEUS_URL = import.meta.env.VITE_ODYSSEUS_URL?.trim() || localServiceUrl(7000);
+const FII_DATA_FUSION_URL = import.meta.env.VITE_FII_DATA_FUSION_URL?.trim() || localServiceUrl(58088);
 const DEMO_MODE = import.meta.env.MODE === 'demo';
 
 const viewerNavigation: ShellNavigationItem[] = [
@@ -321,7 +326,8 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
     };
   }, [mobileNavigationOpen]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await authApi.logout().catch(() => undefined);
     logout();
     setAccountOpen(false);
     navigate('/login', { replace: true });
@@ -596,7 +602,7 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
                   )}
 
                   {isAuthenticated && (
-                    <button type="button" className="modern-shell__logout" onClick={handleLogout}>
+                    <button type="button" className="modern-shell__logout" onClick={() => void handleLogout()}>
                       <LogOut size={16} aria-hidden="true" />
                       <span>{t('common.actions.logout')}</span>
                     </button>

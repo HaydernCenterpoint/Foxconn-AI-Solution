@@ -35,13 +35,37 @@ $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $runtimeLogs = Join-Path $repositoryRoot '.runtime-logs'
-$backendUrl = "http://127.0.0.1:$BackendPort"
-$frontendUrl = "http://127.0.0.1:$FrontendPort"
-$odysseusUrl = "http://127.0.0.1:$OdysseusPort"
-$odfApiUrl = "http://127.0.0.1:$OdfApiPort"
-$odfWebUrl = "http://127.0.0.1:$OdfWebPort"
+$backendUrl = "http://localhost:$BackendPort"
+$backendBindUrl = "http://127.0.0.1:$BackendPort"
+$frontendUrl = "http://localhost:$FrontendPort"
+$odysseusUrl = "http://localhost:$OdysseusPort"
+$odfApiUrl = "http://localhost:$OdfApiPort"
+$odfWebUrl = "http://localhost:$OdfWebPort"
 
 New-Item -ItemType Directory -Path $runtimeLogs -Force | Out-Null
+
+function Resolve-FiiJwtSecret {
+    $secret = [Environment]::GetEnvironmentVariable('FII_JWT_SECRET', 'Process')
+    if ([string]::IsNullOrWhiteSpace($secret)) {
+        $secret = [Environment]::GetEnvironmentVariable('Jwt__Key', 'Process')
+    }
+    if ([string]::IsNullOrWhiteSpace($secret)) {
+        $developmentSettings = Get-Content (Join-Path $repositoryRoot 'backend/appsettings.Development.json') -Raw |
+            ConvertFrom-Json
+        $secret = [string]$developmentSettings.Jwt.Key
+    }
+    $secret = $secret.Trim()
+    if ([Text.Encoding]::UTF8.GetByteCount($secret) -lt 32) {
+        throw 'The shared FII JWT secret must be at least 32 bytes.'
+    }
+    return $secret
+}
+
+$fiiJwtSecret = Resolve-FiiJwtSecret
+$fiiJwtIssuer = [Environment]::GetEnvironmentVariable('FII_JWT_ISSUER', 'Process')
+if ([string]::IsNullOrWhiteSpace($fiiJwtIssuer)) { $fiiJwtIssuer = 'MKZ_PLC_Server' }
+$fiiJwtAudience = [Environment]::GetEnvironmentVariable('FII_JWT_AUDIENCE', 'Process')
+if ([string]::IsNullOrWhiteSpace($fiiJwtAudience)) { $fiiJwtAudience = 'MKZ_PLC_Client' }
 
 function Test-HttpReady {
     param([Parameter(Mandatory)][string]$Uri)
@@ -49,6 +73,33 @@ function Test-HttpReady {
     try {
         $response = Invoke-WebRequest -Uri $Uri -UseBasicParsing -TimeoutSec 3
         return $response.StatusCode -ge 200 -and $response.StatusCode -lt 400
+    }
+    catch {
+        return $false
+    }
+}
+
+function Test-HttpStatus {
+    param(
+        [Parameter(Mandatory)][string]$Uri,
+        [Parameter(Mandatory)][int]$ExpectedStatus,
+        [hashtable]$Headers = @{}
+    )
+
+    try {
+        $response = Invoke-WebRequest -Uri $Uri -Headers $Headers -UseBasicParsing -TimeoutSec 3
+        return $response.StatusCode -eq $ExpectedStatus
+    }
+    catch {
+        $response = $_.Exception.Response
+        return $null -ne $response -and [int]$response.StatusCode -eq $ExpectedStatus
+    }
+}
+
+function Test-OdfFactoryReady {
+    try {
+        $health = Invoke-RestMethod -Uri "$odfApiUrl/health" -TimeoutSec 3
+        return [string]$health.authMode -eq 'factory'
     }
     catch {
         return $false
@@ -142,7 +193,8 @@ function Test-RepositoryProcess {
 
 Write-Host "Starting Foxconn AI Solution full demo" -ForegroundColor Cyan
 
-if (Test-HttpReady -Uri "$backendUrl/api/health") {
+if ((Test-HttpReady -Uri "$backendUrl/api/health") -and
+    (Test-HttpStatus -Uri "$backendUrl/api/auth/session" -ExpectedStatus 401)) {
     Write-Host "[reuse] Backend -> $backendUrl" -ForegroundColor DarkCyan
 }
 else {
@@ -156,10 +208,13 @@ else {
         WorkingDirectory = $repositoryRoot
         Environment = @{
             ASPNETCORE_ENVIRONMENT = 'Development'
-            ASPNETCORE_URLS = $backendUrl
+            ASPNETCORE_URLS = $backendBindUrl
+            Jwt__Key = $fiiJwtSecret
+            Jwt__Issuer = $fiiJwtIssuer
+            Jwt__Audience = $fiiJwtAudience
+            FiiSso__SecureCookie = 'false'
             OpenDataFusion__CaptureEnabled = 'true'
             AllowedOrigins__0 = $frontendUrl
-            AllowedOrigins__1 = "http://localhost:$FrontendPort"
         }
     }
     $null = Start-LoggedProcess @backendProcess
@@ -167,7 +222,7 @@ else {
 }
 
 if (-not $SkipOpenDataFusion) {
-    if ((Test-HttpReady -Uri "$odfApiUrl/ready") -and (Test-HttpReady -Uri $odfWebUrl)) {
+    if ((Test-HttpReady -Uri "$odfApiUrl/ready") -and (Test-HttpReady -Uri $odfWebUrl) -and (Test-OdfFactoryReady)) {
         Write-Host "[reuse] Open Data Fusion -> $odfWebUrl" -ForegroundColor DarkCyan
     }
     else {
@@ -179,7 +234,27 @@ if (-not $SkipOpenDataFusion) {
             WebPort = $OdfWebPort
             WaitTimeoutSeconds = $WaitTimeoutSeconds
         }
-        & $odfStart @odfParameters | Out-Host
+        $odfEnvironment = [ordered]@{
+            ODF_AUTH_MODE = 'factory'
+            FII_JWT_SECRET = $fiiJwtSecret
+            FII_JWT_ISSUER = $fiiJwtIssuer
+            FII_JWT_AUDIENCE = $fiiJwtAudience
+            VITE_FII_SSO = 'true'
+            FII_MAIN_LOGIN_URL = "$frontendUrl/login"
+        }
+        $previousOdfEnvironment = @{}
+        try {
+            foreach ($entry in $odfEnvironment.GetEnumerator()) {
+                $previousOdfEnvironment[$entry.Key] = [Environment]::GetEnvironmentVariable($entry.Key, 'Process')
+                [Environment]::SetEnvironmentVariable($entry.Key, [string]$entry.Value, 'Process')
+            }
+            & $odfStart @odfParameters | Out-Host
+        }
+        finally {
+            foreach ($entry in $previousOdfEnvironment.GetEnumerator()) {
+                [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, 'Process')
+            }
+        }
         Wait-HttpReady -Name 'Open Data Fusion API' -Uri "$odfApiUrl/ready"
         Wait-HttpReady -Name 'Open Data Fusion Web' -Uri $odfWebUrl
     }
@@ -208,7 +283,8 @@ if (-not $SkipFusionAdapter) {
 }
 
 if (-not $SkipOdysseus) {
-    if (Test-HttpReady -Uri "$odysseusUrl/api/health") {
+    if ((Test-HttpReady -Uri "$odysseusUrl/api/health") -and
+        (Test-HttpStatus -Uri "$odysseusUrl/api/auth/status" -ExpectedStatus 401 -Headers @{ Cookie = 'fii_sso=invalid' })) {
         Write-Host "[reuse] Odysseus -> $odysseusUrl" -ForegroundColor DarkCyan
     }
     else {
@@ -228,6 +304,13 @@ if (-not $SkipOdysseus) {
                 MKZ_BACKEND_URL = $backendUrl
                 CHROMADB_HOST = '127.0.0.1'
                 CHROMADB_PORT = '8100'
+                AUTH_ENABLED = 'true'
+                LOCALHOST_BYPASS = 'false'
+                FII_SSO_ENABLED = 'true'
+                FII_JWT_SECRET = $fiiJwtSecret
+                FII_JWT_ISSUER = $fiiJwtIssuer
+                FII_JWT_AUDIENCE = $fiiJwtAudience
+                FII_MAIN_LOGIN_URL = "$frontendUrl/login"
             }
         }
         $null = Start-LoggedProcess @odysseusProcess

@@ -572,11 +572,32 @@ class AuthManager:
     # Login / logout / session tokens
     # ------------------------------------------------------------------
 
+    def ensure_fii_sso_user(self, username: str, role: str) -> bool:
+        username = username.strip().lower()
+        if not username or username in RESERVED_USERNAMES or role not in {"ADMIN", "ENGINEER", "GUEST"}:
+            return False
+        with self._config_lock:
+            existing = self.users.get(username)
+            if existing and existing.get("auth_source") != "fii_sso":
+                return False
+            is_admin = role == "ADMIN"
+            shadow = {
+                "created": (existing or {}).get("created", time.time()),
+                "is_admin": is_admin,
+                "auth_source": "fii_sso",
+                "privileges": dict(ADMIN_PRIVILEGES if is_admin else DEFAULT_PRIVILEGES),
+            }
+            if existing == shadow:
+                return True
+            self._config.setdefault("users", {})[username] = shadow
+            self._save()
+        return True
+
     def verify_password(self, username: str, password: str) -> bool:
         username = username.strip().lower()
-        if username not in self.users:
-            return False
-        return _verify_password(password, self.users[username]["password_hash"])
+        user = self.users.get(username)
+        password_hash = user.get("password_hash") if isinstance(user, dict) else None
+        return isinstance(password_hash, str) and _verify_password(password, password_hash)
 
     def create_session(self, username: str, password: str) -> Optional[str]:
         """Verify credentials and return a session token, or None."""
@@ -673,15 +694,28 @@ class AuthManager:
                 self._save_sessions()
         return revoked
 
+    def status_for_user(self, username: str) -> Dict[str, Any]:
+        username = username.strip().lower()
+        if username not in self.users:
+            return {
+                "configured": self.is_configured,
+                "authenticated": False,
+                "username": None,
+                "is_admin": False,
+            }
+        return {
+            "configured": self.is_configured,
+            "authenticated": True,
+            "username": username,
+            "is_admin": self.is_admin(username),
+            "privileges": self.get_privileges(username),
+        }
+
     def status(self, token: Optional[str]) -> Dict[str, Any]:
         username = self.get_username_for_token(token)
-        authenticated = username is not None
-        result = {
+        return self.status_for_user(username) if username else {
             "configured": self.is_configured,
-            "authenticated": authenticated,
-            "username": username,
-            "is_admin": self.is_admin(username) if username else False,
+            "authenticated": False,
+            "username": None,
+            "is_admin": False,
         }
-        if authenticated:
-            result["privileges"] = self.get_privileges(username)
-        return result

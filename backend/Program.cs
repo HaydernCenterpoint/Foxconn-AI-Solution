@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using backend.Configuration;
 using backend.Middleware;
@@ -60,7 +59,7 @@ builder.Services.AddHostedService<MqttServerService>();
 // builder.Services.AddHostedService<SimulationService>();
 
 // Configure JWT Bearer Authentication
-var keyStr = builder.Configuration["Jwt:Key"] ?? "SUPER_SECRET_KEY_FOR_DEVELOPMENT_MKZ_AUTO_LINE_SYSTEM_123456789";
+var signingKey = FiiSso.SigningKey(builder.Configuration);
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -68,6 +67,14 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            context.Token = FiiSso.CookieToken(context.Request);
+            return Task.CompletedTask;
+        },
+    };
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -76,7 +83,8 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "MKZ_PLC_Server",
         ValidAudience = builder.Configuration["Jwt:Audience"] ?? "MKZ_PLC_Client",
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyStr))
+        IssuerSigningKey = signingKey,
+        ClockSkew = TimeSpan.Zero,
     };
 });
 
