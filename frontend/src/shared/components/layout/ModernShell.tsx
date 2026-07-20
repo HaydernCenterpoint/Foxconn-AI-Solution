@@ -50,6 +50,7 @@ interface ShellNavigationItem {
 
 const ODYSSEUS_URL = import.meta.env.VITE_ODYSSEUS_URL?.trim() || 'http://localhost:7000';
 const FII_DATA_FUSION_URL = import.meta.env.VITE_FII_DATA_FUSION_URL?.trim() || 'http://localhost:5173';
+const DEMO_MODE = import.meta.env.MODE === 'demo';
 
 const viewerNavigation: ShellNavigationItem[] = [
   { to: '/', labelKey: 'navigation.overview', icon: LayoutDashboard },
@@ -432,7 +433,7 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
 
         <div className={`modern-shell__sidebar-footer${isOnline ? '' : ' modern-shell__sidebar-footer--offline'}`} role="status">
           <span className="modern-shell__status-dot" aria-hidden="true" />
-          <span>{t(isOnline ? 'common.status.online' : 'common.status.offline')}</span>
+          <span>{DEMO_MODE ? 'DEMO · SYNTHETIC DATA' : t(isOnline ? 'common.status.online' : 'common.status.offline')}</span>
         </div>
       </aside>
 

@@ -17,11 +17,17 @@ export function getMockDataForUrl(url: string, method: string): unknown {
     }
 
     if (cleanUrl.endsWith('/machines')) {
-      return [
-        ...getMockMachinesForLine('line-1'),
-        ...getMockMachinesForLine('line-2'),
-        ...getMockMachinesForLine('line-3')
-      ];
+      return getAllMockMachines();
+    }
+
+    if (cleanUrl.startsWith('/machines/') && cleanUrl.endsWith('/hourly-production')) {
+      const machineId = cleanUrl.split('/')[2] || 'L1-M1';
+      return getMockHourlyProduction(machineId);
+    }
+
+    if (/^\/machines\/[^/]+$/.test(cleanUrl)) {
+      const machineId = cleanUrl.split('/')[2] || 'L1-M1';
+      return getAllMockMachines().find((machine) => machine.id === machineId);
     }
 
     if (cleanUrl.endsWith('/dashboard/summary')) {
@@ -31,7 +37,7 @@ export function getMockDataForUrl(url: string, method: string): unknown {
         hourlyData.push({
           prodDate: now.toISOString().split('T')[0],
           prodHour: i,
-          totalQty: 200 + Math.floor(Math.random() * 300)
+          totalQty: 260 + ((i * 47) % 190)
         });
       }
       return {
@@ -44,10 +50,7 @@ export function getMockDataForUrl(url: string, method: string): unknown {
         totalProduction: 18450,
         activeAlarms: 2,
         plcClientsOnline: 13,
-        recentAlarms: [
-          { id: 1, machineId: 'L1-M5', machineName: 'Máy rửa 1', severity: 'CRITICAL', message: 'Vibration above threshold', status: 'ACTIVE', createdAt: new Date().toISOString() },
-          { id: 2, machineId: 'L3-M2', machineName: 'Robot gắp 3', severity: 'HIGH', message: 'Motor overheating', status: 'ACTIVE', createdAt: new Date().toISOString() }
-        ],
+        recentAlarms: getMockAlarms(),
         hourlyData
       };
     }
@@ -63,10 +66,31 @@ export function getMockDataForUrl(url: string, method: string): unknown {
     }
 
     if (cleanUrl.endsWith('/alarms')) {
-      return [
-        { id: 1, machineId: 'L1-M5', machineName: 'Máy rửa 1', severity: 'CRITICAL', message: 'Vibration above threshold', status: 'ACTIVE', createdAt: new Date().toISOString() },
-        { id: 2, machineId: 'L3-M2', machineName: 'Robot gắp 3', severity: 'HIGH', message: 'Motor overheating', status: 'ACTIVE', createdAt: new Date().toISOString() }
-      ];
+      return getMockAlarms();
+    }
+
+    if (cleanUrl.endsWith('/reports/query')) {
+      return getMockReport();
+    }
+
+    if (cleanUrl.endsWith('/health')) {
+      return {
+        status: 'Healthy',
+        checks: [
+          { name: 'Demo telemetry', status: 'Healthy' },
+          { name: 'Demo data store', status: 'Healthy' },
+        ],
+      };
+    }
+
+    if (cleanUrl.endsWith('/telemetry/live') || cleanUrl.endsWith('/telemetry/log')) {
+      return getAllMockMachines().slice(0, 6).map((machine) => ({
+        clientId: machine.clientId,
+        machineName: machine.name,
+        ipAddress: machine.ip,
+        receivedAt: new Date().toISOString(),
+        payload: machine.lastPlcData,
+      }));
     }
   }
 
@@ -78,30 +102,153 @@ function getMockMachinesForLine(lineId: string): Record<string, unknown>[] {
   const isL2 = lineId === 'line-2';
 
   if (isL1) {
-    return [
+    return decorateMachines([
       { id: 'L1-M1', name: 'Trạm cấp liệu 1', machineCode: 'MC-01', ip: '192.168.1.10', status: 'running', plcConnected: true, clientId: 'client-01', approvalStatus: 'APPROVED', cpuPercent: 35, ramPercent: 42, uptimeSeconds: 12450, lastHeartbeat: new Date().toISOString(), lineNames: 'line-1' },
       { id: 'L1-M2', name: 'Robot gắp 1', machineCode: 'MC-02', ip: '192.168.1.11', status: 'running', plcConnected: true, clientId: 'client-02', approvalStatus: 'APPROVED', cpuPercent: 45, ramPercent: 55, uptimeSeconds: 12450, lastHeartbeat: new Date().toISOString(), lineNames: 'line-1' },
       { id: 'L1-M3', name: 'Máy khoan 1', machineCode: 'MC-03', ip: '192.168.1.12', status: 'idle', plcConnected: true, clientId: 'client-03', approvalStatus: 'APPROVED', cpuPercent: 12, ramPercent: 28, uptimeSeconds: 4560, lastHeartbeat: new Date().toISOString(), lineNames: 'line-1' },
       { id: 'L1-M4', name: 'Băng tải 1', machineCode: 'MC-04', ip: '192.168.1.13', status: 'running', plcConnected: true, clientId: 'client-04', approvalStatus: 'APPROVED', cpuPercent: 20, ramPercent: 35, uptimeSeconds: 15230, lastHeartbeat: new Date().toISOString(), lineNames: 'line-1' },
       { id: 'L1-M5', name: 'Máy rửa 1', machineCode: 'MC-05', ip: '192.168.1.14', status: 'error', plcConnected: true, clientId: 'client-05', approvalStatus: 'APPROVED', cpuPercent: 65, ramPercent: 78, uptimeSeconds: 7890, lastHeartbeat: new Date().toISOString(), lineNames: 'line-1' }
-    ];
+    ]);
   }
   if (isL2) {
-    return [
+    return decorateMachines([
       { id: 'L2-M1', name: 'Trạm cấp liệu 2', machineCode: 'MC-06', ip: '192.168.2.10', status: 'running', plcConnected: true, clientId: 'client-06', approvalStatus: 'APPROVED', cpuPercent: 30, ramPercent: 40, uptimeSeconds: 9870, lastHeartbeat: new Date().toISOString(), lineNames: 'line-2' },
       { id: 'L2-M2', name: 'Robot gắp 2', machineCode: 'MC-07', ip: '192.168.2.11', status: 'running', plcConnected: true, clientId: 'client-07', approvalStatus: 'APPROVED', cpuPercent: 43, ramPercent: 48, uptimeSeconds: 9450, lastHeartbeat: new Date().toISOString(), lineNames: 'line-2' },
       { id: 'L2-M3', name: 'Máy hàn 1', machineCode: 'MC-08', ip: '192.168.2.12', status: 'running', plcConnected: true, clientId: 'client-08', approvalStatus: 'APPROVED', cpuPercent: 18, ramPercent: 32, uptimeSeconds: 7340, lastHeartbeat: new Date().toISOString(), lineNames: 'line-2' },
       { id: 'L2-M4', name: 'Băng tải 2', machineCode: 'MC-09', ip: '192.168.2.13', status: 'idle', plcConnected: true, clientId: 'client-09', approvalStatus: 'APPROVED', cpuPercent: 8, ramPercent: 22, uptimeSeconds: 2340, lastHeartbeat: new Date().toISOString(), lineNames: 'line-2' },
       { id: 'L2-M5', name: 'Máy ép 1', machineCode: 'MC-10', ip: '192.168.2.14', status: 'maintenance', plcConnected: true, clientId: 'client-10', approvalStatus: 'APPROVED', cpuPercent: 5, ramPercent: 12, uptimeSeconds: 5670, lastHeartbeat: new Date().toISOString(), lineNames: 'line-2' }
-    ];
+    ]);
   }
-  return [
+  return decorateMachines([
     { id: 'L3-M1', name: 'Trạm cấp liệu 3', machineCode: 'MC-11', ip: '192.168.3.10', status: 'running', plcConnected: true, clientId: 'client-11', approvalStatus: 'APPROVED', cpuPercent: 28, ramPercent: 38, uptimeSeconds: 15670, lastHeartbeat: new Date().toISOString(), lineNames: 'line-3' },
     { id: 'L3-M2', name: 'Robot gắp 3', machineCode: 'MC-12', ip: '192.168.3.11', status: 'error', plcConnected: true, clientId: 'client-12', approvalStatus: 'APPROVED', cpuPercent: 52, ramPercent: 64, uptimeSeconds: 4230, lastHeartbeat: new Date().toISOString(), lineNames: 'line-3' },
     { id: 'L3-M3', name: 'Máy khoan 2', machineCode: 'MC-13', ip: '192.168.3.12', status: 'running', plcConnected: true, clientId: 'client-13', approvalStatus: 'APPROVED', cpuPercent: 25, ramPercent: 30, uptimeSeconds: 11230, lastHeartbeat: new Date().toISOString(), lineNames: 'line-3' },
     { id: 'L3-M4', name: 'Băng tải 3', machineCode: 'MC-14', ip: '192.168.3.13', status: 'running', plcConnected: true, clientId: 'client-14', approvalStatus: 'APPROVED', cpuPercent: 15, ramPercent: 20, uptimeSeconds: 13450, lastHeartbeat: new Date().toISOString(), lineNames: 'line-3' },
     { id: 'L3-M5', name: 'Máy dán 1', machineCode: 'MC-15', ip: '192.168.3.14', status: 'stopped', plcConnected: true, clientId: 'client-15', approvalStatus: 'APPROVED', cpuPercent: 0, ramPercent: 5, uptimeSeconds: 0, lastHeartbeat: new Date().toISOString(), lineNames: 'line-3' }
+  ]);
+}
+
+function decorateMachines(machines: Record<string, unknown>[]): Record<string, unknown>[] {
+  return machines.map((machine, index) => {
+    const status = String(machine.status);
+    const isRunning = status === 'running';
+    const oee = status === 'error' ? 62 : status === 'idle' ? 76 : status === 'maintenance' ? 70 : isRunning ? 88 + (index % 4) : 55;
+    const productionCount = 820 + index * 135;
+    const uph = isRunning ? 360 + index * 22 : status === 'idle' ? 120 : 0;
+    const yieldRate = status === 'error' ? 92.4 : 98.4 + index * 0.2;
+
+    return {
+      ...machine,
+      lineId: machine.lineNames,
+      sequenceOrder: index + 1,
+      lastPlcData: {
+        productionCount,
+        machineRuntimeSeconds: Number(machine.uptimeSeconds),
+        clientUptimeSeconds: Number(machine.uptimeSeconds),
+        plcConnected: machine.plcConnected,
+        timestamp: new Date().toISOString(),
+        machine: {
+          cpu: Number(machine.cpuPercent),
+          ram: Number(machine.ramPercent),
+          uptime: Number(machine.uptimeSeconds),
+        },
+        production: {
+          qty: productionCount,
+          runtime: Number(machine.uptimeSeconds),
+          oee,
+          uph,
+          yieldRate,
+        },
+        tags: {
+          temperature: isRunning ? 64 + index * 2 : 31,
+          pressure: isRunning ? 3.1 + index * 0.1 : 0.6,
+          oee,
+          uph,
+          yieldRate,
+        },
+      },
+    };
+  });
+}
+
+function getAllMockMachines(): Record<string, unknown>[] {
+  return [
+    ...getMockMachinesForLine('line-1'),
+    ...getMockMachinesForLine('line-2'),
+    ...getMockMachinesForLine('line-3'),
   ];
+}
+
+function getMockAlarms(): Record<string, unknown>[] {
+  const createdAt = new Date().toISOString();
+  return [
+    { id: 1, machineId: 'L1-M5', machineName: 'Máy rửa 1', severity: 'CRITICAL', message: 'Rung động vượt ngưỡng an toàn', status: 'ACTIVE', createdAt },
+    { id: 2, machineId: 'L3-M2', machineName: 'Robot gắp 3', severity: 'HIGH', message: 'Nhiệt độ động cơ tăng cao', status: 'ACTIVE', createdAt },
+  ];
+}
+
+function getMockHourlyProduction(machineId: string): Record<string, unknown>[] {
+  const today = new Date().toISOString().split('T')[0];
+  return Array.from({ length: 10 }, (_, index) => {
+    const prodHour = index + 8;
+    const producedQtyStart = 1200 + index * 410;
+    const hourlyQty = 360 + ((index * 37) % 110);
+    return {
+      prodDate: today,
+      prodHour,
+      producedQtyStart,
+      producedQtyEnd: producedQtyStart + hourlyQty,
+      hourlyQty,
+      plcRunTimeStart: index * 3300,
+      plcRunTimeEnd: (index + 1) * 3300,
+      avgCpu: 28 + (index % 4) * 6,
+      avgRam: 41 + (index % 3) * 5,
+      receivedAt: new Date().toISOString(),
+      machineId,
+    };
+  });
+}
+
+function getMockReport(): Record<string, unknown> {
+  const chartData = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - index));
+    return {
+      date: date.toISOString().split('T')[0],
+      hour: `${String(index + 8).padStart(2, '0')}:00`,
+      output: 2100 + index * 175,
+      target: 3000,
+    };
+  });
+
+  return {
+    summary: {
+      avgSpeed: 418,
+      machinesCount: 15,
+      scrapRate: 1.7,
+      totalGood: 18136,
+      totalProduction: 18450,
+      totalScrap: 314,
+      yieldRate: 98.3,
+    },
+    chartData,
+    defectChartData: [
+      { name: 'Kích thước', value: 128, color: '#ef4444' },
+      { name: 'Bề mặt', value: 86, color: '#f59e0b' },
+      { name: 'Mối hàn', value: 61, color: '#eab308' },
+      { name: 'Lắp ráp', value: 39, color: '#22c55e' },
+    ],
+    tableLogs: getAllMockMachines().slice(0, 6).map((machine, index) => ({
+      key: String(machine.id),
+      no: index + 1,
+      lineName: String(machine.lineNames).toUpperCase(),
+      machineName: machine.name,
+      output: 1180 + index * 95,
+      good: 1160 + index * 93,
+      scrap: 20 + index * 2,
+      status: machine.status,
+    })),
+  };
 }
 
 function getMockSimulationAll(): Record<string, Record<string, unknown>> {
@@ -120,16 +267,17 @@ function getMockSimulationAll(): Record<string, Record<string, unknown>> {
 
 function getMockSimulationForMachine(id: string): Record<string, unknown> {
   const status = id === 'L1-M5' || id === 'L3-M2' ? 'error' : id === 'L1-M3' || id === 'L2-M4' ? 'idle' : 'running';
+  const machineNumber = Number(id.match(/\d+$/)?.[0] || 1);
   return {
     machineId: id,
-    temperature: status === 'running' ? 60 + Math.random() * 20 : 25 + Math.random() * 5,
-    pressure: status === 'running' ? 2.5 + Math.random() * 1.5 : 0.5 + Math.random() * 0.5,
-    speed: status === 'running' ? 30 + Math.random() * 25 : 0,
-    productionCount: 500 + Math.floor(Math.random() * 1000),
+    temperature: status === 'running' ? 62 + machineNumber * 2 : 29,
+    pressure: status === 'running' ? 2.8 + machineNumber * 0.12 : 0.6,
+    speed: status === 'running' ? 34 + machineNumber * 3 : 0,
+    productionCount: 700 + machineNumber * 135,
     status,
-    uptimeSeconds: 5000 + Math.floor(Math.random() * 5000),
-    cpuPercent: status === 'running' ? 20 + Math.random() * 40 : 2 + Math.random() * 5,
-    ramPercent: status === 'running' ? 30 + Math.random() * 30 : 10 + Math.random() * 5,
+    uptimeSeconds: 5200 + machineNumber * 740,
+    cpuPercent: status === 'running' ? 24 + machineNumber * 4 : 6,
+    ramPercent: status === 'running' ? 36 + machineNumber * 3 : 14,
     timestamp: new Date().toISOString()
   };
 }

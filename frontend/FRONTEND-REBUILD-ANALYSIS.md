@@ -1,17 +1,18 @@
 # Phân tích chức năng & rebuild frontend
 
-> Cập nhật: 2026-07-14
+> Cập nhật: 2026-07-20
 >
 > Phạm vi triển khai: `frontend/` — ứng dụng React đang kết nối trực tiếp tới ASP.NET Core backend.
 
 ## 1. Quyết định phạm vi
 
-Repository có hai frontend:
+Phạm vi Operations chỉ còn một frontend chính:
 
 | Ứng dụng | Trạng thái | Quyết định |
 | --- | --- | --- |
 | `frontend/` | Ứng dụng sản phẩm chính: JWT, RBAC, API thật, dashboard, vận hành, quản trị | Được rebuild trong đợt này |
-| `factory-ai-platform/frontend/` | Prototype riêng dùng mock data, chưa được Docker Compose deploy và chưa kết nối API thật | Không thay đổi để tránh nhầm sản phẩm đang vận hành |
+
+Các prototype `factory-ai-platform/frontend/`, `automation_header/` và AOI dashboard đã được đưa ra khỏi repository sau khi xác nhận không được runtime hoặc Docker Compose tham chiếu. Odysseus và Open Data Fusion vẫn là các ứng dụng chuyên biệt độc lập, không phải frontend Operations thay thế.
 
 Rebuild giữ nguyên React/Vite, React Query, Zustand, React Router, backend REST và mô hình quyền hiện có. Không thay dữ liệu thật bằng mock hoặc KPI tự sinh.
 

@@ -42,6 +42,17 @@ flowchart LR
 
 ## Khởi chạy nhanh
 
+### Demo UI không cần backend
+
+```powershell
+npm --prefix frontend ci
+npm --prefix frontend run demo
+```
+
+Mở `http://127.0.0.1:3000`. Demo mode chỉ phục vụ dữ liệu synthetic cho các request `GET`; thao tác ghi không được giả lập thành công. Luồng trình bày ngắn: Dashboard → Machines → Machine detail → Alarms → Slideshow.
+
+### Chạy full stack
+
 Điều kiện trước khi chạy: .NET 9 SDK, Node.js, PostgreSQL có thể truy cập được đã cấu hình qua connection string của backend và Docker Desktop nếu dùng ODF preview. ClientPLC chạy trên Windows và yêu cầu .NET 9 Windows Desktop SDK.
 
 Khởi động end-to-end theo thứ tự an toàn:
