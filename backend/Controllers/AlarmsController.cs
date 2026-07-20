@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using backend.Services;
 using Npgsql;
+using NpgsqlTypes;
 
 namespace backend.Controllers
 {
@@ -45,8 +46,8 @@ namespace backend.Controllers
                     LIMIT @limit";
 
                 using var cmd = new NpgsqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("status", (object?)status ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("severity", (object?)severity ?? DBNull.Value);
+                cmd.Parameters.Add("status", NpgsqlDbType.Varchar).Value = (object?)status ?? DBNull.Value;
+                cmd.Parameters.Add("severity", NpgsqlDbType.Varchar).Value = (object?)severity ?? DBNull.Value;
                 cmd.Parameters.AddWithValue("limit", limit);
 
                 using var reader = await cmd.ExecuteReaderAsync();

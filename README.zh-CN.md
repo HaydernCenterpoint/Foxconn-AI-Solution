@@ -36,6 +36,7 @@ flowchart LR
 | `frontend/` | 使用 React + Vite 构建的 Operations UI。 |
 | `backend/` | ASP.NET Core 后端、MQTT 和 PostgreSQL。 |
 | `ClientPLC/` | 用于连接和监控 PLC 设备的 WPF 客户端。 |
+| `Odysseus/` | AI 助手以及只读的工厂 REST/RAG 桥接层。 |
 | `fusion-contracts/` | 用于 Fusion 事件的版本化共享契约。 |
 | `fusion-adapter/` | 将事件分发到 ODF 的 outbox 调度器。 |
 | `third_party/open-data-fusion/` | 为 Open Data Fusion 固定版本的上游 Git submodule。 |
@@ -43,6 +44,15 @@ flowchart LR
 ## 快速开始
 
 运行前提：.NET 9 SDK、Node.js、可访问且已通过 backend 的 connection string 配置的 PostgreSQL；如果使用 ODF preview，则还需要 Docker Desktop。ClientPLC 在 Windows 上运行，并且需要 .NET 9 Windows Desktop SDK。
+
+在 Windows 上，先运行一次 `Odysseus/launch-windows.ps1` 创建 virtual environment，然后可用以下命令启动并验证完整 demo stack：
+
+```powershell
+.\infrastructure\demo\Start-FullDemo.ps1
+.\infrastructure\demo\Test-FullDemo.ps1
+```
+
+Launcher 默认使用 Operations UI `3001`、backend `5166`、Odysseus `7000`、ODF web `58088` 和 ODF API `54310`；如端口不同，请传入对应的 port 参数。添加 `-WithClientPlc` 可同时启动 WPF 客户端。服务日志写入 `.runtime-logs/`。
 
 按安全顺序端到端启动：
 

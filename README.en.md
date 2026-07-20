@@ -36,6 +36,7 @@ flowchart LR
 | `frontend/` | Operations UI built with React + Vite. |
 | `backend/` | ASP.NET Core backend, MQTT, and PostgreSQL. |
 | `ClientPLC/` | WPF client that connects to and monitors PLC devices. |
+| `Odysseus/` | AI assistant and read-only factory REST/RAG bridge. |
 | `fusion-contracts/` | Versioned shared contracts for Fusion events. |
 | `fusion-adapter/` | Outbox dispatcher that delivers events to ODF. |
 | `third_party/open-data-fusion/` | Pinned upstream Git submodule for Open Data Fusion. |
@@ -43,6 +44,15 @@ flowchart LR
 ## Quick start
 
 Prerequisites: .NET 9 SDK, Node.js, a reachable PostgreSQL instance configured through the backend connection string, and Docker Desktop when using the ODF preview. ClientPLC runs on Windows and requires the .NET 9 Windows Desktop SDK.
+
+On Windows, after running `Odysseus/launch-windows.ps1` once to create its virtual environment, start and validate the complete demo stack with:
+
+```powershell
+.\infrastructure\demo\Start-FullDemo.ps1
+.\infrastructure\demo\Test-FullDemo.ps1
+```
+
+The launcher defaults to Operations UI `3001`, backend `5166`, Odysseus `7000`, ODF web `58088`, and ODF API `54310`; override the matching port parameters when needed. Add `-WithClientPlc` to launch the WPF client. Service logs are written to `.runtime-logs/`.
 
 Start end-to-end in the safe sequence:
 
