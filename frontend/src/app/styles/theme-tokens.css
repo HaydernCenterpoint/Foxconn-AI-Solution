@@ -83,14 +83,6 @@
   --radius-large: 12px;
   --radius-extra-large: 12px;
 
-  /* --- Spacing ladder (integer 4/8) --- */
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
-  --spacing-2xl: 3rem;
-
   /* --- Type ramp (integer, root 16px) --- */
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -116,6 +108,14 @@
 /* Compat aliases (formerly in the deleted tokens.css) + focus ring.
    Single :root site; do not redefine these elsewhere. */
 :root {
+  /* Keep semantic spacing outside @theme so Tailwind max-w-md/lg use container widths. */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
   --color-bg: var(--color-background);
   --color-panel: var(--color-surface);
   --color-panel-soft: var(--color-surface-container);

@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "demo": "vite --mode demo --host 127.0.0.1 --port 3000 --strictPort",
+    "demo:build": "tsc -b && vite build --mode demo",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "type-check": "tsc -b",
@@ -15,12 +17,14 @@
     "analyze": "vite build --mode analyze"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
     "@hookform/resolvers": "^5.4.0",
     "@tailwindcss/vite": "^4.3.0",
     "@tanstack/react-query": "^5.101.0",
     "@xyflow/react": "^12.11.0",
     "axios": "^1.17.0",
     "caniuse-lite": "^1.0.30001797",
+    "gsap": "^3.15.0",
     "i18next": "^26.3.1",
     "lucide-react": "^1.17.0",
     "react": "^19.2.6",

@@ -175,8 +175,11 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
 
     @router.get("/status")
     async def auth_status(request: Request):
-        token = request.cookies.get(SESSION_COOKIE)
-        result = auth_manager.status(token)
+        sso_username = getattr(request.state, "current_user", None)
+        if getattr(request.state, "fii_sso", False) and sso_username:
+            result = auth_manager.status_for_user(sso_username)
+        else:
+            result = auth_manager.status(request.cookies.get(SESSION_COOKIE))
         result["signup_enabled"] = auth_manager.signup_enabled
         # Include the caller's effective privileges so the frontend can
         # hide / dim UI controls the user isn't allowed to use. Admins get
@@ -184,7 +187,7 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
         # set merged with DEFAULT_PRIVILEGES.
         try:
             u = result.get("username")
-            if u:
+            if u and "privileges" not in result:
                 result["privileges"] = auth_manager.get_privileges(u)
         except Exception:
             pass

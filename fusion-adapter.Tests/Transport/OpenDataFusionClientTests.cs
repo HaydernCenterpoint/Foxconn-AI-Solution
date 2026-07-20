@@ -1,4 +1,7 @@
 using System.Net;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using Fusion.Adapter.Configuration;
 using Fusion.Adapter.Mapping;
 using Fusion.Adapter.Transport;
@@ -54,6 +57,49 @@ public sealed class OpenDataFusionClientTests
         Assert.Equal(DeliveryKind.PermanentFailure, result.Kind);
     }
 
+    [Fact]
+    public async Task FactoryTokenProvider_SignsTheConfiguredServiceIdentity()
+    {
+        const string secret = "test-factory-secret-that-is-at-least-32-bytes";
+        using var httpClient = new HttpClient();
+        using var provider = new ClientCredentialsAccessTokenProvider(httpClient, new OpenDataFusionAuthenticationOptions
+        {
+            Mode = "factory",
+            FactorySecret = secret,
+            FactoryIssuer = "MKZ_PLC_Server",
+            FactoryAudience = "MKZ_PLC_Client",
+            FactorySubject = "service-account-open-data-fusion-connector",
+            FactoryRole = "ENGINEER"
+        });
+
+        var token = await provider.GetAccessTokenAsync(CancellationToken.None);
+        var parts = token.Split('.');
+        Assert.Equal(3, parts.Length);
+        using var payload = JsonDocument.Parse(DecodeBase64Url(parts[1]));
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+        var expectedSignature = EncodeBase64Url(hmac.ComputeHash(Encoding.UTF8.GetBytes($"{parts[0]}.{parts[1]}")));
+
+        Assert.Equal("service-account-open-data-fusion-connector", payload.RootElement.GetProperty("sub").GetString());
+        Assert.Equal("ENGINEER", payload.RootElement.GetProperty("role").GetString());
+        Assert.Equal("MKZ_PLC_Server", payload.RootElement.GetProperty("iss").GetString());
+        Assert.Equal("MKZ_PLC_Client", payload.RootElement.GetProperty("aud").GetString());
+        Assert.Equal(expectedSignature, parts[2]);
+    }
+
+    [Fact]
+    public async Task FactoryTokenProvider_RejectsAWeakSecret()
+    {
+        using var httpClient = new HttpClient();
+        using var provider = new ClientCredentialsAccessTokenProvider(httpClient, new OpenDataFusionAuthenticationOptions
+        {
+            Mode = "factory",
+            FactorySecret = "too-short",
+            FactorySubject = "service-account-open-data-fusion-connector"
+        });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => provider.GetAccessTokenAsync(CancellationToken.None));
+    }
+
     private static OpenDataFusionBundle TestBundle => new(
         new OdfSource("mkz-plc-monitoring", "run-1", "mkz-fusion-adapter"),
         Array.Empty<OdfAsset>(),
@@ -61,6 +107,15 @@ public sealed class OpenDataFusionClientTests
         Array.Empty<OdfDataPoint>(),
         Array.Empty<object>(),
         Array.Empty<object>());
+
+    private static byte[] DecodeBase64Url(string value)
+    {
+        var padded = value.Replace('-', '+').Replace('_', '/').PadRight((value.Length + 3) / 4 * 4, '=');
+        return Convert.FromBase64String(padded);
+    }
+
+    private static string EncodeBase64Url(byte[] value) =>
+        Convert.ToBase64String(value).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
     private sealed class FakeAccessTokenProvider : IAccessTokenProvider
     {

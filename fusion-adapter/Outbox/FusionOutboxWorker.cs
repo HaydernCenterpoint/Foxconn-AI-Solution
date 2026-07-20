@@ -2,6 +2,7 @@ using Fusion.Adapter.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Text;
 
 namespace Fusion.Adapter.Outbox;
 
@@ -72,6 +73,16 @@ public sealed class FusionOutboxWorker : BackgroundService
 
         if (_options.Authentication.Mode.Equals("development", StringComparison.OrdinalIgnoreCase))
             return !string.IsNullOrWhiteSpace(_options.Authentication.DevelopmentUser);
+
+        if (_options.Authentication.Mode.Equals("factory", StringComparison.OrdinalIgnoreCase))
+        {
+            var role = _options.Authentication.FactoryRole.Trim().ToUpperInvariant();
+            return Encoding.UTF8.GetByteCount(_options.Authentication.FactorySecret) >= 32 &&
+                   !string.IsNullOrWhiteSpace(_options.Authentication.FactorySubject) &&
+                   !string.IsNullOrWhiteSpace(_options.Authentication.FactoryIssuer) &&
+                   !string.IsNullOrWhiteSpace(_options.Authentication.FactoryAudience) &&
+                   role is "ADMIN" or "ENGINEER" or "GUEST";
+        }
 
         return !string.IsNullOrWhiteSpace(_options.Authentication.TokenEndpoint) &&
                !string.IsNullOrWhiteSpace(_options.Authentication.ClientId) &&

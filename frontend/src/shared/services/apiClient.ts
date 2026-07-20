@@ -4,6 +4,9 @@ import { useUiStore } from '../store/ui.store';
 import i18n from '../../app/i18n';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const MOCKS_ENABLED =
+  import.meta.env.MODE === 'demo' ||
+  (import.meta.env.DEV && import.meta.env.VITE_ENABLE_API_MOCKS === 'true');
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1000;
@@ -16,13 +19,30 @@ interface RetryableConfig extends InternalAxiosRequestConfig {
 
 export const api = axios.create({
   baseURL: BASE_URL,
+  withCredentials: true,
   timeout: 10_000,
   headers: { 'Content-Type': 'application/json' },
 });
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
   const token = useAuthStore.getState().token;
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  if (MOCKS_ENABLED) {
+    const { getMockDataForUrl } = await import('./apiClient.mock');
+    const mockData = getMockDataForUrl(config.url || '', config.method?.toLowerCase() || 'get');
+
+    if (mockData !== undefined) {
+      config.adapter = async () => ({
+        data: mockData,
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+      });
+    }
+  }
+
   return config;
 });
 
@@ -52,28 +72,10 @@ api.interceptors.response.use(
     const isRetryableStatus = err.response?.status != null && RETRYABLE_STATUSES.has(err.response.status);
     const currentRetry = config?._retryCount ?? 0;
 
-    if (config && (isNetworkError || isTimeout || isRetryableStatus) && currentRetry < MAX_RETRIES) {
+    if (!MOCKS_ENABLED && config && (isNetworkError || isTimeout || isRetryableStatus) && currentRetry < MAX_RETRIES) {
       config._retryCount = currentRetry + 1;
       await delay(RETRY_DELAY_MS * config._retryCount);
       return api(config);
-    }
-
-    if (import.meta.env.DEV && config && (isNetworkError || isTimeout || isRetryableStatus)) {
-      const url = config.url || '';
-      const method = config.method?.toLowerCase() || 'get';
-      const { getMockDataForUrl } = await import('./apiClient.mock');
-      const mockData = getMockDataForUrl(url, method);
-
-      if (mockData !== undefined) {
-        console.warn(`[Axios Simulator Mode] Request to ${url} failed. Returning simulated data...`);
-        return Promise.resolve({
-          data: mockData,
-          status: 200,
-          statusText: 'OK',
-          headers: {},
-          config,
-        });
-      }
     }
 
     if (config && !isSilentUrl(config.url || '')) {

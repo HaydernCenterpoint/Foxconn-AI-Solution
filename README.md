@@ -36,13 +36,34 @@ flowchart LR
 | `frontend/` | Operations UI xây bằng React + Vite. |
 | `backend/` | Backend ASP.NET Core, MQTT và PostgreSQL. |
 | `ClientPLC/` | WPF client kết nối và giám sát thiết bị PLC. |
+| `Odysseus/` | Trợ lý AI và cầu nối đọc dữ liệu nhà máy qua REST/RAG. |
 | `fusion-contracts/` | Shared contracts có version cho sự kiện Fusion. |
 | `fusion-adapter/` | Outbox dispatcher chuyển sự kiện sang ODF. |
 | `third_party/open-data-fusion/` | Git submodule upstream được ghim (pinned) cho Open Data Fusion. |
 
 ## Khởi chạy nhanh
 
+### Demo UI không cần backend
+
+```powershell
+npm --prefix frontend ci
+npm --prefix frontend run demo
+```
+
+Mở `http://127.0.0.1:3000`. Demo mode chỉ phục vụ dữ liệu synthetic cho các request `GET`; thao tác ghi không được giả lập thành công. Luồng trình bày ngắn: Dashboard → Machines → Machine detail → Alarms → Slideshow.
+
+### Chạy full stack
+
 Điều kiện trước khi chạy: .NET 9 SDK, Node.js, PostgreSQL có thể truy cập được đã cấu hình qua connection string của backend và Docker Desktop nếu dùng ODF preview. ClientPLC chạy trên Windows và yêu cầu .NET 9 Windows Desktop SDK.
+
+Trên Windows, sau khi đã chạy `Odysseus/launch-windows.ps1` ít nhất một lần để tạo virtual environment, có thể khởi động và kiểm tra toàn bộ stack demo bằng hai lệnh:
+
+```powershell
+.\infrastructure\demo\Start-FullDemo.ps1
+.\infrastructure\demo\Test-FullDemo.ps1
+```
+
+Launcher mặc định dùng cùng hostname `localhost`: Operations UI `3001`, backend `5166`, Odysseus `7000`, ODF web `58088` và ODF API `54310`. Đăng nhập Operations UI một lần (`admin` / `admin123` ở dữ liệu demo) sẽ mở Odysseus và Data Fusion bằng cùng phiên; `Test-FullDemo.ps1` kiểm tra cả đăng nhập lẫn đăng xuất dùng chung. Truyền tham số port tương ứng nếu môi trường dùng cổng khác; thêm `-WithClientPlc` khi cần mở cả ứng dụng WPF. Log dịch vụ được ghi vào `.runtime-logs/`.
 
 Khởi động end-to-end theo thứ tự an toàn:
 

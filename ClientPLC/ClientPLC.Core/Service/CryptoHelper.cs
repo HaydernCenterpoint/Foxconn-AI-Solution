@@ -7,12 +7,18 @@ namespace PLC.Service;
 
 public static class CryptoHelper
 {
-    // A shared secret key used to derive the 256-bit encryption key.
-    // In production, this can be combined with AppConfig.Current.ServerToken or loaded from environment variables.
-    private static readonly byte[] Key = SHA256.HashData(Encoding.UTF8.GetBytes("PLC_MQTT_SECRET_KEY_2026_!@#"));
+    private static byte[]? _key;
+
+    public static void Initialize(string secretKey)
+    {
+        if (string.IsNullOrWhiteSpace(secretKey) || Encoding.UTF8.GetByteCount(secretKey) < 32)
+            throw new ArgumentException("The MQTT encryption key must be at least 32 bytes.", nameof(secretKey));
+        _key = SHA256.HashData(Encoding.UTF8.GetBytes(secretKey));
+    }
 
     public static string Encrypt(string plainText)
     {
+        var key = GetKey();
         try
         {
             byte[] plainBytes = Encoding.UTF8.GetBytes(plainText);
@@ -21,7 +27,7 @@ public static class CryptoHelper
             byte[] tag = new byte[16]; // AesGcm.TagByteSizes.MaxSize is 16
             byte[] cipherText = new byte[plainBytes.Length];
 
-            using (var aesGcm = new AesGcm(Key, tag.Length))
+            using (var aesGcm = new AesGcm(key, tag.Length))
             {
                 aesGcm.Encrypt(nonce, plainBytes, cipherText, tag);
             }
@@ -48,7 +54,7 @@ public static class CryptoHelper
         {
             if (string.IsNullOrEmpty(envelopeJson)) return envelopeJson;
             string trimmed = envelopeJson.TrimStart();
-            if (!trimmed.StartsWith("{") || !envelopeJson.Contains("cipherText"))
+            if (!trimmed.StartsWith("{") || !envelopeJson.Contains("cipherText", StringComparison.OrdinalIgnoreCase))
             {
                 // Not an encrypted envelope, return as-is
                 return envelopeJson;
@@ -65,7 +71,7 @@ public static class CryptoHelper
             byte[] tag = Convert.FromBase64String(envelope.Tag);
             byte[] plainBytes = new byte[cipherText.Length];
 
-            using (var aesGcm = new AesGcm(Key, tag.Length))
+            using (var aesGcm = new AesGcm(GetKey(), tag.Length))
             {
                 aesGcm.Decrypt(nonce, cipherText, tag, plainBytes);
             }
@@ -78,6 +84,9 @@ public static class CryptoHelper
             return envelopeJson;
         }
     }
+
+    private static byte[] GetKey() =>
+        _key ?? throw new InvalidOperationException("The MQTT encryption key has not been initialized.");
 
     private class EncryptedEnvelope
     {

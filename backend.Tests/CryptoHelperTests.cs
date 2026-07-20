@@ -11,6 +11,7 @@ namespace backend.Tests
         {
             // Arrange
             string originalText = "Hello, PLC Monitoring System!";
+            CryptoHelper.Initialize("backend-test-mqtt-secret-at-least-32-bytes");
 
             // Act
             string encrypted = CryptoHelper.Encrypt(originalText);
@@ -37,8 +38,13 @@ namespace backend.Tests
             Assert.NotEqual(originalText, encrypted);
             Assert.Equal(originalText, decrypted);
 
-            // Reset back to default for other tests
-            CryptoHelper.Initialize("PLC_MQTT_SECRET_KEY_2026_!@#");
+        }
+
+        [Fact]
+        public void Initialize_RejectsMissingOrWeakSecrets()
+        {
+            Assert.Throws<ArgumentException>(() => CryptoHelper.Initialize(""));
+            Assert.Throws<ArgumentException>(() => CryptoHelper.Initialize("too-short"));
         }
     }
 }

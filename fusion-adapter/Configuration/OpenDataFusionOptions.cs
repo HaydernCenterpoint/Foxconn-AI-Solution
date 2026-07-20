@@ -22,6 +22,11 @@ public sealed class OpenDataFusionAuthenticationOptions
 {
     public string Mode { get; init; } = "development";
     public string DevelopmentUser { get; init; } = "local-user";
+    public string FactorySecret { get; init; } = string.Empty;
+    public string FactoryIssuer { get; init; } = "MKZ_PLC_Server";
+    public string FactoryAudience { get; init; } = "MKZ_PLC_Client";
+    public string FactorySubject { get; init; } = "service-account-open-data-fusion-connector";
+    public string FactoryRole { get; init; } = "ENGINEER";
     public string TokenEndpoint { get; init; } = string.Empty;
     public string ClientId { get; init; } = string.Empty;
     public string ClientSecret { get; init; } = string.Empty;

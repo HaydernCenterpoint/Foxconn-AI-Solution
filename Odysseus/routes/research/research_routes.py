@@ -279,14 +279,15 @@ def setup_research_routes(research_handler, session_manager=None) -> APIRouter:
     async def research_status(session_id: str, request: Request):
         user = _require_user(request)
         _validate_session_id(session_id)
-        # Verify session exists and belongs to the user to maintain security boundaries
-        from routes.session_routes import _verify_session_owner
-        try:
-            _verify_session_owner(request, session_id)
-        except HTTPException:
+        entry = research_handler._active_tasks.get(session_id)
+        if entry is not None and entry.get("owner", "") != user:
             raise HTTPException(404, "No research found for this session")
-
         if not _owns_in_memory(session_id, user):
+            from routes.session_routes import _verify_session_owner
+            try:
+                _verify_session_owner(request, session_id)
+            except HTTPException:
+                raise HTTPException(404, "No research found for this session")
             return {"status": "inactive"}
         status = research_handler.get_status(session_id)
         if status is None:

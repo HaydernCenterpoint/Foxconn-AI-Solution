@@ -52,6 +52,10 @@ public static class Program
 
 		AppConfig.Storage = Services.GetRequiredService<LocalDbService>();
 
+		var mqttEncryptionKey = Environment.GetEnvironmentVariable("FII_MQTT_ENCRYPTION_KEY")
+			?? throw new InvalidOperationException("FII_MQTT_ENCRYPTION_KEY is required.");
+		CryptoHelper.Initialize(mqttEncryptionKey);
+
 		AppSettings current = AppSettings.Current;
 
 		PLC.Service.LanguageManager.Initialize();

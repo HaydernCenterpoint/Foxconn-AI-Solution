@@ -1,4 +1,7 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,6 +16,9 @@ import { Button } from '../shared/components/ui/Button';
 import { IconButton } from '../shared/components/ui/IconButton';
 import { Surface } from '../shared/components/ui/Surface';
 import { useAuthStore } from '../shared/store/auth.store';
+import './login-page.css';
+
+gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 interface LoginFormData {
   username: string;
@@ -26,6 +32,7 @@ export default function LoginPage() {
   const [serverError, setServerError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showSupportInfo, setShowSupportInfo] = useState(false);
+  const pageRef = useRef<HTMLElement>(null);
   const usernameId = useId();
   const passwordId = useId();
   const usernameErrorId = useId();
@@ -47,6 +54,7 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
+    setFocus,
     trigger,
     formState: { errors, isSubmitted },
   } = useForm<LoginFormData>({
@@ -58,6 +66,36 @@ export default function LoginPage() {
       void trigger();
     }
   }, [i18n.language, isSubmitted, trigger]);
+
+  useGSAP(() => {
+    const page = pageRef.current;
+    if (!page || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    gsap.timeline({ defaults: { duration: 0.8, ease: 'power3.out' } })
+      .from('.login-stack-card', { opacity: 0, y: 44, stagger: 0.1 })
+      .from('.login-hero__copy', { opacity: 0, y: 28 }, '-=0.48');
+
+    gsap.fromTo('.login-hero__image',
+      { opacity: 0.6, scale: 1.08 },
+      { duration: 1.8, ease: 'power2.out', opacity: 1, scale: 1 },
+    );
+
+    const scroller = page.parentElement?.parentElement;
+    if (scroller instanceof HTMLElement) {
+      gsap.to('.login-hero__image', {
+        ease: 'none',
+        opacity: 0.35,
+        scale: 1.04,
+        scrollTrigger: {
+          trigger: page,
+          scroller,
+          start: 'top top',
+          end: 'bottom top',
+          scrub: 0.7,
+        },
+      });
+    }
+  }, { scope: pageRef });
 
   const mutation = useMutation({
     mutationFn: authApi.login,
@@ -76,129 +114,170 @@ export default function LoginPage() {
 
   const errorMessage = serverError || (sessionMessage ? t(sessionMessage, { defaultValue: sessionMessage }) : '');
   const isBusy = mutation.isPending;
+  const platformModules = [t('navigation.overview'), t('navigation.fiiAssistant'), t('navigation.fiiDataFusion')];
+  const proofLines = [t('common.systemDescription'), t('auth.subtitle'), t('common.systemName')];
 
   return (
-    <AuthScreen showLanguageControl>
-      <main className="w-full max-w-md" aria-labelledby="login-heading">
-        <Surface variant="raised" padding="lg" className="space-y-8 sm:p-8">
-          <header className="text-center">
-            <div className="mx-auto flex h-12 w-fit items-center justify-center rounded-md border border-border bg-on-primary px-3 py-1.5 shadow-sm">
-              <img src={logoUrl} alt={t('common.logoAlt')} className="h-7 w-auto object-contain" />
+    <AuthScreen showLanguageControl fullBleed>
+      <main ref={pageRef} className="login-experience grid grid-flow-dense lg:grid-cols-12" aria-labelledby="login-heading">
+        <section className="login-hero login-stack-card lg:col-span-7">
+          <div className="login-hero__image" aria-hidden="true" />
+          <div className="login-hero__wash" aria-hidden="true" />
+
+          <div className="login-hero__copy">
+            <div className="login-hero__logo-frame">
+              <img src={logoUrl} alt={t('common.logoAlt')} className="login-hero__logo" />
             </div>
-            <h1 id="login-heading" className="mt-6 text-2xl font-semibold tracking-tight text-text-primary">
-              {t('auth.loginHeading')}
+            <h1 id="login-heading" className="login-hero__title max-w-6xl">
+              {t('common.appName')}
             </h1>
-            <p className="mt-2 text-sm text-text-secondary">{t('auth.subtitle')}</p>
-          </header>
+            <p className="login-hero__lede">{t('common.systemDescription')}</p>
 
-          <form
-            className="space-y-5"
-            noValidate
-            aria-busy={isBusy || undefined}
-            onChange={() => {
-              if (serverError) setServerError('');
-            }}
-            onSubmit={handleSubmit((data) => {
-              setServerError('');
-              mutation.mutate({ username: data.username.trim(), password: data.password });
-            })}
-          >
-            <div>
-              <label htmlFor={usernameId} className="mb-2 block text-sm font-semibold text-text-primary">
-                {t('auth.username')}
-              </label>
-              <div className="relative">
-                <UserRound className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} aria-hidden="true" />
-                <input
-                  {...register('username')}
-                  id={usernameId}
-                  type="text"
-                  autoComplete="username"
-                  placeholder={t('auth.usernamePlaceholder')}
-                  disabled={isBusy}
-                  aria-invalid={Boolean(errors.username)}
-                  aria-describedby={errors.username ? usernameErrorId : undefined}
-                  className="field pl-10"
-                />
-              </div>
-              {errors.username && (
-                <p id={usernameErrorId} className="mt-2 text-sm text-error" role="alert">
-                  {errors.username.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor={passwordId} className="mb-2 block text-sm font-semibold text-text-primary">
-                {t('auth.password')}
-              </label>
-              <div className="relative">
-                <KeyRound className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} aria-hidden="true" />
-                <input
-                  {...register('password')}
-                  id={passwordId}
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  placeholder={t('auth.passwordPlaceholder')}
-                  disabled={isBusy}
-                  aria-invalid={Boolean(errors.password)}
-                  aria-describedby={errors.password ? passwordErrorId : undefined}
-                  className="field pl-10 pr-12"
-                />
-                <IconButton
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2"
-                  icon={showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-                  label={showPassword ? t('common.aria.hidePassword') : t('common.aria.showPassword')}
-                  aria-pressed={showPassword}
-                  disabled={isBusy}
-                  onClick={() => setShowPassword((value) => !value)}
-                />
-              </div>
-              {errors.password && (
-                <p id={passwordErrorId} className="mt-2 text-sm text-error" role="alert">
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
-
-            {errorMessage && (
-              <Surface
-                variant="outlined"
-                padding="sm"
-                role="alert"
-                className="flex items-start gap-3 border-error bg-error-container text-error"
+            <div className="login-hero__actions">
+              <Button size="lg" className="login-hero__primary" onClick={() => setFocus('username')}>
+                {t('auth.submit')}
+              </Button>
+              <Button
+                variant="secondary"
+                size="lg"
+                className="login-hero__secondary"
+                onClick={() => setShowSupportInfo(true)}
               >
-                <AlertCircle className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
-                <p className="text-sm text-error">{errorMessage}</p>
-              </Surface>
-            )}
+                {t('auth.forgotPassword')}
+              </Button>
+            </div>
 
-            <Button type="submit" size="lg" className="w-full" loading={isBusy}>
-              {isBusy ? t('auth.submitting') : t('auth.submit')}
-            </Button>
-          </form>
+            <div className="login-accordion" aria-hidden="true">
+              {platformModules.map((module) => (
+                <div className="login-accordion__item" key={module}>
+                  <span className="login-accordion__line" />
+                  <strong>{module}</strong>
+                </div>
+              ))}
+            </div>
 
-          <div className="border-t border-border pt-5">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="px-0"
-              aria-expanded={showSupportInfo}
-              aria-controls={supportInfoId}
-              onClick={() => setShowSupportInfo((value) => !value)}
-            >
-              {t('auth.forgotPassword')}
-            </Button>
-            {showSupportInfo && (
-              <p id={supportInfoId} className="mt-3 text-sm text-text-secondary" role="status">
-                {t('auth.contactAdminInfo')}
-              </p>
-            )}
+            <div className="login-feedback" aria-hidden="true">
+              <div className="login-feedback__track">
+                {proofLines.map((line) => <p key={line}>{line}</p>)}
+              </div>
+            </div>
           </div>
-        </Surface>
+
+          <div className="login-marquee" aria-hidden="true">
+            <div className="login-marquee__track">
+              {[...platformModules, ...platformModules].map((module, index) => (
+                <span key={`${module}-${index}`}>{module}</span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="login-panel login-stack-card lg:col-span-5" aria-labelledby="login-form-heading">
+          <div className="login-panel__inner">
+            <header className="login-panel__header">
+              <p>{t('common.systemName')}</p>
+              <h2 id="login-form-heading">{t('auth.loginHeading')}</h2>
+              <span>{t('auth.subtitle')}</span>
+            </header>
+
+            <form
+              className="login-form"
+              noValidate
+              aria-busy={isBusy || undefined}
+              onChange={() => {
+                if (serverError) setServerError('');
+              }}
+              onSubmit={handleSubmit((data) => {
+                setServerError('');
+                mutation.mutate({ username: data.username.trim(), password: data.password });
+              })}
+            >
+              <div className="login-form__group">
+                <label htmlFor={usernameId}>{t('auth.username')}</label>
+                <div className="login-form__field">
+                  <UserRound size={18} aria-hidden="true" />
+                  <input
+                    {...register('username')}
+                    id={usernameId}
+                    type="text"
+                    autoComplete="username"
+                    placeholder={t('auth.usernamePlaceholder')}
+                    disabled={isBusy}
+                    aria-invalid={Boolean(errors.username)}
+                    aria-describedby={errors.username ? usernameErrorId : undefined}
+                    className="field"
+                  />
+                </div>
+                {errors.username && (
+                  <p id={usernameErrorId} className="login-form__error" role="alert">{errors.username.message}</p>
+                )}
+              </div>
+
+              <div className="login-form__group">
+                <label htmlFor={passwordId}>{t('auth.password')}</label>
+                <div className="login-form__field">
+                  <KeyRound size={18} aria-hidden="true" />
+                  <input
+                    {...register('password')}
+                    id={passwordId}
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    placeholder={t('auth.passwordPlaceholder')}
+                    disabled={isBusy}
+                    aria-invalid={Boolean(errors.password)}
+                    aria-describedby={errors.password ? passwordErrorId : undefined}
+                    className="field"
+                  />
+                  <IconButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="login-form__visibility"
+                    icon={showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                    label={showPassword ? t('common.aria.hidePassword') : t('common.aria.showPassword')}
+                    aria-pressed={showPassword}
+                    disabled={isBusy}
+                    onClick={() => setShowPassword((value) => !value)}
+                  />
+                </div>
+                {errors.password && (
+                  <p id={passwordErrorId} className="login-form__error" role="alert">{errors.password.message}</p>
+                )}
+              </div>
+
+              {errorMessage && (
+                <Surface variant="outlined" padding="sm" role="alert" className="login-form__server-error">
+                  <AlertCircle size={18} aria-hidden="true" />
+                  <p>{errorMessage}</p>
+                </Surface>
+              )}
+
+              <Button type="submit" size="lg" className="login-submit" loading={isBusy}>
+                {isBusy ? t('auth.submitting') : t('auth.submit')}
+              </Button>
+            </form>
+
+            <div className="login-support">
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-expanded={showSupportInfo}
+                aria-controls={supportInfoId}
+                onClick={() => setShowSupportInfo((value) => !value)}
+              >
+                {t('auth.forgotPassword')}
+              </Button>
+              {showSupportInfo && (
+                <p id={supportInfoId} role="status">{t('auth.contactAdminInfo')}</p>
+              )}
+            </div>
+          </div>
+
+          <footer className="login-panel__footer">
+            <span>{t('common.appName')}</span>
+            <span>{t('common.versionLabel')}</span>
+          </footer>
+        </section>
       </main>
     </AuthScreen>
   );

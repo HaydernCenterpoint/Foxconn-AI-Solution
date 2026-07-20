@@ -28,6 +28,7 @@ import { useUiStore } from '../../store/ui.store';
 import { ModernShell } from './ModernShell';
 
 const dashboardApiMock = vi.hoisted(() => ({ getSummary: vi.fn() }));
+const authApiMock = vi.hoisted(() => ({ logout: vi.fn() }));
 
 function setMobileViewport(initialMatches: boolean) {
   let matches = initialMatches;
@@ -61,6 +62,7 @@ function setMobileViewport(initialMatches: boolean) {
 vi.mock('../../../features/dashboard/services/dashboard.api', () => ({
   dashboardApi: dashboardApiMock,
 }));
+vi.mock('../../../features/auth/services/auth.api', () => ({ authApi: authApiMock }));
 
 const summary: DashboardSummary = {
   totalLines: 3,
@@ -106,6 +108,7 @@ describe('ModernShell', () => {
     setMobileViewport(false);
     await i18n.changeLanguage('en');
     dashboardApiMock.getSummary.mockResolvedValue(summary);
+    authApiMock.logout.mockReset().mockResolvedValue(undefined);
     useAuthStore.setState({
       token: null,
       username: null,
@@ -116,7 +119,7 @@ describe('ModernShell', () => {
       hasSeenWelcome: true,
       sessionMessage: null,
     });
-    useUiStore.setState({ notifications: [] });
+    useUiStore.setState({ notifications: [], toasts: [] });
   });
 
   it('shows the live active-alarm count in navigation instead of UI notification count', async () => {
@@ -161,9 +164,26 @@ describe('ModernShell', () => {
     renderViewerShell();
 
     const dataFusionLink = screen.getByRole('link', { name: 'FII Data Fusion' });
-    expect(dataFusionLink).toHaveAttribute('href', 'http://localhost:5173');
+    expect(dataFusionLink).toHaveAttribute('href', 'http://localhost:58088');
     expect(dataFusionLink).toHaveAttribute('target', '_blank');
     expect(dataFusionLink).toHaveAttribute('rel', 'noreferrer');
+  });
+
+  it('clears the shared session before local logout', async () => {
+    useAuthStore.setState({
+      token: 'token',
+      username: 'admin',
+      role: 'ADMIN',
+      isAuthenticated: true,
+    });
+    const user = userEvent.setup();
+    renderViewerShell();
+
+    await user.click(screen.getByRole('button', { name: i18n.t('common.aria.userMenu') }));
+    await user.click(screen.getByRole('button', { name: i18n.t('common.actions.logout') }));
+
+    await waitFor(() => expect(authApiMock.logout).toHaveBeenCalledTimes(1));
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
   });
 
   it('reports the backend as offline when the summary request fails', async () => {

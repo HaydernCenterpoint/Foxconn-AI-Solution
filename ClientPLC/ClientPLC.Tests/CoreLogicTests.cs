@@ -230,6 +230,16 @@ public class CoreLogicTests
         Assert.True(payload.GetProperty("plcConnected").GetBoolean());
         Assert.Equal(100, payload.GetProperty("production").GetProperty("qty").GetInt32());
     }
+
+    [Fact]
+    public void CryptoHelper_RequiresConfiguredSecretAndRoundTrips()
+    {
+        Assert.Throws<ArgumentException>(() => CryptoHelper.Initialize("too-short"));
+        CryptoHelper.Initialize("client-test-mqtt-secret-at-least-32-bytes");
+
+        const string original = "factory telemetry";
+        Assert.Equal(original, CryptoHelper.Decrypt(CryptoHelper.Encrypt(original)));
+    }
 }
 
 public class MockTelemetryRepository : ITelemetryRepository

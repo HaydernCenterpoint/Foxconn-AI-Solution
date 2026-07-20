@@ -15,4 +15,5 @@ export interface LoginResponse {
 export const authApi = {
   login: (data: LoginRequest) =>
     api.post('/auth/login', data).then((r) => normalizeLoginResponse(r.data)),
+  logout: () => api.post('/auth/logout').then(() => undefined),
 };
