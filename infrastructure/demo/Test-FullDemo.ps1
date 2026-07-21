@@ -236,6 +236,10 @@ if ($null -eq $smokeMachine) {
         -ContentType 'application/json' -Body $machineBody -TimeoutSec 10
 }
 $machineId = [string]$smokeMachine.id
+$machineAsset = Invoke-RestMethod -Uri "$backendUrl/api/assets/$machineId" -WebSession $browser -TimeoutSec 10
+if ([string]$machineAsset.id -ne $machineId -or [string]$machineAsset.type -ne 'MACHINE') {
+    throw 'The smoke machine does not have the matching MACHINE asset UUID.'
+}
 if ([string]$smokeMachine.approvalStatus -ne 'APPROVED') {
     Invoke-RestMethod -Method Post -Uri "$backendUrl/api/machines/$machineId/approve" -Headers $authHeaders `
         -WebSession $browser -TimeoutSec 10 | Out-Null
