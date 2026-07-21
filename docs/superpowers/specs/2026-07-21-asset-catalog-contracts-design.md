@@ -1,7 +1,7 @@
 # Thiết kế Asset Catalog và Shared Contracts
 
 **Ngày:** 2026-07-21
-**Trạng thái:** Hướng kiến trúc đã được chấp thuận; chờ review spec trước khi triển khai
+**Trạng thái:** Đã được chấp thuận để triển khai
 **Phạm vi:** Chốt định danh asset dùng chung, thêm catalog asset tương thích với Operations hiện có, seed idempotent, và API CRUD/search tối thiểu.
 
 ## Mục tiêu
