@@ -1,0 +1,505 @@
+.machine-detail {
+  --color-primary: #ef4444;
+  --color-primary-hover: #f56565;
+  --color-primary-light: #3b2025;
+  --color-on-primary: #ffffff;
+  --color-surface: #1d1d1d;
+  --color-surface-dim: #242424;
+  --color-surface-1: #1d1d1d;
+  --color-surface-2: #242424;
+  --color-surface-3: #292929;
+  --color-surface-4: #303030;
+  --color-surface-container-lowest: #1d1d1d;
+  --color-surface-container-low: #202020;
+  --color-surface-container: #242424;
+  --color-surface-container-high: #292929;
+  --color-surface-container-highest: #303030;
+  --color-background: #050505;
+  --color-background-secondary: #121212;
+  --color-on-surface: #f8f8f8;
+  --color-on-surface-variant: #a4a4a4;
+  --color-outline: #3d3d3d;
+  --color-outline-variant: #555555;
+  --color-border: #3d3d3d;
+  --color-border-subtle: #454545;
+  --color-border-strong: #555555;
+  width: 100%;
+  min-width: 0;
+  color: #f8f8f8;
+  font-family: "Be Vietnam Pro", system-ui, sans-serif;
+}
+
+.machine-detail *,
+.machine-detail *::before,
+.machine-detail *::after {
+  box-sizing: border-box;
+}
+
+.machine-detail :is(button, input, select, textarea):focus-visible {
+  outline: 2px solid #ff6567;
+  outline-offset: 2px;
+}
+
+.machine-detail__header {
+  min-height: 5.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin-bottom: 1.15rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #303030;
+}
+
+.machine-detail__identity,
+.machine-detail__status-group,
+.machine-detail__metadata {
+  display: flex;
+  align-items: center;
+}
+
+.machine-detail__identity {
+  min-width: 0;
+  gap: .9rem;
+}
+
+.machine-detail__back-button,
+.machine-detail__primary-button {
+  border: 1px solid #454545;
+  color: #f8f8f8;
+  cursor: pointer;
+  font: inherit;
+  transition: background .18s ease, border-color .18s ease, color .18s ease;
+}
+
+.machine-detail__back-button {
+  width: 2.7rem;
+  height: 2.7rem;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: .8rem;
+  background: #242424;
+}
+
+.machine-detail__back-button:hover {
+  border-color: #ef4444;
+  background: #302020;
+}
+
+.machine-detail__eyebrow,
+.machine-detail__metadata,
+.machine-detail__metadata span,
+.machine-detail__header h1 {
+  margin: 0;
+}
+
+.machine-detail__eyebrow {
+  margin-bottom: .25rem;
+  color: #a4a4a4;
+  font-size: .72rem;
+  font-weight: 600;
+}
+
+.machine-detail__header h1 {
+  overflow: hidden;
+  color: #f8f8f8;
+  font-size: clamp(1.5rem, 2vw, 2.15rem);
+  font-weight: 700;
+  letter-spacing: -.025em;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.machine-detail__metadata {
+  flex-wrap: wrap;
+  gap: .35rem .8rem;
+  margin-top: .45rem;
+  color: #a4a4a4;
+  font-size: .76rem;
+}
+
+.machine-detail__metadata span + span::before {
+  content: "";
+  display: inline-block;
+  width: .2rem;
+  height: .2rem;
+  margin: 0 .8rem .1rem 0;
+  border-radius: 50%;
+  background: #5a5a5a;
+}
+
+.machine-detail__metadata b {
+  color: #e4e4e4;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+}
+
+.machine-detail__status-group {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .5rem;
+}
+
+.machine-detail__status,
+.machine-detail__connection {
+  display: inline-flex;
+  min-height: 2.15rem;
+  align-items: center;
+  padding: 0 .75rem;
+  border: 1px solid #454545;
+  border-radius: .72rem;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+.machine-detail__status--running,
+.machine-detail__connection--online {
+  border-color: #28513f;
+  background: #173229;
+  color: #5ad3a4;
+}
+
+.machine-detail__status--error {
+  border-color: #6b3030;
+  background: #371b22;
+  color: #ff8f9b;
+}
+
+.machine-detail__status--warning {
+  border-color: #61511a;
+  background: #353013;
+  color: #e4c621;
+}
+
+.machine-detail__status--idle {
+  border-color: #4a4a4a;
+  background: #292929;
+  color: #d6e33d;
+}
+
+.machine-detail__status--offline,
+.machine-detail__connection--offline {
+  border-color: #454545;
+  background: #292929;
+  color: #b0b0b0;
+}
+
+.machine-detail__state {
+  min-height: 60vh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 1rem;
+  color: #d8d8d8;
+  font-size: .9rem;
+  font-weight: 600;
+}
+
+.machine-detail__spinner {
+  width: 2.8rem;
+  height: 2.8rem;
+  border: 3px solid #3d3d3d;
+  border-top-color: #ef4444;
+  border-radius: 50%;
+  animation: machine-detail-spin .8s linear infinite;
+}
+
+.machine-detail__not-found {
+  max-width: 40rem;
+  margin: 3rem auto;
+  padding: 1.4rem;
+  border: 1px solid #6b3030;
+  border-radius: 1rem;
+  background: #24191a;
+  color: #ffd7db;
+}
+
+.machine-detail__not-found h3,
+.machine-detail__not-found p {
+  margin: 0;
+}
+
+.machine-detail__not-found h3 {
+  color: #ffb4bc;
+  font-size: 1.1rem;
+}
+
+.machine-detail__not-found p {
+  margin-top: .5rem;
+  color: #d0b9bc;
+  font-size: .86rem;
+}
+
+.machine-detail__primary-button {
+  margin-top: 1rem;
+  padding: .6rem .85rem;
+  border-color: #ef4444;
+  border-radius: .7rem;
+  background: #ef4444;
+  color: #fff;
+  font-size: .82rem;
+  font-weight: 650;
+}
+
+.machine-detail__primary-button:hover {
+  border-color: #f56565;
+  background: #f56565;
+}
+
+.machine-detail-tabs__navigation {
+  min-height: 3.45rem;
+  display: flex;
+  align-items: stretch;
+  gap: .3rem;
+  padding: .3rem;
+  border: 1px solid #3d3d3d !important;
+  border-radius: 1rem !important;
+  background: #1d1d1d !important;
+  overflow-x: auto;
+}
+
+.machine-detail-tabs__tab {
+  min-height: 2.7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: 0 .8rem;
+  border: 0 !important;
+  border-radius: .7rem;
+  background: transparent !important;
+  color: #a4a4a4 !important;
+  cursor: pointer;
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 650;
+  transition: background .18s ease, color .18s ease;
+  white-space: nowrap;
+}
+
+.machine-detail-tabs__tab:hover {
+  background: #292929 !important;
+  color: #f8f8f8 !important;
+}
+
+.machine-detail-tabs__tab.is-active {
+  background: #3b2025 !important;
+  color: #ffd5d8 !important;
+}
+
+.machine-detail-tabs__alarm-icon {
+  color: #ef4444 !important;
+}
+
+.machine-detail-tabs__alarm-count {
+  min-width: 1.2rem;
+  min-height: 1.2rem;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 .25rem;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: .62rem;
+  font-weight: 700;
+}
+
+.machine-detail-tabs [class~="bg-surface-1"],
+.machine-detail-tabs [class~="bg-surface-container-lowest/80"] {
+  background-color: #1d1d1d !important;
+}
+
+.machine-detail-tabs [class*="border-border"] {
+  border-color: #3d3d3d !important;
+}
+
+.machine-detail-tabs [class*="bg-[#07112F]"],
+.machine-detail-tabs [class*="bg-[#0B2142]"] {
+  background-color: #242424 !important;
+}
+
+.machine-detail-tabs [class*="bg-[#0A1129]"] {
+  background-color: #1d1d1d !important;
+}
+
+.machine-detail-tabs [class*="text-[#2F7BFF]"],
+.machine-detail-tabs [class*="text-[#20DFF3]"] {
+  color: #ef4444 !important;
+}
+
+.machine-detail-tabs [class*="text-[#18d7ff]"],
+.machine-detail-tabs [class*="text-[#18D7FF]"] {
+  color: #d6e33d !important;
+}
+
+.machine-detail-tabs [class*="text-[#38f26b]"] {
+  color: #5ad3a4 !important;
+}
+
+.machine-detail-tabs [class*="text-[#ffc547]"] {
+  color: #f5c45c !important;
+}
+
+.machine-detail-tabs [class*="text-[#ff5c6c]"] {
+  color: #ff8f9b !important;
+}
+
+.machine-detail-tabs [class*="bg-[#2F7BFF]"],
+.machine-detail-tabs [class*="bg-[#20DFF3]"] {
+  background-color: #3b2025 !important;
+}
+
+.machine-detail-tabs button[class*="bg-[#2F7BFF]"],
+.machine-detail-tabs button[class*="bg-[#20DFF3]"] {
+  background-color: #ef4444 !important;
+}
+
+.machine-detail-tabs [class*="bg-[#18d7ff]"],
+.machine-detail-tabs [class*="bg-[#18D7FF]"] {
+  background-color: #303318 !important;
+}
+
+.machine-detail-tabs [class*="bg-[#38f26b]"] {
+  background-color: #173229 !important;
+}
+
+.machine-detail-tabs [class*="bg-[#ffc547]"] {
+  background-color: #353013 !important;
+}
+
+.machine-detail-tabs [class*="bg-[#ff5c6c]"] {
+  background-color: #371b22 !important;
+}
+
+.machine-detail-tabs [class*="border-[#2F7BFF]"],
+.machine-detail-tabs [class*="border-[#20DFF3]"],
+.machine-detail-tabs [class*="border-[#18d7ff]"] {
+  border-color: #555555 !important;
+}
+
+.machine-detail-tabs [class*="border-[#38f26b]"] {
+  border-color: #28513f !important;
+}
+
+.machine-detail-tabs [class*="border-[#ffc547]"] {
+  border-color: #61511a !important;
+}
+
+.machine-detail-tabs [class*="border-[#ff5c6c]"] {
+  border-color: #6b3030 !important;
+}
+
+.machine-detail-tabs [class*="border-t-[#2F7BFF]"] {
+  border-top-color: #ef4444 !important;
+}
+
+.machine-detail-tabs [class*="border-t-[#18d7ff]"] {
+  border-top-color: #d6e33d !important;
+}
+
+.machine-detail-tabs [class*="border-t-[#38f26b]"] {
+  border-top-color: #38b785 !important;
+}
+
+.machine-detail-tabs [class*="border-t-[#ffc547]"] {
+  border-top-color: #ffb739 !important;
+}
+
+.machine-detail-tabs [class*="border-t-[#ff5c6c]"] {
+  border-top-color: #ef4444 !important;
+}
+
+.machine-detail-tabs [class*="hover:bg-[#20DFF3]"]:hover,
+.machine-detail-tabs [class*="hover:bg-[#2F7BFF]"]:hover {
+  background-color: #f56565 !important;
+}
+
+.machine-detail-tabs [class*="hover:text-[#050B14]"]:hover {
+  color: #fff !important;
+}
+
+.machine-detail-tabs :is(input, select, textarea) {
+  border-color: #454545 !important;
+  background: #242424 !important;
+  color: #f8f8f8 !important;
+}
+
+.machine-detail-tabs :is(input, select, textarea):focus {
+  border-color: #ef4444 !important;
+}
+
+.machine-detail-tabs table thead tr {
+  background: #242424 !important;
+  color: #dedede !important;
+}
+
+.machine-detail-tabs table tbody tr:hover {
+  background: #252525 !important;
+}
+
+.machine-detail-tabs .animate-pulse {
+  animation: none;
+}
+
+.machine-detail-tabs .recharts-cartesian-grid line {
+  stroke: #343434 !important;
+}
+
+.machine-detail-tabs .recharts-cartesian-axis-tick text,
+.machine-detail-tabs .recharts-text {
+  fill: #b0b0b0 !important;
+}
+
+.machine-detail-tabs .recharts-default-tooltip {
+  border-color: #454545 !important;
+  border-radius: .55rem !important;
+  background: #232323 !important;
+  color: #f8f8f8 !important;
+}
+
+@keyframes machine-detail-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (min-width: 1440px) {
+  .machine-detail__header {
+    min-height: 5.8rem;
+  }
+
+  .machine-detail-tabs__navigation {
+    min-height: 3.8rem;
+  }
+
+  .machine-detail-tabs__tab {
+    min-height: 3rem;
+    padding-inline: 1.05rem;
+    font-size: .84rem;
+  }
+
+  .machine-detail-tabs [class*="p-5"] {
+    padding: 1.15rem !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .machine-detail__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .machine-detail__status-group {
+    justify-content: flex-start;
+  }
+
+  .machine-detail__header h1 {
+    white-space: normal;
+  }
+
+  .machine-detail-tabs__navigation {
+    border-radius: .85rem !important;
+  }
+}
