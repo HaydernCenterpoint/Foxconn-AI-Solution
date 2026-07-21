@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Roadmap 10 tuần cho Factory AI Platform, Operations, Odysseus và Open Data Fusion."
+    />
+    <title>Factory AI Platform — Roadmap</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --page: #07111f;
+        --panel: #0d1b2d;
+        --panel-soft: #10243a;
+        --line: #28415a;
+        --text: #edf5ff;
+        --muted: #a9bbcf;
+        --cyan: #59d8d1;
+        --blue: #70a7ff;
+        --green: #74e39a;
+        --amber: #ffcb67;
+        --red: #ff9292;
+        --shadow: 0 18px 45px rgba(0, 0, 0, 0.22);
+      }
+
+      * { box-sizing: border-box; }
+
+      html { scroll-behavior: smooth; }
+
+      body {
+        margin: 0;
+        color: var(--text);
+        background:
+          radial-gradient(circle at 88% -10%, rgba(89, 216, 209, 0.18), transparent 32rem),
+          radial-gradient(circle at -5% 28%, rgba(112, 167, 255, 0.14), transparent 27rem),
+          var(--page);
+        font: 16px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      a { color: var(--cyan); }
+      a:hover { color: #b6fffb; }
+
+      .shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+
+      .hero {
+        padding: 72px 0 42px;
+        border-bottom: 1px solid rgba(169, 187, 207, 0.2);
+      }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        color: var(--cyan);
+        font-size: 0.77rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      h1, h2, h3, p { margin-top: 0; }
+      h1 { max-width: 820px; margin-bottom: 14px; font-size: clamp(2.25rem, 6vw, 4.6rem); line-height: 1.02; letter-spacing: -0.05em; }
+      h2 { margin-bottom: 10px; font-size: clamp(1.45rem, 3vw, 2rem); letter-spacing: -0.03em; }
+      h3 { margin-bottom: 8px; font-size: 1.05rem; }
+
+      .lead { max-width: 760px; margin-bottom: 0; color: var(--muted); font-size: clamp(1rem, 2vw, 1.2rem); }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 24px;
+      }
+
+      .chip, .status {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        border-radius: 999px;
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .chip { padding: 6px 10px; border: 1px solid var(--line); color: var(--muted); }
+      .status { padding: 4px 8px; }
+      .done { color: #062313; background: var(--green); }
+      .ready { color: #06222a; background: var(--cyan); }
+      .planned { color: #2c2000; background: var(--amber); }
+      .external { color: #351515; background: var(--red); }
+
+      main { padding: 38px 0 60px; }
+      section { margin-top: 52px; }
+      .section-copy { max-width: 780px; color: var(--muted); }
+
+      .snapshot, .lanes, .bottom-grid { display: grid; gap: 16px; }
+      .snapshot { grid-template-columns: repeat(3, 1fr); }
+      .lanes { grid-template-columns: repeat(2, 1fr); }
+      .bottom-grid { grid-template-columns: 1fr 1fr; }
+
+      .card, .milestone, .gate-wrap {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: linear-gradient(140deg, rgba(16, 36, 58, 0.96), rgba(13, 27, 45, 0.98));
+        box-shadow: var(--shadow);
+      }
+
+      .card { padding: 20px; }
+      .card p { margin-bottom: 0; color: var(--muted); }
+      .metric { display: flex; align-items: start; justify-content: space-between; gap: 14px; }
+      .metric strong { display: block; margin-bottom: 4px; }
+
+      .timeline {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(150px, 1fr));
+        gap: 12px;
+        padding: 0;
+        margin: 20px 0 0;
+        list-style: none;
+        overflow-x: auto;
+      }
+
+      .milestone { min-height: 235px; padding: 18px; position: relative; }
+      .milestone::before {
+        position: absolute;
+        top: 0;
+        left: 18px;
+        width: 46px;
+        height: 3px;
+        border-radius: 99px;
+        background: var(--cyan);
+        content: "";
+      }
+      .milestone:nth-child(3n + 2)::before { background: var(--blue); }
+      .milestone:nth-child(3n)::before { background: var(--amber); }
+      .week { display: block; margin: 8px 0 20px; color: var(--cyan); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.08em; }
+      .milestone p { color: var(--muted); font-size: 0.91rem; }
+
+      .lane { position: relative; overflow: hidden; }
+      .lane::before { position: absolute; inset: 0 auto 0 0; width: 5px; background: var(--cyan); content: ""; }
+      .lane:nth-child(2)::before { background: var(--blue); }
+      .lane:nth-child(3)::before { background: var(--amber); }
+      .lane:nth-child(4)::before { background: var(--green); }
+      .lane ul, .actions { margin: 14px 0 0; padding-left: 20px; color: var(--muted); }
+      .lane li + li, .actions li + li { margin-top: 7px; }
+      .lane .owner { margin: 0; color: var(--cyan); font-size: 0.8rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; }
+
+      .gate-wrap { overflow: hidden; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 14px 16px; border-bottom: 1px solid rgba(169, 187, 207, 0.16); text-align: left; vertical-align: top; }
+      th { color: var(--muted); font-size: 0.76rem; letter-spacing: 0.08em; text-transform: uppercase; }
+      tr:last-child td { border-bottom: 0; }
+      td:first-child { font-weight: 800; }
+
+      .risk { border-left: 4px solid var(--red); }
+      .next { border-left: 4px solid var(--cyan); }
+      .small { color: var(--muted); font-size: 0.88rem; }
+      footer { padding: 26px 0 44px; border-top: 1px solid rgba(169, 187, 207, 0.2); color: var(--muted); font-size: 0.88rem; }
+      footer p { margin: 0; }
+
+      @media (max-width: 820px) {
+        .snapshot, .lanes, .bottom-grid { grid-template-columns: 1fr; }
+        .timeline { grid-template-columns: repeat(6, minmax(220px, 1fr)); }
+        .gate-wrap { overflow-x: auto; }
+        table { min-width: 700px; }
+      }
+
+      @media (max-width: 560px) {
+        .shell { width: min(100% - 24px, 1180px); }
+        .hero { padding-top: 48px; }
+        .card, .milestone { padding: 16px; }
+        th, td { padding: 12px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="shell">
+        <p class="eyebrow">Factory AI Platform · Delivery Roadmap</p>
+        <h1>Một lộ trình chung cho Operations, AI và Open Data Fusion.</h1>
+        <p class="lead">
+          Kế hoạch 10 tuần ưu tiên các hợp đồng dùng chung, tích hợp end-to-end và các gate vận hành có bằng chứng.
+          Đây là baseline lập kế hoạch; production chỉ được chốt sau khi các điều kiện managed-staging được xác minh độc lập.
+        </p>
+        <div class="meta" aria-label="Thông tin roadmap">
+          <span class="chip">Cập nhật 21.07.2026</span>
+          <span class="chip">Horizon: 10 tuần</span>
+          <span class="chip">4 luồng song song</span>
+          <span class="chip">Nguồn: tài liệu trong repo</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section aria-labelledby="snapshot-title">
+        <h2 id="snapshot-title">Điểm xuất phát</h2>
+        <p class="section-copy">Mỗi trạng thái tách rõ phần đã giao, phần sẵn sàng triển khai và phần phụ thuộc môi trường bên ngoài.</p>
+        <div class="snapshot">
+          <article class="card metric">
+            <div>
+              <strong>Operations foundation</strong>
+              <p>Frontend React, ASP.NET Core, telemetry MQTT và ranh giới transactional outbox đã là nền tảng hiện hữu.</p>
+            </div>
+            <span class="status ready">Sẵn sàng</span>
+          </article>
+          <article class="card metric">
+            <div>
+              <strong>ODF Gate 2</strong>
+              <p>Production-like rehearsal cùng cấu hình rollback đã hoàn tất trên nhánh tích hợp; bước kế tiếp là review/merge.</p>
+            </div>
+            <span class="status done">Hoàn tất</span>
+          </article>
+          <article class="card metric">
+            <div>
+              <strong>Production pilot</strong>
+              <p>Ingress, TLS/mTLS, secret manager, retention và connector thực cần được xác minh trên managed staging.</p>
+            </div>
+            <span class="status external">Phụ thuộc staging</span>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="timeline-title">
+        <h2 id="timeline-title">Timeline delivery</h2>
+        <p class="section-copy">Các luồng làm việc chạy song song, nhưng chỉ đi qua checkpoint khi contract và bằng chứng kiểm thử đạt yêu cầu.</p>
+        <ol class="timeline">
+          <li class="milestone">
+            <span class="week">NOW · GATE 2</span>
+            <h3>Review &amp; merge</h3>
+            <p>Review các rehearsal ODF, lưu evidence và chốt owner cho rollout/rollback.</p>
+            <span class="status done">Hoàn tất</span>
+          </li>
+          <li class="milestone">
+            <span class="week">TUẦN 1–2</span>
+            <h3>Shared contracts</h3>
+            <p>Chốt asset ID, telemetry/event schema, API convention và baseline mock data.</p>
+            <span class="status ready">Bắt đầu</span>
+          </li>
+          <li class="milestone">
+            <span class="week">TUẦN 3–4</span>
+            <h3>Data &amp; asset plane</h3>
+            <p>Timescale migration, Asset CRUD, CEP staging và Asset Browser dùng API thật.</p>
+            <span class="status planned">Kế hoạch</span>
+          </li>
+          <li class="milestone">
+            <span class="week">TUẦN 5–6</span>
+            <h3>Product intelligence</h3>
+            <p>Connectors, predictive alerting, health score, dashboard và drill-down.</p>
+            <span class="status planned">Kế hoạch</span>
+          </li>
+          <li class="milestone">
+            <span class="week">TUẦN 7–8</span>
+            <h3>Hardening &amp; E2E</h3>
+            <p>RCA, access control, performance/security testing, full-stack integration và staging rehearsal.</p>
+            <span class="status planned">Kế hoạch</span>
+          </li>
+          <li class="milestone">
+            <span class="week">TUẦN 9–10</span>
+            <h3>Go-live decision</h3>
+            <p>Regression, security sign-off, managed-staging acceptance và quyết định rollout có rollback owner.</p>
+            <span class="status external">Cần phê duyệt</span>
+          </li>
+        </ol>
+      </section>
+
+      <section aria-labelledby="lanes-title">
+        <h2 id="lanes-title">Bốn luồng thực thi</h2>
+        <p class="section-copy">Các deliverable được chia theo layer để không chờ nhau ngoài những contract bắt buộc.</p>
+        <div class="lanes">
+          <article class="card lane">
+            <p class="owner">A · Data platform</p>
+            <h3>Telemetry &amp; integration</h3>
+            <ul>
+              <li>TimescaleDB schema, migration, benchmark và rollback plan.</li>
+              <li>Connector ERP/file/MES với retry, dead-letter và dashboard trạng thái.</li>
+              <li>Giao telemetry schema thật ở checkpoint tuần 2.</li>
+            </ul>
+          </article>
+          <article class="card lane">
+            <p class="owner">B · Event &amp; AI</p>
+            <h3>CEP, prediction &amp; RCA</h3>
+            <ul>
+              <li>Chốt kiến trúc CEP và event schema trong sprint đầu.</li>
+              <li>Migrate alarm rules, đo event-to-alert latency và xây inference service.</li>
+              <li>Trả API alert/RCA để UI tích hợp ở tuần 5–6.</li>
+            </ul>
+          </article>
+          <article class="card lane">
+            <p class="owner">C · Core backend</p>
+            <h3>Asset modeling &amp; security</h3>
+            <ul>
+              <li>Giao asset schema và <code>asset_id</code> trong ngày 1–3.</li>
+              <li>Asset CRUD, liên kết tài liệu, search và health score.</li>
+              <li>RBAC, rate limit, validation và RFC 7807 trước staging.</li>
+            </ul>
+          </article>
+          <article class="card lane">
+            <p class="owner">D · Frontend &amp; QA</p>
+            <h3>Product surface &amp; evidence</h3>
+            <ul>
+              <li>UI shell/mock, Asset Browser, dashboard và biểu đồ vận hành.</li>
+              <li>Thay mock bằng API thật tại checkpoint tuần 5.</li>
+              <li>E2E, performance, security audit và hỗ trợ go-live.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="gates-title">
+        <h2 id="gates-title">Gate &amp; tiêu chí ra quyết định</h2>
+        <div class="gate-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Gate</th>
+                <th scope="col">Khi nào</th>
+                <th scope="col">Bằng chứng cần có</th>
+                <th scope="col">Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Shared contracts</td>
+                <td>Ngày 1</td>
+                <td>Schema asset, telemetry, event và API convention được versioned.</td>
+                <td><span class="status ready">Bắt đầu</span></td>
+              </tr>
+              <tr>
+                <td>ODF Gate 2</td>
+                <td>Hiện tại</td>
+                <td>Production-like rehearsal, cấu hình production/rollback và review artifact trên nhánh tích hợp.</td>
+                <td><span class="status done">Hoàn tất</span></td>
+              </tr>
+              <tr>
+                <td>Integration W8</td>
+                <td>Tuần 8</td>
+                <td>Luồng PLC mock → data → event/AI → backend → UI chạy end-to-end, có báo cáo test.</td>
+                <td><span class="status planned">Kế hoạch</span></td>
+              </tr>
+              <tr>
+                <td>Production pilot</td>
+                <td>Tuần 9–10</td>
+                <td>Managed backup/restore, ingress, TLS/mTLS, secret delivery, retention và connector thực được reviewer độc lập xác nhận.</td>
+                <td><span class="status external">Managed staging</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="checkpoints-title">
+        <h2 id="checkpoints-title">Checkpoint baseline <span class="status done">Đã chốt</span></h2>
+        <p class="section-copy">T0 là ngày kickoff. Lịch tương đối này là đầu ra đã hoàn tất; calendar invite và tên người phụ trách được bổ sung trong change-control.</p>
+        <div class="gate-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Checkpoint</th>
+                <th scope="col">Thời điểm</th>
+                <th scope="col">Owner</th>
+                <th scope="col">Đầu ra bắt buộc</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>W2 · Contracts</td>
+                <td>T0 + 2 tuần</td>
+                <td>Data Platform + Core Backend</td>
+                <td>Asset, telemetry, event schema và API convention được versioned.</td>
+              </tr>
+              <tr>
+                <td>W5 · API integration</td>
+                <td>T0 + 5 tuần</td>
+                <td>Event/AI + Core Backend + Frontend/QA</td>
+                <td>Asset CRUD và event/alert API sẵn sàng để UI thay mock.</td>
+              </tr>
+              <tr>
+                <td>W8 · E2E rehearsal</td>
+                <td>T0 + 8 tuần</td>
+                <td>All workstreams</td>
+                <td>PLC mock → data → event/AI → backend → UI, kèm evidence hiệu năng và bảo mật.</td>
+              </tr>
+              <tr>
+                <td>W10 · Pilot decision</td>
+                <td>T0 + 10 tuần</td>
+                <td>Deployment Owner + Independent Reviewer</td>
+                <td>Managed-staging evidence, go/no-go có chữ ký và rollback owner.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="bottom-grid" aria-label="Owner và rủi ro">
+        <article class="card next">
+          <h2>Owner Production Pilot</h2>
+          <p class="small"><strong>Accountable:</strong> Deployment Owner / Platform Operations Lead.</p>
+          <ul class="actions">
+            <li><strong>Operator:</strong> chạy pilot manifest và quản lý managed staging.</li>
+            <li><strong>Independent reviewer:</strong> xác nhận evidence; không được là operator.</li>
+            <li><strong>Security owner:</strong> phê duyệt ingress, TLS/mTLS, secret-manager và rotation.</li>
+            <li><strong>Data/source owner:</strong> phê duyệt retention, phạm vi connector và nguồn dữ liệu.</li>
+          </ul>
+          <p class="small"><strong>Go:</strong> đủ 16 managed checks, attestation độc lập, TLS/mTLS hoạt động, secrets không xuất hiện trong Git/logs và evidence được retention tối thiểu 90 ngày.</p>
+          <p class="small"><strong>No-go:</strong> bất kỳ check nào fail/thiếu, role bị chồng lấn, secret lộ, hoặc không chứng minh được rollback về deployment và secret version đã duyệt.</p>
+        </article>
+        <article class="card risk">
+          <h2>Rủi ro cần theo dõi</h2>
+          <ul class="actions">
+            <li>Chậm asset schema sẽ chặn mock/API của cả ba luồng còn lại.</li>
+            <li>Data cutover phải có dual-write, validation query và rollback đã kiểm thử.</li>
+            <li>Quyết định CEP muộn có thể làm đổi event contract và trì hoãn UI.</li>
+            <li>Không được suy diễn production readiness từ CI hoặc local rehearsal; staging là gate riêng.</li>
+          </ul>
+        </article>
+      </section>
+    </main>
+
+    <footer>
+      <div class="shell">
+        <p>
+          Baseline tham chiếu: <a href="master-plan-4-agents.md">master plan 4 luồng</a>,
+          <a href="../README.md">project overview</a> và
+          <a href="../Open-Data-Fusion/README.md#roadmap-and-product-boundaries">ODF product gates</a>.
+          Cập nhật owner, ngày thực tế và liên kết evidence trước mỗi checkpoint.
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>
