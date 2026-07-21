@@ -131,6 +131,244 @@ namespace backend.Services
                         PRIMARY KEY (line_id, machine_id)
                     );");
 
+                // Asset catalog mirrors legacy operational identifiers without replacing them.
+                ExecuteSync(conn, $@"
+                    CREATE TABLE IF NOT EXISTS assets (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        type VARCHAR(32) NOT NULL CHECK (type IN ('plant', 'area', 'line', 'machine', 'sensor')),
+                        name VARCHAR(255) NOT NULL,
+                        code VARCHAR(255) NOT NULL UNIQUE,
+                        parent_id UUID REFERENCES assets(id) ON DELETE SET NULL,
+                        metadata JSONB NOT NULL DEFAULT '{{}}'::jsonb,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE TABLE IF NOT EXISTS asset_relationships (
+                        parent_asset_id UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+                        child_asset_id UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+                        asset_id UUID REFERENCES assets(id) ON DELETE CASCADE,
+                        related_asset_id UUID REFERENCES assets(id) ON DELETE CASCADE,
+                        relationship_type VARCHAR(32) NOT NULL DEFAULT 'CONTAINS',
+                        PRIMARY KEY (parent_asset_id, child_asset_id, relationship_type),
+                        CHECK (parent_asset_id <> child_asset_id)
+                    );");
+
+                ExecuteSync(conn, $@"
+                    DO $$
+                    BEGIN
+                        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'asset_type') THEN
+                            EXECUTE 'ALTER TYPE asset_type ADD VALUE IF NOT EXISTS ''area''';
+                        END IF;
+                    END;
+                    $$;
+                    ALTER TABLE assets ADD COLUMN IF NOT EXISTS code VARCHAR(255);
+                    WITH root_plant AS (
+                        SELECT id
+                        FROM assets
+                        WHERE type::text = 'plant'
+                        ORDER BY created_at, id
+                        LIMIT 1
+                    )
+                    UPDATE assets asset
+                    SET code = CASE asset.type::text
+                        WHEN 'plant' THEN CASE WHEN asset.id = (SELECT id FROM root_plant)
+                            THEN '{AssetCatalogContract.PlantCode}' ELSE 'plant:' || asset.id::text END
+                        WHEN 'line' THEN 'line:' || asset.id::text
+                        WHEN 'machine' THEN 'machine:' || asset.id::text
+                        WHEN 'sensor' THEN 'sensor:' || asset.id::text
+                        WHEN 'station' THEN 'station:' || asset.id::text
+                        WHEN 'plc_tag' THEN 'plc-tag:' || asset.id::text
+                        ELSE 'asset:' || asset.id::text
+                    END
+                    WHERE asset.code IS NULL OR btrim(asset.code) = '';
+                    ALTER TABLE assets ALTER COLUMN code SET NOT NULL;
+                    CREATE UNIQUE INDEX IF NOT EXISTS assets_code_key ON assets(code);
+                ");
+
+                ExecuteSync(conn, @"
+                    ALTER TABLE asset_relationships ADD COLUMN IF NOT EXISTS parent_asset_id UUID;
+                    ALTER TABLE asset_relationships ADD COLUMN IF NOT EXISTS child_asset_id UUID;
+                    ALTER TABLE asset_relationships ADD COLUMN IF NOT EXISTS asset_id UUID;
+                    ALTER TABLE asset_relationships ADD COLUMN IF NOT EXISTS related_asset_id UUID;
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public'
+                              AND table_name = 'asset_relationships'
+                              AND column_name = 'asset_id'
+                        ) THEN
+                            EXECUTE 'UPDATE asset_relationships
+                                     SET parent_asset_id = asset_id,
+                                         child_asset_id = related_asset_id
+                                     WHERE parent_asset_id IS NULL OR child_asset_id IS NULL';
+                        END IF;
+                    END;
+                    $$;
+                    UPDATE asset_relationships
+                    SET asset_id = parent_asset_id,
+                        related_asset_id = child_asset_id
+                    WHERE asset_id IS NULL OR related_asset_id IS NULL;
+                    ALTER TABLE asset_relationships ALTER COLUMN parent_asset_id SET NOT NULL;
+                    ALTER TABLE asset_relationships ALTER COLUMN child_asset_id SET NOT NULL;
+                    DO $$
+                    BEGIN
+                        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'asset_relationships_parent_asset_id_fkey') THEN
+                            ALTER TABLE asset_relationships
+                                ADD CONSTRAINT asset_relationships_parent_asset_id_fkey
+                                FOREIGN KEY (parent_asset_id) REFERENCES assets(id) ON DELETE CASCADE;
+                        END IF;
+                        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'asset_relationships_child_asset_id_fkey') THEN
+                            ALTER TABLE asset_relationships
+                                ADD CONSTRAINT asset_relationships_child_asset_id_fkey
+                                FOREIGN KEY (child_asset_id) REFERENCES assets(id) ON DELETE CASCADE;
+                        END IF;
+                        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'asset_relationships_parent_child_not_same') THEN
+                            ALTER TABLE asset_relationships
+                                ADD CONSTRAINT asset_relationships_parent_child_not_same
+                                CHECK (parent_asset_id <> child_asset_id);
+                        END IF;
+                    END;
+                    $$;
+                    CREATE UNIQUE INDEX IF NOT EXISTS asset_relationships_parent_child_type_key
+                        ON asset_relationships(parent_asset_id, child_asset_id, relationship_type);
+                ");
+
+                ExecuteSync(conn, $@"
+                    INSERT INTO assets (id, type, name, code)
+                    VALUES (gen_random_uuid(), 'plant', 'MKZ Factory', '{AssetCatalogContract.PlantCode}')
+                    ON CONFLICT (code) DO NOTHING;
+                    INSERT INTO assets (id, type, name, code, parent_id, metadata)
+                    SELECT pl.id, 'line', pl.name, 'line:' || pl.id::text, plant.id,
+                           jsonb_strip_nulls(jsonb_build_object('description', pl.description))
+                    FROM production_lines pl
+                    CROSS JOIN LATERAL (
+                        SELECT id FROM assets WHERE code = '{AssetCatalogContract.PlantCode}'
+                    ) plant
+                    ON CONFLICT (id) DO UPDATE SET
+                        type = EXCLUDED.type,
+                        name = EXCLUDED.name,
+                        code = EXCLUDED.code,
+                        parent_id = EXCLUDED.parent_id,
+                        metadata = EXCLUDED.metadata,
+                        updated_at = CURRENT_TIMESTAMP;
+                    INSERT INTO assets (id, type, name, code, parent_id, metadata)
+                    SELECT m.id, 'machine', m.name, 'machine:' || m.id::text,
+                           COALESCE(
+                               (SELECT line_id FROM line_machines WHERE machine_id = m.id ORDER BY line_id LIMIT 1),
+                               plant.id),
+                           jsonb_strip_nulls(jsonb_build_object('machineCode', m.machine_code, 'clientId', m.client_id))
+                    FROM machines m
+                    CROSS JOIN LATERAL (
+                        SELECT id FROM assets WHERE code = '{AssetCatalogContract.PlantCode}'
+                    ) plant
+                    ON CONFLICT (id) DO UPDATE SET
+                        type = EXCLUDED.type,
+                        name = EXCLUDED.name,
+                        code = EXCLUDED.code,
+                        parent_id = EXCLUDED.parent_id,
+                        metadata = EXCLUDED.metadata,
+                        updated_at = CURRENT_TIMESTAMP;
+                    INSERT INTO asset_relationships (parent_asset_id, child_asset_id, asset_id, related_asset_id, relationship_type)
+                    SELECT plant.id, line.id, plant.id, line.id, 'CONTAINS'
+                    FROM assets plant CROSS JOIN production_lines line
+                    WHERE plant.code = '{AssetCatalogContract.PlantCode}'
+                    ON CONFLICT DO NOTHING;
+                    INSERT INTO asset_relationships (parent_asset_id, child_asset_id, asset_id, related_asset_id, relationship_type)
+                    SELECT line_id, machine_id, line_id, machine_id, 'CONTAINS' FROM line_machines
+                    ON CONFLICT DO NOTHING;
+                ");
+
+                ExecuteSync(conn, $@"
+                    CREATE OR REPLACE FUNCTION sync_line_asset() RETURNS trigger AS $$
+                    DECLARE plant_id UUID;
+                    BEGIN
+                        IF TG_OP = 'DELETE' THEN
+                            DELETE FROM assets WHERE id = OLD.id;
+                            RETURN OLD;
+                        END IF;
+
+                        SELECT id INTO plant_id FROM assets WHERE code = '{AssetCatalogContract.PlantCode}';
+                        INSERT INTO assets (id, type, name, code, parent_id, metadata)
+                        VALUES (NEW.id, 'line', NEW.name, 'line:' || NEW.id::text, plant_id,
+                                jsonb_strip_nulls(jsonb_build_object('description', NEW.description)))
+                        ON CONFLICT (id) DO UPDATE SET
+                            type = EXCLUDED.type,
+                            name = EXCLUDED.name,
+                            code = EXCLUDED.code,
+                            parent_id = EXCLUDED.parent_id,
+                            metadata = EXCLUDED.metadata,
+                            updated_at = CURRENT_TIMESTAMP;
+
+                        IF plant_id IS NOT NULL THEN
+                            INSERT INTO asset_relationships (parent_asset_id, child_asset_id, asset_id, related_asset_id, relationship_type)
+                            VALUES (plant_id, NEW.id, plant_id, NEW.id, 'CONTAINS') ON CONFLICT DO NOTHING;
+                        END IF;
+                        RETURN NEW;
+                    END;
+                    $$ LANGUAGE plpgsql;
+
+                    CREATE OR REPLACE FUNCTION sync_machine_asset() RETURNS trigger AS $$
+                    DECLARE parent_id UUID;
+                    BEGIN
+                        IF TG_OP = 'DELETE' THEN
+                            DELETE FROM assets WHERE id = OLD.id;
+                            RETURN OLD;
+                        END IF;
+
+                        SELECT line_id INTO parent_id
+                        FROM line_machines
+                        WHERE machine_id = NEW.id
+                        ORDER BY line_id
+                        LIMIT 1;
+                        IF parent_id IS NULL THEN
+                            SELECT id INTO parent_id FROM assets WHERE code = '{AssetCatalogContract.PlantCode}';
+                        END IF;
+
+                        INSERT INTO assets (id, type, name, code, parent_id, metadata)
+                        VALUES (NEW.id, 'machine', NEW.name, 'machine:' || NEW.id::text, parent_id,
+                                jsonb_strip_nulls(jsonb_build_object('machineCode', NEW.machine_code, 'clientId', NEW.client_id)))
+                        ON CONFLICT (id) DO UPDATE SET
+                            type = EXCLUDED.type,
+                            name = EXCLUDED.name,
+                            code = EXCLUDED.code,
+                            parent_id = EXCLUDED.parent_id,
+                            metadata = EXCLUDED.metadata,
+                            updated_at = CURRENT_TIMESTAMP;
+                        RETURN NEW;
+                    END;
+                    $$ LANGUAGE plpgsql;
+
+                    CREATE OR REPLACE FUNCTION sync_line_machine_asset_relationship() RETURNS trigger AS $$
+                    BEGIN
+                        IF TG_OP = 'DELETE' THEN
+                            DELETE FROM asset_relationships
+                            WHERE parent_asset_id = OLD.line_id
+                              AND child_asset_id = OLD.machine_id
+                              AND relationship_type = 'CONTAINS';
+                            RETURN OLD;
+                        END IF;
+
+                        INSERT INTO asset_relationships (parent_asset_id, child_asset_id, asset_id, related_asset_id, relationship_type)
+                        VALUES (NEW.line_id, NEW.machine_id, NEW.line_id, NEW.machine_id, 'CONTAINS') ON CONFLICT DO NOTHING;
+                        RETURN NEW;
+                    END;
+                    $$ LANGUAGE plpgsql;
+
+                    DROP TRIGGER IF EXISTS production_lines_asset_sync ON production_lines;
+                    CREATE TRIGGER production_lines_asset_sync
+                    AFTER INSERT OR UPDATE OR DELETE ON production_lines
+                    FOR EACH ROW EXECUTE FUNCTION sync_line_asset();
+                    DROP TRIGGER IF EXISTS machines_asset_sync ON machines;
+                    CREATE TRIGGER machines_asset_sync
+                    AFTER INSERT OR UPDATE OR DELETE ON machines
+                    FOR EACH ROW EXECUTE FUNCTION sync_machine_asset();
+                    DROP TRIGGER IF EXISTS line_machines_asset_sync ON line_machines;
+                    CREATE TRIGGER line_machines_asset_sync
+                    AFTER INSERT OR DELETE ON line_machines
+                    FOR EACH ROW EXECUTE FUNCTION sync_line_machine_asset_relationship();
+                ");
+
                 // ─── 4. machine_hourly_production ───────────────────────────────────────
                 ExecuteSync(conn, @"
                     CREATE TABLE IF NOT EXISTS machine_hourly_production (
