@@ -240,6 +240,29 @@ $machineAsset = Invoke-RestMethod -Uri "$backendUrl/api/assets/$machineId" -WebS
 if ([string]$machineAsset.id -ne $machineId -or [string]$machineAsset.type -ne 'MACHINE') {
     throw 'The smoke machine does not have the matching MACHINE asset UUID.'
 }
+
+$machineAssetSearch = Invoke-RestMethod -Uri "$backendUrl/api/assets?q=FII-SMOKE-01&type=MACHINE" -WebSession $browser -TimeoutSec 10
+if (@($machineAssetSearch | Where-Object { [string]$_.id -eq $machineId }).Count -ne 1) {
+    throw 'Asset search did not return the smoke machine.'
+}
+
+$sensor = $null
+$sensorCode = "fii-demo-sensor-$PID"
+$sensor = Invoke-RestMethod -Method Post -Uri "$backendUrl/api/assets" -Headers $authHeaders -ContentType 'application/json' -Body (@{
+    name = 'FII Demo Sensor'; type = 'SENSOR'; code = $sensorCode; metadata = @{ vendor = 'demo'; unit = 'celsius' }
+} | ConvertTo-Json -Depth 4 -Compress) -TimeoutSec 10
+try {
+    $found = Invoke-RestMethod -Uri "$backendUrl/api/assets?q=$([uri]::EscapeDataString($sensorCode))&type=SENSOR" -WebSession $browser -TimeoutSec 10
+    if (@($found | Where-Object { [string]$_.id -eq [string]$sensor.id }).Count -ne 1) { throw 'Created sensor was not searchable.' }
+    $updated = Invoke-RestMethod -Method Put -Uri "$backendUrl/api/assets/$($sensor.id)" -Headers $authHeaders -ContentType 'application/json' -Body (@{
+        name = 'FII Demo Sensor Updated'; code = $sensorCode; metadata = @{ vendor = 'demo'; unit = 'celsius'; calibrated = $true }
+    } | ConvertTo-Json -Depth 4 -Compress) -TimeoutSec 10
+    if ([string]$updated.name -ne 'FII Demo Sensor Updated') { throw 'Asset update did not persist.' }
+}
+finally {
+    if ($null -ne $sensor) { Invoke-RestMethod -Method Delete -Uri "$backendUrl/api/assets/$($sensor.id)" -Headers $authHeaders -TimeoutSec 10 | Out-Null }
+}
+
 if ([string]$smokeMachine.approvalStatus -ne 'APPROVED') {
     Invoke-RestMethod -Method Post -Uri "$backendUrl/api/machines/$machineId/approve" -Headers $authHeaders `
         -WebSession $browser -TimeoutSec 10 | Out-Null

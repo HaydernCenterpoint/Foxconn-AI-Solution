@@ -24,10 +24,10 @@ ngay từ ngày 1, giảm phụ thuộc chờ nhau xuống mức tối thiểu.
 ```
 
 **Shared Contracts** (chốt trong buổi kick-off, KHÔNG đổi giữa chừng):
-1. `asset_id`: UUID, do Agent C định nghĩa schema, các agent khác dùng ngay (mock trước, tích hợp sau)
-2. `telemetry` schema: `(time, asset_id, metric, value)` — Agent A định nghĩa, B/C/D dùng chung
-3. `event` schema (Avro/JSON): `(event_id, timestamp, asset_id, type, severity, payload)` — Agent B định nghĩa
-4. API convention: REST, `/api/v1/...`, JWT Bearer, lỗi theo RFC 7807 (problem+json)
+1. `asset_id`: UUID — **đã chốt** (`fusion-contracts/AssetCatalogContract.cs`): MACHINE/LINE id = ops UUID; root plant code `MKZ-PLANT`; catalog-owned: PLANT/AREA/SENSOR
+2. `telemetry` schema: `(time, asset_id, metric, value)` — `asset_id` = `Machine.Id` (chưa đổi bảng telemetry trong slice này)
+3. `event` schema (Avro/JSON): `(event_id, timestamp, asset_id, type, severity, payload)` — Agent B định nghĩa (chưa freeze production CEP)
+4. API convention: REST, `/api/assets` (v1 catalog), JWT Bearer cho write; list/get AllowAnonymous
 
 ---
 
@@ -134,17 +134,19 @@ Checkpoint:  ▲Kickoff        ▲Sync W2        ▲Sync W5        ▲Integratio
 **Nguồn gốc:** Phase 3 trong roadmap gốc + phần API nền tảng
 
 ### Sprint C1 (Tuần 1-2): Asset Schema (ưu tiên số 1 — mọi agent phụ thuộc vào đây)
-- [ ] Chốt schema `assets`, `asset_relationships`, `asset_documents` (xem chi tiết SQL trong `prompt-framework.md` mục 4.1)
-- [ ] Publish schema này cho A/B/D dùng làm `asset_id` reference **ngay trong buổi kick-off**
+- [x] Chốt schema `assets` và `asset_relationships` (DDL + sync triggers trong `DatabaseService`; ops LINE/MACHINE mirror UUID)
+- [ ] Chốt schema `asset_documents` (ngoài slice catalog v1)
+- [x] Publish schema này cho A/B/D dùng làm `asset_id` reference (`AssetCatalogContract` + contract tests)
 - [ ] Thiết kế template import Excel + script import
-- [ ] Seed data 50+ asset thực tế (Plant → Line → Machine → Sensor) cho nhà máy MKZ
+- [ ] Seed data 50+ asset thực tế (Plant → Line → Machine → Sensor) cho nhà máy MKZ — hiện seed/backfill từ ops + plant root
 
 **Deliverables:** SQL schema final, Excel template, seed data — **giao Ngày 1-3, gấp nhất**
 
 ### Sprint C2 (Tuần 3-4): Asset CRUD API + Liên kết Document
-- [ ] REST API: `GET/POST/PUT /api/v1/assets`, tree query theo parent_id
+- [x] REST API: `GET/POST/PUT/DELETE /api/assets` cho catalog-native asset (PLANT/AREA/SENSOR); LINE/MACHINE qua ops API
+- [ ] Tree query theo parent_id (filter parentId trên list đã có; endpoint tree riêng deferred)
 - [ ] Link document (manual, drawing, warranty) với asset — tận dụng `document-service` (pgvector) đã có
-- [ ] Search asset theo tên/loại/metadata
+- [x] Search asset theo tên/loại/metadata (`GET /api/assets?q=&type=&parentId=`)
 
 **Deliverables:** API + Swagger docs, unit test (xUnit)
 
