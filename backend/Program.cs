@@ -46,6 +46,9 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// RFC 7807 ProblemDetails for standardized API error responses
+builder.Services.AddProblemDetails();
+
 // Register Custom Services
 builder.Services.AddSingleton<DatabaseService>();
 builder.Services.AddSingleton<TelemetryStore>();

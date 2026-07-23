@@ -33,13 +33,16 @@ namespace backend.Middleware
 
         private static Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
-            context.Response.ContentType = "application/json";
+            context.Response.ContentType = "application/problem+json";
             context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
             var response = new
             {
-                error = "Internal server error. Please try again later.",
-                details = exception.Message // Hide full details in production if needed, but useful for now
+                type = "https://tools.ietf.org/html/rfc7807",
+                title = "Internal Server Error",
+                status = (int)HttpStatusCode.InternalServerError,
+                detail = exception.Message,
+                instance = context.Request.Path.Value,
             };
 
             var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };

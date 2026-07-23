@@ -1,8 +1,11 @@
+using System.Security.Claims;
 using System.Text.Json;
 using backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Mkz.Fusion.Contracts;
 using Npgsql;
+using NpgsqlTypes;
 
 namespace backend.Controllers;
 
@@ -17,6 +20,37 @@ public sealed class AssetController : ControllerBase
     {
         _dbService = dbService;
         _auditService = auditService;
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> List([FromQuery] string? q, [FromQuery] string? type, [FromQuery] Guid? parentId)
+    {
+        var normalizedType = string.IsNullOrWhiteSpace(type) ? null : AssetCatalogContract.NormalizeType(type);
+        if (normalizedType is not null && !AssetCatalogContract.IsKnownType(normalizedType))
+            return BadRequest(new { error = "Loại asset không hợp lệ" });
+
+        const string sql = """
+            SELECT a.id, a.type, a.name, a.code, a.metadata, a.created_at, a.updated_at
+            FROM assets a
+            WHERE (@q IS NULL OR a.name ILIKE '%' || @q || '%' OR a.code ILIKE '%' || @q || '%' OR a.metadata::text ILIKE '%' || @q || '%')
+              AND (@type IS NULL OR UPPER(a.type) = @type)
+              AND (@parent_id IS NULL OR EXISTS (
+                    SELECT 1 FROM asset_relationships r
+                    WHERE r.parent_asset_id = @parent_id AND r.child_asset_id = a.id AND r.relationship_type = 'CONTAINS'))
+            ORDER BY a.type, a.name, a.id
+            """;
+
+        using var connection = _dbService.CreateConnection();
+        await connection.OpenAsync();
+        using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("q", (object?)q?.Trim() ?? DBNull.Value);
+        command.Parameters.AddWithValue("type", (object?)normalizedType ?? DBNull.Value);
+        command.Parameters.Add("parent_id", NpgsqlDbType.Uuid).Value = (object?)parentId ?? DBNull.Value;
+        using var reader = await command.ExecuteReaderAsync();
+        var items = new List<object>();
+        while (await reader.ReadAsync()) items.Add(ReadAsset(reader));
+        return Ok(items);
     }
 
     [HttpGet("{id:guid}")]
@@ -36,6 +70,151 @@ public sealed class AssetController : ControllerBase
             : NotFound(new { error = "Asset not found" });
     }
 
+    [HttpPost]
+    [Authorize(Roles = "ADMIN,ENGINEER")]
+    public async Task<IActionResult> Create([FromBody] AssetCreateRequest request)
+    {
+        var assetType = AssetCatalogContract.NormalizeType(request.Type);
+        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Code) || !AssetCatalogContract.IsCatalogOwned(assetType))
+            return BadRequest(new { error = "Asset chỉ hỗ trợ PLANT, AREA hoặc SENSOR với name và code hợp lệ" });
+
+        try
+        {
+            var id = Guid.NewGuid();
+            using var connection = _dbService.CreateConnection();
+            await connection.OpenAsync();
+            await using var transaction = await connection.BeginTransactionAsync();
+
+            if (request.ParentId.HasValue)
+            {
+                using var parentCommand = new NpgsqlCommand("SELECT EXISTS (SELECT 1 FROM assets WHERE id = @id)", connection, transaction);
+                parentCommand.Parameters.AddWithValue("id", request.ParentId.Value);
+                if (!(bool)(await parentCommand.ExecuteScalarAsync() ?? false))
+                    return BadRequest(new { error = "Asset cha không tồn tại" });
+            }
+
+            object created;
+            using (var command = new NpgsqlCommand(
+                "INSERT INTO assets (id, type, name, code, metadata) VALUES (@id, @type, @name, @code, @metadata) RETURNING id, type, name, code, metadata, created_at, updated_at",
+                connection, transaction))
+            {
+                command.Parameters.AddWithValue("id", id);
+                command.Parameters.AddWithValue("type", assetType.ToLowerInvariant());
+                command.Parameters.AddWithValue("name", request.Name.Trim());
+                command.Parameters.AddWithValue("code", request.Code.Trim());
+                command.Parameters.Add("metadata", NpgsqlDbType.Jsonb).Value =
+                    JsonSerializer.Serialize(request.Metadata ?? new Dictionary<string, JsonElement>());
+                using var reader = await command.ExecuteReaderAsync();
+                if (!await reader.ReadAsync())
+                    return StatusCode(500, new { error = "Không tạo được asset" });
+                created = ReadAsset(reader);
+            }
+
+            if (request.ParentId.HasValue)
+            {
+                using var relCommand = new NpgsqlCommand(
+                    "INSERT INTO asset_relationships (parent_asset_id, child_asset_id, asset_id, related_asset_id, relationship_type) VALUES (@parent_id, @child_id, @parent_id, @child_id, 'CONTAINS')",
+                    connection, transaction);
+                relCommand.Parameters.AddWithValue("parent_id", request.ParentId.Value);
+                relCommand.Parameters.AddWithValue("child_id", id);
+                await relCommand.ExecuteNonQueryAsync();
+            }
+
+            await transaction.CommitAsync();
+            await _auditService.LogAuditAsync(
+                User.FindFirst(ClaimTypes.Name)?.Value ?? "unknown",
+                "CREATE_ASSET",
+                $"Tạo asset: {request.Name} ({id})");
+            return Created($"/api/assets/{id}", created);
+        }
+        catch (PostgresException ex) when (ex.SqlState == "23505")
+        {
+            return Conflict(new { error = "Mã asset đã tồn tại" });
+        }
+    }
+
+    [HttpPut("{id:guid}")]
+    [Authorize(Roles = "ADMIN,ENGINEER")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] AssetUpdateRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Code))
+            return BadRequest(new { error = "Name và code không được để trống" });
+
+        try
+        {
+            using var connection = _dbService.CreateConnection();
+            await connection.OpenAsync();
+
+            using (var typeCommand = new NpgsqlCommand("SELECT type FROM assets WHERE id = @id", connection))
+            {
+                typeCommand.Parameters.AddWithValue("id", id);
+                var existingType = await typeCommand.ExecuteScalarAsync() as string;
+                if (existingType is null) return NotFound(new { error = "Không tìm thấy asset" });
+                if (!AssetCatalogContract.IsCatalogOwned(existingType))
+                    return Conflict(new { error = "LINE và MACHINE phải được sửa qua API vận hành hiện có" });
+            }
+
+            using var command = new NpgsqlCommand(
+                "UPDATE assets SET name = @name, code = @code, metadata = @metadata, updated_at = CURRENT_TIMESTAMP WHERE id = @id RETURNING id, type, name, code, metadata, created_at, updated_at",
+                connection);
+            command.Parameters.AddWithValue("id", id);
+            command.Parameters.AddWithValue("name", request.Name.Trim());
+            command.Parameters.AddWithValue("code", request.Code.Trim());
+            command.Parameters.Add("metadata", NpgsqlDbType.Jsonb).Value =
+                JsonSerializer.Serialize(request.Metadata ?? new Dictionary<string, JsonElement>());
+            using var reader = await command.ExecuteReaderAsync();
+            if (!await reader.ReadAsync()) return NotFound(new { error = "Không tìm thấy asset" });
+            var updated = ReadAsset(reader);
+            await _auditService.LogAuditAsync(
+                User.FindFirst(ClaimTypes.Name)?.Value ?? "unknown",
+                "UPDATE_ASSET",
+                $"Sửa asset: {id}");
+            return Ok(updated);
+        }
+        catch (PostgresException ex) when (ex.SqlState == "23505")
+        {
+            return Conflict(new { error = "Mã asset đã tồn tại" });
+        }
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "ADMIN,ENGINEER")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        using var connection = _dbService.CreateConnection();
+        await connection.OpenAsync();
+
+        string? assetType;
+        string? code;
+        using (var assetCommand = new NpgsqlCommand("SELECT type, code FROM assets WHERE id = @id", connection))
+        {
+            assetCommand.Parameters.AddWithValue("id", id);
+            using var reader = await assetCommand.ExecuteReaderAsync();
+            if (!await reader.ReadAsync()) return NotFound(new { error = "Không tìm thấy asset" });
+            assetType = reader.GetString(0);
+            code = reader.GetString(1);
+        }
+
+        if (!AssetCatalogContract.IsCatalogOwned(assetType) || code == AssetCatalogContract.PlantCode)
+            return Conflict(new { error = "Asset này không được xóa qua API catalog" });
+
+        using (var childCommand = new NpgsqlCommand("SELECT EXISTS (SELECT 1 FROM asset_relationships WHERE parent_asset_id = @id)", connection))
+        {
+            childCommand.Parameters.AddWithValue("id", id);
+            if ((bool)(await childCommand.ExecuteScalarAsync() ?? false))
+                return Conflict(new { error = "Không thể xóa asset còn child" });
+        }
+
+        using var deleteCommand = new NpgsqlCommand("DELETE FROM assets WHERE id = @id", connection);
+        deleteCommand.Parameters.AddWithValue("id", id);
+        await deleteCommand.ExecuteNonQueryAsync();
+        await _auditService.LogAuditAsync(
+            User.FindFirst(ClaimTypes.Name)?.Value ?? "unknown",
+            "DELETE_ASSET",
+            $"Xóa asset: {id}");
+        return Ok(new { success = true });
+    }
+
     private static object ReadAsset(NpgsqlDataReader reader) => new
     {
         id = reader.GetGuid(0),
@@ -46,4 +225,20 @@ public sealed class AssetController : ControllerBase
         createdAt = reader.GetDateTime(5),
         updatedAt = reader.GetDateTime(6),
     };
+}
+
+public sealed class AssetCreateRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public Dictionary<string, JsonElement>? Metadata { get; set; }
+    public Guid? ParentId { get; set; }
+}
+
+public sealed class AssetUpdateRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public Dictionary<string, JsonElement>? Metadata { get; set; }
 }
