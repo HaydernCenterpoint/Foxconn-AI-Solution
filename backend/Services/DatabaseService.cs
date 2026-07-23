@@ -592,6 +592,67 @@ namespace backend.Services
                     ON CONFLICT (machine_id) DO NOTHING;";
                 ExecuteSync(conn, seedSimConfigsSql);
 
+                // ─── 13. Seed realistic AREA and SENSOR assets ────────────────────────────
+                ExecuteSync(conn, $@"
+                    DO $$
+                    DECLARE plant_id UUID;
+                    BEGIN
+                        SELECT id INTO plant_id FROM assets WHERE code = '{AssetCatalogContract.PlantCode}';
+                        IF plant_id IS NULL THEN RETURN; END IF;
+
+                        -- Areas under the plant
+                        INSERT INTO assets (id, type, name, code, parent_id, metadata) VALUES
+                            (gen_random_uuid(), 'area', 'SMT Workshop',          'area:smt',          plant_id, '{{""floor"": ""1F"", ""building"": ""B1""}}'),
+                            (gen_random_uuid(), 'area', 'Assembly Workshop',     'area:assembly',     plant_id, '{{""floor"": ""1F"", ""building"": ""B2""}}'),
+                            (gen_random_uuid(), 'area', 'Testing & QC Zone',     'area:testing-qc',   plant_id, '{{""floor"": ""2F"", ""building"": ""B1""}}'),
+                            (gen_random_uuid(), 'area', 'Packaging & Shipping',  'area:packaging',    plant_id, '{{""floor"": ""1F"", ""building"": ""B3""}}'),
+                            (gen_random_uuid(), 'area', 'Warehouse',             'area:warehouse',    plant_id, '{{""floor"": ""1F"", ""building"": ""B4""}}')
+                        ON CONFLICT (code) DO NOTHING;
+
+                        -- AREA → PLANT relationships
+                        INSERT INTO asset_relationships (parent_asset_id, child_asset_id, asset_id, related_asset_id, relationship_type)
+                        SELECT plant_id, a.id, plant_id, a.id, 'CONTAINS'
+                        FROM assets a WHERE a.type = 'area'
+                        ON CONFLICT DO NOTHING;
+
+                        -- Sensors on machines (temperature, vibration, pressure)
+                        INSERT INTO assets (id, type, name, code, parent_id, metadata)
+                        SELECT gen_random_uuid(), 'sensor',
+                               m.name || ' Temperature Sensor',
+                               'sensor:temp:' || m.id::text,
+                               m.id,
+                               jsonb_build_object('unit', '°C', 'range_min', 0, 'range_max', 120, 'vendor', 'FII-Sensors')
+                        FROM machines m
+                        ON CONFLICT (code) DO NOTHING;
+
+                        INSERT INTO assets (id, type, name, code, parent_id, metadata)
+                        SELECT gen_random_uuid(), 'sensor',
+                               m.name || ' Vibration Sensor',
+                               'sensor:vib:' || m.id::text,
+                               m.id,
+                               jsonb_build_object('unit', 'Hz', 'range_min', 0, 'range_max', 500, 'vendor', 'FII-Sensors')
+                        FROM machines m
+                        ON CONFLICT (code) DO NOTHING;
+
+                        INSERT INTO assets (id, type, name, code, parent_id, metadata)
+                        SELECT gen_random_uuid(), 'sensor',
+                               m.name || ' Pressure Sensor',
+                               'sensor:prs:' || m.id::text,
+                               m.id,
+                               jsonb_build_object('unit', 'bar', 'range_min', 0, 'range_max', 15, 'vendor', 'FII-Sensors')
+                        FROM machines m
+                        ON CONFLICT (code) DO NOTHING;
+
+                        -- MACHINE → SENSOR relationships
+                        INSERT INTO asset_relationships (parent_asset_id, child_asset_id, asset_id, related_asset_id, relationship_type)
+                        SELECT s.parent_id, s.id, s.parent_id, s.id, 'CONTAINS'
+                        FROM assets s
+                        WHERE s.type = 'sensor' AND s.parent_id IS NOT NULL
+                        ON CONFLICT DO NOTHING;
+                    END;
+                    $$;
+                ");
+
                 ExecuteSync(conn, "TRUNCATE machine_telemetry_history, machine_hourly_production, alarms CASCADE;");
                 ExecuteSync(conn, "UPDATE machines SET status = 'OFFLINE', plc_connected = false, production_count = 0, last_plc_data = NULL, uptime_seconds = 0, cpu_percent = 0.0, ram_percent = 0.0;");
 

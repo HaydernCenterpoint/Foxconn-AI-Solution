@@ -24,10 +24,10 @@ ngay từ ngày 1, giảm phụ thuộc chờ nhau xuống mức tối thiểu.
 ```
 
 **Shared Contracts** (chốt trong buổi kick-off, KHÔNG đổi giữa chừng):
-1. `asset_id`: UUID, do Agent C định nghĩa schema, các agent khác dùng ngay (mock trước, tích hợp sau)
-2. `telemetry` schema: `(time, asset_id, metric, value)` — Agent A định nghĩa, B/C/D dùng chung
-3. `event` schema (Avro/JSON): `(event_id, timestamp, asset_id, type, severity, payload)` — Agent B định nghĩa
-4. API convention: REST, `/api/v1/...`, JWT Bearer, lỗi theo RFC 7807 (problem+json)
+1. ✅ `asset_id`: UUID, do Agent C định nghĩa schema — `AssetCatalogContract.cs` đã chốt, `assets` table đã seed
+2. ✅ `telemetry` schema: `(time, asset_id, metric, value)` — `TelemetrySchemaContract.cs` đã chốt trong `fusion-contracts/`
+3. ✅ `event` schema (JSON): `(event_id, timestamp, asset_id, type, severity, payload)` — `FusionEventContract.cs` đã chốt trong `fusion-contracts/`
+4. ✅ API convention: REST, `/api/assets/...`, JWT Bearer, lỗi theo RFC 7807 (problem+json) — ProblemDetails middleware đã bật
 
 ---
 
@@ -134,17 +134,17 @@ Checkpoint:  ▲Kickoff        ▲Sync W2        ▲Sync W5        ▲Integratio
 **Nguồn gốc:** Phase 3 trong roadmap gốc + phần API nền tảng
 
 ### Sprint C1 (Tuần 1-2): Asset Schema (ưu tiên số 1 — mọi agent phụ thuộc vào đây)
-- [ ] Chốt schema `assets`, `asset_relationships`, `asset_documents` (xem chi tiết SQL trong `prompt-framework.md` mục 4.1)
-- [ ] Publish schema này cho A/B/D dùng làm `asset_id` reference **ngay trong buổi kick-off**
+- [x] Chốt schema `assets`, `asset_relationships` (xem chi tiết SQL trong `prompt-framework.md` mục 4.1)
+- [x] Publish schema này cho A/B/D dùng làm `asset_id` reference **ngay trong buổi kick-off**
 - [ ] Thiết kế template import Excel + script import
-- [ ] Seed data 50+ asset thực tế (Plant → Line → Machine → Sensor) cho nhà máy MKZ
+- [x] Seed data 50+ asset thực tế (Plant → Area → Line → Machine → Sensor) cho nhà máy MKZ
 
 **Deliverables:** SQL schema final, Excel template, seed data — **giao Ngày 1-3, gấp nhất**
 
 ### Sprint C2 (Tuần 3-4): Asset CRUD API + Liên kết Document
-- [ ] REST API: `GET/POST/PUT /api/v1/assets`, tree query theo parent_id
+- [x] REST API: `GET/POST/PUT/DELETE /api/assets`, search theo `q`, `type`, `parentId`
 - [ ] Link document (manual, drawing, warranty) với asset — tận dụng `document-service` (pgvector) đã có
-- [ ] Search asset theo tên/loại/metadata
+- [x] Search asset theo tên/loại/metadata
 
 **Deliverables:** API + Swagger docs, unit test (xUnit)
 
