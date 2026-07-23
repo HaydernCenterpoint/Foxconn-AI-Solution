@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
@@ -20,6 +21,7 @@ namespace backend.Services
         private readonly IHubContext<TelemetryHub> _hubContext;
         private readonly ILogger<TelemetryIngestionService> _logger;
         private readonly IOptions<OpenDataFusionCaptureOptions> _captureOptions;
+        private readonly EventRuleEngine? _eventRuleEngine;
 
         public ChannelWriter<string> Writer => _channel.Writer;
 
@@ -27,12 +29,14 @@ namespace backend.Services
             DatabaseService dbService,
             IHubContext<TelemetryHub> hubContext,
             ILogger<TelemetryIngestionService> logger,
-            IOptions<OpenDataFusionCaptureOptions> captureOptions)
+            IOptions<OpenDataFusionCaptureOptions> captureOptions,
+            EventRuleEngine? eventRuleEngine = null)
         {
             _dbService = dbService;
             _hubContext = hubContext;
             _logger = logger;
             _captureOptions = captureOptions;
+            _eventRuleEngine = eventRuleEngine;
             
             var options = new UnboundedChannelOptions
             {
@@ -183,6 +187,14 @@ namespace backend.Services
 
                 await _dbService.UpdateHourlyProductionAsync(
                     machineGuid, (int)productionCount, 0.0, 0.0, 0L);
+
+                // ── Write normalized telemetry to telemetry_data table ───────
+                var dataPoints = TelemetrySchemaContract.Normalize(captureInput).ToList();
+                if (dataPoints.Count > 0)
+                    await _dbService.InsertTelemetryDataPointsAsync(dataPoints);
+
+                // ── Feed CEP engine for threshold rule evaluation ────────────
+                _eventRuleEngine?.Enqueue(captureInput);
             }
 
             await _hubContext.Clients.Group($"machine_{machineId}").SendAsync("TelemetryUpdate", rawJson);

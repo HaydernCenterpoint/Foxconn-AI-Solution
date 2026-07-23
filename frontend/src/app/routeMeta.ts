@@ -27,6 +27,9 @@ export const routeMetaByPath: Record<string, RouteMeta> = {
   '/admin/reports': { titleKey: 'navigation.reports', refreshScope: 'monitoring', requiresAuth: true },
   '/admin/simulation': { titleKey: 'titles.simulation', refreshScope: 'monitoring', requiresAuth: true },
   '/admin/system': { titleKey: 'titles.system', refreshScope: 'monitoring', requiresAuth: true },
+  '/admin/assets': { titleKey: 'titles.assets', refreshScope: 'monitoring', requiresAuth: true },
+
+  '/assets': { titleKey: 'titles.assets', refreshScope: 'monitoring' },
 
   '/login': { titleKey: 'titles.login', refreshScope: 'all' },
   '/403': { titleKey: 'titles.forbidden', refreshScope: 'all' },

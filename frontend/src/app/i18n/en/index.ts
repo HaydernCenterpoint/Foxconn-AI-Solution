@@ -191,6 +191,8 @@ export const en = {
     dataFusion: 'Data Fusion',
     fiiAssistant: 'FII Assistant',
     fiiDataFusion: 'FII Data Fusion',
+    assets: 'Asset Browser',
+    events: 'Events',
   },
   titles: {
     login: 'Sign in',
@@ -207,6 +209,8 @@ export const en = {
     system: 'System Monitor',
     forbidden: 'Forbidden',
     notFound: 'Not found',
+    assets: 'Asset Browser',
+    events: 'Events',
   },
   auth: {
     loginHeading: 'Sign in',

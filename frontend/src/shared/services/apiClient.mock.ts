@@ -90,6 +90,22 @@ export function getMockDataForUrl(url: string, method: string): unknown {
       return [];
     }
 
+    if (/\/assets\/[^/]+\/documents$/.test(cleanUrl)) {
+      return getMockAssetDocuments();
+    }
+
+    if (cleanUrl.endsWith('/events') || cleanUrl.startsWith('/events')) {
+      return getMockEvents();
+    }
+
+    if (cleanUrl.endsWith('/event-rules')) {
+      return getMockEventRules();
+    }
+
+    if (cleanUrl.includes('/telemetry/query')) {
+      return getMockTelemetryQuery();
+    }
+
     if (cleanUrl.endsWith('/health')) {
       return {
         status: 'Healthy',
@@ -424,4 +440,47 @@ function getMockAssetChildren(assetId: string): Record<string, unknown>[] {
   };
   const found = findNode(tree);
   return (found ?? []).map(({ children: _children, parentId: _parentId, ...rest }) => rest);
+}
+
+function getMockAssetDocuments() {
+  return [
+    { id: 'doc-1', assetId: 'plant-mkz', title: 'Maintenance Manual v3.2', docType: 'MANUAL', url: 'https://docs.example.com/manual-v3.2.pdf', uploadedBy: 'admin', uploadedAt: '2026-07-15T08:00:00Z' },
+    { id: 'doc-2', assetId: 'plant-mkz', title: 'Electrical Wiring Diagram', docType: 'DRAWING', url: 'https://docs.example.com/wiring.dwg', uploadedBy: 'engineer', uploadedAt: '2026-07-10T14:30:00Z' },
+    { id: 'doc-3', assetId: 'plant-mkz', title: 'Safety Certification ISO 45001', docType: 'CERTIFICATE', url: 'https://docs.example.com/iso45001.pdf', uploadedBy: 'admin', uploadedAt: '2026-06-20T09:00:00Z' },
+  ];
+}
+
+function getMockEvents() {
+  const now = Date.now();
+  return [
+    { eventId: 'evt-1', schemaVersion: 1, timestamp: new Date(now - 120_000).toISOString(), assetId: 'machine-1', eventType: 'THRESHOLD_BREACH', severity: 'CRITICAL', source: 'EventRuleEngine:rule-temp-critical', payload: '{"metric":"temperature","actual_value":87.5,"threshold":85}', correlationId: null },
+    { eventId: 'evt-2', schemaVersion: 1, timestamp: new Date(now - 300_000).toISOString(), assetId: 'machine-2', eventType: 'THRESHOLD_BREACH', severity: 'WARNING', source: 'EventRuleEngine:rule-vibration-high', payload: '{"metric":"vibration","actual_value":380,"threshold":350}', correlationId: null },
+    { eventId: 'evt-3', schemaVersion: 1, timestamp: new Date(now - 600_000).toISOString(), assetId: 'machine-1', eventType: 'THRESHOLD_BREACH', severity: 'WARNING', source: 'EventRuleEngine:rule-oee-low', payload: '{"metric":"oee","actual_value":58.3,"threshold":65}', correlationId: null },
+    { eventId: 'evt-4', schemaVersion: 1, timestamp: new Date(now - 900_000).toISOString(), assetId: 'machine-3', eventType: 'MAINTENANCE_DUE', severity: 'WARNING', source: 'EventRuleEngine:rule-maintenance-overdue', payload: '{"metric":"uptime_seconds","actual_value":1900000}', correlationId: null },
+  ];
+}
+
+function getMockEventRules() {
+  return [
+    { id: 'rule-temp-critical', name: 'Temperature Critical Threshold', enabled: true, eventType: 'THRESHOLD_BREACH', severity: 'CRITICAL', condition: { type: 'threshold', metric: 'temperature', operator: '>', value: 85, unit: '°C' }, cooldownSeconds: 300 },
+    { id: 'rule-temp-warning', name: 'Temperature Warning', enabled: true, eventType: 'THRESHOLD_BREACH', severity: 'WARNING', condition: { type: 'threshold', metric: 'temperature', operator: '>', value: 70, unit: '°C' }, cooldownSeconds: 600 },
+    { id: 'rule-vibration-high', name: 'High Vibration Alert', enabled: true, eventType: 'THRESHOLD_BREACH', severity: 'WARNING', condition: { type: 'threshold', metric: 'vibration', operator: '>', value: 350, unit: 'Hz' }, cooldownSeconds: 300 },
+    { id: 'rule-oee-low', name: 'Low OEE Alert', enabled: true, eventType: 'THRESHOLD_BREACH', severity: 'WARNING', condition: { type: 'threshold', metric: 'oee', operator: '<', value: 65, unit: '%' }, cooldownSeconds: 1800 },
+  ];
+}
+
+function getMockTelemetryQuery() {
+  const now = Date.now();
+  const points = [];
+  for (let i = 0; i < 24; i++) {
+    points.push({
+      time: new Date(now - (23 - i) * 3600_000).toISOString(),
+      assetId: 'machine-1',
+      metric: 'production_quantity',
+      value: 200 + Math.floor(Math.random() * 100),
+      unit: 'pcs',
+      source: null,
+    });
+  }
+  return points;
 }

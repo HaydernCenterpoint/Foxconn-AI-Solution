@@ -407,6 +407,43 @@ public sealed class AssetController : ControllerBase
         return Ok(new { created, skipped, errors });
     }
 
+    // ─── Asset document linking (Sprint C2) ─────────────────────────────
+
+    /// <summary>GET /api/assets/{id}/documents</summary>
+    [HttpGet("{id:guid}/documents")]
+    public async Task<IActionResult> GetDocuments(Guid id)
+    {
+        var docs = await _dbService.GetAssetDocumentsAsync(id);
+        return Ok(docs);
+    }
+
+    /// <summary>POST /api/assets/{id}/documents</summary>
+    [HttpPost("{id:guid}/documents")]
+    public async Task<IActionResult> AddDocument(Guid id, [FromBody] AssetDocumentRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Title))
+            return BadRequest(new { error = "title is required." });
+        if (string.IsNullOrWhiteSpace(request.Url))
+            return BadRequest(new { error = "url is required." });
+
+        var docId = await _dbService.AddAssetDocumentAsync(
+            id,
+            request.Title,
+            request.DocType ?? "MANUAL",
+            request.Url,
+            User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value);
+        return Created($"/api/assets/{id}/documents/{docId}", new { id = docId });
+    }
+
+    /// <summary>DELETE /api/assets/{id}/documents/{docId}</summary>
+    [HttpDelete("{id:guid}/documents/{docId:guid}")]
+    public async Task<IActionResult> DeleteDocument(Guid id, Guid docId)
+    {
+        var ok = await _dbService.DeleteAssetDocumentAsync(docId);
+        if (!ok) return NotFound();
+        return NoContent();
+    }
+
     private static object ReadAsset(NpgsqlDataReader reader) => new
     {
         id = reader.GetGuid(0),
@@ -455,4 +492,11 @@ public sealed class AssetUpdateRequest
     public string Name { get; set; } = string.Empty;
     public string Code { get; set; } = string.Empty;
     public Dictionary<string, JsonElement>? Metadata { get; set; }
+}
+
+public sealed class AssetDocumentRequest
+{
+    public string Title { get; set; } = string.Empty;
+    public string? DocType { get; set; }
+    public string Url { get; set; } = string.Empty;
 }
