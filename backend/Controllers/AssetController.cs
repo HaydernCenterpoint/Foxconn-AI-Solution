@@ -215,6 +215,198 @@ public sealed class AssetController : ControllerBase
         return Ok(new { success = true });
     }
 
+    /// <summary>
+    /// Returns the full asset hierarchy as a nested tree starting from root (PLANT) nodes.
+    /// </summary>
+    [HttpGet("tree")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Tree()
+    {
+        const string sql = """
+            SELECT a.id, a.type, a.name, a.code, a.metadata, a.created_at, a.updated_at, a.parent_id
+            FROM assets a
+            ORDER BY a.type, a.name, a.id
+            """;
+
+        using var connection = _dbService.CreateConnection();
+        await connection.OpenAsync();
+        using var command = new NpgsqlCommand(sql, connection);
+        using var reader = await command.ExecuteReaderAsync();
+
+        var allAssets = new List<AssetTreeNode>();
+        while (await reader.ReadAsync())
+        {
+            allAssets.Add(new AssetTreeNode
+            {
+                Id = reader.GetGuid(0),
+                Type = reader.GetString(1).ToUpperInvariant(),
+                Name = reader.GetString(2),
+                Code = reader.GetString(3),
+                Metadata = JsonDocument.Parse(reader.GetString(4)).RootElement.Clone(),
+                CreatedAt = reader.GetDateTime(5),
+                UpdatedAt = reader.GetDateTime(6),
+                ParentId = reader.IsDBNull(7) ? null : reader.GetGuid(7),
+            });
+        }
+
+        var lookup = allAssets.ToLookup(a => a.ParentId);
+        void BuildChildren(AssetTreeNode node)
+        {
+            node.Children = lookup[node.Id].OrderBy(c => c.Type).ThenBy(c => c.Name).ToList();
+            foreach (var child in node.Children) BuildChildren(child);
+        }
+
+        var roots = allAssets.Where(a => a.ParentId is null).OrderBy(a => a.Name).ToList();
+        foreach (var root in roots) BuildChildren(root);
+        return Ok(roots);
+    }
+
+    /// <summary>
+    /// Returns direct children of an asset.
+    /// </summary>
+    [HttpGet("{id:guid}/children")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Children(Guid id)
+    {
+        const string sql = """
+            SELECT a.id, a.type, a.name, a.code, a.metadata, a.created_at, a.updated_at
+            FROM assets a
+            INNER JOIN asset_relationships r ON r.child_asset_id = a.id
+            WHERE r.parent_asset_id = @id AND r.relationship_type = 'CONTAINS'
+            ORDER BY a.type, a.name, a.id
+            """;
+
+        using var connection = _dbService.CreateConnection();
+        await connection.OpenAsync();
+        using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("id", id);
+        using var reader = await command.ExecuteReaderAsync();
+        var items = new List<object>();
+        while (await reader.ReadAsync()) items.Add(ReadAsset(reader));
+        return Ok(items);
+    }
+
+    /// <summary>
+    /// Returns the ancestor chain from an asset up to the root, ordered root-first.
+    /// </summary>
+    [HttpGet("{id:guid}/ancestors")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Ancestors(Guid id)
+    {
+        const string sql = """
+            WITH RECURSIVE chain AS (
+                SELECT a.id, a.type, a.name, a.code, a.metadata, a.created_at, a.updated_at, a.parent_id, 0 AS depth
+                FROM assets a WHERE a.id = @id
+                UNION ALL
+                SELECT p.id, p.type, p.name, p.code, p.metadata, p.created_at, p.updated_at, p.parent_id, c.depth + 1
+                FROM assets p INNER JOIN chain c ON c.parent_id = p.id
+            )
+            SELECT id, type, name, code, metadata, created_at, updated_at
+            FROM chain
+            WHERE depth > 0
+            ORDER BY depth DESC
+            """;
+
+        using var connection = _dbService.CreateConnection();
+        await connection.OpenAsync();
+        using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("id", id);
+        using var reader = await command.ExecuteReaderAsync();
+        var items = new List<object>();
+        while (await reader.ReadAsync()) items.Add(ReadAsset(reader));
+        return Ok(items);
+    }
+
+    /// <summary>
+    /// Import assets from a CSV/JSON payload in bulk.
+    /// Expects an array of {type, name, code, parentCode?, metadata?}.
+    /// </summary>
+    [HttpPost("import")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> Import([FromBody] AssetImportRequest[] items)
+    {
+        if (items is null || items.Length == 0)
+            return BadRequest(new { error = "Danh sách import rỗng" });
+
+        using var connection = _dbService.CreateConnection();
+        await connection.OpenAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
+
+        var created = 0;
+        var skipped = 0;
+        var errors = new List<string>();
+
+        foreach (var item in items)
+        {
+            var assetType = AssetCatalogContract.NormalizeType(item.Type);
+            if (!AssetCatalogContract.IsKnownType(assetType))
+            {
+                errors.Add($"Loại không hợp lệ: {item.Type} (code: {item.Code})");
+                skipped++;
+                continue;
+            }
+
+            Guid? parentId = null;
+            if (!string.IsNullOrWhiteSpace(item.ParentCode))
+            {
+                using var parentCmd = new NpgsqlCommand("SELECT id FROM assets WHERE code = @code", connection, transaction);
+                parentCmd.Parameters.AddWithValue("code", item.ParentCode.Trim());
+                var parentResult = await parentCmd.ExecuteScalarAsync();
+                if (parentResult is Guid pid) parentId = pid;
+                else
+                {
+                    errors.Add($"Parent không tìm thấy: {item.ParentCode} (code: {item.Code})");
+                    skipped++;
+                    continue;
+                }
+            }
+
+            try
+            {
+                var id = Guid.NewGuid();
+                using var cmd = new NpgsqlCommand(
+                    "INSERT INTO assets (id, type, name, code, parent_id, metadata) VALUES (@id, @type, @name, @code, @parent_id, @metadata) ON CONFLICT (code) DO NOTHING",
+                    connection, transaction);
+                cmd.Parameters.AddWithValue("id", id);
+                cmd.Parameters.AddWithValue("type", assetType.ToLowerInvariant());
+                cmd.Parameters.AddWithValue("name", item.Name?.Trim() ?? assetType);
+                cmd.Parameters.AddWithValue("code", item.Code.Trim());
+                cmd.Parameters.Add("parent_id", NpgsqlDbType.Uuid).Value = (object?)parentId ?? DBNull.Value;
+                cmd.Parameters.Add("metadata", NpgsqlDbType.Jsonb).Value =
+                    JsonSerializer.Serialize(item.Metadata ?? new Dictionary<string, JsonElement>());
+
+                var rows = await cmd.ExecuteNonQueryAsync();
+                if (rows > 0)
+                {
+                    if (parentId.HasValue)
+                    {
+                        using var relCmd = new NpgsqlCommand(
+                            "INSERT INTO asset_relationships (parent_asset_id, child_asset_id, asset_id, related_asset_id, relationship_type) VALUES (@pid, @cid, @pid, @cid, 'CONTAINS') ON CONFLICT DO NOTHING",
+                            connection, transaction);
+                        relCmd.Parameters.AddWithValue("pid", parentId.Value);
+                        relCmd.Parameters.AddWithValue("cid", id);
+                        await relCmd.ExecuteNonQueryAsync();
+                    }
+                    created++;
+                }
+                else
+                    skipped++;
+            }
+            catch (PostgresException ex) when (ex.SqlState == "23505")
+            {
+                skipped++;
+            }
+        }
+
+        await transaction.CommitAsync();
+        await _auditService.LogAuditAsync(
+            User.FindFirst(ClaimTypes.Name)?.Value ?? "unknown",
+            "IMPORT_ASSETS",
+            $"Import {created} assets, skipped {skipped}");
+
+        return Ok(new { created, skipped, errors });
+    }
+
     private static object ReadAsset(NpgsqlDataReader reader) => new
     {
         id = reader.GetGuid(0),
@@ -225,6 +417,28 @@ public sealed class AssetController : ControllerBase
         createdAt = reader.GetDateTime(5),
         updatedAt = reader.GetDateTime(6),
     };
+}
+
+internal sealed class AssetTreeNode
+{
+    public Guid Id { get; set; }
+    public string Type { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public JsonElement Metadata { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public Guid? ParentId { get; set; }
+    public List<AssetTreeNode> Children { get; set; } = [];
+}
+
+public sealed class AssetImportRequest
+{
+    public string Type { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public string? ParentCode { get; set; }
+    public Dictionary<string, JsonElement>? Metadata { get; set; }
 }
 
 public sealed class AssetCreateRequest

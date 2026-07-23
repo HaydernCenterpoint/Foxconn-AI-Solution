@@ -73,6 +73,23 @@ export function getMockDataForUrl(url: string, method: string): unknown {
       return getMockReport();
     }
 
+    if (cleanUrl.endsWith('/assets/tree')) {
+      return getMockAssetTree();
+    }
+
+    if (cleanUrl.endsWith('/assets')) {
+      return getMockAssets();
+    }
+
+    if (/\/assets\/[^/]+\/children$/.test(cleanUrl)) {
+      const assetId = cleanUrl.split('/').slice(-2)[0];
+      return getMockAssetChildren(assetId);
+    }
+
+    if (/\/assets\/[^/]+\/ancestors$/.test(cleanUrl)) {
+      return [];
+    }
+
     if (cleanUrl.endsWith('/health')) {
       return {
         status: 'Healthy',
@@ -280,4 +297,131 @@ function getMockSimulationForMachine(id: string): Record<string, unknown> {
     ramPercent: status === 'running' ? 36 + machineNumber * 3 : 14,
     timestamp: new Date().toISOString()
   };
+}
+
+// ── Asset hierarchy mock data ──────────────────────────────────────────
+
+const PLANT_ID = '00000000-0000-0000-0000-000000000001';
+const AREA_IDS = {
+  smt: '00000000-0000-0000-0000-000000000010',
+  assembly: '00000000-0000-0000-0000-000000000011',
+  testingQc: '00000000-0000-0000-0000-000000000012',
+  packaging: '00000000-0000-0000-0000-000000000013',
+  warehouse: '00000000-0000-0000-0000-000000000014',
+};
+
+function getMockAssets(): Record<string, unknown>[] {
+  const now = new Date().toISOString();
+  const areas = [
+    { id: AREA_IDS.smt, type: 'AREA', name: 'SMT Workshop', code: 'area:smt', metadata: { floor: '1F', building: 'B1' }, createdAt: now, updatedAt: now },
+    { id: AREA_IDS.assembly, type: 'AREA', name: 'Assembly Workshop', code: 'area:assembly', metadata: { floor: '1F', building: 'B2' }, createdAt: now, updatedAt: now },
+    { id: AREA_IDS.testingQc, type: 'AREA', name: 'Testing & QC Zone', code: 'area:testing-qc', metadata: { floor: '2F', building: 'B1' }, createdAt: now, updatedAt: now },
+    { id: AREA_IDS.packaging, type: 'AREA', name: 'Packaging & Shipping', code: 'area:packaging', metadata: { floor: '1F', building: 'B3' }, createdAt: now, updatedAt: now },
+    { id: AREA_IDS.warehouse, type: 'AREA', name: 'Warehouse', code: 'area:warehouse', metadata: { floor: '1F', building: 'B4' }, createdAt: now, updatedAt: now },
+  ];
+
+  const machines = getAllMockMachines().map((m) => ({
+    id: m.id,
+    type: 'MACHINE',
+    name: m.name,
+    code: `machine:${m.id}`,
+    metadata: { machineCode: m.machineCode, clientId: m.clientId },
+    createdAt: now,
+    updatedAt: now,
+  }));
+
+  return [
+    { id: PLANT_ID, type: 'PLANT', name: 'MKZ Factory', code: 'MKZ-PLANT', metadata: {}, createdAt: now, updatedAt: now },
+    ...areas,
+    ...machines,
+  ];
+}
+
+function getMockAssetTree(): Record<string, unknown>[] {
+  const now = new Date().toISOString();
+  const lineIds: Record<string, string> = { 'line-1': 'line-1', 'line-2': 'line-2', 'line-3': 'line-3' };
+
+  const buildLine = (lineId: string, lineName: string, areaId: string) => {
+    const machines = getMockMachinesForLine(lineId).map((m) => ({
+      id: m.id,
+      type: 'MACHINE',
+      name: m.name,
+      code: `machine:${m.id}`,
+      metadata: { machineCode: m.machineCode, clientId: m.clientId },
+      createdAt: now,
+      updatedAt: now,
+      parentId: lineId,
+      children: [
+        { id: `sensor:temp:${m.id}`, type: 'SENSOR', name: `${m.name} Temperature Sensor`, code: `sensor:temp:${m.id}`, metadata: { unit: '°C', range_min: 0, range_max: 120 }, createdAt: now, updatedAt: now, parentId: m.id, children: [] },
+        { id: `sensor:vib:${m.id}`, type: 'SENSOR', name: `${m.name} Vibration Sensor`, code: `sensor:vib:${m.id}`, metadata: { unit: 'Hz', range_min: 0, range_max: 500 }, createdAt: now, updatedAt: now, parentId: m.id, children: [] },
+      ],
+    }));
+
+    return {
+      id: lineId,
+      type: 'LINE',
+      name: lineName,
+      code: `line:${lineId}`,
+      metadata: {},
+      createdAt: now,
+      updatedAt: now,
+      parentId: areaId,
+      children: machines,
+    };
+  };
+
+  return [{
+    id: PLANT_ID,
+    type: 'PLANT',
+    name: 'MKZ Factory',
+    code: 'MKZ-PLANT',
+    metadata: {},
+    createdAt: now,
+    updatedAt: now,
+    parentId: null,
+    children: [
+      {
+        id: AREA_IDS.smt, type: 'AREA', name: 'SMT Workshop', code: 'area:smt',
+        metadata: { floor: '1F', building: 'B1' }, createdAt: now, updatedAt: now, parentId: PLANT_ID,
+        children: [buildLine(lineIds['line-1'], 'Dây chuyền lắp ráp điện tử (L1)', AREA_IDS.smt)],
+      },
+      {
+        id: AREA_IDS.assembly, type: 'AREA', name: 'Assembly Workshop', code: 'area:assembly',
+        metadata: { floor: '1F', building: 'B2' }, createdAt: now, updatedAt: now, parentId: PLANT_ID,
+        children: [buildLine(lineIds['line-2'], 'Dây chuyền cơ khí CNC (L2)', AREA_IDS.assembly)],
+      },
+      {
+        id: AREA_IDS.testingQc, type: 'AREA', name: 'Testing & QC Zone', code: 'area:testing-qc',
+        metadata: { floor: '2F', building: 'B1' }, createdAt: now, updatedAt: now, parentId: PLANT_ID,
+        children: [buildLine(lineIds['line-3'], 'Dây chuyền hoàn thiện & đóng gói (L3)', AREA_IDS.testingQc)],
+      },
+      {
+        id: AREA_IDS.packaging, type: 'AREA', name: 'Packaging & Shipping', code: 'area:packaging',
+        metadata: { floor: '1F', building: 'B3' }, createdAt: now, updatedAt: now, parentId: PLANT_ID,
+        children: [],
+      },
+      {
+        id: AREA_IDS.warehouse, type: 'AREA', name: 'Warehouse', code: 'area:warehouse',
+        metadata: { floor: '1F', building: 'B4' }, createdAt: now, updatedAt: now, parentId: PLANT_ID,
+        children: [],
+      },
+    ],
+  }];
+}
+
+function getMockAssetChildren(assetId: string): Record<string, unknown>[] {
+  const tree = getMockAssetTree();
+  const findNode = (nodes: Record<string, unknown>[]): Record<string, unknown>[] | null => {
+    for (const node of nodes) {
+      if (node.id === assetId) return (node.children as Record<string, unknown>[]) ?? [];
+      const children = node.children as Record<string, unknown>[] | undefined;
+      if (children) {
+        const result = findNode(children);
+        if (result) return result;
+      }
+    }
+    return null;
+  };
+  const found = findNode(tree);
+  return (found ?? []).map(({ children: _children, parentId: _parentId, ...rest }) => rest);
 }

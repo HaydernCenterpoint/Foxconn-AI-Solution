@@ -653,6 +653,47 @@ namespace backend.Services
                     $$;
                 ");
 
+                // ─── 14. telemetry_data (normalized, TimescaleDB-ready) ──────────────
+                // Follows TelemetrySchemaContract: (time, asset_id, metric, value).
+                // On plain PostgreSQL this is a regular table with BRIN index.
+                // When TimescaleDB is available, convert to hypertable with:
+                //   SELECT create_hypertable('telemetry_data', 'time', chunk_time_interval => INTERVAL '1 day');
+                ExecuteSync(conn, @"
+                    CREATE TABLE IF NOT EXISTS telemetry_data (
+                        time TIMESTAMPTZ NOT NULL,
+                        asset_id UUID NOT NULL,
+                        metric VARCHAR(64) NOT NULL,
+                        value DOUBLE PRECISION NOT NULL,
+                        unit VARCHAR(16),
+                        source VARCHAR(256)
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_telemetry_data_asset_time
+                        ON telemetry_data (asset_id, time DESC);
+                    CREATE INDEX IF NOT EXISTS idx_telemetry_data_time_brin
+                        ON telemetry_data USING BRIN (time) WITH (pages_per_range = 32);
+                ");
+
+                // ─── 15. event_log (CEP-ready event storage) ─────────────────────────
+                // Follows FusionEventContract schema.
+                ExecuteSync(conn, @"
+                    CREATE TABLE IF NOT EXISTS event_log (
+                        event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        schema_version INTEGER NOT NULL DEFAULT 1,
+                        timestamp TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        asset_id UUID NOT NULL,
+                        event_type VARCHAR(64) NOT NULL,
+                        severity VARCHAR(16) NOT NULL,
+                        source VARCHAR(256),
+                        payload JSONB,
+                        correlation_id VARCHAR(256),
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_event_log_asset_time
+                        ON event_log (asset_id, timestamp DESC);
+                    CREATE INDEX IF NOT EXISTS idx_event_log_type_severity
+                        ON event_log (event_type, severity);
+                ");
+
                 ExecuteSync(conn, "TRUNCATE machine_telemetry_history, machine_hourly_production, alarms CASCADE;");
                 ExecuteSync(conn, "UPDATE machines SET status = 'OFFLINE', plc_connected = false, production_count = 0, last_plc_data = NULL, uptime_seconds = 0, cpu_percent = 0.0, ram_percent = 0.0;");
 
