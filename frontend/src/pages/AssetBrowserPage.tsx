@@ -184,7 +184,7 @@ function DetailPanel({ asset }: { asset: AssetTreeNode }) {
           <h2 className="text-lg font-semibold text-white truncate">{asset.name}</h2>
           <p className="text-xs text-gray-400 font-mono">{asset.code}</p>
         </div>
-        <Badge variant="default" className="uppercase text-[10px]">
+        <Badge variant="neutral" className="uppercase text-[10px]">
           {asset.type}
         </Badge>
       </div>
@@ -237,7 +237,7 @@ function DetailPanel({ asset }: { asset: AssetTreeNode }) {
               >
                 <FileText className="w-3.5 h-3.5 shrink-0" />
                 <span className="truncate">{doc.title}</span>
-                <Badge variant="default" className="ml-auto text-[10px]">
+                <Badge variant="neutral" className="ml-auto text-[10px]">
                   {doc.docType}
                 </Badge>
               </a>

@@ -47,6 +47,22 @@ export interface MachineRequest {
   lineId?: string;
 }
 
+export interface MachineHealth {
+  machineId: string;
+  score: number;
+  band: 'healthy' | 'warning' | 'critical';
+  calculatedAt: string;
+  factors: {
+    availability: number;
+    alarmScore: number;
+    performance: number;
+    activeAlarms: number;
+    recentEvents: number;
+    cpu: number;
+    ram: number;
+  };
+}
+
 export const machinesApi = {
   getAll: () =>
     api.get('/machines').then((r) => normalizeMachineList(r.data)),
@@ -74,4 +90,6 @@ export const machinesApi = {
 
   getHourlyProduction: (id: string) =>
     api.get(`/machines/${id}/hourly-production`).then((r) => normalizeHourlyProductionList(r.data)),
+
+  getHealth: (id: string) => api.get<MachineHealth>(`/machines/${id}/health`).then((r) => r.data),
 };

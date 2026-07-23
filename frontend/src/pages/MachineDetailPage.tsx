@@ -28,6 +28,13 @@ export const MachineDetailPage: React.FC = () => {
     refetchInterval: 10000,
   });
 
+  const { data: health } = useQuery({
+    queryKey: ['machineHealth', id],
+    queryFn: () => machinesApi.getHealth(id!),
+    enabled: !!id,
+    refetchInterval: 10000,
+  });
+
   if (loadingMachine) {
     return (
       <div className="machine-detail machine-detail__state">
@@ -90,6 +97,11 @@ export const MachineDetailPage: React.FC = () => {
         </div>
 
         <div className="machine-detail__status-group">
+          {health && (
+            <span className={`machine-detail__health machine-detail__health--${health.band}`}>
+              HEALTH {health.score.toFixed(0)}
+            </span>
+          )}
           <span className={`machine-detail__status ${getStatusBadge(machine.status)}`}>
             {machine.status.toUpperCase()}
           </span>
