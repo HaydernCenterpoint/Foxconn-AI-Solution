@@ -63,6 +63,7 @@ const viewerNavigation: ShellNavigationItem[] = [
   { to: '/machines', labelKey: 'navigation.equipment', icon: MonitorCog },
   { to: '/alarms', labelKey: 'navigation.alarms', icon: Bell },
   { to: '/production-analysis', labelKey: 'navigation.productionAnalysis', icon: FileText },
+  { to: '/assets', labelKey: 'navigation.assets', icon: DatabaseZap },
   { to: '/slideshow', labelKey: 'common.mode.slideshow', icon: Tv },
   { to: '/settings', labelKey: 'navigation.settings', icon: Settings2 },
 ];
@@ -73,6 +74,7 @@ const adminNavigation: ShellNavigationItem[] = [
   { to: '/admin/machines', labelKey: 'navigation.equipment', icon: MonitorCog },
   { to: '/admin/alarms', labelKey: 'navigation.alarms', icon: Bell },
   { to: '/admin/reports', labelKey: 'navigation.reports', icon: FileText },
+  { to: '/admin/assets', labelKey: 'navigation.assets', icon: DatabaseZap },
   { to: '/admin/settings', labelKey: 'navigation.settings', icon: Settings2 },
 ];
 

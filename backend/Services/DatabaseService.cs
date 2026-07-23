@@ -653,6 +653,62 @@ namespace backend.Services
                     $$;
                 ");
 
+                // ─── 14. telemetry_data (normalized, TimescaleDB-ready) ──────────────
+                // Follows TelemetrySchemaContract: (time, asset_id, metric, value).
+                // On plain PostgreSQL this is a regular table with BRIN index.
+                // When TimescaleDB is available, convert to hypertable with:
+                //   SELECT create_hypertable('telemetry_data', 'time', chunk_time_interval => INTERVAL '1 day');
+                ExecuteSync(conn, @"
+                    CREATE TABLE IF NOT EXISTS telemetry_data (
+                        time TIMESTAMPTZ NOT NULL,
+                        asset_id UUID NOT NULL,
+                        metric VARCHAR(64) NOT NULL,
+                        value DOUBLE PRECISION NOT NULL,
+                        unit VARCHAR(16),
+                        source VARCHAR(256)
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_telemetry_data_asset_time
+                        ON telemetry_data (asset_id, time DESC);
+                    CREATE INDEX IF NOT EXISTS idx_telemetry_data_time_brin
+                        ON telemetry_data USING BRIN (time) WITH (pages_per_range = 32);
+                ");
+
+                // ─── 15. event_log (CEP-ready event storage) ─────────────────────────
+                // Follows FusionEventContract schema.
+                ExecuteSync(conn, @"
+                    CREATE TABLE IF NOT EXISTS event_log (
+                        event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        schema_version INTEGER NOT NULL DEFAULT 1,
+                        timestamp TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        asset_id UUID NOT NULL,
+                        event_type VARCHAR(64) NOT NULL,
+                        severity VARCHAR(16) NOT NULL,
+                        source VARCHAR(256),
+                        payload JSONB,
+                        correlation_id VARCHAR(256),
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_event_log_asset_time
+                        ON event_log (asset_id, timestamp DESC);
+                    CREATE INDEX IF NOT EXISTS idx_event_log_type_severity
+                        ON event_log (event_type, severity);
+                ");
+
+                // ─── 16. asset_documents (link docs/manuals/drawings to assets) ─────
+                ExecuteSync(conn, @"
+                    CREATE TABLE IF NOT EXISTS asset_documents (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        asset_id UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+                        title VARCHAR(256) NOT NULL,
+                        doc_type VARCHAR(64) NOT NULL DEFAULT 'MANUAL',
+                        url TEXT NOT NULL,
+                        uploaded_by VARCHAR(128),
+                        uploaded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_asset_documents_asset
+                        ON asset_documents (asset_id);
+                ");
+
                 ExecuteSync(conn, "TRUNCATE machine_telemetry_history, machine_hourly_production, alarms CASCADE;");
                 ExecuteSync(conn, "UPDATE machines SET status = 'OFFLINE', plc_connected = false, production_count = 0, last_plc_data = NULL, uptime_seconds = 0, cpu_percent = 0.0, ram_percent = 0.0;");
 
@@ -1092,6 +1148,238 @@ namespace backend.Services
             catch (Exception ex)
             {
                 Console.WriteLine($"[DB] UpdateHourlyProductionAsync failed: {ex.Message}");
+            }
+        }
+
+        // ─── CEP: Insert event into event_log ───────────────────────────────
+
+        public async Task InsertEventLogAsync(Mkz.Fusion.Contracts.FusionEvent evt)
+        {
+            try
+            {
+                const string sql = @"
+                    INSERT INTO event_log (event_id, schema_version, timestamp, asset_id, event_type, severity, source, payload, correlation_id)
+                    VALUES (@eventId, @sv, @ts, @assetId, @eventType, @severity, @source, CAST(@payload AS jsonb), @corrId)";
+                await ExecuteNonQueryAsync(sql, p =>
+                {
+                    p.AddWithValue("eventId", evt.EventId);
+                    p.AddWithValue("sv", evt.SchemaVersion);
+                    p.AddWithValue("ts", evt.Timestamp.UtcDateTime);
+                    p.AddWithValue("assetId", evt.AssetId);
+                    p.AddWithValue("eventType", evt.EventType);
+                    p.AddWithValue("severity", evt.Severity);
+                    p.AddWithValue("source", (object?)evt.Source ?? DBNull.Value);
+                    p.AddWithValue("payload", evt.Payload != null
+                        ? System.Text.Json.JsonSerializer.Serialize(evt.Payload)
+                        : "{}");
+                    p.AddWithValue("corrId", (object?)evt.CorrelationId ?? DBNull.Value);
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DB] InsertEventLogAsync failed: {ex.Message}");
+            }
+        }
+
+        // ─── Telemetry data points (normalized) ─────────────────────────────
+
+        public async Task InsertTelemetryDataPointsAsync(IEnumerable<Mkz.Fusion.Contracts.TelemetryDataPoint> points)
+        {
+            try
+            {
+                using var conn = CreateConnection();
+                await conn.OpenAsync();
+                foreach (var pt in points)
+                {
+                    const string sql = @"
+                        INSERT INTO telemetry_data (time, asset_id, metric, value, unit, source)
+                        VALUES (@time, @assetId, @metric, @value, @unit, @source)";
+                    using var cmd = new NpgsqlCommand(sql, conn);
+                    cmd.Parameters.AddWithValue("time", pt.Time.UtcDateTime);
+                    cmd.Parameters.AddWithValue("assetId", pt.AssetId);
+                    cmd.Parameters.AddWithValue("metric", pt.Metric);
+                    cmd.Parameters.AddWithValue("value", pt.Value);
+                    cmd.Parameters.AddWithValue("unit", (object?)pt.Unit ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("source", (object?)pt.Source ?? DBNull.Value);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DB] InsertTelemetryDataPointsAsync failed: {ex.Message}");
+            }
+        }
+
+        // ─── Telemetry query (time-series) ──────────────────────────────────
+
+        public async Task<List<Dictionary<string, object?>>> QueryTelemetryDataAsync(
+            Guid assetId, string metric, DateTime from, DateTime to, int limit = 1000)
+        {
+            var results = new List<Dictionary<string, object?>>();
+            try
+            {
+                const string sql = @"
+                    SELECT time, asset_id, metric, value, unit, source
+                    FROM telemetry_data
+                    WHERE asset_id = @assetId AND metric = @metric AND time >= @from AND time <= @to
+                    ORDER BY time ASC
+                    LIMIT @limit";
+                using var conn = CreateConnection();
+                await conn.OpenAsync();
+                using var cmd = new NpgsqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("assetId", assetId);
+                cmd.Parameters.AddWithValue("metric", metric);
+                cmd.Parameters.AddWithValue("from", from);
+                cmd.Parameters.AddWithValue("to", to);
+                cmd.Parameters.AddWithValue("limit", limit);
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    results.Add(new Dictionary<string, object?>
+                    {
+                        ["time"] = reader.GetDateTime(0),
+                        ["assetId"] = reader.GetGuid(1),
+                        ["metric"] = reader.GetString(2),
+                        ["value"] = reader.GetDouble(3),
+                        ["unit"] = reader.IsDBNull(4) ? null : reader.GetString(4),
+                        ["source"] = reader.IsDBNull(5) ? null : reader.GetString(5)
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DB] QueryTelemetryDataAsync failed: {ex.Message}");
+            }
+            return results;
+        }
+
+        // ─── Event log queries ──────────────────────────────────────────────
+
+        public async Task<List<Dictionary<string, object?>>> QueryEventLogAsync(
+            Guid? assetId = null, string? eventType = null, string? severity = null,
+            DateTime? from = null, DateTime? to = null, int limit = 100)
+        {
+            var results = new List<Dictionary<string, object?>>();
+            try
+            {
+                var conditions = new List<string>();
+                if (assetId.HasValue) conditions.Add("asset_id = @assetId");
+                if (!string.IsNullOrEmpty(eventType)) conditions.Add("event_type = @eventType");
+                if (!string.IsNullOrEmpty(severity)) conditions.Add("severity = @severity");
+                if (from.HasValue) conditions.Add("timestamp >= @from");
+                if (to.HasValue) conditions.Add("timestamp <= @to");
+
+                var where = conditions.Count > 0 ? "WHERE " + string.Join(" AND ", conditions) : "";
+                var sql = $"SELECT event_id, schema_version, timestamp, asset_id, event_type, severity, source, payload, correlation_id FROM event_log {where} ORDER BY timestamp DESC LIMIT @limit";
+
+                using var conn = CreateConnection();
+                await conn.OpenAsync();
+                using var cmd = new NpgsqlCommand(sql, conn);
+                if (assetId.HasValue) cmd.Parameters.AddWithValue("assetId", assetId.Value);
+                if (!string.IsNullOrEmpty(eventType)) cmd.Parameters.AddWithValue("eventType", eventType);
+                if (!string.IsNullOrEmpty(severity)) cmd.Parameters.AddWithValue("severity", severity);
+                if (from.HasValue) cmd.Parameters.AddWithValue("from", from.Value);
+                if (to.HasValue) cmd.Parameters.AddWithValue("to", to.Value);
+                cmd.Parameters.AddWithValue("limit", limit);
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    results.Add(new Dictionary<string, object?>
+                    {
+                        ["eventId"] = reader.GetGuid(0),
+                        ["schemaVersion"] = reader.GetInt32(1),
+                        ["timestamp"] = reader.GetDateTime(2),
+                        ["assetId"] = reader.GetGuid(3),
+                        ["eventType"] = reader.GetString(4),
+                        ["severity"] = reader.GetString(5),
+                        ["source"] = reader.IsDBNull(6) ? null : reader.GetString(6),
+                        ["payload"] = reader.IsDBNull(7) ? null : reader.GetString(7),
+                        ["correlationId"] = reader.IsDBNull(8) ? null : reader.GetString(8)
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DB] QueryEventLogAsync failed: {ex.Message}");
+            }
+            return results;
+        }
+
+        // ─── Asset document linking ─────────────────────────────────────────
+
+        public async Task<List<Dictionary<string, object?>>> GetAssetDocumentsAsync(Guid assetId)
+        {
+            var results = new List<Dictionary<string, object?>>();
+            try
+            {
+                const string sql = @"
+                    SELECT id, asset_id, title, doc_type, url, uploaded_by, uploaded_at
+                    FROM asset_documents WHERE asset_id = @assetId
+                    ORDER BY uploaded_at DESC";
+                using var conn = CreateConnection();
+                await conn.OpenAsync();
+                using var cmd = new NpgsqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("assetId", assetId);
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    results.Add(new Dictionary<string, object?>
+                    {
+                        ["id"] = reader.GetGuid(0),
+                        ["assetId"] = reader.GetGuid(1),
+                        ["title"] = reader.GetString(2),
+                        ["docType"] = reader.GetString(3),
+                        ["url"] = reader.GetString(4),
+                        ["uploadedBy"] = reader.IsDBNull(5) ? null : reader.GetString(5),
+                        ["uploadedAt"] = reader.GetDateTime(6)
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DB] GetAssetDocumentsAsync failed: {ex.Message}");
+            }
+            return results;
+        }
+
+        public async Task<Guid> AddAssetDocumentAsync(Guid assetId, string title, string docType, string url, string? uploadedBy)
+        {
+            var id = Guid.NewGuid();
+            try
+            {
+                const string sql = @"
+                    INSERT INTO asset_documents (id, asset_id, title, doc_type, url, uploaded_by)
+                    VALUES (@id, @assetId, @title, @docType, @url, @uploadedBy)";
+                await ExecuteNonQueryAsync(sql, p =>
+                {
+                    p.AddWithValue("id", id);
+                    p.AddWithValue("assetId", assetId);
+                    p.AddWithValue("title", title);
+                    p.AddWithValue("docType", docType);
+                    p.AddWithValue("url", url);
+                    p.AddWithValue("uploadedBy", (object?)uploadedBy ?? DBNull.Value);
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DB] AddAssetDocumentAsync failed: {ex.Message}");
+            }
+            return id;
+        }
+
+        public async Task<bool> DeleteAssetDocumentAsync(Guid documentId)
+        {
+            try
+            {
+                const string sql = "DELETE FROM asset_documents WHERE id = @id";
+                await ExecuteNonQueryAsync(sql, p => p.AddWithValue("id", documentId));
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DB] DeleteAssetDocumentAsync failed: {ex.Message}");
+                return false;
             }
         }
     }

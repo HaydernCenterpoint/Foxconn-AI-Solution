@@ -73,6 +73,39 @@ export function getMockDataForUrl(url: string, method: string): unknown {
       return getMockReport();
     }
 
+    if (cleanUrl.endsWith('/assets/tree')) {
+      return getMockAssetTree();
+    }
+
+    if (cleanUrl.endsWith('/assets')) {
+      return getMockAssets();
+    }
+
+    if (/\/assets\/[^/]+\/children$/.test(cleanUrl)) {
+      const assetId = cleanUrl.split('/').slice(-2)[0];
+      return getMockAssetChildren(assetId);
+    }
+
+    if (/\/assets\/[^/]+\/ancestors$/.test(cleanUrl)) {
+      return [];
+    }
+
+    if (/\/assets\/[^/]+\/documents$/.test(cleanUrl)) {
+      return getMockAssetDocuments();
+    }
+
+    if (cleanUrl.endsWith('/events') || cleanUrl.startsWith('/events')) {
+      return getMockEvents();
+    }
+
+    if (cleanUrl.endsWith('/event-rules')) {
+      return getMockEventRules();
+    }
+
+    if (cleanUrl.includes('/telemetry/query')) {
+      return getMockTelemetryQuery();
+    }
+
     if (cleanUrl.endsWith('/health')) {
       return {
         status: 'Healthy',
@@ -280,4 +313,174 @@ function getMockSimulationForMachine(id: string): Record<string, unknown> {
     ramPercent: status === 'running' ? 36 + machineNumber * 3 : 14,
     timestamp: new Date().toISOString()
   };
+}
+
+// ── Asset hierarchy mock data ──────────────────────────────────────────
+
+const PLANT_ID = '00000000-0000-0000-0000-000000000001';
+const AREA_IDS = {
+  smt: '00000000-0000-0000-0000-000000000010',
+  assembly: '00000000-0000-0000-0000-000000000011',
+  testingQc: '00000000-0000-0000-0000-000000000012',
+  packaging: '00000000-0000-0000-0000-000000000013',
+  warehouse: '00000000-0000-0000-0000-000000000014',
+};
+
+function getMockAssets(): Record<string, unknown>[] {
+  const now = new Date().toISOString();
+  const areas = [
+    { id: AREA_IDS.smt, type: 'AREA', name: 'SMT Workshop', code: 'area:smt', metadata: { floor: '1F', building: 'B1' }, createdAt: now, updatedAt: now },
+    { id: AREA_IDS.assembly, type: 'AREA', name: 'Assembly Workshop', code: 'area:assembly', metadata: { floor: '1F', building: 'B2' }, createdAt: now, updatedAt: now },
+    { id: AREA_IDS.testingQc, type: 'AREA', name: 'Testing & QC Zone', code: 'area:testing-qc', metadata: { floor: '2F', building: 'B1' }, createdAt: now, updatedAt: now },
+    { id: AREA_IDS.packaging, type: 'AREA', name: 'Packaging & Shipping', code: 'area:packaging', metadata: { floor: '1F', building: 'B3' }, createdAt: now, updatedAt: now },
+    { id: AREA_IDS.warehouse, type: 'AREA', name: 'Warehouse', code: 'area:warehouse', metadata: { floor: '1F', building: 'B4' }, createdAt: now, updatedAt: now },
+  ];
+
+  const machines = getAllMockMachines().map((m) => ({
+    id: m.id,
+    type: 'MACHINE',
+    name: m.name,
+    code: `machine:${m.id}`,
+    metadata: { machineCode: m.machineCode, clientId: m.clientId },
+    createdAt: now,
+    updatedAt: now,
+  }));
+
+  return [
+    { id: PLANT_ID, type: 'PLANT', name: 'MKZ Factory', code: 'MKZ-PLANT', metadata: {}, createdAt: now, updatedAt: now },
+    ...areas,
+    ...machines,
+  ];
+}
+
+function getMockAssetTree(): Record<string, unknown>[] {
+  const now = new Date().toISOString();
+  const lineIds: Record<string, string> = { 'line-1': 'line-1', 'line-2': 'line-2', 'line-3': 'line-3' };
+
+  const buildLine = (lineId: string, lineName: string, areaId: string) => {
+    const machines = getMockMachinesForLine(lineId).map((m) => ({
+      id: m.id,
+      type: 'MACHINE',
+      name: m.name,
+      code: `machine:${m.id}`,
+      metadata: { machineCode: m.machineCode, clientId: m.clientId },
+      createdAt: now,
+      updatedAt: now,
+      parentId: lineId,
+      children: [
+        { id: `sensor:temp:${m.id}`, type: 'SENSOR', name: `${m.name} Temperature Sensor`, code: `sensor:temp:${m.id}`, metadata: { unit: '°C', range_min: 0, range_max: 120 }, createdAt: now, updatedAt: now, parentId: m.id, children: [] },
+        { id: `sensor:vib:${m.id}`, type: 'SENSOR', name: `${m.name} Vibration Sensor`, code: `sensor:vib:${m.id}`, metadata: { unit: 'Hz', range_min: 0, range_max: 500 }, createdAt: now, updatedAt: now, parentId: m.id, children: [] },
+      ],
+    }));
+
+    return {
+      id: lineId,
+      type: 'LINE',
+      name: lineName,
+      code: `line:${lineId}`,
+      metadata: {},
+      createdAt: now,
+      updatedAt: now,
+      parentId: areaId,
+      children: machines,
+    };
+  };
+
+  return [{
+    id: PLANT_ID,
+    type: 'PLANT',
+    name: 'MKZ Factory',
+    code: 'MKZ-PLANT',
+    metadata: {},
+    createdAt: now,
+    updatedAt: now,
+    parentId: null,
+    children: [
+      {
+        id: AREA_IDS.smt, type: 'AREA', name: 'SMT Workshop', code: 'area:smt',
+        metadata: { floor: '1F', building: 'B1' }, createdAt: now, updatedAt: now, parentId: PLANT_ID,
+        children: [buildLine(lineIds['line-1'], 'Dây chuyền lắp ráp điện tử (L1)', AREA_IDS.smt)],
+      },
+      {
+        id: AREA_IDS.assembly, type: 'AREA', name: 'Assembly Workshop', code: 'area:assembly',
+        metadata: { floor: '1F', building: 'B2' }, createdAt: now, updatedAt: now, parentId: PLANT_ID,
+        children: [buildLine(lineIds['line-2'], 'Dây chuyền cơ khí CNC (L2)', AREA_IDS.assembly)],
+      },
+      {
+        id: AREA_IDS.testingQc, type: 'AREA', name: 'Testing & QC Zone', code: 'area:testing-qc',
+        metadata: { floor: '2F', building: 'B1' }, createdAt: now, updatedAt: now, parentId: PLANT_ID,
+        children: [buildLine(lineIds['line-3'], 'Dây chuyền hoàn thiện & đóng gói (L3)', AREA_IDS.testingQc)],
+      },
+      {
+        id: AREA_IDS.packaging, type: 'AREA', name: 'Packaging & Shipping', code: 'area:packaging',
+        metadata: { floor: '1F', building: 'B3' }, createdAt: now, updatedAt: now, parentId: PLANT_ID,
+        children: [],
+      },
+      {
+        id: AREA_IDS.warehouse, type: 'AREA', name: 'Warehouse', code: 'area:warehouse',
+        metadata: { floor: '1F', building: 'B4' }, createdAt: now, updatedAt: now, parentId: PLANT_ID,
+        children: [],
+      },
+    ],
+  }];
+}
+
+function getMockAssetChildren(assetId: string): Record<string, unknown>[] {
+  const tree = getMockAssetTree();
+  const findNode = (nodes: Record<string, unknown>[]): Record<string, unknown>[] | null => {
+    for (const node of nodes) {
+      if (node.id === assetId) return (node.children as Record<string, unknown>[]) ?? [];
+      const children = node.children as Record<string, unknown>[] | undefined;
+      if (children) {
+        const result = findNode(children);
+        if (result) return result;
+      }
+    }
+    return null;
+  };
+  const found = findNode(tree);
+  return (found ?? []).map(({ children: _children, parentId: _parentId, ...rest }) => rest);
+}
+
+function getMockAssetDocuments() {
+  return [
+    { id: 'doc-1', assetId: 'plant-mkz', title: 'Maintenance Manual v3.2', docType: 'MANUAL', url: 'https://docs.example.com/manual-v3.2.pdf', uploadedBy: 'admin', uploadedAt: '2026-07-15T08:00:00Z' },
+    { id: 'doc-2', assetId: 'plant-mkz', title: 'Electrical Wiring Diagram', docType: 'DRAWING', url: 'https://docs.example.com/wiring.dwg', uploadedBy: 'engineer', uploadedAt: '2026-07-10T14:30:00Z' },
+    { id: 'doc-3', assetId: 'plant-mkz', title: 'Safety Certification ISO 45001', docType: 'CERTIFICATE', url: 'https://docs.example.com/iso45001.pdf', uploadedBy: 'admin', uploadedAt: '2026-06-20T09:00:00Z' },
+  ];
+}
+
+function getMockEvents() {
+  const now = Date.now();
+  return [
+    { eventId: 'evt-1', schemaVersion: 1, timestamp: new Date(now - 120_000).toISOString(), assetId: 'machine-1', eventType: 'THRESHOLD_BREACH', severity: 'CRITICAL', source: 'EventRuleEngine:rule-temp-critical', payload: '{"metric":"temperature","actual_value":87.5,"threshold":85}', correlationId: null },
+    { eventId: 'evt-2', schemaVersion: 1, timestamp: new Date(now - 300_000).toISOString(), assetId: 'machine-2', eventType: 'THRESHOLD_BREACH', severity: 'WARNING', source: 'EventRuleEngine:rule-vibration-high', payload: '{"metric":"vibration","actual_value":380,"threshold":350}', correlationId: null },
+    { eventId: 'evt-3', schemaVersion: 1, timestamp: new Date(now - 600_000).toISOString(), assetId: 'machine-1', eventType: 'THRESHOLD_BREACH', severity: 'WARNING', source: 'EventRuleEngine:rule-oee-low', payload: '{"metric":"oee","actual_value":58.3,"threshold":65}', correlationId: null },
+    { eventId: 'evt-4', schemaVersion: 1, timestamp: new Date(now - 900_000).toISOString(), assetId: 'machine-3', eventType: 'MAINTENANCE_DUE', severity: 'WARNING', source: 'EventRuleEngine:rule-maintenance-overdue', payload: '{"metric":"uptime_seconds","actual_value":1900000}', correlationId: null },
+  ];
+}
+
+function getMockEventRules() {
+  return [
+    { id: 'rule-temp-critical', name: 'Temperature Critical Threshold', enabled: true, eventType: 'THRESHOLD_BREACH', severity: 'CRITICAL', condition: { type: 'threshold', metric: 'temperature', operator: '>', value: 85, unit: '°C' }, cooldownSeconds: 300 },
+    { id: 'rule-temp-warning', name: 'Temperature Warning', enabled: true, eventType: 'THRESHOLD_BREACH', severity: 'WARNING', condition: { type: 'threshold', metric: 'temperature', operator: '>', value: 70, unit: '°C' }, cooldownSeconds: 600 },
+    { id: 'rule-vibration-high', name: 'High Vibration Alert', enabled: true, eventType: 'THRESHOLD_BREACH', severity: 'WARNING', condition: { type: 'threshold', metric: 'vibration', operator: '>', value: 350, unit: 'Hz' }, cooldownSeconds: 300 },
+    { id: 'rule-oee-low', name: 'Low OEE Alert', enabled: true, eventType: 'THRESHOLD_BREACH', severity: 'WARNING', condition: { type: 'threshold', metric: 'oee', operator: '<', value: 65, unit: '%' }, cooldownSeconds: 1800 },
+  ];
+}
+
+function getMockTelemetryQuery() {
+  const now = Date.now();
+  const points = [];
+  for (let i = 0; i < 24; i++) {
+    points.push({
+      time: new Date(now - (23 - i) * 3600_000).toISOString(),
+      assetId: 'machine-1',
+      metric: 'production_quantity',
+      value: 200 + Math.floor(Math.random() * 100),
+      unit: 'pcs',
+      source: null,
+    });
+  }
+  return points;
 }
