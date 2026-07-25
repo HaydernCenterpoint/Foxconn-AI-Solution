@@ -191,6 +191,8 @@ export const zhCN = {
     dataFusion: '数据融合',
     fiiAssistant: 'FII Assistant',
     fiiDataFusion: 'FII Data Fusion',
+    assets: '资产管理',
+    events: '事件',
   },
   titles: {
     login: '登录',
@@ -207,6 +209,8 @@ export const zhCN = {
     system: '系统监控',
     forbidden: '无权限',
     notFound: '未找到',
+    assets: '资产管理',
+    events: '事件',
   },
   auth: {
     loginHeading: '登录',

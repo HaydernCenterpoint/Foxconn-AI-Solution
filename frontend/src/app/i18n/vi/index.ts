@@ -191,6 +191,8 @@ export const vi = {
     dataFusion: 'Hợp nhất dữ liệu',
     fiiAssistant: 'FII Assistant',
     fiiDataFusion: 'FII Data Fusion',
+    assets: 'Quản lý tài sản',
+    events: 'Sự kiện',
   },
   titles: {
     login: 'Đăng nhập',
@@ -207,6 +209,8 @@ export const vi = {
     system: 'Giám sát hệ thống',
     forbidden: 'Không có quyền',
     notFound: 'Không tìm thấy',
+    assets: 'Quản lý tài sản',
+    events: 'Sự kiện',
   },
   auth: {
     loginHeading: 'Đăng nhập',

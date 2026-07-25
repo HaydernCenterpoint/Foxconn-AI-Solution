@@ -63,6 +63,9 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// RFC 7807 ProblemDetails for standardized API error responses
+builder.Services.AddProblemDetails();
+
 // Register Custom Services
 builder.Services.AddSingleton<DatabaseService>();
 builder.Services.AddSingleton<TimescaleTelemetryService>();
@@ -94,6 +97,8 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<TelemetryIngestion
 builder.Services.AddSingleton<SyncService>();
 
 builder.Services.AddHostedService<MqttServerService>();
+builder.Services.AddSingleton<EventRuleEngine>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<EventRuleEngine>());
 // builder.Services.AddHostedService<SimulationService>();
 
 // Configure JWT Bearer Authentication

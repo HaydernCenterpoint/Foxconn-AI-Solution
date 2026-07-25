@@ -144,7 +144,8 @@
 }
 
 .machine-detail__status,
-.machine-detail__connection {
+.machine-detail__connection,
+.machine-detail__health {
   display: inline-flex;
   min-height: 2.15rem;
   align-items: center;
@@ -156,6 +157,10 @@
   letter-spacing: .04em;
   white-space: nowrap;
 }
+
+.machine-detail__health--healthy { border-color: #28513f; background: #173229; color: #5ad3a4; }
+.machine-detail__health--warning { border-color: #61511a; background: #353013; color: #e4c621; }
+.machine-detail__health--critical { border-color: #6b3030; background: #371b22; color: #ff8f9b; }
 
 .machine-detail__status--running,
 .machine-detail__connection--online {
