@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { queryKeys } from '../../../app/queryKeys';
 import { queryTimings } from '../../../app/queryOptions';
@@ -8,6 +8,7 @@ import { linesApi } from '../../production-lines/services/lines.api';
 import { machinesApi } from '../../machines/services/machines.api';
 import { createDashboardViewModel } from '../dashboardViewModel';
 import { dashboardApi } from '../services/dashboard.api';
+import { isAssetId, predictiveAlertsApi, type AssetHealth } from '../services/predictiveAlerts.api';
 import { ModernDashboard } from './ModernDashboard';
 
 export type DashboardRole = 'admin' | 'engineer' | 'viewer';
@@ -30,6 +31,31 @@ export function ModernDashboardPage({ role }: { role: DashboardRole }) {
     queryFn: machinesApi.getAll,
     refetchInterval: queryTimings.machines,
   });
+  const predictiveAlertsQuery = useQuery({
+    queryKey: queryKeys.predictiveAlerts.list(),
+    queryFn: () => predictiveAlertsApi.listAlerts(),
+    refetchInterval: queryTimings.dashboard,
+  });
+  const healthAssetIds = useMemo(
+    () => [...new Set((predictiveAlertsQuery.data ?? [])
+      .map((alert) => alert.asset_id)
+      .filter(isAssetId))].slice(0, 3),
+    [predictiveAlertsQuery.data],
+  );
+  const healthQueries = useQueries({
+    queries: healthAssetIds.map((assetId) => ({
+      queryKey: queryKeys.predictiveAlerts.health(assetId),
+      queryFn: () => predictiveAlertsApi.getHealth(assetId),
+      staleTime: 60_000,
+    })),
+  });
+  const healthByAssetId = useMemo<Record<string, AssetHealth | undefined>>(
+    () => healthAssetIds.reduce<Record<string, AssetHealth | undefined>>((scores, assetId, index) => {
+      scores[assetId] = healthQueries[index]?.data;
+      return scores;
+    }, {}),
+    [healthAssetIds, healthQueries],
+  );
 
   const viewModel = useMemo(
     () => createDashboardViewModel({
@@ -51,6 +77,10 @@ export function ModernDashboardPage({ role }: { role: DashboardRole }) {
       basePath={role === 'viewer' ? '/' : '/admin'}
       isLoading={isLoading}
       isError={isError}
+      predictiveAlerts={predictiveAlertsQuery.data}
+      healthByAssetId={healthByAssetId}
+      isPredictiveAlertsLoading={predictiveAlertsQuery.isLoading}
+      isPredictiveAlertsError={predictiveAlertsQuery.isError}
     />
   );
 }

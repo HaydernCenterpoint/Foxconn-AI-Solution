@@ -23,9 +23,11 @@ Create `.env.local` for local development:
 
 ```env
 VITE_API_URL=/api
+VITE_CEP_API_URL=/api/cep
+VITE_ASSET_API_URL=/api/asset-service
 ```
 
-In production, point `VITE_API_URL` at the backend path served inside the factory network.
+In production, point these paths at the backend, CEP, and asset-service routes served inside the factory network. Direct CEP/asset-service URLs must include `/api/v1`; the Vite development server proxies the defaults to ports 8085 and 8084.
 
 ## Scripts
 

@@ -1,0 +1,43 @@
+{
+  "branch": "codex/auth-ui-refresh",
+  "head": "de389a34a6618505661f85fd14b4e8fd53f6836d",
+  "existingStaged": [
+    "ClientPLC/ClientPLC.App/Views/Guest/LiveErrorsView.xaml.cs.restored",
+    "ClientPLC/ClientPLC.Core/Config/AppConfig.cs.bak",
+    "cs_files.txt",
+    "import_062.csv",
+    "import_063.csv",
+    "import_064.csv",
+    "import_065_066.csv",
+    "import_067.csv",
+    "import_mcb.csv",
+    "import_vertical_flip.csv",
+    "inherited-waddling-book.md"
+  ],
+  "targets": [
+    "frontend/src/features/production-lines/components/CanvasToolbar.tsx",
+    "frontend/src/features/production-lines/components/DiagramInteractionContext.tsx",
+    "frontend/src/features/production-lines/components/DiagramNode.tsx",
+    "frontend/src/features/production-lines/components/DiagramProperties.tsx",
+    "frontend/src/features/production-lines/components/EquipmentLibrary.tsx",
+    "frontend/src/features/production-lines/components/EquipmentNode.tsx",
+    "frontend/src/features/production-lines/components/NodePropertiesBubble.tsx",
+    "frontend/src/features/production-lines/components/edges/AnimatedEdge.tsx",
+    "frontend/src/features/production-lines/components/edges/ButtonEdge.tsx",
+    "frontend/src/features/production-lines/components/edges/index.ts",
+    "frontend/src/features/production-lines/components/nodes/ProcessNode.tsx",
+    "frontend/src/features/production-lines/components/nodes/SensorNode.tsx",
+    "frontend/src/features/production-lines/components/nodes/index.ts",
+    "frontend/src/features/production-lines/services/line-diagram.service.ts",
+    "frontend/src/features/production-lines/store/diagram.store.ts",
+    "frontend/src/features/production-lines/store/flow.store.ts",
+    "frontend/src/features/simulation/services/mockSimulator.service.ts",
+    "frontend/src/features/machines/components/EquipmentTable.tsx"
+  ],
+  "protectedHashes": {
+    "frontend/src/pages/LinesPage.tsx": "74a611183b6d7ee3ca1a40febb684906cdf28c3226d54b4ecc2356e3436561d2",
+    "frontend/src/features/production-lines/components/DiagramEditor.tsx": "8998fc8907ceadf200bdda5bf4fd4b2720fc41acdec2c9567da13650662404e8",
+    "frontend/src/features/production-lines/components/nodes/MachineNode.tsx": "e6f862d236f003fe635f02ab6be48e23c40e6ee177230f778e368b94282ca58c",
+    "frontend/src/features/production-lines/services/lines.api.ts": "f0a73b1999a9b674d476cda6eb923a4d7f72a1178b85baf41d5abbde493ae2d6"
+  }
+}

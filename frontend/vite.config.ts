@@ -51,6 +51,16 @@ export default defineConfig(({ mode }) => ({
   server: {
     port: 3000,
     proxy: {
+      '/api/cep': {
+        target: 'http://localhost:8085',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/cep/, '/api/v1'),
+      },
+      '/api/asset-service': {
+        target: 'http://localhost:8084',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/asset-service/, '/api/v1'),
+      },
       '/api': {
         target: 'http://localhost:5165',
         changeOrigin: true,

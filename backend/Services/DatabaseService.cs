@@ -12,12 +12,19 @@ namespace backend.Services
     public class DatabaseService
     {
         private readonly string _connectionString;
+        private readonly TimescaleTelemetryService _timescaleTelemetry;
+        private readonly CepStagingPublisher _cepStagingPublisher;
         private static readonly JsonSerializerOptions FusionJsonSerializerOptions = new(JsonSerializerDefaults.Web);
 
-        public DatabaseService(IConfiguration configuration)
+        public DatabaseService(
+            IConfiguration configuration,
+            TimescaleTelemetryService timescaleTelemetry,
+            CepStagingPublisher cepStagingPublisher)
         {
             _connectionString = configuration.GetConnectionString("DefaultConnection")
                 ?? throw new ArgumentNullException("ConnectionStrings:DefaultConnection is missing in configuration.");
+            _timescaleTelemetry = timescaleTelemetry;
+            _cepStagingPublisher = cepStagingPublisher;
 
             // Initialize database schema and seed data synchronously during startup
             InitializeDatabase();
@@ -232,6 +239,22 @@ namespace backend.Services
                     $$;
                     CREATE UNIQUE INDEX IF NOT EXISTS asset_relationships_parent_child_type_key
                         ON asset_relationships(parent_asset_id, child_asset_id, relationship_type);
+                ");
+
+                // Document storage remains owned by its document system; the catalog stores only durable links.
+                ExecuteSync(conn, @"
+                    CREATE TABLE IF NOT EXISTS asset_documents (
+                        asset_id UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+                        document_id VARCHAR(255) NOT NULL,
+                        relationship VARCHAR(32) NOT NULL CHECK (relationship IN ('manual', 'drawing', 'warranty')),
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (asset_id, document_id, relationship)
+                    );
+                    ALTER TABLE asset_documents ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ;
+                    UPDATE asset_documents SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL;
+                    ALTER TABLE asset_documents ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;
+                    ALTER TABLE asset_documents ALTER COLUMN created_at SET NOT NULL;
+                    CREATE INDEX IF NOT EXISTS idx_asset_documents_asset_id ON asset_documents(asset_id);
                 ");
 
                 ExecuteSync(conn, $@"
@@ -772,9 +795,12 @@ namespace backend.Services
 
                 try
                 {
+                    long sourceId;
+                    DateTimeOffset persistedOccurredAt;
                     const string rawTelemetrySql = @"
                         INSERT INTO machine_telemetry (machine_id, raw_json, sequence, created_at)
-                        VALUES (@machineId, CAST(@rawJson AS jsonb), @sequence, @occurredAt)";
+                        VALUES (@machineId, CAST(@rawJson AS jsonb), @sequence, @occurredAt)
+                        RETURNING id, created_at";
 
                     await using (var rawTelemetryCommand = new NpgsqlCommand(rawTelemetrySql, connection, transaction))
                     {
@@ -782,7 +808,14 @@ namespace backend.Services
                         rawTelemetryCommand.Parameters.AddWithValue("rawJson", input.RawTelemetryJson);
                         rawTelemetryCommand.Parameters.AddWithValue("sequence", input.Sequence);
                         rawTelemetryCommand.Parameters.AddWithValue("occurredAt", input.OccurredAt.UtcDateTime);
-                        await rawTelemetryCommand.ExecuteNonQueryAsync();
+                        await using var reader = await rawTelemetryCommand.ExecuteReaderAsync();
+                        if (!await reader.ReadAsync())
+                        {
+                            throw new InvalidOperationException("Primary telemetry insert did not return a row.");
+                        }
+
+                        sourceId = reader.GetInt64(0);
+                        persistedOccurredAt = reader.GetFieldValue<DateTimeOffset>(1);
                     }
 
                     if (captureEnabled)
@@ -800,6 +833,13 @@ namespace backend.Services
                     }
 
                     await transaction.CommitAsync();
+                    _cepStagingPublisher.TryPublish(sourceId, input);
+                    await _timescaleTelemetry.TryWriteAsync(new TimescaleTelemetryPoint(
+                        sourceId,
+                        input.MachineId,
+                        input.Sequence,
+                        persistedOccurredAt,
+                        input.RawTelemetryJson));
                     return true;
                 }
                 catch
@@ -881,17 +921,55 @@ namespace backend.Services
             if (!Guid.TryParse(machineId, out var machineGuid)) return;
             try
             {
+                var occurredAt = createdAt ?? DateTime.UtcNow;
+                long sourceId;
+                DateTimeOffset persistedOccurredAt;
+                await using var connection = CreateConnection();
+                await connection.OpenAsync();
+                await using var transaction = await connection.BeginTransactionAsync();
                 const string sql = @"
                     INSERT INTO machine_telemetry (machine_id, raw_json, sequence, created_at)
-                    VALUES (@mid, CAST(@raw AS jsonb), @seq, @created)";
-                
-                await ExecuteNonQueryAsync(sql, p =>
+                    VALUES (@mid, CAST(@raw AS jsonb), @seq, @created)
+                    RETURNING id, created_at";
+
+                await using (var command = new NpgsqlCommand(sql, connection, transaction))
                 {
-                    p.AddWithValue("mid", machineGuid);
-                    p.AddWithValue("raw", rawJson);
-                    p.AddWithValue("seq", sequence);
-                    p.AddWithValue("created", createdAt ?? DateTime.UtcNow);
-                });
+                    command.Parameters.AddWithValue("mid", machineGuid);
+                    command.Parameters.AddWithValue("raw", rawJson);
+                    command.Parameters.AddWithValue("seq", sequence);
+                    command.Parameters.AddWithValue("created", occurredAt);
+                    await using var reader = await command.ExecuteReaderAsync();
+                    if (!await reader.ReadAsync())
+                    {
+                        throw new InvalidOperationException("Primary telemetry insert did not return a row.");
+                    }
+
+                    sourceId = reader.GetInt64(0);
+                    persistedOccurredAt = reader.GetFieldValue<DateTimeOffset>(1);
+                }
+
+                await transaction.CommitAsync();
+                _cepStagingPublisher.TryPublish(sourceId, new TelemetryCaptureInput(
+                    machineGuid,
+                    rawJson,
+                    sequence,
+                    persistedOccurredAt,
+                    null,
+                    null,
+                    "OFFLINE",
+                    false,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null));
+                await _timescaleTelemetry.TryWriteAsync(new TimescaleTelemetryPoint(
+                    sourceId,
+                    machineGuid,
+                    sequence,
+                    persistedOccurredAt,
+                    rawJson));
             }
             catch (Exception ex)
             {

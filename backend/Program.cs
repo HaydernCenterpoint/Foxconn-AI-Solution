@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using backend.Configuration;
 using backend.Middleware;
 using backend.Services;
@@ -11,6 +11,19 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+if (args.Contains("--timescale-backfill", StringComparer.OrdinalIgnoreCase))
+{
+    builder.Services.Configure<TimescaleOptions>(
+        builder.Configuration.GetSection(TimescaleOptions.SectionName));
+    builder.Services.AddSingleton<TimescaleTelemetryService>();
+    builder.Services.AddSingleton<TimescaleBackfillRunner>();
+
+    var backfillApp = builder.Build();
+    var copied = await backfillApp.Services.GetRequiredService<TimescaleBackfillRunner>().RunAsync();
+    Console.WriteLine($"[Timescale] Backfill complete: copied {copied} source rows.");
+    return;
+}
+
 // Initialize CryptoHelper from configuration
 var mqttEncryptionKey = builder.Configuration["Mqtt:EncryptionKey"]
     ?? throw new InvalidOperationException("Mqtt:EncryptionKey is required.");
@@ -20,6 +33,10 @@ CryptoHelper.Initialize(mqttEncryptionKey);
 builder.Services.AddControllers();
 builder.Services.Configure<OpenDataFusionCaptureOptions>(
     builder.Configuration.GetSection(OpenDataFusionCaptureOptions.SectionName));
+builder.Services.Configure<TimescaleOptions>(
+    builder.Configuration.GetSection(TimescaleOptions.SectionName));
+builder.Services.Configure<CepStagingOptions>(
+    builder.Configuration.GetSection(CepStagingOptions.SectionName));
 
 // Swagger configuration
 builder.Services.AddEndpointsApiExplorer();
@@ -48,8 +65,28 @@ builder.Services.AddSwaggerGen(c =>
 
 // Register Custom Services
 builder.Services.AddSingleton<DatabaseService>();
+builder.Services.AddSingleton<TimescaleTelemetryService>();
+builder.Services.AddSingleton<TimescaleBackfillRunner>();
+builder.Services.AddHttpClient(CepStagingPublisher.HttpClientName, (serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<CepStagingOptions>>().Value;
+    if (Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out var baseAddress))
+    {
+        client.BaseAddress = new Uri(baseAddress.AbsoluteUri.TrimEnd('/') + "/");
+    }
+
+    client.Timeout = TimeSpan.FromSeconds(Math.Clamp(options.RequestTimeoutSeconds, 1, 30));
+});
+builder.Services.AddSingleton<CepStagingPublisher>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<CepStagingPublisher>());
 builder.Services.AddSingleton<TelemetryStore>();
 builder.Services.AddSingleton<IAuditService, AuditService>();
+
+// Phase 2: Product Intelligence Services
+builder.Services.AddSingleton<AlertService>();
+builder.Services.AddSingleton<HealthScoringService>();
+builder.Services.AddSingleton<PredictiveService>();
+builder.Services.AddHostedService<HealthScoringJob>();
 
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<TelemetryIngestionService>();

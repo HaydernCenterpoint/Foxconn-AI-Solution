@@ -27,6 +27,8 @@ param(
     [switch]$SkipOpenDataFusion,
     [switch]$SkipFusionAdapter,
     [switch]$SkipOdysseus,
+    [switch]$SkipTimescale,
+    [switch]$SkipCepStaging,
     [switch]$WithClientPlc
 )
 
@@ -41,6 +43,10 @@ $frontendUrl = "http://localhost:$FrontendPort"
 $odysseusUrl = "http://localhost:$OdysseusPort"
 $odfApiUrl = "http://localhost:$OdfApiPort"
 $odfWebUrl = "http://localhost:$OdfWebPort"
+$timescaleComposeFile = Join-Path $repositoryRoot 'infrastructure/timescaledb/docker-compose.yml'
+$cepComposeFile = Join-Path $repositoryRoot 'infrastructure/cep-staging/docker-compose.yml'
+$timescaleConnectionString = 'Host=localhost;Port=55433;Database=plc_timescale;Username=postgres;Password=12345678'
+$cepStagingUrl = 'http://localhost:58085'
 
 New-Item -ItemType Directory -Path $runtimeLogs -Force | Out-Null
 $backendDevelopmentSettings = Get-Content (Join-Path $repositoryRoot 'backend/appsettings.Development.json') -Raw |
@@ -135,6 +141,38 @@ function Assert-PortAvailable {
     throw "$Name port $Port is already used by $ownerText, but its health endpoint is not ready."
 }
 
+function Start-DockerCompose {
+    param(
+        [Parameter(Mandatory)][string]$ProjectName,
+        [Parameter(Mandatory)][string]$ComposeFile,
+        [Parameter(Mandatory)][string]$Name
+    )
+
+    if (-not (Test-Path -LiteralPath $ComposeFile)) {
+        throw "$Name compose file is missing: $ComposeFile"
+    }
+
+    & docker compose -p $ProjectName -f $ComposeFile up -d
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Name failed to start through Docker Compose."
+    }
+}
+
+function Wait-TimescaleReady {
+    $deadline = [DateTime]::UtcNow.AddSeconds($WaitTimeoutSeconds)
+    while ([DateTime]::UtcNow -lt $deadline) {
+        & docker compose -p mkz-timescale -f $timescaleComposeFile exec -T timescaledb pg_isready -U postgres -d plc_timescale *> $null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host '[ready] TimescaleDB -> localhost:55433' -ForegroundColor Green
+            return
+        }
+
+        Start-Sleep -Seconds 1
+    }
+
+    throw 'TimescaleDB did not become ready. Check Docker Compose logs for mkz-timescale.'
+}
+
 function Start-LoggedProcess {
     param(
         [Parameter(Mandatory)][string]$Name,
@@ -198,6 +236,28 @@ function Stop-RepositoryProcess {
 
 Write-Host "Starting Foxconn AI Solution full demo" -ForegroundColor Cyan
 
+if ((-not $SkipTimescale) -or (-not $SkipCepStaging)) {
+    $docker = Get-Command docker -ErrorAction SilentlyContinue
+    if ($null -eq $docker) {
+        throw 'Docker is required for TimescaleDB and CEP staging. Install/start Docker or use the matching -Skip switch for an intentionally reduced demo.'
+    }
+
+    & docker version *> $null
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Docker is installed but its daemon is unavailable. Start Docker before running the full integration demo.'
+    }
+}
+
+if (-not $SkipTimescale) {
+    Start-DockerCompose -ProjectName 'mkz-timescale' -ComposeFile $timescaleComposeFile -Name 'TimescaleDB'
+    Wait-TimescaleReady
+}
+
+if (-not $SkipCepStaging) {
+    Start-DockerCompose -ProjectName 'mkz-cep-staging' -ComposeFile $cepComposeFile -Name 'CEP staging'
+    Wait-HttpReady -Name 'CEP staging' -Uri "$cepStagingUrl/health"
+}
+
 Stop-RepositoryProcess -ExecutableName 'backend.exe'
 Assert-PortAvailable -Port $BackendPort -Name 'Backend'
 $dotnet = (Get-Command dotnet -ErrorAction Stop).Source
@@ -216,6 +276,10 @@ $backendProcess = @{
         Mqtt__EncryptionKey = $mqttEncryptionKey
         FiiSso__SecureCookie = 'false'
         OpenDataFusion__CaptureEnabled = 'true'
+        Timescale__Enabled = (-not $SkipTimescale).ToString().ToLowerInvariant()
+        ConnectionStrings__Timescale = $timescaleConnectionString
+        CepStaging__Enabled = (-not $SkipCepStaging).ToString().ToLowerInvariant()
+        CepStaging__BaseUrl = $cepStagingUrl
         AllowedOrigins__0 = $frontendUrl
     }
 }
@@ -381,5 +445,7 @@ Write-Host "Operations UI : $frontendUrl" -ForegroundColor Green
 Write-Host "Backend API   : $backendUrl" -ForegroundColor Green
 if (-not $SkipOdysseus) { Write-Host "FII Assistant : $odysseusUrl" -ForegroundColor Green }
 if (-not $SkipOpenDataFusion) { Write-Host "Data Fusion   : $odfWebUrl" -ForegroundColor Green }
+if (-not $SkipTimescale) { Write-Host 'TimescaleDB  : localhost:55433' -ForegroundColor Green }
+if (-not $SkipCepStaging) { Write-Host "CEP staging  : $cepStagingUrl" -ForegroundColor Green }
 Write-Host "Logs          : $runtimeLogs"
 Write-Host "Validate      : .\infrastructure\demo\Test-FullDemo.ps1"

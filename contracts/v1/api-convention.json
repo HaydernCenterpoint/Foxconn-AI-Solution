@@ -1,0 +1,17 @@
+{
+  "$id": "urn:mkz:contracts:v1:api",
+  "contractVersion": "v1",
+  "schemaVersion": 1,
+  "style": "REST",
+  "basePath": "/api/v1",
+  "jsonPropertyNaming": "camelCase",
+  "authentication": {
+    "scheme": "Bearer",
+    "format": "JWT",
+    "default": "required unless explicitly anonymous"
+  },
+  "errors": {
+    "mediaType": "application/problem+json",
+    "standard": "RFC 7807"
+  }
+}

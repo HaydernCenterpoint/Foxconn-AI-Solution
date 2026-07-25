@@ -10,16 +10,17 @@ export type Permission =
   | 'alarms.mutate'
   | 'reports.view'
   | 'users.manage'
-  | 'auditLogs.view';
+  | 'auditLogs.view'
+  | 'assets.configure';
 
 const permissionsByRole: Record<UserRole, readonly Permission[]> = {
   ADMIN: [
     'dashboard.view', 'lines.view', 'lines.configure', 'machines.view', 'machines.configure',
-    'alarms.view', 'alarms.mutate', 'reports.view', 'users.manage', 'auditLogs.view',
+    'alarms.view', 'alarms.mutate', 'reports.view', 'users.manage', 'auditLogs.view', 'assets.configure',
   ],
   ENGINEER: [
     'dashboard.view', 'lines.view', 'lines.configure', 'machines.view', 'machines.configure',
-    'alarms.view', 'alarms.mutate', 'reports.view',
+    'alarms.view', 'alarms.mutate', 'reports.view', 'assets.configure',
   ],
   GUEST: ['dashboard.view', 'lines.view', 'machines.view', 'alarms.view', 'reports.view'],
 };

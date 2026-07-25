@@ -253,6 +253,19 @@ namespace backend.Services
             bool isApproved = await _dbService.IsClientApprovedAsync(clientId);
             if (isApproved)
             {
+                string? machineName = null;
+                if (root.TryGetProperty("payload", out var payload) &&
+                    payload.TryGetProperty("machineName", out var machineNameProperty) &&
+                    machineNameProperty.ValueKind == JsonValueKind.String)
+                {
+                    machineName = machineNameProperty.GetString();
+                }
+
+                _telemetryStore.Save(
+                    clientId,
+                    rawJson,
+                    machineName,
+                    _clientIps.TryGetValue(clientId, out var clientIp) ? clientIp : null);
                 _telemetryIngestionService.Enqueue(rawJson);
             }
             else

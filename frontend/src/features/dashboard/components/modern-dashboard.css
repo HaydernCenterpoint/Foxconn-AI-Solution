@@ -90,7 +90,39 @@
 .modern-dashboard__alarm-status--acknowledged { background: #353013; color: #e4c621; }
 .modern-dashboard__alarm-status--resolved { background: #173229; color: #5ad3a4; }
 
-.modern-dashboard__rail { display: grid; grid-template-rows: minmax(0, 1fr) auto auto; gap: .9rem; }
+.modern-dashboard__predictive-panel { min-height: 12.5rem; }
+.modern-dashboard__predictive-panel .modern-dashboard__panel-head h2 { display: flex; align-items: center; gap: .4rem; }
+.modern-dashboard__predictive-panel .modern-dashboard__panel-head > svg { color: #a78bfa; }
+.modern-dashboard__predictive-empty { min-height: 6.5rem; display: grid; place-items: center; margin: 0; color: var(--md-muted); font-size: .8rem; text-align: center; }
+.modern-dashboard__predictive-list { display: grid; gap: .45rem; margin-top: .7rem; }
+.modern-dashboard__predictive-alert { border: 1px solid #353535; border-radius: .7rem; background: #202020; }
+.modern-dashboard__predictive-alert summary { min-height: 3.6rem; display: grid; grid-template-columns: minmax(0, 1fr) auto auto .65rem; align-items: center; gap: .45rem; padding: .45rem .55rem; cursor: pointer; list-style: none; }
+.modern-dashboard__predictive-alert summary::-webkit-details-marker { display: none; }
+.modern-dashboard__predictive-alert summary::after { content: '›'; color: #aaa; font-size: 1.1rem; transition: transform .15s ease; }
+.modern-dashboard__predictive-alert[open] summary::after { transform: rotate(90deg); }
+.modern-dashboard__predictive-copy { min-width: 0; }
+.modern-dashboard__predictive-copy strong, .modern-dashboard__predictive-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modern-dashboard__predictive-copy strong { font-size: .76rem; }
+.modern-dashboard__predictive-copy small { margin-top: .15rem; color: var(--md-muted); font-size: .64rem; }
+.modern-dashboard__predictive-severity, .modern-dashboard__health-score { border-radius: .65rem; padding: .18rem .35rem; font-size: .6rem; font-weight: 700; white-space: nowrap; }
+.modern-dashboard__predictive-severity--critical, .modern-dashboard__predictive-severity--high { background: #3b2025; color: #ff9aa4; }
+.modern-dashboard__predictive-severity--warning, .modern-dashboard__predictive-severity--medium { background: #353013; color: #f4db59; }
+.modern-dashboard__predictive-severity--info, .modern-dashboard__predictive-severity--low { background: #1d3340; color: #83d0ef; }
+.modern-dashboard__health-score { background: #303030; color: #bbb; }
+.modern-dashboard__health-score--good { background: #173229; color: #5ad3a4; }
+.modern-dashboard__health-score--warning { background: #353013; color: #f4db59; }
+.modern-dashboard__health-score--critical { background: #3b2025; color: #ff9aa4; }
+.modern-dashboard__predictive-details { border-top: 1px solid #353535; padding: .55rem; color: #ddd; font-size: .73rem; }
+.modern-dashboard__predictive-details p { margin: 0; line-height: 1.45; }
+.modern-dashboard__predictive-details h3 { margin: .65rem 0 .25rem; font-size: .72rem; }
+.modern-dashboard__predictive-details ul { margin: 0; padding-left: 1rem; color: #cfcfcf; }
+.modern-dashboard__predictive-details dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .35rem; margin: .65rem 0 0; }
+.modern-dashboard__predictive-details dl div { min-width: 0; padding: .35rem; border-radius: .45rem; background: #282828; }
+.modern-dashboard__predictive-details dt, .modern-dashboard__predictive-details dd { overflow: hidden; margin: 0; text-overflow: ellipsis; white-space: nowrap; }
+.modern-dashboard__predictive-details dt { color: var(--md-muted); font-size: .61rem; }
+.modern-dashboard__predictive-details dd { margin-top: .15rem; font-size: .68rem; font-weight: 700; }
+
+.modern-dashboard__rail { display: grid; grid-template-rows: minmax(0, 1fr) auto auto auto; gap: .9rem; }
 .modern-dashboard__lines-panel { min-height: 20.5rem; }
 .modern-dashboard__products-panel { min-height: 10.5rem; }
 .modern-dashboard__line-list, .modern-dashboard__product-list { display: grid; gap: .55rem; margin-top: .7rem; }
@@ -340,6 +372,7 @@
   .modern-dashboard__rail { grid-template-columns: 1fr; }
   .modern-dashboard__rail-action { grid-column: auto; }
   .modern-dashboard__alarm-table { margin-inline: -.15rem; }
+  .modern-dashboard__predictive-details dl { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {

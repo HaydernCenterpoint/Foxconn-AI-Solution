@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:mkz:contracts:v1:event",
+  "x-contract-version": "v1",
+  "x-schema-version": 1,
+  "title": "MKZ Event v1",
+  "type": "object",
+  "required": ["eventId", "timestamp", "assetId", "type", "severity", "payload"],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "assetId": { "type": "string", "format": "uuid" },
+    "type": { "type": "string", "minLength": 1 },
+    "severity": { "type": "string", "enum": ["info", "warning", "critical", "emergency"] },
+    "payload": { "type": "object" },
+    "source": { "type": "string" },
+    "correlationId": { "type": "string" }
+  }
+}

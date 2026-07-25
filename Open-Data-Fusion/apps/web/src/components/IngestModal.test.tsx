@@ -145,4 +145,5 @@ describe("IngestModal", () => {
     expect(onComplete).toHaveBeenCalledWith("Manual bundle accepted.");
     expect(screen.getByRole("heading", { name: "Bundle accepted" })).toBeInTheDocument();
   });
+
 });

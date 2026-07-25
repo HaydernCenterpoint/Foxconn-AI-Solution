@@ -1,30 +1,29 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+vi.hoisted(() => {
+  vi.stubEnv('VITE_ENABLE_API_MOCKS', 'true');
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => values.set(key, value),
+    removeItem: (key: string) => values.delete(key),
+    clear: () => values.clear(),
+  };
+
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
+  if (typeof window !== 'undefined') {
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: storage });
+  }
+});
+
+import { afterAll, describe, expect, it, vi } from 'vitest';
+import { api } from './apiClient';
+import { getMockDataForUrl } from './apiClient.mock';
 
 describe('demo API mode', () => {
-  afterEach(() => {
+  afterAll(() => {
     vi.unstubAllEnvs();
-    vi.resetModules();
   });
 
   it('serves the public walkthrough from synthetic GET data without mocking writes', async () => {
-    vi.stubEnv('VITE_ENABLE_API_MOCKS', 'true');
-    Object.defineProperty(window, 'localStorage', {
-      configurable: true,
-      value: {
-        clear: vi.fn(),
-        getItem: vi.fn(() => null),
-        key: vi.fn(() => null),
-        length: 0,
-        removeItem: vi.fn(),
-        setItem: vi.fn(),
-      },
-    });
-
-    const [{ api }, { getMockDataForUrl }] = await Promise.all([
-      import('./apiClient'),
-      import('./apiClient.mock'),
-    ]);
-
     expect(api.defaults.withCredentials).toBe(true);
 
     const [dashboard, machine, report, health] = await Promise.all([

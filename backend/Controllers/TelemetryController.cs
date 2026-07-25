@@ -2,18 +2,22 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using backend.Services;
+using Mkz.Fusion.Contracts;
 
 namespace backend.Controllers
 {
     [ApiController]
     [Route("api/telemetry")]
+    [Route(ApiConventionV1.RoutePrefix + "/telemetry")]
     public class TelemetryController : ControllerBase
     {
         private readonly TelemetryStore _store;
+        private readonly TimescaleTelemetryService _timescaleTelemetry;
 
-        public TelemetryController(TelemetryStore store)
+        public TelemetryController(TelemetryStore store, TimescaleTelemetryService timescaleTelemetry)
         {
             _store = store;
+            _timescaleTelemetry = timescaleTelemetry;
         }
 
         /// <summary>
@@ -68,6 +72,28 @@ namespace backend.Controllers
                 };
             });
             return Ok(result);
+        }
+
+        [HttpGet("timescale/{machineId:guid}")]
+        public async Task<IActionResult> GetTimescalePoints(Guid machineId, [FromQuery] int limit = 100)
+        {
+            if (!_timescaleTelemetry.IsEnabled)
+            {
+                return Problem(statusCode: StatusCodes.Status503ServiceUnavailable, detail: "Timescale telemetry is not enabled");
+            }
+
+            return Ok(await _timescaleTelemetry.GetRecentAsync(machineId, limit, HttpContext.RequestAborted));
+        }
+
+        [HttpGet("timescale/{machineId:guid}/hourly")]
+        public async Task<IActionResult> GetTimescaleHourlyRollups(Guid machineId, [FromQuery] int limit = 48)
+        {
+            if (!_timescaleTelemetry.IsEnabled)
+            {
+                return Problem(statusCode: StatusCodes.Status503ServiceUnavailable, detail: "Timescale telemetry is not enabled");
+            }
+
+            return Ok(await _timescaleTelemetry.GetHourlyRollupsAsync(machineId, limit, HttpContext.RequestAborted));
         }
     }
 }

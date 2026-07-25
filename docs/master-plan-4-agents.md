@@ -51,18 +51,18 @@ Checkpoint:  ▲Kickoff        ▲Sync W2        ▲Sync W5        ▲Integratio
 **Nguồn gốc:** Phase 1 + Phase 4 trong roadmap gốc
 
 ### Sprint A1 (Tuần 1-2): TimescaleDB Schema & Migration
-- [ ] Setup TimescaleDB instance (Docker, dev/staging)
-- [ ] Design hypertable schema cho `telemetry` (chunk interval 1 ngày)
-- [ ] Viết migration script từ PostgreSQL hiện tại
-- [ ] Implement dual-write middleware (ghi đồng thời cả 2 DB trong giai đoạn chuyển tiếp)
-- [ ] Backfill script cho dữ liệu lịch sử (có progress tracking, resumable)
+- [x] Setup TimescaleDB instance (Docker, dev/staging)
+- [x] Design hypertable schema cho `telemetry` (chunk interval 1 ngày)
+- [x] Viết migration script từ PostgreSQL hiện tại
+- [x] Implement dual-write middleware (ghi đồng thời cả 2 DB trong giai đoạn chuyển tiếp)
+- [x] Backfill script cho dữ liệu lịch sử (có progress tracking, resumable)
 
 **Deliverables:** SQL migration script, dual-write middleware (C#/Python), backfill tool
 
 ### Sprint A2 (Tuần 3-4): Optimization & Continuous Aggregates
-- [ ] Continuous aggregates (rollup theo giờ/ngày)
-- [ ] Compression policy (mục tiêu >80%)
-- [ ] Retention policy (raw 30 ngày, aggregate 1 năm)
+- [x] Continuous aggregates (rollup theo giờ/ngày)
+- [x] Compression policy (columnstore after 7d; ratio target formal deferred)
+- [x] Retention policy (raw 30 ngày, aggregate 1 năm)
 - [ ] Benchmark & tối ưu 3 query chậm nhất hiện tại (mục tiêu <500ms p95)
 - [ ] Cutover: chuyển toàn bộ read traffic sang TimescaleDB, deprecate PostgreSQL cũ
 
@@ -93,9 +93,9 @@ Checkpoint:  ▲Kickoff        ▲Sync W2        ▲Sync W5        ▲Integratio
 
 ### Sprint B1 (Tuần 1-2): Thiết kế CEP & Mock Data
 - [ ] Không chờ Agent A — dùng **mock telemetry stream** theo schema đã chốt Ngày 1
-- [ ] Đánh giá Apache Flink vs Drools (ma trận ưu/nhược điểm, quyết định kiến trúc)
-- [ ] Định nghĩa event schema (Avro/JSON): `event_id, timestamp, asset_id, type, severity, payload`
-- [ ] Viết 5-10 rule mẫu (VD: "3 máy cùng line lỗi trong 5 phút", "sản lượng giảm >20% so cùng giờ hôm qua")
+- [x] Đánh giá Apache Flink vs Drools (ma trận ưu/nhược điểm, quyết định kiến trúc)
+- [x] Định nghĩa event schema (Avro/JSON): `event_id, timestamp, asset_id, type, severity, payload`
+- [x] Viết 5-10 rule mẫu (VD: "3 máy cùng line lỗi trong 5 phút", "sản lượng giảm >20% so cùng giờ hôm qua")
 
 **Deliverables:** Architecture decision doc, event schema, rule set mẫu
 
@@ -134,17 +134,19 @@ Checkpoint:  ▲Kickoff        ▲Sync W2        ▲Sync W5        ▲Integratio
 **Nguồn gốc:** Phase 3 trong roadmap gốc + phần API nền tảng
 
 ### Sprint C1 (Tuần 1-2): Asset Schema (ưu tiên số 1 — mọi agent phụ thuộc vào đây)
-- [ ] Chốt schema `assets`, `asset_relationships`, `asset_documents` (xem chi tiết SQL trong `prompt-framework.md` mục 4.1)
-- [ ] Publish schema này cho A/B/D dùng làm `asset_id` reference **ngay trong buổi kick-off**
+- [x] Chốt schema `assets` và `asset_relationships` (xem chi tiết SQL trong `prompt-framework.md` mục 4.1)
+- [x] Chốt schema `asset_documents` (metadata link; full RAG sync deferred)
+- [x] Publish schema này cho A/B/D dùng làm `asset_id` reference **ngay trong buổi kick-off**
 - [ ] Thiết kế template import Excel + script import
 - [ ] Seed data 50+ asset thực tế (Plant → Line → Machine → Sensor) cho nhà máy MKZ
 
 **Deliverables:** SQL schema final, Excel template, seed data — **giao Ngày 1-3, gấp nhất**
 
 ### Sprint C2 (Tuần 3-4): Asset CRUD API + Liên kết Document
-- [ ] REST API: `GET/POST/PUT /api/v1/assets`, tree query theo parent_id
-- [ ] Link document (manual, drawing, warranty) với asset — tận dụng `document-service` (pgvector) đã có
-- [ ] Search asset theo tên/loại/metadata
+- [x] REST API: `GET/POST/PUT/DELETE /api/assets` cho catalog-native asset
+- [x] Tree query theo parent_id
+- [x] Link document (manual, drawing, warranty) với asset — metadata API; pgvector binary sync deferred
+- [x] Search asset theo tên/loại/metadata
 
 **Deliverables:** API + Swagger docs, unit test (xUnit)
 
@@ -211,13 +213,14 @@ Checkpoint:  ▲Kickoff        ▲Sync W2        ▲Sync W5        ▲Integratio
 
 ## 7. Điểm đồng bộ (Sync Checkpoints)
 
-| Checkpoint | Tuần | Nội dung | Ai tham gia |
-|---|---|---|---|
-| **Kickoff** | Ngày 1 | Chốt Shared Contracts (asset_id schema, telemetry schema, event schema, API convention) | A, B, C, D |
-| **Sync W2** | Tuần 2 | C giao asset schema final cho A/B/D; A giao telemetry schema thật (thay mock) | A, C, D |
-| **Sync W5** | Tuần 5 | B giao event/alert API; C giao Asset CRUD API; D bắt đầu tích hợp thật thay mock | B, C, D |
-| **Integration W8** | Tuần 8 | Ghép nối toàn bộ: Data (A) → Event/AI (B) → Asset (C) → UI (D). Chạy thử end-to-end | A, B, C, D |
-| **Go-live W10** | Tuần 10 | Regression test, security sign-off, deploy staging → production | A, B, C, D |
+| Checkpoint | Deadline | Accountable owner | Deliverable bắt buộc để qua gate | Contributors |
+|---|---|---|---|---|
+| **Sync W2** | Cuối tuần 2 | **C · Core backend** | Contract v1 cho asset/telemetry/event/API được versioned; A bàn giao telemetry schema thật; contract test pass. | A, B, D |
+| **Sync W5** | Cuối tuần 5 | **D · Frontend & QA** | Event/alert API (B) và Asset CRUD API (C) có trên integration environment; UI dùng API thật, kèm một E2E happy-path pass. | B, C |
+| **Integration W8** | Cuối tuần 8 | **D · Frontend & QA** | PLC mock → Data → Event/AI → Backend → UI chạy end-to-end; báo cáo test và danh sách known risks được lưu. | A, B, C |
+| **Go-live W10** | Cuối tuần 10 | **Deployment Owner / Platform Operations Lead** | Regression pass; security và data/source owner sign-off; managed-staging acceptance; rollout và rollback owner được nêu tên. | A, B, C, D |
+
+Owner chỉ đóng gate khi deliverable và link evidence đã được lưu; thiếu một mục thì checkpoint giữ trạng thái blocked.
 
 **Quy tắc phối hợp:**
 - Mỗi agent làm việc trên nhánh riêng (`feature/agent-a-timescaledb`, `feature/agent-b-cep`, ...), PR nhỏ, review chéo.

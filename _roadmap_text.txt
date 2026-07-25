@@ -1,0 +1,201 @@
+Factory AI Platform — Roadmap
+
+        Factory AI Platform · Delivery Roadmap
+
+        Một lộ trình chung cho Operations, AI và Open Data Fusion.
+
+          Kế hoạch 10 tuần ưu tiên các hợp đồng dùng chung, tích hợp end-to-end và các gate vận hành có bằng chứng.
+          Đây là baseline lập kế hoạch; production chỉ được chốt sau khi các điều kiện managed-staging được xác minh độc lập.
+
+          Cập nhật 21.07.2026
+          Horizon: 10 tuần
+          4 luồng song song
+          Nguồn: tài liệu trong repo
+
+        Điểm xuất phát
+
+        Mỗi trạng thái tách rõ phần đã giao, phần sẵn sàng triển khai và phần phụ thuộc môi trường bên ngoài.
+
+              Operations foundation
+              Frontend React, ASP.NET Core, telemetry MQTT và ranh giới transactional outbox đã là nền tảng hiện hữu.
+
+            Sẵn sàng
+
+              ODF Gate 2
+              Production-like rehearsal cùng cấu hình rollback đã hoàn tất trên nhánh tích hợp; bước kế tiếp là review/merge.
+
+            Hoàn tất
+
+              Production pilot
+              Ingress, TLS/mTLS, secret manager, retention và connector thực cần được xác minh trên managed staging.
+
+            Phụ thuộc staging
+
+        Timeline delivery
+
+        Các luồng làm việc chạy song song, nhưng chỉ đi qua checkpoint khi contract và bằng chứng kiểm thử đạt yêu cầu.
+
+          - 
+            NOW · GATE 2
+            Review &amp; merge
+
+            Review các rehearsal ODF, lưu evidence và chốt owner cho rollout/rollback.
+
+            Hoàn tất
+
+          - 
+            TUẦN 1–2
+            Shared contracts
+
+            Chốt asset ID, telemetry/event schema, API convention và baseline mock data.
+
+            Bắt đầu
+
+          - 
+            TUẦN 3–4
+            Data &amp; asset plane
+
+            Timescale migration, Asset CRUD, CEP staging và Asset Browser dùng API thật.
+
+            Kế hoạch
+
+          - 
+            TUẦN 5–6
+            Product intelligence
+
+            Connectors, predictive alerting, health score, dashboard và drill-down.
+
+            Kế hoạch
+
+          - 
+            TUẦN 7–8
+            Hardening &amp; E2E
+
+            RCA, access control, performance/security testing, full-stack integration và staging rehearsal.
+
+            Kế hoạch
+
+          - 
+            TUẦN 9–10
+            Go-live decision
+
+            Regression, security sign-off, managed-staging acceptance và quyết định rollout có rollback owner.
+
+            Cần phê duyệt
+
+        Bốn luồng thực thi
+
+        Các deliverable được chia theo layer để không chờ nhau ngoài những contract bắt buộc.
+
+            A · Data platform
+
+            Telemetry &amp; integration
+
+              - TimescaleDB schema, migration, benchmark và rollback plan.
+
+              - Connector ERP/file/MES với retry, dead-letter và dashboard trạng thái.
+
+              - Giao telemetry schema thật ở checkpoint tuần 2.
+
+            B · Event &amp; AI
+
+            CEP, prediction &amp; RCA
+
+              - Chốt kiến trúc CEP và event schema trong sprint đầu.
+
+              - Migrate alarm rules, đo event-to-alert latency và xây inference service.
+
+              - Trả API alert/RCA để UI tích hợp ở tuần 5–6.
+
+            C · Core backend
+
+            Asset modeling &amp; security
+
+              - Giao asset schema và asset_id trong ngày 1–3.
+
+              - Asset CRUD, liên kết tài liệu, search và health score.
+
+              - RBAC, rate limit, validation và RFC 7807 trước staging.
+
+            D · Frontend &amp; QA
+
+            Product surface &amp; evidence
+
+              - UI shell/mock, Asset Browser, dashboard và biểu đồ vận hành.
+
+              - Thay mock bằng API thật tại checkpoint tuần 5.
+
+              - E2E, performance, security audit và hỗ trợ go-live.
+
+        Gate &amp; tiêu chí ra quyết định
+
+                Gate
+
+                Khi nào
+
+                Bằng chứng cần có
+
+                Trạng thái
+
+                Shared contracts
+
+                Ngày 1
+
+                Schema asset, telemetry, event và API convention được versioned.
+
+                Bắt đầu
+
+                ODF Gate 2
+
+                Hiện tại
+
+                Production-like rehearsal, cấu hình production/rollback và review artifact trên nhánh tích hợp.
+
+                Hoàn tất
+
+                Integration W8
+
+                Tuần 8
+
+                Luồng PLC mock → data → event/AI → backend → UI chạy end-to-end, có báo cáo test.
+
+                Kế hoạch
+
+                Production pilot
+
+                Tuần 9–10
+
+                Managed backup/restore, ingress, TLS/mTLS, secret delivery, retention và connector thực được reviewer độc lập xác nhận.
+
+                Managed staging
+
+          Owner Production Pilot
+
+          Accountable: Deployment Owner / Platform Operations Lead.
+
+            - Operator: chạy pilot manifest và quản lý managed staging.
+
+            - Independent reviewer: xác nhận evidence; không được là operator.
+
+            - Security owner: phê duyệt ingress, TLS/mTLS, secret-manager và rotation.
+
+            - Data/source owner: phê duyệt retention, phạm vi connector và nguồn dữ liệu.
+
+          Go: đủ 16 managed checks, attestation độc lập, TLS/mTLS hoạt động, secrets không xuất hiện trong Git/logs và evidence được retention tối thiểu 90 ngày.
+
+          No-go: bất kỳ check nào fail/thiếu, role bị chồng lấn, secret lộ, hoặc không chứng minh được rollback về deployment và secret version đã duyệt.
+
+          Rủi ro cần theo dõi
+
+            - Chậm asset schema sẽ chặn mock/API của cả ba luồng còn lại.
+
+            - Data cutover phải có dual-write, validation query và rollback đã kiểm thử.
+
+            - Quyết định CEP muộn có thể làm đổi event contract và trì hoãn UI.
+
+            - Không được suy diễn production readiness từ CI hoặc local rehearsal; staging là gate riêng.
+
+          Baseline tham chiếu: master plan 4 luồng,
+          project overview và
+          ODF product gates.
+          Cập nhật owner, ngày thực tế và liên kết evidence trước mỗi checkpoint.

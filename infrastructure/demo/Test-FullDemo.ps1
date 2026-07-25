@@ -15,11 +15,17 @@ param(
     [ValidateRange(1, 65535)]
     [int]$OdfWebPort = 58088,
 
+    [ValidateRange(1, 65535)]
+    [int]$CepStagingPort = 58085,
+
     [ValidateNotNullOrEmpty()]
     [string]$Username = 'admin',
 
     [ValidateNotNullOrEmpty()]
-    [string]$Password = 'admin123'
+    [string]$Password = 'admin123',
+
+    [switch]$SkipTimescale,
+    [switch]$SkipCepStaging
 )
 
 Set-StrictMode -Version Latest
@@ -31,6 +37,7 @@ $frontendUrl = "http://localhost:$FrontendPort"
 $odysseusUrl = "http://localhost:$OdysseusPort"
 $odfApiUrl = "http://localhost:$OdfApiPort"
 $odfWebUrl = "http://localhost:$OdfWebPort"
+$cepStagingUrl = "http://localhost:$CepStagingPort"
 
 function Get-Json {
     param(
@@ -87,6 +94,54 @@ function Get-HttpStatus {
         if ($null -eq $response) { throw }
         return [int]$response.StatusCode
     }
+}
+
+function Find-AssetInTree {
+    param(
+        [Parameter(Mandatory)][object[]]$Nodes,
+        [Parameter(Mandatory)][string]$AssetId
+    )
+
+    foreach ($node in $Nodes) {
+        if ([string]$node.id -eq $AssetId) {
+            return $node
+        }
+
+        $children = @($node.children)
+        if ($children.Count -gt 0) {
+            $found = Find-AssetInTree -Nodes $children -AssetId $AssetId
+            if ($null -ne $found) {
+                return $found
+            }
+        }
+    }
+
+    return $null
+}
+
+function Wait-ForValue {
+    param(
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][scriptblock]$Probe,
+        [ValidateRange(1, 120)][int]$TimeoutSeconds = 45
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $lastError = $null
+    do {
+        try {
+            $candidate = & $Probe
+            if ($null -ne $candidate) {
+                return $candidate
+            }
+        }
+        catch {
+            $lastError = $_.Exception.Message
+        }
+        Start-Sleep -Seconds 1
+    } while ((Get-Date) -lt $deadline)
+
+    throw "$Name did not become available. Last error: $lastError"
 }
 
 function ConvertTo-MqttRemainingLength {
@@ -178,6 +233,7 @@ if ([string]$backendHealth.status -ne 'Healthy') {
 
 Assert-Web -Name 'Operations UI' -Uri $frontendUrl
 Assert-NoViteHmrClient -Uri $frontendUrl
+Assert-Web -Name 'Asset Browser route' -Uri "$frontendUrl/assets"
 
 $odysseusHealth = Get-Json -Name 'Odysseus health' -Uri "$odysseusUrl/api/health"
 if ([string]$odysseusHealth.status -ne 'healthy') {
@@ -193,6 +249,14 @@ if ([string]$odfHealth.authMode -ne 'factory') {
     throw "Open Data Fusion authentication mode is '$($odfHealth.authMode)', expected 'factory'."
 }
 Assert-Web -Name 'Open Data Fusion Web' -Uri $odfWebUrl
+
+$cepHealth = $null
+if (-not $SkipCepStaging) {
+    $cepHealth = Get-Json -Name 'CEP staging health' -Uri "$cepStagingUrl/health"
+    if ([string]$cepHealth.status -ne 'healthy') {
+        throw "CEP staging reported '$($cepHealth.status)'."
+    }
+}
 
 $browser = [Microsoft.PowerShell.Commands.WebRequestSession]::new()
 $loginBody = @{ username = $Username; password = $Password } | ConvertTo-Json -Compress
@@ -240,10 +304,55 @@ $machineAsset = Invoke-RestMethod -Uri "$backendUrl/api/assets/$machineId" -WebS
 if ([string]$machineAsset.id -ne $machineId -or [string]$machineAsset.type -ne 'MACHINE') {
     throw 'The smoke machine does not have the matching MACHINE asset UUID.'
 }
+$machineAssetSearch = Invoke-RestMethod -Uri "$backendUrl/api/assets?q=FII-SMOKE-01&type=MACHINE" -WebSession $browser -TimeoutSec 10
+if (@($machineAssetSearch | Where-Object { [string]$_.id -eq $machineId }).Count -ne 1) {
+    throw 'Asset search did not return the smoke machine.'
+}
+$assetTree = Invoke-RestMethod -Uri "$backendUrl/api/assets/tree" -WebSession $browser -TimeoutSec 10
+if ($null -eq (Find-AssetInTree -Nodes @($assetTree) -AssetId $machineId)) {
+    throw 'Asset tree did not contain the smoke machine.'
+}
+$sensor = $null
+$sensorCode = "fii-demo-sensor-$PID"
+$documentId = "fii-demo-document-$PID"
+$documentLinked = $false
+$sensor = Invoke-RestMethod -Method Post -Uri "$backendUrl/api/assets" -Headers $authHeaders -ContentType 'application/json' -Body (@{
+    name = 'FII Demo Sensor'; type = 'SENSOR'; code = $sensorCode; metadata = @{ vendor = 'demo'; unit = 'celsius' }
+    } | ConvertTo-Json -Depth 4 -Compress) -TimeoutSec 10
+try {
+    $found = Invoke-RestMethod -Uri "$backendUrl/api/assets?q=$([uri]::EscapeDataString($sensorCode))&type=SENSOR" -WebSession $browser -TimeoutSec 10
+    if (@($found | Where-Object { [string]$_.id -eq [string]$sensor.id }).Count -ne 1) { throw 'Created sensor was not searchable.' }
+    $assetTree = Invoke-RestMethod -Uri "$backendUrl/api/assets/tree" -WebSession $browser -TimeoutSec 10
+    if ($null -eq (Find-AssetInTree -Nodes @($assetTree) -AssetId ([string]$sensor.id))) { throw 'Asset tree did not contain the created sensor.' }
+    $updated = Invoke-RestMethod -Method Put -Uri "$backendUrl/api/assets/$($sensor.id)" -Headers $authHeaders -ContentType 'application/json' -Body (@{
+        name = 'FII Demo Sensor Updated'; code = $sensorCode; metadata = @{ vendor = 'demo'; unit = 'celsius'; calibrated = $true }
+    } | ConvertTo-Json -Depth 4 -Compress) -TimeoutSec 10
+    if ([string]$updated.name -ne 'FII Demo Sensor Updated') { throw 'Asset update did not persist.' }
+
+    $linkedDocument = Invoke-RestMethod -Method Post -Uri "$backendUrl/api/assets/$($sensor.id)/documents" -Headers $authHeaders -ContentType 'application/json' -Body (@{
+        documentId = $documentId; relationship = 'MANUAL'
+    } | ConvertTo-Json -Compress) -TimeoutSec 10
+    if ([string]$linkedDocument.documentId -ne $documentId -or [string]$linkedDocument.relationship -ne 'MANUAL') {
+        throw 'Asset document link did not persist.'
+    }
+    $documentLinked = $true
+    $linkedDocuments = Invoke-RestMethod -Uri "$backendUrl/api/assets/$($sensor.id)/documents" -WebSession $browser -TimeoutSec 10
+    if (@($linkedDocuments | Where-Object { [string]$_.documentId -eq $documentId -and [string]$_.relationship -eq 'MANUAL' }).Count -ne 1) {
+        throw 'Asset document link was not returned by the catalog API.'
+    }
+}
+finally {
+    if ($documentLinked -and $null -ne $sensor) {
+        $documentQuery = [uri]::EscapeDataString($documentId)
+        Invoke-RestMethod -Method Delete -Uri "$backendUrl/api/assets/$($sensor.id)/documents?documentId=$documentQuery&relationship=MANUAL" -Headers $authHeaders -TimeoutSec 10 | Out-Null
+    }
+    if ($null -ne $sensor) { Invoke-RestMethod -Method Delete -Uri "$backendUrl/api/assets/$($sensor.id)" -Headers $authHeaders -TimeoutSec 10 | Out-Null }
+}
 if ([string]$smokeMachine.approvalStatus -ne 'APPROVED') {
     Invoke-RestMethod -Method Post -Uri "$backendUrl/api/machines/$machineId/approve" -Headers $authHeaders `
         -WebSession $browser -TimeoutSec 10 | Out-Null
 }
+$telemetrySequence = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
 $telemetry = @{
     protocolVersion = 1
     messageId = [guid]::NewGuid().ToString()
@@ -253,13 +362,46 @@ $telemetry = @{
     payload = @{
         machineId = $machineId
         machineName = 'FII Demo Smoke Machine'
-        sequence = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+        sequence = $telemetrySequence
         status = 'RUNNING'
         plcConnected = $true
         production = @{ qty = 42; time = 1.5; uph = 480; oee = 91.2; yieldRate = 98.7 }
     }
 } | ConvertTo-Json -Depth 6 -Compress
 Send-MqttMessage -Topic "client/$smokeClientId/telemetry" -Payload $telemetry
+
+$liveTelemetry = Wait-ForValue -Name 'Live telemetry snapshot' -Probe {
+    $snapshots = @(Invoke-RestMethod -Uri "$backendUrl/api/telemetry/live" -WebSession $browser -TimeoutSec 10 | ForEach-Object { $_ })
+    $snapshot = $snapshots | Where-Object { [string]$_.clientId -eq $smokeClientId } | Select-Object -First 1
+    if ($null -ne $snapshot) { return $snapshot }
+    return $null
+}
+
+$timescalePoints = $null
+$timescaleRollups = $null
+if (-not $SkipTimescale) {
+    $timescalePoints = Wait-ForValue -Name 'Timescale dual-write' -Probe {
+        $points = @(Invoke-RestMethod -Uri "$backendUrl/api/telemetry/timescale/${machineId}?limit=10" -WebSession $browser -TimeoutSec 10 | ForEach-Object { $_ })
+        if (@($points | Where-Object { [Int64]$_.sequence -eq $telemetrySequence }).Count -gt 0) { return $points }
+        return $null
+    }
+
+    $timescaleRollups = Wait-ForValue -Name 'Timescale hourly rollup' -Probe {
+        $rollups = @(Invoke-RestMethod -Uri "$backendUrl/api/telemetry/timescale/$machineId/hourly?limit=4" -WebSession $browser -TimeoutSec 10 | ForEach-Object { $_ })
+        if (@($rollups | Where-Object { [Int64]$_.pointCount -gt 0 }).Count -gt 0) { return $rollups }
+        return $null
+    }
+}
+
+$cepEvent = $null
+if (-not $SkipCepStaging) {
+    $cepEvent = Wait-ForValue -Name 'CEP staging telemetry event' -Probe {
+        $events = @(Invoke-RestMethod -Uri "$cepStagingUrl/api/v1/events?asset_id=$machineId" -TimeoutSec 10 | ForEach-Object { $_ })
+        $event = $events | Where-Object { [string]$_.source -eq 'backend_telemetry' } | Select-Object -First 1
+        if ($null -ne $event) { return $event }
+        return $null
+    }
+}
 
 $odfScopeHeaders = @{ 'x-odf-tenant-id' = 'demo'; 'x-odf-project-id' = 'north-plant' }
 $assetExternalId = [uri]::EscapeDataString("mkz:machine:$machineId")
@@ -321,6 +463,10 @@ if ($ragExports.Count -eq 0) {
     Odysseus = $odysseusHealth.status
     OpenDataFusion = $odfReady.readiness
     SharedSso = 'Passed'
+    AssetTreeAndDocuments = 'Passed'
+    LiveTelemetry = 'Passed'
+    TimescaleRawAndRollup = $(if ($SkipTimescale) { 'Skipped' } else { 'Passed' })
+    CepStaging = $(if ($SkipCepStaging) { 'Skipped' } else { 'Passed' })
     FusionTelemetry = 'Passed'
     FactoryRagDocuments = $ragExports.Count
 }

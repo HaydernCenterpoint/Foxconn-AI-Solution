@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:mkz:contracts:v1:asset",
+  "x-contract-version": "v1",
+  "x-schema-version": 1,
+  "title": "MKZ Asset v1",
+  "type": "object",
+  "required": ["id", "type", "name", "code", "metadata", "createdAt", "updatedAt"],
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "type": { "type": "string", "enum": ["PLANT", "AREA", "LINE", "MACHINE", "SENSOR"] },
+    "name": { "type": "string", "minLength": 1 },
+    "code": { "type": "string", "minLength": 1 },
+    "parentId": { "type": ["string", "null"], "format": "uuid" },
+    "metadata": { "type": "object" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  }
+}

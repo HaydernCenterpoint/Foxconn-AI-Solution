@@ -36,6 +36,8 @@ import type {
   DashboardLineStatus,
   DashboardViewModel,
 } from '../dashboardViewModel';
+import type { AssetHealth, PredictiveAlert } from '../services/predictiveAlerts.api';
+import { PredictiveAlertPanel } from './PredictiveAlertPanel';
 import './modern-dashboard.css';
 
 interface ModernDashboardProps {
@@ -44,6 +46,10 @@ interface ModernDashboardProps {
   basePath: string;
   isLoading?: boolean;
   isError?: boolean;
+  predictiveAlerts?: readonly PredictiveAlert[];
+  healthByAssetId?: Readonly<Record<string, AssetHealth | undefined>>;
+  isPredictiveAlertsLoading?: boolean;
+  isPredictiveAlertsError?: boolean;
 }
 
 interface KpiMeta {
@@ -131,6 +137,10 @@ export function ModernDashboard({
   basePath,
   isLoading = false,
   isError = false,
+  predictiveAlerts = [],
+  healthByAssetId = {},
+  isPredictiveAlertsLoading = false,
+  isPredictiveAlertsError = false,
 }: ModernDashboardProps) {
   const { i18n, t } = useTranslation();
   const [search, setSearch] = useState('');
@@ -384,6 +394,13 @@ export function ModernDashboard({
               </div>
             ) : <PanelEmpty>{t('dashboardPage.modern.noMatchingLines')}</PanelEmpty>}
           </Panel>
+
+          <PredictiveAlertPanel
+            alerts={predictiveAlerts}
+            healthByAssetId={healthByAssetId}
+            isLoading={isPredictiveAlertsLoading}
+            isError={isPredictiveAlertsError}
+          />
 
           <Panel
             title={t('dashboardPage.modern.topMachines')}

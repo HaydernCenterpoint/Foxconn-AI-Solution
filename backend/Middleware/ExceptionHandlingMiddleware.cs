@@ -4,6 +4,8 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Mvc;
+using Mkz.Fusion.Contracts;
 
 namespace backend.Middleware
 {
@@ -33,13 +35,15 @@ namespace backend.Middleware
 
         private static Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
-            context.Response.ContentType = "application/json";
+            context.Response.ContentType = ApiConventionV1.ProblemMediaType;
             context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
-            var response = new
+            var response = new ProblemDetails
             {
-                error = "Internal server error. Please try again later.",
-                details = exception.Message // Hide full details in production if needed, but useful for now
+                Status = (int)HttpStatusCode.InternalServerError,
+                Title = "Internal server error",
+                Detail = "Please try again later.",
+                Type = "about:blank"
             };
 
             var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };

@@ -1,0 +1,37 @@
+{
+  "qaCycle": 1,
+  "comparison": {
+    "type-check": {
+      "baselineExit": 2,
+      "postExit": 2,
+      "verdict": "equivalent",
+      "evidence": "same 7 TypeScript diagnostics in src/features/dashboard/components/ModernDashboardPage.tsx"
+    },
+    "test:run": {
+      "baselineExit": 1,
+      "postExit": 1,
+      "verdict": "improved-no-new-failures",
+      "evidence": "baseline: 2 timeouts, 11/13 files and 36/38 tests passed; post: only the pre-existing AlertHealthHappyPath timeout, 12/13 files and 37/38 tests passed"
+    },
+    "i18n:check": {
+      "baselineExit": 1,
+      "postExit": 1,
+      "verdict": "equivalent",
+      "evidence": "same hard-coded CPU / RAM diagnostic at src/pages/AssetBrowserPage.tsx:382"
+    },
+    "build": {
+      "baselineExit": 2,
+      "postExit": 2,
+      "verdict": "equivalent",
+      "evidence": "same 7 TypeScript diagnostics in src/features/dashboard/components/ModernDashboardPage.tsx"
+    },
+    "lint": {
+      "baselineExit": 1,
+      "postExit": 1,
+      "verdict": "equivalent",
+      "evidence": "same 2 no-explicit-any findings in src/features/dashboard/services/predictiveAlerts.api.ts"
+    }
+  },
+  "newDiagnostics": 0,
+  "cleanupCausedFailure": false
+}

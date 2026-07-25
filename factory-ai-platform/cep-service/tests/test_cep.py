@@ -7,6 +7,7 @@ import uuid
 from datetime import datetime, timezone
 
 import pytest
+from fastapi.testclient import TestClient
 
 from app.ml.models import AnomalyDetector, FailurePredictor, FeatureEngineering
 from app.rules.engine import CEPEngine
@@ -94,6 +95,18 @@ class TestCEPEngine:
         engine.register_rule(RULE_VIBRATION_ANOMALY)
         engine.update_rule_status("vibration-001", RuleStatus.INACTIVE)
         assert engine.get_rule("vibration-001").status.value == "inactive"
+
+    @pytest.mark.asyncio
+    async def test_periodic_evaluation_reads_registered_rule_state(self):
+        engine = CEPEngine()
+        engine.register_rule(RULE_VIBRATION_ANOMALY)
+
+        await engine.start_periodic_evaluation(interval_seconds=0.001)
+        await asyncio.sleep(0.01)
+
+        assert engine._eval_task is not None
+        assert not engine._eval_task.done()
+        await engine.stop()
 
 
 class TestRCAService:
@@ -241,6 +254,38 @@ class TestEventSchema:
         assert "event_id" in d
         assert "timestamp" in d
         assert "type" in d
+
+    def test_backend_telemetry_event_envelope_is_accepted(self):
+        from app.main import app
+
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/v1/events",
+                json={
+                    "event": {
+                        "event_id": str(uuid.uuid4()),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "asset_id": "machine-telemetry-smoke",
+                        "asset_name": "Smoke machine",
+                        "type": "machine_started",
+                        "severity": "info",
+                        "payload": {
+                            "metric": "oee",
+                            "value": 91.2,
+                            "unit": "percent",
+                            "machine_code": "machine-telemetry-smoke",
+                            "extra": {"source_telemetry_id": 42, "sequence": 99},
+                        },
+                        "source": "backend_telemetry",
+                        "correlation_id": "smoke-message",
+                        "metadata": {"schema_version": 1, "source": "machine_telemetry"},
+                    }
+                },
+            )
+
+        assert response.status_code == 201
+        assert response.json()["ingested"]["asset_id"] == "machine-telemetry-smoke"
+        assert response.json()["ingested"]["source"] == "backend_telemetry"
 
 
 class TestSampleRules:

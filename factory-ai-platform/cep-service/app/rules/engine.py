@@ -575,7 +575,7 @@ class CEPEngine:
                 now = datetime.now(timezone.utc)
                 with self._lock:
                     for rule_id, state in self._rules.items():
-                        rule = rule.rule
+                        rule = state.rule
                         if rule.status != RuleStatus.ACTIVE:
                             continue
                         # Re-evaluate pattern rules on schedule

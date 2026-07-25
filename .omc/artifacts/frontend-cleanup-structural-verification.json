@@ -1,0 +1,20 @@
+{
+  "checks": {
+    "nonTargetStatusUnchanged": true,
+    "stagedCount": 29,
+    "allStagedAreDeletions": true,
+    "stagedPathsExact": true,
+    "targetFilesAbsent": true,
+    "protectedHashesMatch": true
+  },
+  "protected": {
+    "frontend/src/pages/LinesPage.tsx": true,
+    "frontend/src/features/production-lines/components/DiagramEditor.tsx": true,
+    "frontend/src/features/production-lines/components/nodes/MachineNode.tsx": true,
+    "frontend/src/features/production-lines/services/lines.api.ts": true
+  },
+  "unexpectedNonTarget": [],
+  "missingNonTarget": [],
+  "unexpectedStaged": [],
+  "missingStaged": []
+}

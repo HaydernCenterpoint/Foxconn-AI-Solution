@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:mkz:contracts:v1:telemetry",
+  "x-contract-version": "v1",
+  "x-schema-version": 1,
+  "title": "MKZ Telemetry Point v1",
+  "type": "object",
+  "required": ["time", "assetId", "metric", "value"],
+  "properties": {
+    "time": { "type": "string", "format": "date-time" },
+    "assetId": { "type": "string", "format": "uuid" },
+    "metric": { "type": "string", "minLength": 1 },
+    "value": { "type": "number" },
+    "tags": { "type": "object" }
+  }
+}

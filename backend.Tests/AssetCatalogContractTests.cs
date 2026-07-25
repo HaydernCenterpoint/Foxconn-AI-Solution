@@ -25,4 +25,15 @@ public sealed class AssetCatalogContractTests
     {
         Assert.Equal(expected, AssetCatalogContract.IsCatalogOwned(type));
     }
+
+    [Theory]
+    [InlineData("manual", "MANUAL", true)]
+    [InlineData(" DRAWING ", "DRAWING", true)]
+    [InlineData("warranty", "WARRANTY", true)]
+    [InlineData("certificate", "CERTIFICATE", false)]
+    public void DocumentRelationship_IsNormalizedAndLimitedToCatalogLinks(string relationship, string expected, bool valid)
+    {
+        Assert.Equal(expected, AssetCatalogContract.NormalizeDocumentRelationship(relationship));
+        Assert.Equal(valid, AssetCatalogContract.IsKnownDocumentRelationship(relationship));
+    }
 }

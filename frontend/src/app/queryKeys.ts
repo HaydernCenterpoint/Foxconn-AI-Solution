@@ -15,6 +15,16 @@ export const queryKeys = {
   alarms: {
     list: (status?: string) => ['alarms', 'list', status ?? 'all'] as const,
   },
+  assets: {
+    tree: () => ['assets', 'tree'] as const,
+    documents: (assetId: string) => ['assets', 'documents', assetId] as const,
+    machine: (assetId: string) => ['assets', 'machine', assetId] as const,
+    alarms: (assetId: string) => ['assets', 'alarms', assetId] as const,
+  },
+  predictiveAlerts: {
+    list: () => ['predictive-alerts', 'list'] as const,
+    health: (assetId: string) => ['predictive-alerts', 'health', assetId] as const,
+  },
   admin: {
     users: () => ['users'] as const,
     auditLogs: (limit?: number) => ['audit-logs', limit ?? 100] as const,

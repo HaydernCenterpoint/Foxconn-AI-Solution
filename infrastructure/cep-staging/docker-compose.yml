@@ -1,0 +1,15 @@
+services:
+  cep-staging:
+    build:
+      context: ../../factory-ai-platform/cep-service
+    environment:
+      CEP_MODE: staging
+      CEP_PORT: 8084
+    ports:
+      - "58085:8084"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8084/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s

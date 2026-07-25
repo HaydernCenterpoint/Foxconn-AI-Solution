@@ -58,7 +58,7 @@ public static class TelemetryFusionEventFactory
             : input.MessageId.Trim();
 
         return new TelemetryFusionEvent(
-            SchemaVersion: 1,
+            SchemaVersion: ContractV1.SchemaVersion,
             EventId: Guid.NewGuid(),
             EventKey: $"telemetry:{input.MachineId}:{suffix}",
             OccurredAt: input.OccurredAt,
