@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: plc_timescale
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-12345678}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your environment or .env file}
     ports:
       - "55433:5432"
     volumes:

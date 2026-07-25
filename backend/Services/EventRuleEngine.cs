@@ -25,6 +25,7 @@ namespace backend.Services
     {
         private readonly Channel<TelemetryCaptureInput> _channel;
         private readonly DatabaseService _dbService;
+        private readonly AlertService _alertService;
         private readonly IHubContext<TelemetryHub> _hubContext;
         private readonly ILogger<EventRuleEngine> _logger;
         private readonly ConcurrentDictionary<string, DateTimeOffset> _cooldowns = new();
@@ -34,10 +35,12 @@ namespace backend.Services
 
         public EventRuleEngine(
             DatabaseService dbService,
+            AlertService alertService,
             IHubContext<TelemetryHub> hubContext,
             ILogger<EventRuleEngine> logger)
         {
             _dbService = dbService;
+            _alertService = alertService;
             _hubContext = hubContext;
             _logger = logger;
             _channel = Channel.CreateUnbounded<TelemetryCaptureInput>(
@@ -156,6 +159,24 @@ namespace backend.Services
                 _logger.LogInformation("CEP rule fired: {RuleId} for asset {AssetId} (metric={Metric}, value={Value})",
                     rule.Id, input.MachineId, metric, matchingPoint.Value);
 
+                // Create Timescale alert for the matched rule (best-effort)
+                try
+                {
+                    var tsSeverity = MapToTimescaleSeverity(fusionEvent.Severity);
+                    await _alertService.CreateAlertAsync(
+                        eventId: fusionEvent.EventId,
+                        assetId: fusionEvent.AssetId,
+                        ruleId: rule.Id,
+                        severity: tsSeverity,
+                        title: $"[{rule.Name}] {metric} {rule.Condition.Operator} {rule.Condition.Value}",
+                        description: rule.Description,
+                        evidence: (object?)fusionEvent.Payload);
+                }
+                catch (Exception alertEx)
+                {
+                    _logger.LogWarning(alertEx, "Failed to create Timescale alert for rule {RuleId}", rule.Id);
+                }
+
                 // Push CRITICAL/EMERGENCY alerts via SignalR
                 if (fusionEvent.Severity is "CRITICAL" or "EMERGENCY")
                 {
@@ -174,6 +195,18 @@ namespace backend.Services
                 }
             }
         }
+
+        /// <summary>
+        /// Maps CEP contract severity (UPPERCASE) to Timescale CHECK-compatible severity (lowercase).
+        /// </summary>
+        private static string MapToTimescaleSeverity(string cepSeverity) => cepSeverity switch
+        {
+            "INFO" => "info",
+            "WARNING" => "medium",
+            "CRITICAL" => "high",
+            "EMERGENCY" => "critical",
+            _ => "low"
+        };
 
         private static bool EvaluateThreshold(double actual, string? op, double threshold) =>
             op switch

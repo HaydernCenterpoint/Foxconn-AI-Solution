@@ -383,3 +383,243 @@ export type WorkspaceRevisionQuery = z.infer<typeof workspaceRevisionQuerySchema
 export type WorkspaceOperation = z.infer<typeof workspaceOperationSchema>;
 export type WorkspaceOperations = z.infer<typeof workspaceOperationsSchema>;
 export type WorkspaceMemberUpsert = z.infer<typeof workspaceMemberUpsertSchema>;
+
+/* ── Labels ─────────────────────────────────────────────────────────── */
+
+const labelableResourceType = z.enum([
+  'asset', 'time_series', 'file', 'event', 'model', 'pipeline', 'data_set',
+]);
+
+export const createLabelSchema = z.object({
+  externalId: externalId,
+  name: z.string().trim().min(1).max(255),
+  description: z.string().trim().max(1000).nullable().optional(),
+  color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, 'Hex color like #22c55e').nullable().optional(),
+  category: z.string().trim().min(1).max(100).nullable().optional(),
+});
+
+export const updateLabelSchema = z.object({
+  name: z.string().trim().min(1).max(255).optional(),
+  description: z.string().trim().max(1000).nullable().optional(),
+  color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
+  category: z.string().trim().min(1).max(100).nullable().optional(),
+});
+
+export const attachLabelSchema = z.object({
+  labelExternalId: externalId,
+  resourceType: labelableResourceType,
+  resourceExternalId: externalId,
+});
+
+export const detachLabelSchema = attachLabelSchema;
+
+export const labelListQuerySchema = z.object({
+  category: z.string().trim().min(1).max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  cursor: z.string().trim().max(255).optional(),
+});
+
+export const labelAttachmentQuerySchema = z.object({
+  labelExternalId: externalId.optional(),
+  resourceType: labelableResourceType.optional(),
+  resourceExternalId: externalId.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  cursor: z.string().trim().max(255).optional(),
+});
+
+export type CreateLabel = z.infer<typeof createLabelSchema>;
+export type UpdateLabel = z.infer<typeof updateLabelSchema>;
+export type AttachLabel = z.infer<typeof attachLabelSchema>;
+export type DetachLabel = z.infer<typeof detachLabelSchema>;
+export type LabelListQuery = z.infer<typeof labelListQuerySchema>;
+export type LabelAttachmentQuery = z.infer<typeof labelAttachmentQuerySchema>;
+
+/* ── Relationships ──────────────────────────────────────────────────── */
+
+const relationshipResourceType = z.enum([
+  'asset', 'time_series', 'file', 'event', 'model', 'pipeline', 'data_set', 'sequence', 'relationship',
+]);
+
+export const createRelationshipSchema = z.object({
+  externalId: externalId,
+  sourceType: relationshipResourceType,
+  sourceExternalId: externalId,
+  targetType: relationshipResourceType,
+  targetExternalId: externalId,
+  relationshipType: z.string().trim().min(1).max(100),
+  dataSetExternalId: externalId.nullable().optional(),
+  confidence: z.number().min(0).max(1).default(1),
+  startTime: z.string().trim().min(1).nullable().optional(),
+  endTime: z.string().trim().min(1).nullable().optional(),
+  labels: z.array(externalId).max(20).default([]),
+});
+
+export const updateRelationshipSchema = z.object({
+  confidence: z.number().min(0).max(1).optional(),
+  startTime: z.string().trim().min(1).nullable().optional(),
+  endTime: z.string().trim().min(1).nullable().optional(),
+  labels: z.array(externalId).max(20).optional(),
+  dataSetExternalId: externalId.nullable().optional(),
+});
+
+export const relationshipListQuerySchema = z.object({
+  sourceType: relationshipResourceType.optional(),
+  sourceExternalId: externalId.optional(),
+  targetType: relationshipResourceType.optional(),
+  targetExternalId: externalId.optional(),
+  relationshipType: z.string().trim().min(1).max(100).optional(),
+  dataSetExternalId: externalId.optional(),
+  activeAtTime: z.string().trim().min(1).optional(),
+  minConfidence: z.coerce.number().min(0).max(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  cursor: z.string().trim().max(255).optional(),
+});
+
+export type CreateRelationship = z.infer<typeof createRelationshipSchema>;
+export type UpdateRelationship = z.infer<typeof updateRelationshipSchema>;
+export type RelationshipListQuery = z.infer<typeof relationshipListQuerySchema>;
+
+// ── Events ──
+
+const eventType = z.enum(['maintenance', 'alarm', 'failure', 'inspection', 'operational', 'custom']);
+
+export const createEventSchema = z.object({
+  externalId: externalId,
+  type: eventType,
+  subtype: z.string().trim().min(1).max(100).optional(),
+  description: z.string().trim().max(2000).optional(),
+  startTime: z.string().trim().min(1).nullable().optional(),
+  endTime: z.string().trim().min(1).nullable().optional(),
+  assetExternalIds: z.array(externalId).max(100).default([]),
+  dataSetExternalId: externalId.nullable().optional(),
+  source: z.string().trim().min(1).max(255).optional(),
+  metadata: metadata,
+});
+
+export const updateEventSchema = z.object({
+  description: z.string().trim().max(2000).optional(),
+  startTime: z.string().trim().min(1).nullable().optional(),
+  endTime: z.string().trim().min(1).nullable().optional(),
+  assetExternalIds: z.array(externalId).max(100).optional(),
+  subtype: z.string().trim().min(1).max(100).nullable().optional(),
+  source: z.string().trim().min(1).max(255).nullable().optional(),
+  metadata: metadata.optional(),
+});
+
+export const eventListQuerySchema = z.object({
+  type: eventType.optional(),
+  subtype: z.string().trim().min(1).max(100).optional(),
+  assetExternalId: externalId.optional(),
+  dataSetExternalId: externalId.optional(),
+  source: z.string().trim().min(1).max(255).optional(),
+  startTimeMin: z.string().trim().min(1).optional(),
+  startTimeMax: z.string().trim().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  cursor: z.string().trim().max(255).optional(),
+});
+
+export type CreateEvent = z.infer<typeof createEventSchema>;
+export type UpdateEvent = z.infer<typeof updateEventSchema>;
+export type EventListQuery = z.infer<typeof eventListQuerySchema>;
+
+// ── Sequences ──
+
+export const sequenceColumnSchema = z.object({
+  externalId: externalId,
+  name: z.string().trim().min(1).max(255),
+  description: z.string().trim().max(1000).optional(),
+  valueType: z.enum(['STRING', 'DOUBLE', 'LONG']),
+});
+
+export const createSequenceSchema = z.object({
+  externalId: externalId,
+  name: z.string().trim().min(1).max(255),
+  description: z.string().trim().max(2000).optional(),
+  assetExternalId: externalId.nullable().optional(),
+  dataSetExternalId: externalId.nullable().optional(),
+  columns: z.array(sequenceColumnSchema).min(1).max(200),
+});
+
+export const updateSequenceSchema = z.object({
+  name: z.string().trim().min(1).max(255).optional(),
+  description: z.string().trim().max(2000).nullable().optional(),
+  assetExternalId: externalId.nullable().optional(),
+  dataSetExternalId: externalId.nullable().optional(),
+});
+
+export const sequenceRowSchema = z.object({
+  rowNumber: z.number().int().min(0),
+  values: z.array(z.union([z.string(), z.number(), z.null()])),
+});
+
+export const sequenceRowsInsertSchema = z.object({
+  columns: z.array(externalId).min(1),
+  rows: z.array(sequenceRowSchema).min(1).max(10000),
+});
+
+export const sequenceRowsQuerySchema = z.object({
+  start: z.coerce.number().int().min(0).optional(),
+  end: z.coerce.number().int().min(0).optional(),
+  columns: z.array(externalId).optional(),
+  limit: z.coerce.number().int().min(1).max(1000).default(100),
+});
+
+export const sequenceListQuerySchema = z.object({
+  assetExternalId: externalId.optional(),
+  dataSetExternalId: externalId.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  cursor: z.string().trim().max(255).optional(),
+});
+
+export type CreateSequence = z.infer<typeof createSequenceSchema>;
+export type UpdateSequence = z.infer<typeof updateSequenceSchema>;
+export type SequenceRowsInsert = z.infer<typeof sequenceRowsInsertSchema>;
+export type SequenceRowsQuery = z.infer<typeof sequenceRowsQuerySchema>;
+export type SequenceListQuery = z.infer<typeof sequenceListQuerySchema>;
+
+// ── Annotations ──
+
+const annotationType = z.enum(['text', 'diagram_tag', 'region', 'entity_link']);
+const annotationStatus = z.enum(['suggested', 'approved', 'rejected']);
+
+export const boundingBoxSchema = z.object({
+  xMin: z.number(),
+  yMin: z.number(),
+  xMax: z.number(),
+  yMax: z.number(),
+  page: z.number().int().min(1).optional(),
+});
+
+export const annotationDataSchema = z.object({
+  label: z.string().trim().min(1).max(500),
+  confidence: z.number().min(0).max(1).optional(),
+  boundingBox: boundingBoxSchema.optional(),
+  linkedResourceType: z.string().trim().min(1).max(100).optional(),
+  linkedResourceExternalId: externalId.optional(),
+});
+
+export const createAnnotationSchema = z.object({
+  annotationType: annotationType,
+  annotatedResourceType: z.string().trim().min(1).max(100),
+  annotatedResourceExternalId: externalId,
+  data: annotationDataSchema,
+  status: annotationStatus.default('suggested'),
+});
+
+export const updateAnnotationSchema = z.object({
+  status: annotationStatus.optional(),
+  data: annotationDataSchema.partial().optional(),
+});
+
+export const annotationListQuerySchema = z.object({
+  annotatedResourceType: z.string().trim().min(1).max(100).optional(),
+  annotatedResourceExternalId: externalId.optional(),
+  annotationType: annotationType.optional(),
+  status: annotationStatus.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  cursor: z.string().trim().max(255).optional(),
+});
+
+export type CreateAnnotation = z.infer<typeof createAnnotationSchema>;
+export type UpdateAnnotation = z.infer<typeof updateAnnotationSchema>;
+export type AnnotationListQuery = z.infer<typeof annotationListQuerySchema>;

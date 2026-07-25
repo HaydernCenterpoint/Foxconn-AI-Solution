@@ -5,6 +5,8 @@ import { ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { MachineDetailTabs } from '../features/machines/components/MachineDetailTabs';
 import { machinesApi } from '../features/machines/services/machines.api';
+import { HealthScoreCard } from '../features/health/components/HealthScoreCard';
+import { RiskGauge } from '../features/predictions/components/RiskGauge';
 import '../features/machines/components/machine-detail.css';
 import { usePermissions } from '../shared/hooks/usePermissions';
 
@@ -112,6 +114,11 @@ export const MachineDetailPage: React.FC = () => {
           </span>
         </div>
       </header>
+
+      <section className="machine-detail__intelligence">
+        <HealthScoreCard assetId={id!} />
+        <RiskGauge assetId={id!} />
+      </section>
 
       <MachineDetailTabs
         machine={machine}

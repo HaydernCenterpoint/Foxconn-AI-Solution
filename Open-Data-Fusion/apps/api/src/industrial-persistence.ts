@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 
-import type { FusionDatabase } from './database.js';
 import type { PlatformContext } from './platform-schemas.js';
 import type { PlatformProjectRole } from './platform.js';
 import type {
@@ -96,11 +95,11 @@ export interface IndustrialPersistence {
   listAudit(scope: IndustrialRequestScope, query: AuditListQuery): Promise<Record<string, unknown>>;
 }
 
-/** Explicit compatibility adapter for legacy fixture tests; never selected by server defaults. */
+/** Explicit compatibility adapter for legacy FusionDatabase tests. */
 export class LegacySqliteIndustrialPersistence implements IndustrialPersistence {
   readonly mode = 'sqlite' as const;
 
-  constructor(private readonly database: FusionDatabase) {}
+  constructor(private readonly database: import('./database.js').FusionDatabase) {}
 
   async health(): Promise<IndustrialPersistenceHealth> {
     const health = this.database.health();

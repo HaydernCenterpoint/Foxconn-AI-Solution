@@ -6,9 +6,10 @@
 -- EVENTS TABLE - Raw events from CEP engine
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS events (
-    event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID NOT NULL DEFAULT gen_random_uuid(),
     occurred_at TIMESTAMPTZ NOT NULL,
     asset_id UUID NOT NULL,
+    PRIMARY KEY (occurred_at, event_id),
     event_type VARCHAR(100) NOT NULL,
     severity VARCHAR(20) NOT NULL CHECK (severity IN ('critical', 'high', 'medium', 'low', 'info')),
     source VARCHAR(100) NOT NULL DEFAULT 'cep-engine',
@@ -32,11 +33,12 @@ CREATE INDEX IF NOT EXISTS idx_events_severity_time ON events (severity, occurre
 -- ALERTS TABLE - Managed alerts with lifecycle
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS alerts (
-    alert_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    event_id UUID NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
+    alert_id UUID NOT NULL DEFAULT gen_random_uuid(),
+    event_id UUID NOT NULL,
     asset_id UUID NOT NULL,
     rule_id VARCHAR(100) NOT NULL,
     opened_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (opened_at, alert_id),
     closed_at TIMESTAMPTZ,
     status VARCHAR(20) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'acknowledged', 'resolved', 'suppressed')),
     severity VARCHAR(20) NOT NULL CHECK (severity IN ('critical', 'high', 'medium', 'low', 'info')),

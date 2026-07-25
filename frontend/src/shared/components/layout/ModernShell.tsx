@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
+  AlertTriangle,
   ArrowUpRight,
   Bell,
   Bot,
@@ -64,7 +65,6 @@ const viewerNavigation: ShellNavigationItem[] = [
   { to: '/assets', labelKey: 'assetBrowser.title', icon: DatabaseZap },
   { to: '/alarms', labelKey: 'navigation.alarms', icon: Bell },
   { to: '/production-analysis', labelKey: 'navigation.productionAnalysis', icon: FileText },
-  { to: '/assets', labelKey: 'navigation.assets', icon: DatabaseZap },
   { to: '/slideshow', labelKey: 'common.mode.slideshow', icon: Tv },
   { to: '/settings', labelKey: 'navigation.settings', icon: Settings2 },
 ];
@@ -74,9 +74,9 @@ const adminNavigation: ShellNavigationItem[] = [
   { to: '/admin/lines', labelKey: 'navigation.productionLines', icon: Factory },
   { to: '/admin/machines', labelKey: 'navigation.equipment', icon: MonitorCog },
   { to: '/admin/assets', labelKey: 'assetBrowser.title', icon: DatabaseZap },
+  { to: '/admin/alert-center', labelKey: 'alerts.title', icon: AlertTriangle },
   { to: '/admin/alarms', labelKey: 'navigation.alarms', icon: Bell },
   { to: '/admin/reports', labelKey: 'navigation.reports', icon: FileText },
-  { to: '/admin/assets', labelKey: 'navigation.assets', icon: DatabaseZap },
   { to: '/admin/settings', labelKey: 'navigation.settings', icon: Settings2 },
 ];
 

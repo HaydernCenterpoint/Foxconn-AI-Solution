@@ -21,6 +21,19 @@ export const queryKeys = {
     machine: (assetId: string) => ['assets', 'machine', assetId] as const,
     alarms: (assetId: string) => ['assets', 'alarms', assetId] as const,
   },
+  alerts: {
+    all: ['alerts', 'list'] as const,
+    detail: (alertId: string) => ['alerts', 'detail', alertId] as const,
+    stats: () => ['alerts', 'stats'] as const,
+  },
+  health: {
+    score: (assetId: string) => ['health', 'score', assetId] as const,
+    history: (assetId: string) => ['health', 'history', assetId] as const,
+  },
+  predictions: {
+    risk: (assetId: string) => ['predictions', 'risk', assetId] as const,
+    anomaly: (assetId: string) => ['predictions', 'anomaly', assetId] as const,
+  },
   predictiveAlerts: {
     list: () => ['predictive-alerts', 'list'] as const,
     health: (assetId: string) => ['predictive-alerts', 'health', assetId] as const,

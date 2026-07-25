@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using backend.Services;
@@ -7,7 +8,10 @@ using backend.Services;
 namespace backend.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/v1/assets/{assetId}/health")]
+    [Route("api/assets/{assetId}/health")]
+    [Route("api/asset-service/assets/{assetId}/health")]
     public class AssetHealthController : ControllerBase
     {
         private readonly HealthScoringService _healthService;
@@ -100,6 +104,7 @@ namespace backend.Controllers
             }
         }
 
+        [Authorize(Roles = "ADMIN,ENGINEER")]
         [HttpPost("compute")]
         public async Task<IActionResult> ComputeHealthScore(Guid assetId)
         {

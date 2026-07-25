@@ -546,8 +546,42 @@ namespace backend.Services
                     );");
 
                 ExecuteSync(conn, @"
-                    CREATE INDEX IF NOT EXISTS idx_machine_telemetry_machine_seq 
+                    CREATE INDEX IF NOT EXISTS idx_machine_telemetry_machine_seq
                     ON machine_telemetry(machine_id, sequence DESC);");
+
+                // ─── 12. normalized telemetry and CEP event log ──────────────────────────
+                // Kept in the operational PostgreSQL database; TimescaleDB is the staged
+                // analytical target and receives the append-only raw stream separately.
+                ExecuteSync(conn, @"
+                    CREATE TABLE IF NOT EXISTS telemetry_data (
+                        time TIMESTAMPTZ NOT NULL,
+                        asset_id UUID NOT NULL,
+                        metric VARCHAR(64) NOT NULL,
+                        value DOUBLE PRECISION NOT NULL,
+                        unit VARCHAR(16),
+                        source VARCHAR(256)
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_telemetry_data_asset_metric_time
+                        ON telemetry_data (asset_id, metric, time DESC);
+                    CREATE INDEX IF NOT EXISTS idx_telemetry_data_time_brin
+                        ON telemetry_data USING BRIN (time) WITH (pages_per_range = 32);
+
+                    CREATE TABLE IF NOT EXISTS event_log (
+                        event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        schema_version INTEGER NOT NULL DEFAULT 1,
+                        timestamp TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        asset_id UUID NOT NULL,
+                        event_type VARCHAR(64) NOT NULL,
+                        severity VARCHAR(16) NOT NULL,
+                        source VARCHAR(256),
+                        payload JSONB,
+                        correlation_id VARCHAR(256),
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_event_log_asset_time
+                        ON event_log (asset_id, timestamp DESC);
+                    CREATE INDEX IF NOT EXISTS idx_event_log_type_severity
+                        ON event_log (event_type, severity);");
 
                 ExecuteSync(conn, @"
                     CREATE TABLE IF NOT EXISTS fusion_outbox (
@@ -1110,6 +1144,169 @@ namespace backend.Services
             {
                 Console.WriteLine($"[DB] UpdateHourlyProductionAsync failed: {ex.Message}");
             }
+        }
+
+        // ─── CEP event log ──────────────────────────────────────────────────────────────
+
+        public async Task InsertEventLogAsync(FusionEvent evt)
+        {
+            const string sql = @"
+                INSERT INTO event_log
+                    (event_id, schema_version, timestamp, asset_id, event_type, severity, source, payload, correlation_id)
+                VALUES
+                    (@eventId, @schemaVersion, @timestamp, @assetId, @eventType, @severity, @source, @payload, @correlationId)
+                ON CONFLICT (event_id) DO NOTHING";
+
+            await ExecuteNonQueryAsync(sql, parameters =>
+            {
+                parameters.AddWithValue("eventId", evt.EventId);
+                parameters.AddWithValue("schemaVersion", evt.SchemaVersion);
+                parameters.AddWithValue("timestamp", evt.Timestamp.UtcDateTime);
+                parameters.AddWithValue("assetId", evt.AssetId);
+                parameters.AddWithValue("eventType", evt.EventType);
+                parameters.AddWithValue("severity", evt.Severity);
+                parameters.AddWithValue("source", (object?)evt.Source ?? DBNull.Value);
+                parameters.AddWithValue(
+                    "payload",
+                    NpgsqlDbType.Jsonb,
+                    JsonSerializer.Serialize(evt.Payload ?? new Dictionary<string, object?>()));
+                parameters.AddWithValue("correlationId", (object?)evt.CorrelationId ?? DBNull.Value);
+            });
+        }
+
+        // ─── Normalized telemetry data ──────────────────────────────────────────────────
+
+        public async Task InsertTelemetryDataPointsAsync(IEnumerable<TelemetryDataPoint> points)
+        {
+            const string sql = @"
+                INSERT INTO telemetry_data (time, asset_id, metric, value, unit, source)
+                VALUES (@time, @assetId, @metric, @value, @unit, @source)";
+
+            await using var connection = CreateConnection();
+            await connection.OpenAsync();
+            await using var transaction = await connection.BeginTransactionAsync();
+
+            try
+            {
+                foreach (var point in points)
+                {
+                    await using var command = new NpgsqlCommand(sql, connection, transaction);
+                    command.Parameters.AddWithValue("time", point.Time.UtcDateTime);
+                    command.Parameters.AddWithValue("assetId", point.AssetId);
+                    command.Parameters.AddWithValue("metric", point.Metric);
+                    command.Parameters.AddWithValue("value", point.Value);
+                    command.Parameters.AddWithValue("unit", (object?)point.Unit ?? DBNull.Value);
+                    command.Parameters.AddWithValue("source", (object?)point.Source ?? DBNull.Value);
+                    await command.ExecuteNonQueryAsync();
+                }
+
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
+        public async Task<List<Dictionary<string, object?>>> QueryTelemetryDataAsync(
+            Guid assetId,
+            string metric,
+            DateTime from,
+            DateTime to,
+            int limit = 1000)
+        {
+            const string sql = @"
+                SELECT time, asset_id, metric, value, unit, source
+                FROM telemetry_data
+                WHERE asset_id = @assetId
+                  AND metric = @metric
+                  AND time >= @from
+                  AND time <= @to
+                ORDER BY time ASC
+                LIMIT @limit";
+
+            var results = new List<Dictionary<string, object?>>();
+            await using var connection = CreateConnection();
+            await connection.OpenAsync();
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("assetId", assetId);
+            command.Parameters.AddWithValue("metric", metric);
+            command.Parameters.AddWithValue("from", from);
+            command.Parameters.AddWithValue("to", to);
+            command.Parameters.AddWithValue("limit", limit);
+
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                results.Add(new Dictionary<string, object?>
+                {
+                    ["time"] = reader.GetDateTime(0),
+                    ["assetId"] = reader.GetGuid(1),
+                    ["metric"] = reader.GetString(2),
+                    ["value"] = reader.GetDouble(3),
+                    ["unit"] = reader.IsDBNull(4) ? null : reader.GetString(4),
+                    ["source"] = reader.IsDBNull(5) ? null : reader.GetString(5),
+                });
+            }
+
+            return results;
+        }
+
+        // ─── CEP event queries ──────────────────────────────────────────────────────────
+
+        public async Task<List<Dictionary<string, object?>>> QueryEventLogAsync(
+            Guid? assetId = null,
+            string? eventType = null,
+            string? severity = null,
+            DateTime? from = null,
+            DateTime? to = null,
+            int limit = 100)
+        {
+            var conditions = new List<string>();
+            if (assetId.HasValue) conditions.Add("asset_id = @assetId");
+            if (!string.IsNullOrWhiteSpace(eventType)) conditions.Add("event_type = @eventType");
+            if (!string.IsNullOrWhiteSpace(severity)) conditions.Add("severity = @severity");
+            if (from.HasValue) conditions.Add("timestamp >= @from");
+            if (to.HasValue) conditions.Add("timestamp <= @to");
+
+            var where = conditions.Count == 0 ? string.Empty : $"WHERE {string.Join(" AND ", conditions)}";
+            var sql = $@"
+                SELECT event_id, schema_version, timestamp, asset_id, event_type, severity, source, payload, correlation_id
+                FROM event_log
+                {where}
+                ORDER BY timestamp DESC
+                LIMIT @limit";
+
+            var results = new List<Dictionary<string, object?>>();
+            await using var connection = CreateConnection();
+            await connection.OpenAsync();
+            await using var command = new NpgsqlCommand(sql, connection);
+            if (assetId.HasValue) command.Parameters.AddWithValue("assetId", assetId.Value);
+            if (!string.IsNullOrWhiteSpace(eventType)) command.Parameters.AddWithValue("eventType", eventType);
+            if (!string.IsNullOrWhiteSpace(severity)) command.Parameters.AddWithValue("severity", severity);
+            if (from.HasValue) command.Parameters.AddWithValue("from", from.Value);
+            if (to.HasValue) command.Parameters.AddWithValue("to", to.Value);
+            command.Parameters.AddWithValue("limit", limit);
+
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                results.Add(new Dictionary<string, object?>
+                {
+                    ["eventId"] = reader.GetGuid(0),
+                    ["schemaVersion"] = reader.GetInt32(1),
+                    ["timestamp"] = reader.GetDateTime(2),
+                    ["assetId"] = reader.GetGuid(3),
+                    ["eventType"] = reader.GetString(4),
+                    ["severity"] = reader.GetString(5),
+                    ["source"] = reader.IsDBNull(6) ? null : reader.GetString(6),
+                    ["payload"] = reader.IsDBNull(7) ? null : reader.GetString(7),
+                    ["correlationId"] = reader.IsDBNull(8) ? null : reader.GetString(8),
+                });
+            }
+
+            return results;
         }
     }
 }

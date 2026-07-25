@@ -51,7 +51,7 @@ CREATE INDEX IF NOT EXISTS idx_asset_features_lookup ON asset_features (asset_id
 -- ASSET_PREDICTIONS TABLE - ML model predictions
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS asset_predictions (
-    prediction_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    prediction_id UUID NOT NULL DEFAULT gen_random_uuid(),
     asset_id UUID NOT NULL,
     model_id VARCHAR(100) NOT NULL,
     prediction_type VARCHAR(50) NOT NULL,  -- 'anomaly', 'failure_risk', etc.
@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS asset_predictions (
     contributing_factors JSONB DEFAULT '{}'::jsonb,
     prediction_window INTERVAL,  -- e.g., '1 hour', '24 hours'
     predicted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    valid_until TIMESTAMPTZ
+    valid_until TIMESTAMPTZ,
+    PRIMARY KEY (predicted_at, prediction_id)
 );
 
 -- Hypertable for predictions
@@ -73,7 +74,7 @@ SELECT create_hypertable(
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_predictions_asset ON asset_predictions (asset_id, predicted_at DESC);
 CREATE INDEX IF NOT EXISTS idx_predictions_type ON asset_predictions (prediction_type, score DESC, predicted_at DESC);
-CREATE INDEX IF NOT EXISTS idx_predictions_valid ON asset_predictions (asset_id, valid_until) WHERE valid_until > CURRENT_TIMESTAMP;
+CREATE INDEX IF NOT EXISTS idx_predictions_valid ON asset_predictions (asset_id, valid_until);
 
 -- ============================================================================
 -- ML_MODELS TABLE - Model metadata and versioning
