@@ -2143,6 +2143,12 @@ function initAccount() {
         const initial = (d.username || '?')[0].toUpperCase();
         avatarEl.textContent = initial;
       }
+      if (d.auth_source === 'fii_sso') {
+        const passwordCard = el('settings-password-card');
+        const tfaCard = el('settings-2fa-card');
+        if (passwordCard) passwordCard.style.display = 'none';
+        if (tfaCard) tfaCard.style.display = 'none';
+      }
     }).catch(() => {});
 
   // Update password placeholder and policy from server
@@ -2292,7 +2298,14 @@ function initAccount() {
     logoutBtn.addEventListener('mouseenter', () => { logoutBtn.style.opacity = '1'; logoutBtn.style.borderColor = 'var(--red)'; logoutBtn.style.color = 'var(--red)'; });
     logoutBtn.addEventListener('mouseleave', () => { logoutBtn.style.opacity = ''; logoutBtn.style.borderColor = ''; logoutBtn.style.color = ''; });
     logoutBtn.addEventListener('click', async () => {
-      try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (_) {}
+      let redirectUrl = '/login';
+      try {
+        const response = await fetch('/api/auth/logout', { method: 'POST' });
+        if (response.ok) {
+          const result = await response.json().catch(() => ({}));
+          if (typeof result.redirect_url === 'string') redirectUrl = result.redirect_url;
+        }
+      } catch (_) {}
       // SECURITY: wipe all client-side state on logout so the next user that
       // signs in on this browser doesn't inherit the previous account's
       // session id, last-used model, draft chat input, or any cached lists.
@@ -2310,7 +2323,7 @@ function initAccount() {
         _toRemove.forEach(k => localStorage.removeItem(k));
         sessionStorage.clear();
       } catch (_) {}
-      window.location.href = '/login';
+      window.location.href = redirectUrl;
     });
   }
 }

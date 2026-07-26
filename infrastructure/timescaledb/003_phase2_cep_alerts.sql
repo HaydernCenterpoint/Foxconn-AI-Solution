@@ -16,13 +16,7 @@ CREATE TABLE IF NOT EXISTS events (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Hypertable for events (partitioned by occurred_at)
-SELECT create_hypertable(
-    'events',
-    by_range('occurred_at', INTERVAL '1 day'),
-    if_not_exists => TRUE
-);
-
+-- Events stay as a regular table so event_id remains a stable FK target.
 -- Indexes for efficient queries
 CREATE INDEX IF NOT EXISTS idx_events_asset_time ON events (asset_id, occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_type_time ON events (event_type, occurred_at DESC);
@@ -32,7 +26,7 @@ CREATE INDEX IF NOT EXISTS idx_events_severity_time ON events (severity, occurre
 -- ALERTS TABLE - Managed alerts with lifecycle
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS alerts (
-    alert_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    alert_id UUID NOT NULL DEFAULT gen_random_uuid(),
     event_id UUID NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
     asset_id UUID NOT NULL,
     rule_id VARCHAR(100) NOT NULL,
@@ -50,7 +44,8 @@ CREATE TABLE IF NOT EXISTS alerts (
     resolution_notes TEXT,
     suppression_reason TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (alert_id, opened_at)
 );
 
 -- Hypertable for alerts
@@ -120,9 +115,6 @@ CREATE INDEX IF NOT EXISTS idx_suppression_lookup ON alert_suppression_rules (as
 -- ============================================================================
 -- RETENTION POLICIES
 -- ============================================================================
--- Keep raw events for 90 days
-SELECT add_retention_policy('events', INTERVAL '90 days', if_not_exists => TRUE);
-
 -- Keep alerts for 1 year (they are lightweight)
 SELECT add_retention_policy('alerts', INTERVAL '365 days', if_not_exists => TRUE);
 

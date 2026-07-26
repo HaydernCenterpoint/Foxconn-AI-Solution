@@ -8,8 +8,27 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
+
+if (args.Contains("--database-preflight", StringComparer.OrdinalIgnoreCase))
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required.");
+    await using var connection = new NpgsqlConnection(connectionString);
+    await connection.OpenAsync();
+    await using var command = new NpgsqlCommand(
+        "SELECT to_regclass('public.users') IS NOT NULL AND to_regclass('public.machines') IS NOT NULL",
+        connection);
+    if (await command.ExecuteScalarAsync() is not true)
+    {
+        throw new InvalidOperationException("Required operational database tables are missing.");
+    }
+
+    Console.WriteLine("Operational database preflight passed.");
+    return;
+}
 
 if (args.Contains("--timescale-backfill", StringComparer.OrdinalIgnoreCase))
 {
@@ -42,7 +61,7 @@ builder.Services.Configure<CepStagingOptions>(
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "MKZ Factory API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Foxconn API", Version = "v1" });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
@@ -160,7 +179,7 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "MKZ Factory API v1"));
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Foxconn API v1"));
 }
 
 app.UseCors();

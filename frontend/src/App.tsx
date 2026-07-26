@@ -32,7 +32,7 @@ export default function App() {
     return <SplashScreen />;
   }
 
-  if (isAuthenticated && welcomePending) {
+  if (isAuthenticated && welcomePending && window.location.pathname !== '/logout') {
     return (
       <WelcomeScreen
         username={username || t('common.values.user')}

@@ -1,0 +1,76 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { isAssetId, mapAlertResponse, mapHealthResponse } from './predictiveAlerts.api';
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+describe('predictiveAlerts API contract mapping', () => {
+  it('maps the active backend alert envelope', () => {
+    expect(mapAlertResponse({
+      alerts: [{
+        alertId: 'alert-1',
+        assetId: 'asset-1',
+        ruleId: 'bearing-temperature',
+        openedAt: '2026-07-26T08:00:00Z',
+        severity: 'high',
+        title: 'Bearing temperature high',
+        description: null,
+        status: 'open',
+      }],
+    })).toEqual([expect.objectContaining({
+      alert_id: 'alert-1',
+      asset_id: 'asset-1',
+      event_type: 'bearing-temperature',
+      description: '',
+    })]);
+  });
+
+  it('maps the active backend health breakdown', () => {
+    expect(mapHealthResponse({
+      assetId: 'asset-1',
+      overallScore: 82,
+      breakdown: {
+        uptime: { value: 98 },
+        alarms: { count: 2 },
+        performance: { ratio: 91 },
+        maintenance: { overdueDays: 3 },
+      },
+    })).toEqual({
+      asset_id: 'asset-1',
+      health_score: 82,
+      uptime_pct: 98,
+      alarm_frequency: 2,
+      performance_pct: 91,
+      maintenance_overdue: true,
+    });
+  });
+
+  it('accepts the deterministic GUIDs used by the Asset Browser demo', () => {
+    expect(isAssetId('00000000-0000-0000-0000-000000000001')).toBe(true);
+    expect(isAssetId('L1-M1')).toBe(false);
+  });
+
+  it('serves deterministic mapped responses in demo mode without a backend', async () => {
+    vi.resetModules();
+    vi.stubEnv('MODE', 'demo');
+    const { predictiveAlertsApi } = await import('./predictiveAlerts.api');
+
+    const alerts = await predictiveAlertsApi.listAlerts();
+    const health = await predictiveAlertsApi.getHealth(alerts[0].asset_id);
+
+    expect(alerts).toEqual([expect.objectContaining({
+      alert_id: '00000000-0000-0000-0000-000000000101',
+      asset_id: '00000000-0000-0000-0000-000000000001',
+      event_type: 'predictive-maintenance',
+      severity: 'high',
+      recommended_actions: [],
+    })]);
+    expect(health).toEqual(expect.objectContaining({
+      asset_id: '00000000-0000-0000-0000-000000000001',
+      health_score: 94.1,
+      alarm_frequency: 1,
+      maintenance_overdue: true,
+    }));
+  });
+});

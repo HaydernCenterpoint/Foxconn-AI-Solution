@@ -117,6 +117,30 @@ describe('alert and health happy path', () => {
       expect(details).toHaveAttribute('open');
       expect(screen.getByText('Vibration and temperature are rising together.')).toBeVisible();
       expect(screen.getByText('Inspect bearing lubrication')).toBeVisible();
+      expect(screen.getByText('99%')).toBeVisible();
+      expect(screen.getByText('96%')).toBeVisible();
+      expect(screen.getByText('On schedule')).toBeVisible();
+    } finally {
+      view.unmount();
+      queryClient.clear();
+    }
+  });
+
+  it('shows unavailable states without blocking the dashboard', async () => {
+    apiMocks.alerts.mockRejectedValue(new Error('CEP unavailable'));
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const view = render(
+      <QueryClientProvider client={queryClient}>
+        <I18nextProvider i18n={testI18n}>
+          <MemoryRouter><ModernDashboardPage role="engineer" /></MemoryRouter>
+        </I18nextProvider>
+      </QueryClientProvider>,
+    );
+
+    try {
+      expect(await screen.findByText('Predictive alerts are unavailable')).toBeVisible();
+      expect(screen.getByText('Production overview')).toBeVisible();
     } finally {
       view.unmount();
       queryClient.clear();

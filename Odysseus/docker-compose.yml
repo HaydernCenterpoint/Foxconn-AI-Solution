@@ -92,6 +92,7 @@ services:
       - FII_JWT_ISSUER=${FII_JWT_ISSUER:-MKZ_PLC_Server}
       - FII_JWT_AUDIENCE=${FII_JWT_AUDIENCE:-MKZ_PLC_Client}
       - FII_MAIN_LOGIN_URL=${FII_MAIN_LOGIN_URL:-http://localhost:3001/login}
+      - FII_MAIN_LOGOUT_URL=${FII_MAIN_LOGOUT_URL:-http://localhost:3001/logout}
       - APP_BIND=0.0.0.0
       - APP_PORT=7000
       - DATABASE_URL=sqlite:///./data/app.db

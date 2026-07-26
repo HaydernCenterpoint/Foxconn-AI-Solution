@@ -1,7 +1,7 @@
 export const zhCN = {
   common: {
-    appName: 'FII 生产监控',
-    appTitleSuffix: 'FII 生产监控',
+    appName: 'Foxconn',
+    appTitleSuffix: 'Foxconn',
     logoAlt: 'Foxconn Industrial Internet 标志',
     systemName: '生产监控系统',
     systemDescription: '实时监控生产线、设备和 PLC 数据',
@@ -189,8 +189,8 @@ export const zhCN = {
     productionAnalysis: '产量分析',
     system: '系统',
     dataFusion: '数据融合',
-    fiiAssistant: 'FII Assistant',
-    fiiDataFusion: 'FII Data Fusion',
+    fiiAssistant: 'Foxconn ODC (Odysseus)',
+    fiiDataFusion: 'Foxconn Data Fusion',
     assets: '资产管理',
     events: '事件',
   },

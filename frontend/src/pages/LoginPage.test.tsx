@@ -57,7 +57,7 @@ describe('LoginPage', () => {
   it('keeps the redesigned login shell accessible and validates required credentials', async () => {
     renderLogin();
 
-    const login = screen.getByRole('main', { name: 'FII Production Monitoring' });
+    const login = screen.getByRole('main', { name: 'Foxconn' });
     expect(login).toHaveClass('grid-flow-dense');
     expect(login.parentElement).toHaveClass('min-h-[100dvh]', 'w-full');
     expect(login.parentElement).not.toHaveClass('px-4');

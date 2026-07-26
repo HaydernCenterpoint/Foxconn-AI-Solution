@@ -18,12 +18,20 @@ param(
     [ValidateRange(1, 65535)]
     [int]$CepStagingPort = 58085,
 
-    [ValidateNotNullOrEmpty()]
-    [string]$Username = 'admin',
+    [string]$Username = '',
 
-    [ValidateNotNullOrEmpty()]
-    [string]$Password = 'admin123',
+    [string]$Password = '',
 
+    [string]$MachineId = '',
+
+    [string]$MachineClientId = '',
+
+    [string]$OperationsConnectionString = '',
+
+    [string]$TimescaleConnectionString = '',
+
+    [switch]$SkipOpenDataFusion,
+    [switch]$SkipOdysseus,
     [switch]$SkipTimescale,
     [switch]$SkipCepStaging
 )
@@ -38,6 +46,76 @@ $odysseusUrl = "http://localhost:$OdysseusPort"
 $odfApiUrl = "http://localhost:$OdfApiPort"
 $odfWebUrl = "http://localhost:$OdfWebPort"
 $cepStagingUrl = "http://localhost:$CepStagingPort"
+
+if ([string]::IsNullOrWhiteSpace($Username)) { $Username = $env:FII_DEMO_USERNAME }
+if ([string]::IsNullOrWhiteSpace($Password)) { $Password = $env:FII_DEMO_PASSWORD }
+if ([string]::IsNullOrWhiteSpace($MachineId)) { $MachineId = $env:FII_DEMO_MACHINE_ID }
+if ([string]::IsNullOrWhiteSpace($MachineClientId)) { $MachineClientId = $env:FII_DEMO_MACHINE_CLIENT_ID }
+if ([string]::IsNullOrWhiteSpace($OperationsConnectionString)) { $OperationsConnectionString = $env:FII_OPERATIONS_CONNECTION_STRING }
+if ([string]::IsNullOrWhiteSpace($TimescaleConnectionString)) { $TimescaleConnectionString = $env:FII_TIMESCALE_CONNECTION_STRING }
+if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($Password)) {
+    throw 'Supply real credentials with -Username/-Password or FII_DEMO_USERNAME/FII_DEMO_PASSWORD.'
+}
+if ([string]::IsNullOrWhiteSpace($MachineId) -and [string]::IsNullOrWhiteSpace($MachineClientId)) {
+    throw 'Select an existing approved machine with -MachineId/-MachineClientId or the matching FII_DEMO environment variable.'
+}
+if ([string]::IsNullOrWhiteSpace($OperationsConnectionString)) {
+    throw 'Supply FII_OPERATIONS_CONNECTION_STRING for raw telemetry and outbox verification.'
+}
+if (-not $SkipTimescale -and [string]::IsNullOrWhiteSpace($TimescaleConnectionString)) {
+    throw 'Supply FII_TIMESCALE_CONNECTION_STRING for source-ID uniqueness verification.'
+}
+
+function Get-Psql {
+    $command = Get-Command psql.exe -ErrorAction SilentlyContinue
+    if ($null -ne $command) { return $command.Source }
+    $installed = Get-ChildItem 'C:/Program Files/PostgreSQL' -Filter psql.exe -File -Recurse -ErrorAction SilentlyContinue |
+        Sort-Object FullName -Descending | Select-Object -First 1
+    if ($null -ne $installed) { return $installed.FullName }
+    throw 'PostgreSQL psql is required for retained-database smoke verification.'
+}
+
+function Invoke-PsqlScalar {
+    param(
+        [Parameter(Mandatory)][string]$ConnectionString,
+        [Parameter(Mandatory)][string]$Sql
+    )
+
+    $builder = [System.Data.Common.DbConnectionStringBuilder]::new()
+    $builder.ConnectionString = $ConnectionString
+    $values = @{}
+    foreach ($key in $builder.Keys) { $values[[string]$key] = [string]$builder[$key] }
+    $hostName = if ($values.ContainsKey('Host')) { $values.Host } else { $values.Server }
+    $database = if ($values.ContainsKey('Database')) { $values.Database } else { $values.'Initial Catalog' }
+    $user = if ($values.ContainsKey('Username')) { $values.Username } else { $values.'User ID' }
+    if ([string]::IsNullOrWhiteSpace($hostName) -or [string]::IsNullOrWhiteSpace($database) -or [string]::IsNullOrWhiteSpace($user)) {
+        throw 'The PostgreSQL connection string must include Host, Database, and Username.'
+    }
+
+    $psql = Get-Psql
+    $environment = @{
+        PGHOST = $hostName
+        PGPORT = $(if ($values.ContainsKey('Port')) { $values.Port } else { '5432' })
+        PGDATABASE = $database
+        PGUSER = $user
+        PGPASSWORD = $(if ($values.ContainsKey('Password')) { $values.Password } else { '' })
+    }
+    $previousEnvironment = @{}
+    try {
+        foreach ($entry in $environment.GetEnumerator()) {
+            $previousEnvironment[$entry.Key] = [Environment]::GetEnvironmentVariable($entry.Key, 'Process')
+            [Environment]::SetEnvironmentVariable($entry.Key, [string]$entry.Value, 'Process')
+        }
+        $output = $Sql | & $psql --no-psqlrc --tuples-only --no-align --set ON_ERROR_STOP=1
+        if ($LASTEXITCODE -ne 0) { throw 'A retained-database verification query failed.' }
+        return (@($output) -join "`n").Trim()
+    }
+    finally {
+        foreach ($entry in $previousEnvironment.GetEnumerator()) {
+            [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, 'Process')
+        }
+    }
+}
 
 function Get-Json {
     param(
@@ -208,17 +286,29 @@ function Send-MqttMessage {
             throw "MQTT broker rejected the smoke client (code $($connAck[3]))."
         }
 
+        $packetIdentifier = [byte[]](0, 1)
         $publishBody = [System.Collections.Generic.List[byte]]::new()
         Add-MqttString -Buffer $publishBody -Value $Topic
+        $publishBody.AddRange($packetIdentifier)
         $publishBody.AddRange([Text.Encoding]::UTF8.GetBytes($Payload))
         $publishPacket = [System.Collections.Generic.List[byte]]::new()
-        $publishPacket.Add([byte]0x30)
+        $publishPacket.Add([byte]0x32)
         $publishPacket.AddRange([byte[]](ConvertTo-MqttRemainingLength -Value $publishBody.Count))
         $publishPacket.AddRange($publishBody)
         $publishBytes = $publishPacket.ToArray()
         $stream.Write($publishBytes, 0, $publishBytes.Length)
         $stream.Flush()
-        Start-Sleep -Milliseconds 100
+
+        $pubAck = [byte[]]::new(4)
+        $offset = 0
+        while ($offset -lt $pubAck.Length) {
+            $read = $stream.Read($pubAck, $offset, $pubAck.Length - $offset)
+            if ($read -eq 0) { throw 'MQTT broker closed the connection before PUBACK.' }
+            $offset += $read
+        }
+        if ($pubAck[0] -ne 0x40 -or $pubAck[1] -ne 2 -or $pubAck[2] -ne 0 -or $pubAck[3] -ne 1) {
+            throw 'MQTT broker returned an invalid PUBACK.'
+        }
     }
     finally {
         if ($null -ne $stream) { $stream.Dispose() }
@@ -235,20 +325,26 @@ Assert-Web -Name 'Operations UI' -Uri $frontendUrl
 Assert-NoViteHmrClient -Uri $frontendUrl
 Assert-Web -Name 'Asset Browser route' -Uri "$frontendUrl/assets"
 
-$odysseusHealth = Get-Json -Name 'Odysseus health' -Uri "$odysseusUrl/api/health"
-if ([string]$odysseusHealth.status -ne 'healthy') {
-    throw "Odysseus reported '$($odysseusHealth.status)'."
+$odysseusHealth = $null
+if (-not $SkipOdysseus) {
+    $odysseusHealth = Get-Json -Name 'Odysseus readiness' -Uri "$odysseusUrl/api/ready"
+    if (-not $odysseusHealth.ready) {
+        throw 'Odysseus reported not ready.'
+    }
 }
 
-$odfReady = Get-Json -Name 'Open Data Fusion readiness' -Uri "$odfApiUrl/ready"
-if ([string]$odfReady.readiness -ne 'ready') {
-    throw "Open Data Fusion reported '$($odfReady.readiness)'."
+$odfReady = $null
+if (-not $SkipOpenDataFusion) {
+    $odfReady = Get-Json -Name 'Open Data Fusion readiness' -Uri "$odfApiUrl/ready"
+    if ([string]$odfReady.readiness -ne 'ready') {
+        throw "Open Data Fusion reported '$($odfReady.readiness)'."
+    }
+    $odfHealth = Get-Json -Name 'Open Data Fusion health' -Uri "$odfApiUrl/health"
+    if ([string]$odfHealth.authMode -ne 'factory') {
+        throw "Open Data Fusion authentication mode is '$($odfHealth.authMode)', expected 'factory'."
+    }
+    Assert-Web -Name 'Open Data Fusion Web' -Uri $odfWebUrl
 }
-$odfHealth = Get-Json -Name 'Open Data Fusion health' -Uri "$odfApiUrl/health"
-if ([string]$odfHealth.authMode -ne 'factory') {
-    throw "Open Data Fusion authentication mode is '$($odfHealth.authMode)', expected 'factory'."
-}
-Assert-Web -Name 'Open Data Fusion Web' -Uri $odfWebUrl
 
 $cepHealth = $null
 if (-not $SkipCepStaging) {
@@ -276,104 +372,98 @@ $mainSession = Invoke-RestMethod -Uri "$backendUrl/api/auth/session" -WebSession
 if ([string]$mainSession.username -ne $Username.ToLowerInvariant()) {
     throw "Main session belongs to '$($mainSession.username)', expected '$Username'."
 }
-$odysseusSession = Invoke-RestMethod -Uri "$odysseusUrl/api/auth/status" -WebSession $browser -TimeoutSec 10
-if (-not $odysseusSession.authenticated -or [string]$odysseusSession.username -ne $Username.ToLowerInvariant()) {
-    throw 'Odysseus did not accept the shared login.'
+if (-not $SkipOdysseus) {
+    $odysseusSession = Invoke-RestMethod -Uri "$odysseusUrl/api/auth/status" -WebSession $browser -TimeoutSec 10
+    if (-not $odysseusSession.authenticated -or [string]$odysseusSession.username -ne $Username.ToLowerInvariant()) {
+        throw 'Odysseus did not accept the shared login.'
+    }
 }
-$odfSession = Invoke-RestMethod -Uri "$odfWebUrl/api/v1/auth/session" -WebSession $browser -TimeoutSec 10
-if (-not $odfSession.authenticated -or [string]$odfSession.identity.userId -ne $Username.ToLowerInvariant()) {
-    throw 'Open Data Fusion did not accept the shared login through its web proxy.'
+if (-not $SkipOpenDataFusion) {
+    $odfSession = Invoke-RestMethod -Uri "$odfWebUrl/api/v1/auth/session" -WebSession $browser -TimeoutSec 10
+    if (-not $odfSession.authenticated -or [string]$odfSession.identity.userId -ne $Username.ToLowerInvariant()) {
+        throw 'Open Data Fusion did not accept the shared login through its web proxy.'
+    }
 }
 
-$authHeaders = @{ Authorization = "Bearer $($login.token)" }
-$smokeClientId = 'fii-demo-smoke-client'
-$machines = Invoke-RestMethod -Uri "$backendUrl/api/machines" -WebSession $browser -TimeoutSec 10
-$smokeMachine = $machines | Where-Object { [string]$_.clientId -eq $smokeClientId } | Select-Object -First 1
-if ($null -eq $smokeMachine) {
-    $machineBody = @{
-        name = 'FII Demo Smoke Machine'
-        machineCode = 'FII-SMOKE-01'
-        ip = '127.0.0.1'
-        clientId = $smokeClientId
-    } | ConvertTo-Json -Compress
-    $smokeMachine = Invoke-RestMethod -Method Post -Uri "$backendUrl/api/machines" -Headers $authHeaders `
-        -ContentType 'application/json' -Body $machineBody -TimeoutSec 10
+$machines = @(Invoke-RestMethod -Uri "$backendUrl/api/machines" -WebSession $browser -TimeoutSec 10 | ForEach-Object { $_ })
+$smokeMachine = if (-not [string]::IsNullOrWhiteSpace($MachineId)) {
+    $machines | Where-Object { [string]$_.id -eq $MachineId } | Select-Object -First 1
+} else {
+    $machines | Where-Object { [string]$_.clientId -eq $MachineClientId } | Select-Object -First 1
 }
+if ($null -eq $smokeMachine) { throw 'The selected machine does not exist.' }
+if ([string]$smokeMachine.approvalStatus -ne 'APPROVED') { throw 'The selected machine is not already approved.' }
 $machineId = [string]$smokeMachine.id
+$smokeClientId = [string]$smokeMachine.clientId
+if ([string]::IsNullOrWhiteSpace($smokeClientId)) { throw 'The selected machine has no MQTT client ID.' }
 $machineAsset = Invoke-RestMethod -Uri "$backendUrl/api/assets/$machineId" -WebSession $browser -TimeoutSec 10
 if ([string]$machineAsset.id -ne $machineId -or [string]$machineAsset.type -ne 'MACHINE') {
-    throw 'The smoke machine does not have the matching MACHINE asset UUID.'
-}
-$machineAssetSearch = Invoke-RestMethod -Uri "$backendUrl/api/assets?q=FII-SMOKE-01&type=MACHINE" -WebSession $browser -TimeoutSec 10
-if (@($machineAssetSearch | Where-Object { [string]$_.id -eq $machineId }).Count -ne 1) {
-    throw 'Asset search did not return the smoke machine.'
+    throw 'The selected machine does not have the matching MACHINE asset UUID.'
 }
 $assetTree = Invoke-RestMethod -Uri "$backendUrl/api/assets/tree" -WebSession $browser -TimeoutSec 10
 if ($null -eq (Find-AssetInTree -Nodes @($assetTree) -AssetId $machineId)) {
-    throw 'Asset tree did not contain the smoke machine.'
+    throw 'The asset tree does not contain the selected machine.'
 }
-$sensor = $null
-$sensorCode = "fii-demo-sensor-$PID"
-$documentId = "fii-demo-document-$PID"
-$documentLinked = $false
-$sensor = Invoke-RestMethod -Method Post -Uri "$backendUrl/api/assets" -Headers $authHeaders -ContentType 'application/json' -Body (@{
-    name = 'FII Demo Sensor'; type = 'SENSOR'; code = $sensorCode; metadata = @{ vendor = 'demo'; unit = 'celsius' }
-    } | ConvertTo-Json -Depth 4 -Compress) -TimeoutSec 10
-try {
-    $found = Invoke-RestMethod -Uri "$backendUrl/api/assets?q=$([uri]::EscapeDataString($sensorCode))&type=SENSOR" -WebSession $browser -TimeoutSec 10
-    if (@($found | Where-Object { [string]$_.id -eq [string]$sensor.id }).Count -ne 1) { throw 'Created sensor was not searchable.' }
-    $assetTree = Invoke-RestMethod -Uri "$backendUrl/api/assets/tree" -WebSession $browser -TimeoutSec 10
-    if ($null -eq (Find-AssetInTree -Nodes @($assetTree) -AssetId ([string]$sensor.id))) { throw 'Asset tree did not contain the created sensor.' }
-    $updated = Invoke-RestMethod -Method Put -Uri "$backendUrl/api/assets/$($sensor.id)" -Headers $authHeaders -ContentType 'application/json' -Body (@{
-        name = 'FII Demo Sensor Updated'; code = $sensorCode; metadata = @{ vendor = 'demo'; unit = 'celsius'; calibrated = $true }
-    } | ConvertTo-Json -Depth 4 -Compress) -TimeoutSec 10
-    if ([string]$updated.name -ne 'FII Demo Sensor Updated') { throw 'Asset update did not persist.' }
 
-    $linkedDocument = Invoke-RestMethod -Method Post -Uri "$backendUrl/api/assets/$($sensor.id)/documents" -Headers $authHeaders -ContentType 'application/json' -Body (@{
-        documentId = $documentId; relationship = 'MANUAL'
-    } | ConvertTo-Json -Compress) -TimeoutSec 10
-    if ([string]$linkedDocument.documentId -ne $documentId -or [string]$linkedDocument.relationship -ne 'MANUAL') {
-        throw 'Asset document link did not persist.'
-    }
-    $documentLinked = $true
-    $linkedDocuments = Invoke-RestMethod -Uri "$backendUrl/api/assets/$($sensor.id)/documents" -WebSession $browser -TimeoutSec 10
-    if (@($linkedDocuments | Where-Object { [string]$_.documentId -eq $documentId -and [string]$_.relationship -eq 'MANUAL' }).Count -ne 1) {
-        throw 'Asset document link was not returned by the catalog API.'
-    }
-}
-finally {
-    if ($documentLinked -and $null -ne $sensor) {
-        $documentQuery = [uri]::EscapeDataString($documentId)
-        Invoke-RestMethod -Method Delete -Uri "$backendUrl/api/assets/$($sensor.id)/documents?documentId=$documentQuery&relationship=MANUAL" -Headers $authHeaders -TimeoutSec 10 | Out-Null
-    }
-    if ($null -ne $sensor) { Invoke-RestMethod -Method Delete -Uri "$backendUrl/api/assets/$($sensor.id)" -Headers $authHeaders -TimeoutSec 10 | Out-Null }
-}
-if ([string]$smokeMachine.approvalStatus -ne 'APPROVED') {
-    Invoke-RestMethod -Method Post -Uri "$backendUrl/api/machines/$machineId/approve" -Headers $authHeaders `
-        -WebSession $browser -TimeoutSec 10 | Out-Null
-}
 $telemetrySequence = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
-$telemetry = @{
+$messageId = [guid]::NewGuid().ToString('D')
+$sentAt = [DateTimeOffset]::UtcNow.ToString('O')
+$telemetryObject = @{
     protocolVersion = 1
-    messageId = [guid]::NewGuid().ToString()
+    messageId = $messageId
     messageType = 'telemetry'
     clientId = $smokeClientId
-    sentAt = [DateTimeOffset]::UtcNow.ToString('O')
+    sentAt = $sentAt
     payload = @{
         machineId = $machineId
-        machineName = 'FII Demo Smoke Machine'
+        machineName = [string]$smokeMachine.name
         sequence = $telemetrySequence
         status = 'RUNNING'
         plcConnected = $true
-        production = @{ qty = 42; time = 1.5; uph = 480; oee = 91.2; yieldRate = 98.7 }
+        production = @{ qty = 1; time = 1.0; uph = 60; oee = 92.0; yieldRate = 99.0 }
+        alarm = @{ active = $false }
     }
-} | ConvertTo-Json -Depth 6 -Compress
+}
+$telemetry = $telemetryObject | ConvertTo-Json -Depth 6 -Compress
 Send-MqttMessage -Topic "client/$smokeClientId/telemetry" -Payload $telemetry
 
 $liveTelemetry = Wait-ForValue -Name 'Live telemetry snapshot' -Probe {
     $snapshots = @(Invoke-RestMethod -Uri "$backendUrl/api/telemetry/live" -WebSession $browser -TimeoutSec 10 | ForEach-Object { $_ })
-    $snapshot = $snapshots | Where-Object { [string]$_.clientId -eq $smokeClientId } | Select-Object -First 1
+    $snapshot = $snapshots | Where-Object {
+        [string]$_.clientId -eq $smokeClientId -and [string]$_.payload.messageId -eq $messageId
+    } | Select-Object -First 1
     if ($null -ne $snapshot) { return $snapshot }
+    return $null
+}
+
+$escapedMessageId = $messageId.Replace("'", "''")
+$expectedEventKey = "telemetry:$machineId`:$messageId"
+$escapedEventKey = $expectedEventKey.Replace("'", "''")
+$rawAndOutbox = Wait-ForValue -Name 'PostgreSQL raw telemetry and outbox' -Probe {
+    $row = Invoke-PsqlScalar -ConnectionString $OperationsConnectionString -Sql @"
+SELECT mt.id || '|' || fo.id || '|' || fo.status
+FROM machine_telemetry mt
+JOIN fusion_outbox fo ON fo.event_key = '$escapedEventKey'
+WHERE mt.raw_json->>'messageId' = '$escapedMessageId'
+  AND mt.machine_id = '$machineId'::uuid;
+"@
+    if (-not [string]::IsNullOrWhiteSpace($row)) { return $row }
+    return $null
+}
+$rawParts = $rawAndOutbox.Split('|')
+if ($rawParts.Count -ne 3) { throw 'Raw telemetry/outbox correlation returned an invalid result.' }
+$sourceId = [Int64]$rawParts[0]
+$outboxId = [string]$rawParts[1]
+
+$outboxStatus = Wait-ForValue -Name 'Delivered fusion outbox event' -TimeoutSeconds 60 -Probe {
+    $status = Invoke-PsqlScalar -ConnectionString $OperationsConnectionString -Sql @"
+SELECT status
+FROM fusion_outbox
+WHERE id = '$outboxId'::uuid
+  AND delivered_at IS NOT NULL
+  AND last_error IS NULL;
+"@
+    if ($status -eq 'DELIVERED') { return $status }
     return $null
 }
 
@@ -382,9 +472,16 @@ $timescaleRollups = $null
 if (-not $SkipTimescale) {
     $timescalePoints = Wait-ForValue -Name 'Timescale dual-write' -Probe {
         $points = @(Invoke-RestMethod -Uri "$backendUrl/api/telemetry/timescale/${machineId}?limit=10" -WebSession $browser -TimeoutSec 10 | ForEach-Object { $_ })
-        if (@($points | Where-Object { [Int64]$_.sequence -eq $telemetrySequence }).Count -gt 0) { return $points }
+        $matching = @($points | Where-Object {
+            [Int64]$_.sourceId -eq $sourceId -and
+            [Int64]$_.sequence -eq $telemetrySequence -and
+            [string]$_.rawJson -match [regex]::Escape($messageId)
+        })
+        if ($matching.Count -eq 1) { return $matching }
         return $null
     }
+    $timescaleCount = Invoke-PsqlScalar -ConnectionString $TimescaleConnectionString -Sql "SELECT count(*) FROM telemetry_points WHERE source_id = $sourceId;"
+    if ($timescaleCount -ne '1') { throw "Timescale source_id $sourceId is not unique." }
 
     $timescaleRollups = Wait-ForValue -Name 'Timescale hourly rollup' -Probe {
         $rollups = @(Invoke-RestMethod -Uri "$backendUrl/api/telemetry/timescale/$machineId/hourly?limit=4" -WebSession $browser -TimeoutSec 10 | ForEach-Object { $_ })
@@ -403,70 +500,92 @@ if (-not $SkipCepStaging) {
     }
 }
 
-$odfScopeHeaders = @{ 'x-odf-tenant-id' = 'demo'; 'x-odf-project-id' = 'north-plant' }
-$assetExternalId = [uri]::EscapeDataString("mkz:machine:$machineId")
 $fusionTelemetry = $null
-$lastFusionError = $null
-$fusionDeadline = (Get-Date).AddSeconds(45)
-do {
+if (-not $SkipOpenDataFusion) {
+    $odfScopeHeaders = @{
+        Authorization = "Bearer $($login.token)"
+        'x-odf-tenant-id' = 'demo'
+        'x-odf-project-id' = 'north-plant'
+    }
+    $assetExternalId = [uri]::EscapeDataString("mkz:machine:$machineId")
+    $oeeSeriesId = [uri]::EscapeDataString("mkz:ts:$machineId`:oee")
+    $from = [uri]::EscapeDataString(([DateTimeOffset]::Parse($sentAt).AddSeconds(-1)).ToString('O'))
+    $to = [uri]::EscapeDataString(([DateTimeOffset]::Parse($sentAt).AddSeconds(1)).ToString('O'))
+    $telemetryUri = "$odfApiUrl/api/v1/assets/$assetExternalId/telemetry?from=$from&to=$to&timeSeriesExternalId=$oeeSeriesId&limit=10"
+    $fusionTelemetry = Wait-ForValue -Name 'Correlated Open Data Fusion telemetry' -TimeoutSeconds 60 -Probe {
+        $candidate = Invoke-RestMethod -Uri $telemetryUri -Headers $odfScopeHeaders -TimeoutSec 10
+        $points = @($candidate.series | ForEach-Object { @($_.points) })
+        if (@($points | Where-Object { [double]$_.value -eq 92.0 }).Count -eq 1) { return $candidate }
+        return $null
+    }
+
+    $rawLanding = Invoke-RestMethod -Uri "$odfApiUrl/api/v1/platform/ingestion/raw?limit=100" `
+        -Headers $odfScopeHeaders -TimeoutSec 10
+    $rawObject = @($rawLanding.items | Where-Object { [string]$_.runId -eq $outboxId }) | Select-Object -First 1
+    if ($null -eq $rawObject) { throw 'Open Data Fusion raw landing did not correlate to the outbox event ID.' }
+    $beforeReplayCount = @($fusionTelemetry.series | ForEach-Object { @($_.points) }).Count
+    $replay = Invoke-RestMethod -Method Post -Uri "$odfApiUrl/api/v1/platform/ingestion/raw/$($rawObject.id)/replay" `
+        -Headers $odfScopeHeaders -TimeoutSec 20
+    if ([string]$replay.replayedFromRawObjectId -ne [string]$rawObject.id) { throw 'Open Data Fusion replay did not identify its source raw object.' }
+    $afterReplay = Invoke-RestMethod -Uri $telemetryUri -Headers $odfScopeHeaders -TimeoutSec 10
+    $afterReplayCount = @($afterReplay.series | ForEach-Object { @($_.points) }).Count
+    if ($afterReplayCount -ne $beforeReplayCount) { throw 'Open Data Fusion replay created duplicate telemetry.' }
+}
+
+$ragExports = @()
+if (-not $SkipOdysseus) {
+    $odysseusPython = Join-Path $repositoryRoot 'Odysseus/venv/Scripts/python.exe'
+    $syncScript = Join-Path $repositoryRoot 'Odysseus/scripts/sync_mkz_to_odysseus.py'
+    $verifyRagScript = Join-Path $repositoryRoot 'Odysseus/scripts/verify_mkz_rag.py'
+    if (-not (Test-Path -LiteralPath $odysseusPython)) { throw 'Odysseus virtual environment is missing.' }
+
+    $previousEnvironment = @{}
     try {
-        $candidate = Invoke-RestMethod -Uri "$odfWebUrl/api/v1/assets/$assetExternalId/telemetry/latest" `
-            -Headers $odfScopeHeaders -WebSession $browser -TimeoutSec 10
-        if (@($candidate.series | Where-Object { $null -ne $_.point }).Count -gt 0) {
-            $fusionTelemetry = $candidate
-            break
+        foreach ($entry in @{
+            MKZ_BACKEND_URL = $backendUrl
+            MKZ_BACKEND_TOKEN = [string]$login.token
+            CHROMADB_HOST = '127.0.0.1'
+            CHROMADB_PORT = '8100'
+        }.GetEnumerator()) {
+            $previousEnvironment[$entry.Key] = [Environment]::GetEnvironmentVariable($entry.Key, 'Process')
+            [Environment]::SetEnvironmentVariable($entry.Key, [string]$entry.Value, 'Process')
+        }
+        & $odysseusPython $syncScript
+        if ($LASTEXITCODE -ne 0) { throw 'Odysseus export and Chroma reindex failed.' }
+        & $odysseusPython $verifyRagScript
+        if ($LASTEXITCODE -ne 0) { throw 'The newest Odysseus export is not queryable from Chroma.' }
+    }
+    finally {
+        foreach ($entry in $previousEnvironment.GetEnumerator()) {
+            [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, 'Process')
         }
     }
-    catch {
-        $lastFusionError = $_.Exception.Message
-    }
-    Start-Sleep -Seconds 1
-} while ((Get-Date) -lt $fusionDeadline)
-if ($null -eq $fusionTelemetry) {
-    throw "Telemetry did not traverse Backend -> Fusion Adapter -> Open Data Fusion. Last error: $lastFusionError"
+    $ragExports = @(Get-ChildItem (Join-Path $repositoryRoot 'Odysseus/data/mkz_exports/rag') -Filter '*.md' -File)
 }
 
 Invoke-RestMethod -Method Post -Uri "$backendUrl/api/auth/logout" -WebSession $browser -TimeoutSec 10 | Out-Null
-if ((Get-HttpStatus -Uri "$odysseusUrl/api/auth/users" -WebSession $browser) -ne 401) {
+if ((Get-HttpStatus -Uri "$backendUrl/api/auth/session" -WebSession $browser) -ne 401) {
+    throw 'Operations remained authenticated after global logout.'
+}
+if (-not $SkipOdysseus -and (Get-HttpStatus -Uri "$odysseusUrl/api/auth/status" -WebSession $browser) -ne 401) {
     throw 'Odysseus remained authenticated after global logout.'
 }
-if ((Get-HttpStatus -Uri "$odfWebUrl/api/v1/auth/session" -WebSession $browser) -ne 401) {
+if (-not $SkipOpenDataFusion -and (Get-HttpStatus -Uri "$odfWebUrl/api/v1/auth/session" -WebSession $browser) -ne 401) {
     throw 'Open Data Fusion remained authenticated after global logout.'
-}
-
-$odysseusPython = Join-Path $repositoryRoot 'Odysseus/venv/Scripts/python.exe'
-$syncScript = Join-Path $repositoryRoot 'Odysseus/scripts/sync_mkz_to_odysseus.py'
-if (-not (Test-Path -LiteralPath $odysseusPython)) {
-    throw 'Odysseus virtual environment is missing.'
-}
-
-$previousBackendUrl = [Environment]::GetEnvironmentVariable('MKZ_BACKEND_URL', 'Process')
-try {
-    [Environment]::SetEnvironmentVariable('MKZ_BACKEND_URL', $backendUrl, 'Process')
-    & $odysseusPython $syncScript --export-only
-    if ($LASTEXITCODE -ne 0) {
-        throw "Odysseus factory-data export exited with code $LASTEXITCODE."
-    }
-}
-finally {
-    [Environment]::SetEnvironmentVariable('MKZ_BACKEND_URL', $previousBackendUrl, 'Process')
-}
-
-$ragExports = @(Get-ChildItem (Join-Path $repositoryRoot 'Odysseus/data/mkz_exports/rag') -Filter '*.md' -File)
-if ($ragExports.Count -eq 0) {
-    throw 'Odysseus did not produce any factory RAG summaries.'
 }
 
 [pscustomobject]@{
     Backend = $backendHealth.status
     Frontend = 'Healthy'
-    Odysseus = $odysseusHealth.status
-    OpenDataFusion = $odfReady.readiness
+    Odysseus = $(if ($SkipOdysseus) { 'Skipped' } else { 'Ready' })
+    OpenDataFusion = $(if ($SkipOpenDataFusion) { 'Skipped' } else { $odfReady.readiness })
     SharedSso = 'Passed'
-    AssetTreeAndDocuments = 'Passed'
+    ExistingApprovedMachine = $machineId
     LiveTelemetry = 'Passed'
+    PostgreSqlRawAndOutbox = $outboxStatus
     TimescaleRawAndRollup = $(if ($SkipTimescale) { 'Skipped' } else { 'Passed' })
     CepStaging = $(if ($SkipCepStaging) { 'Skipped' } else { 'Passed' })
-    FusionTelemetry = 'Passed'
+    FusionTelemetryAndReplay = $(if ($SkipOpenDataFusion) { 'Skipped' } else { 'Passed' })
+    ChromaFreshness = $(if ($SkipOdysseus) { 'Skipped' } else { 'Passed' })
     FactoryRagDocuments = $ragExports.Count
 }

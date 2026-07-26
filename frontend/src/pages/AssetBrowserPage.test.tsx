@@ -39,6 +39,10 @@ const alarmsApiMock = vi.hoisted(() => ({
   getAll: vi.fn(),
 }));
 
+const predictiveAlertsApiMock = vi.hoisted(() => ({
+  getHealth: vi.fn(),
+}));
+
 const authMock = vi.hoisted(() => ({
   can: vi.fn(() => true),
 }));
@@ -53,6 +57,11 @@ vi.mock('../features/machines/services/machines.api', () => ({
 
 vi.mock('../features/alarms/services/alarms.api', () => ({
   alarmsApi: alarmsApiMock,
+}));
+
+vi.mock('../features/dashboard/services/predictiveAlerts.api', () => ({
+  predictiveAlertsApi: predictiveAlertsApiMock,
+  isAssetId: (value: string) => /^[0-9a-f-]{36}$/i.test(value),
 }));
 
 vi.mock('../shared/store/auth.store', () => ({
@@ -72,6 +81,8 @@ function renderPage() {
 }
 
 describe('AssetBrowserPage', () => {
+  const machineId = '11111111-1111-1111-1111-111111111111';
+
   beforeEach(async () => {
     vi.clearAllMocks();
     testStorage.clear();
@@ -88,7 +99,7 @@ describe('AssetBrowserPage', () => {
         updatedAt: '2026-07-21T00:00:00Z',
         children: [
           {
-            id: 'machine-1',
+            id: machineId,
             type: 'MACHINE',
             name: 'Press A',
             code: 'machine:11111111-1111-1111-1111-111111111111',
@@ -115,7 +126,7 @@ describe('AssetBrowserPage', () => {
       { documentId: 'DOC-001', relationship: 'MANUAL', createdAt: '2026-07-21T00:00:00Z' },
     ]);
     machinesApiMock.getById.mockResolvedValue({
-      id: 'machine-1',
+      id: machineId,
       name: 'Press A',
       status: 'RUNNING',
       plcConnected: true,
@@ -127,7 +138,7 @@ describe('AssetBrowserPage', () => {
     alarmsApiMock.getAll.mockResolvedValue([
       {
         id: 9,
-        machineId: 'machine-1',
+        machineId,
         machineName: 'Press A',
         severity: 'HIGH',
         message: 'Overheat',
@@ -135,6 +146,14 @@ describe('AssetBrowserPage', () => {
         createdAt: '2026-07-21T01:00:00Z',
       },
     ]);
+    predictiveAlertsApiMock.getHealth.mockResolvedValue({
+      asset_id: machineId,
+      health_score: 82,
+      uptime_pct: 99,
+      alarm_frequency: 1,
+      performance_pct: 96,
+      maintenance_overdue: false,
+    });
   });
 
   it('loads the API-backed asset tree and documents for a selected asset', async () => {
@@ -158,11 +177,28 @@ describe('AssetBrowserPage', () => {
     await user.click(await screen.findByRole('button', { name: /Press A/i }));
 
     await waitFor(() => {
-      expect(machinesApiMock.getById).toHaveBeenCalledWith('machine-1');
+      expect(machinesApiMock.getById).toHaveBeenCalledWith(machineId);
       expect(alarmsApiMock.getAll).toHaveBeenCalled();
+      expect(predictiveAlertsApiMock.getHealth).toHaveBeenCalledWith(machineId);
     });
     expect(await screen.findByText('RUNNING')).toBeInTheDocument();
     expect(await screen.findByText('Overheat')).toBeInTheDocument();
+    expect(await screen.findByText('Health 82%')).toHaveStyle({ color: 'var(--color-success)' });
+    expect(screen.getByText('99%')).toBeInTheDocument();
+    expect(screen.getByText('96%')).toBeInTheDocument();
+    expect(screen.getByText('On schedule')).toBeInTheDocument();
+  });
+
+  it('keeps asset details visible when health is unavailable', async () => {
+    predictiveAlertsApiMock.getHealth.mockRejectedValue(new Error('health unavailable'));
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /Press A/i }));
+
+    expect(await screen.findByRole('heading', { name: 'Health unavailable' }, { timeout: 3000 })).toBeVisible();
+    expect(screen.getByText('Press A', { selector: 'h2' })).toBeVisible();
+    expect(screen.getByText('RUNNING')).toBeVisible();
   });
 
   it('hides catalog mutations when the role cannot configure assets', async () => {

@@ -1,5 +1,4 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
-import { useAuthStore } from '../store/auth.store';
 import { useUiStore } from '../store/ui.store';
 import i18n from '../../app/i18n';
 
@@ -25,6 +24,7 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
+  const { useAuthStore } = await import('../store/auth.store');
   const token = useAuthStore.getState().token;
   if (token) config.headers.Authorization = `Bearer ${token}`;
 
@@ -60,6 +60,7 @@ api.interceptors.response.use(
     const config = err.config as RetryableConfig | undefined;
 
     if (err.response?.status === 401) {
+      const { useAuthStore } = await import('../store/auth.store');
       useAuthStore.getState().logout('auth.errors.sessionExpired');
       if (window.location.pathname.startsWith('/admin')) {
         window.location.href = '/login';
