@@ -5,8 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { queryKeys } from '../app/queryKeys';
 import { alarmsApi } from '../features/alarms/services/alarms.api';
 import { assetsApi, type AssetTreeNode } from '../features/assets/services/assets.api';
+import { isAssetId, predictiveAlertsApi } from '../features/dashboard/services/predictiveAlerts.api';
 import { machinesApi } from '../features/machines/services/machines.api';
-import { Badge } from '../shared/components/ui/Badge';
+import { Badge, type BadgeVariant } from '../shared/components/ui/Badge';
 import { Button } from '../shared/components/ui/Button';
 import { DataState } from '../shared/components/ui/DataState';
 import { PageHeader } from '../shared/components/ui/PageHeader';
@@ -15,6 +16,12 @@ import { useAuthStore } from '../shared/store/auth.store';
 
 const EMPTY_ASSET_TREE: AssetTreeNode[] = [];
 const CATALOG_OWNED = new Set(['PLANT', 'AREA', 'SENSOR']);
+
+function healthVariant(score: number): BadgeVariant {
+  if (score >= 71) return 'success';
+  if (score >= 41) return 'warning';
+  return 'error';
+}
 
 function findAsset(nodes: AssetTreeNode[], assetId: string | null): AssetTreeNode | undefined {
   for (const node of nodes) {
@@ -101,6 +108,7 @@ export default function AssetBrowserPage() {
   const tree = treeQuery.data ?? EMPTY_ASSET_TREE;
   const selectedAsset = findAsset(tree, selectedId) ?? tree[0];
   const activeSelectedId = selectedAsset?.id ?? null;
+  const hasHealthAssetId = Boolean(activeSelectedId && isAssetId(activeSelectedId));
   const visibleTree = useMemo(() => filterTree(tree, search.trim().toLocaleLowerCase()), [search, tree]);
   const isMachine = selectedAsset?.type === 'MACHINE';
   const isCatalogOwned = selectedAsset ? CATALOG_OWNED.has(selectedAsset.type) : false;
@@ -133,12 +141,22 @@ export default function AssetBrowserPage() {
     retry: 1,
   });
 
+  const healthQuery = useQuery({
+    queryKey: queryKeys.predictiveAlerts.health(activeSelectedId ?? ''),
+    queryFn: () => predictiveAlertsApi.getHealth(activeSelectedId!),
+    enabled: hasHealthAssetId,
+    retry: 1,
+  });
+
   const refreshTree = async () => {
     await queryClient.invalidateQueries({ queryKey: queryKeys.assets.tree() });
     if (activeSelectedId) {
       await queryClient.invalidateQueries({ queryKey: queryKeys.assets.documents(activeSelectedId) });
       await queryClient.invalidateQueries({ queryKey: queryKeys.assets.machine(activeSelectedId) });
       await queryClient.invalidateQueries({ queryKey: queryKeys.assets.alarms(activeSelectedId) });
+      if (hasHealthAssetId) {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.predictiveAlerts.health(activeSelectedId) });
+      }
     }
   };
 
@@ -286,6 +304,50 @@ export default function AssetBrowserPage() {
                   <p className="mt-1 text-sm text-text-secondary">{formatDate(selectedAsset.updatedAt, i18n.language)}</p>
                 </div>
               </div>
+
+              <section className="border-b border-border px-5 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-text-primary">{t('dashboardPage.modern.healthScoreLabel')}</h3>
+                  {healthQuery.data && (
+                    <Badge variant={healthVariant(healthQuery.data.health_score)} size="md" dot>
+                      {t('dashboardPage.modern.healthScore', { score: Math.round(healthQuery.data.health_score) })}
+                    </Badge>
+                  )}
+                </div>
+                <div className="mt-3">
+                  {!hasHealthAssetId ? (
+                    <DataState kind="empty" title={t('dashboardPage.modern.healthUnavailable')} />
+                  ) : healthQuery.isLoading ? (
+                    <DataState kind="loading" title={t('common.loading')} />
+                  ) : healthQuery.isError ? (
+                    <DataState
+                      kind="error"
+                      title={t('dashboardPage.modern.healthUnavailable')}
+                      description={t('systemMonitor.healthUnavailableDescription')}
+                      action={<Button variant="secondary" size="sm" onClick={() => { void healthQuery.refetch(); }}>{t('common.actions.retry')}</Button>}
+                    />
+                  ) : healthQuery.data ? (
+                    <dl className="grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-lg border border-border px-3 py-2">
+                        <dt className="text-xs text-text-muted">{t('dashboardPage.modern.uptime')}</dt>
+                        <dd className="mt-1 text-sm font-medium text-text-primary">{Math.round(healthQuery.data.uptime_pct)}%</dd>
+                      </div>
+                      <div className="rounded-lg border border-border px-3 py-2">
+                        <dt className="text-xs text-text-muted">{t('dashboardPage.modern.performance')}</dt>
+                        <dd className="mt-1 text-sm font-medium text-text-primary">{Math.round(healthQuery.data.performance_pct)}%</dd>
+                      </div>
+                      <div className="rounded-lg border border-border px-3 py-2">
+                        <dt className="text-xs text-text-muted">{t('dashboardPage.modern.maintenance')}</dt>
+                        <dd className="mt-1 text-sm font-medium text-text-primary">
+                          {healthQuery.data.maintenance_overdue
+                            ? t('dashboardPage.modern.maintenanceOverdue')
+                            : t('dashboardPage.modern.maintenanceOnSchedule')}
+                        </dd>
+                      </div>
+                    </dl>
+                  ) : null}
+                </div>
+              </section>
 
               <section className="border-b border-border px-5 py-4">
                 <h3 className="text-sm font-semibold text-text-primary">{t('assetBrowser.catalogActions')}</h3>

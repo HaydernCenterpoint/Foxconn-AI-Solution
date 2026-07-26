@@ -23,8 +23,8 @@ namespace backend.Controllers
             ILogger<AlertController> logger)
         {
             _alertService = alertService;
-            _timescaleConnectionString = configuration.GetConnectionString("TimescaleConnection")
-                ?? throw new ArgumentNullException("ConnectionStrings:TimescaleConnection is missing");
+            _timescaleConnectionString = configuration.GetConnectionString("Timescale")
+                ?? throw new ArgumentNullException("ConnectionStrings:Timescale is missing");
             _logger = logger;
         }
 

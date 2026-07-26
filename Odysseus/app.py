@@ -256,6 +256,7 @@ FII_JWT_SECRET = os.getenv("FII_JWT_SECRET", "").strip()
 FII_JWT_ISSUER = os.getenv("FII_JWT_ISSUER", "MKZ_PLC_Server")
 FII_JWT_AUDIENCE = os.getenv("FII_JWT_AUDIENCE", "MKZ_PLC_Client")
 FII_MAIN_LOGIN_URL = os.getenv("FII_MAIN_LOGIN_URL", "http://localhost:3001/login")
+FII_MAIN_LOGOUT_URL = os.getenv("FII_MAIN_LOGOUT_URL", "http://localhost:3001/logout")
 if FII_SSO_ENABLED and len(FII_JWT_SECRET.encode()) < 32:
     raise RuntimeError("FII_JWT_SECRET must be at least 32 bytes when FII_SSO_ENABLED=true")
 if LOCALHOST_BYPASS:
@@ -653,7 +654,7 @@ webhook_manager = WebhookManager(api_key_manager=api_key_manager)
 # ========= INCLUDE ROUTERS =========
 
 # Auth
-auth_router = setup_auth_routes(auth_manager)
+auth_router = setup_auth_routes(auth_manager, FII_SSO_ENABLED, FII_MAIN_LOGOUT_URL)
 app.include_router(auth_router)
 
 

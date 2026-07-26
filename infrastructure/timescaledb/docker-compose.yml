@@ -4,9 +4,9 @@ services:
     environment:
       POSTGRES_DB: plc_timescale
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 12345678
+      POSTGRES_PASSWORD: ${FII_TIMESCALE_PASSWORD:?Set FII_TIMESCALE_PASSWORD}
     ports:
-      - "55433:5432"
+      - "127.0.0.1:55433:5432"
     volumes:
       - timescale-data:/var/lib/postgresql/data
 

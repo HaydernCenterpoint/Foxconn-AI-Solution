@@ -1,7 +1,7 @@
 export const en = {
   common: {
-    appName: 'FII Production Monitoring',
-    appTitleSuffix: 'FII Production Monitoring',
+    appName: 'Foxconn',
+    appTitleSuffix: 'Foxconn',
     logoAlt: 'Foxconn Industrial Internet logo',
     systemName: 'Production monitoring system',
     systemDescription: 'Monitor production lines, equipment, and PLC data in real time',
@@ -189,8 +189,8 @@ export const en = {
     productionAnalysis: 'Production Analysis',
     system: 'System',
     dataFusion: 'Data Fusion',
-    fiiAssistant: 'FII Assistant',
-    fiiDataFusion: 'FII Data Fusion',
+    fiiAssistant: 'Foxconn ODC (Odysseus)',
+    fiiDataFusion: 'Foxconn Data Fusion',
     assets: 'Asset Browser',
     events: 'Events',
   },

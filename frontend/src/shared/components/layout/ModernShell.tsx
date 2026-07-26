@@ -64,7 +64,6 @@ const viewerNavigation: ShellNavigationItem[] = [
   { to: '/assets', labelKey: 'assetBrowser.title', icon: DatabaseZap },
   { to: '/alarms', labelKey: 'navigation.alarms', icon: Bell },
   { to: '/production-analysis', labelKey: 'navigation.productionAnalysis', icon: FileText },
-  { to: '/assets', labelKey: 'navigation.assets', icon: DatabaseZap },
   { to: '/slideshow', labelKey: 'common.mode.slideshow', icon: Tv },
   { to: '/settings', labelKey: 'navigation.settings', icon: Settings2 },
 ];
@@ -76,7 +75,6 @@ const adminNavigation: ShellNavigationItem[] = [
   { to: '/admin/assets', labelKey: 'assetBrowser.title', icon: DatabaseZap },
   { to: '/admin/alarms', labelKey: 'navigation.alarms', icon: Bell },
   { to: '/admin/reports', labelKey: 'navigation.reports', icon: FileText },
-  { to: '/admin/assets', labelKey: 'navigation.assets', icon: DatabaseZap },
   { to: '/admin/settings', labelKey: 'navigation.settings', icon: Settings2 },
 ];
 

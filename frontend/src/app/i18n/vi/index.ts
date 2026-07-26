@@ -1,7 +1,7 @@
 export const vi = {
   common: {
-    appName: 'FII Production Monitoring',
-    appTitleSuffix: 'FII Production Monitoring',
+    appName: 'Foxconn',
+    appTitleSuffix: 'Foxconn',
     logoAlt: 'Logo Foxconn Industrial Internet',
     systemName: 'Hệ thống giám sát sản xuất',
     systemDescription: 'Giám sát dây chuyền, thiết bị và dữ liệu PLC theo thời gian thực',
@@ -189,8 +189,8 @@ export const vi = {
     productionAnalysis: 'Phân tích sản lượng',
     system: 'Hệ thống',
     dataFusion: 'Hợp nhất dữ liệu',
-    fiiAssistant: 'FII Assistant',
-    fiiDataFusion: 'FII Data Fusion',
+    fiiAssistant: 'Foxconn ODC (Odysseus)',
+    fiiDataFusion: 'Foxconn Data Fusion',
     assets: 'Quản lý tài sản',
     events: 'Sự kiện',
   },

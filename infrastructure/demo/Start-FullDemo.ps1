@@ -21,6 +21,9 @@ param(
     [ValidateRange(1, 65535)]
     [int]$OdfRedisPort = 56379,
 
+    [ValidateRange(1, 65535)]
+    [int]$ChromaPort = 8100,
+
     [ValidateRange(10, 600)]
     [int]$WaitTimeoutSeconds = 180,
 
@@ -45,16 +48,24 @@ $odfApiUrl = "http://localhost:$OdfApiPort"
 $odfWebUrl = "http://localhost:$OdfWebPort"
 $timescaleComposeFile = Join-Path $repositoryRoot 'infrastructure/timescaledb/docker-compose.yml'
 $cepComposeFile = Join-Path $repositoryRoot 'infrastructure/cep-staging/docker-compose.yml'
-$timescaleConnectionString = 'Host=localhost;Port=55433;Database=plc_timescale;Username=postgres;Password=12345678'
+$odysseusComposeFile = Join-Path $repositoryRoot 'Odysseus/docker-compose.yml'
 $cepStagingUrl = 'http://localhost:58085'
 
 New-Item -ItemType Directory -Path $runtimeLogs -Force | Out-Null
 $backendDevelopmentSettings = Get-Content (Join-Path $repositoryRoot 'backend/appsettings.Development.json') -Raw |
     ConvertFrom-Json
-$mkzOperationsConnectionString = [string]$backendDevelopmentSettings.ConnectionStrings.DefaultConnection
+$mkzOperationsConnectionString = [Environment]::GetEnvironmentVariable('FII_OPERATIONS_CONNECTION_STRING', 'Process')
 if ([string]::IsNullOrWhiteSpace($mkzOperationsConnectionString)) {
-    throw 'The backend development database connection string is missing.'
+    $mkzOperationsConnectionString = [string]$backendDevelopmentSettings.ConnectionStrings.DefaultConnection
 }
+if ([string]::IsNullOrWhiteSpace($mkzOperationsConnectionString)) {
+    throw 'Set FII_OPERATIONS_CONNECTION_STRING to the retained PostgreSQL database.'
+}
+$timescalePassword = [Environment]::GetEnvironmentVariable('FII_TIMESCALE_PASSWORD', 'Process')
+if (-not $SkipTimescale -and [string]::IsNullOrWhiteSpace($timescalePassword)) {
+    throw 'Set FII_TIMESCALE_PASSWORD before starting TimescaleDB.'
+}
+$timescaleConnectionString = "Host=localhost;Port=55433;Database=plc_timescale;Username=postgres;Password=$timescalePassword"
 
 function Resolve-FiiJwtSecret {
     $secret = [Environment]::GetEnvironmentVariable('FII_JWT_SECRET', 'Process')
@@ -62,7 +73,7 @@ function Resolve-FiiJwtSecret {
         $secret = [Environment]::GetEnvironmentVariable('Jwt__Key', 'Process')
     }
     if ([string]::IsNullOrWhiteSpace($secret)) {
-        $secret = [string]$backendDevelopmentSettings.Jwt.Key
+        throw 'Set FII_JWT_SECRET to a shared secret of at least 32 bytes.'
     }
     $secret = $secret.Trim()
     if ([Text.Encoding]::UTF8.GetByteCount($secret) -lt 32) {
@@ -91,6 +102,74 @@ if ([string]::IsNullOrWhiteSpace($mqttEncryptionKey)) {
 $mqttEncryptionKey = $mqttEncryptionKey.Trim()
 if ([Text.Encoding]::UTF8.GetByteCount($mqttEncryptionKey) -lt 32) {
     throw 'The shared MQTT encryption key must be at least 32 bytes.'
+}
+
+function Invoke-WithEnvironment {
+    param(
+        [Parameter(Mandatory)][hashtable]$Environment,
+        [Parameter(Mandatory)][scriptblock]$Action
+    )
+
+    $previousEnvironment = @{}
+    try {
+        foreach ($entry in $Environment.GetEnumerator()) {
+            $previousEnvironment[$entry.Key] = [Environment]::GetEnvironmentVariable($entry.Key, 'Process')
+            [Environment]::SetEnvironmentVariable($entry.Key, [string]$entry.Value, 'Process')
+        }
+        & $Action
+    }
+    finally {
+        foreach ($entry in $previousEnvironment.GetEnumerator()) {
+            [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, 'Process')
+        }
+    }
+}
+
+function Resolve-Dotnet9 {
+    $candidates = @()
+    if ($env:ProgramFiles) { $candidates += (Join-Path $env:ProgramFiles 'dotnet/dotnet.exe') }
+    $pathDotnet = Get-Command dotnet.exe -ErrorAction SilentlyContinue
+    if ($null -ne $pathDotnet) { $candidates += $pathDotnet.Source }
+
+    foreach ($candidate in ($candidates | Select-Object -Unique)) {
+        if (-not (Test-Path -LiteralPath $candidate)) { continue }
+        $sdks = & $candidate --list-sdks
+        if ($LASTEXITCODE -eq 0 -and @($sdks | Where-Object { $_ -match '^9\.' }).Count -gt 0) {
+            return $candidate
+        }
+    }
+
+    throw 'A .NET 9 SDK is required.'
+}
+
+function Invoke-DatabasePreflight {
+    param(
+        [Parameter(Mandatory)][string]$Dotnet,
+        [Parameter(Mandatory)][string]$BackendProject
+    )
+
+    Invoke-WithEnvironment -Environment @{
+        ConnectionStrings__DefaultConnection = $mkzOperationsConnectionString
+    } -Action {
+        & $Dotnet run --project $BackendProject --no-launch-profile -- --database-preflight
+        if ($LASTEXITCODE -ne 0) { throw 'Operational PostgreSQL preflight failed.' }
+    }
+}
+
+function Invoke-TimescaleBackfill {
+    param(
+        [Parameter(Mandatory)][string]$Dotnet,
+        [Parameter(Mandatory)][string]$BackendProject
+    )
+
+    Invoke-WithEnvironment -Environment @{
+        ConnectionStrings__DefaultConnection = $mkzOperationsConnectionString
+        ConnectionStrings__Timescale = $timescaleConnectionString
+        Timescale__Enabled = 'true'
+    } -Action {
+        & $Dotnet run --project $BackendProject --no-launch-profile -- --timescale-backfill
+        if ($LASTEXITCODE -ne 0) { throw 'Timescale authenticated backfill preflight failed.' }
+    }
 }
 
 function Test-HttpReady {
@@ -173,6 +252,60 @@ function Wait-TimescaleReady {
     throw 'TimescaleDB did not become ready. Check Docker Compose logs for mkz-timescale.'
 }
 
+function Install-TimescaleMigrations {
+    $stateCheck = @'
+DO $$
+DECLARE
+    table_name text;
+BEGIN
+    FOREACH table_name IN ARRAY ARRAY['alerts', 'asset_metrics', 'asset_features', 'asset_predictions']
+    LOOP
+        IF to_regclass('public.' || table_name) IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1
+               FROM timescaledb_information.hypertables
+               WHERE hypertable_schema = 'public' AND hypertable_name = table_name
+           ) THEN
+            RAISE EXCEPTION 'Table % exists but is not a hypertable; repair the partial migration before retrying', table_name;
+        END IF;
+    END LOOP;
+END $$;
+'@
+    $stateCheck | & docker compose -p mkz-timescale -f $timescaleComposeFile exec -T timescaledb `
+        psql --username postgres --dbname plc_timescale --set ON_ERROR_STOP=1
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Timescale contains a partial migration. The volume was preserved for explicit operator repair.'
+    }
+
+    $migrationRoot = Join-Path $repositoryRoot 'infrastructure/timescaledb'
+    foreach ($migrationName in @(
+        '001_create_telemetry_points.sql',
+        '002_a2_rollups_and_lifecycle.sql',
+        '003_phase2_cep_alerts.sql',
+        '004_phase2_health_predictions.sql'
+    )) {
+        $migrationPath = Join-Path $migrationRoot $migrationName
+        Get-Content -LiteralPath $migrationPath -Raw |
+            & docker compose -p mkz-timescale -f $timescaleComposeFile exec -T timescaledb `
+                psql --username postgres --dbname plc_timescale --set ON_ERROR_STOP=1 --single-transaction
+        if ($LASTEXITCODE -ne 0) {
+            throw "Timescale migration '$migrationName' failed. The volume was preserved; inspect the schema before retrying."
+        }
+        Write-Host "[migrate] $migrationName" -ForegroundColor DarkCyan
+    }
+}
+
+function Start-Chroma {
+    if ($ChromaPort -ne 8100) {
+        throw 'The existing Chroma Compose service is fixed to port 8100.'
+    }
+    Invoke-WithEnvironment -Environment @{ JWT_SECRET = $fiiJwtSecret } -Action {
+        & docker compose -p odysseus -f $odysseusComposeFile up -d --no-deps --wait --wait-timeout $WaitTimeoutSeconds chromadb
+        if ($LASTEXITCODE -ne 0) { throw 'ChromaDB failed to start.' }
+    }
+    Write-Host "[ready] ChromaDB -> localhost:$ChromaPort" -ForegroundColor Green
+}
+
 function Start-LoggedProcess {
     param(
         [Parameter(Mandatory)][string]$Name,
@@ -234,12 +367,21 @@ function Stop-RepositoryProcess {
     }
 }
 
-Write-Host "Starting Foxconn AI Solution full demo" -ForegroundColor Cyan
+Write-Host "Starting Foxconn customer demo" -ForegroundColor Cyan
 
-if ((-not $SkipTimescale) -or (-not $SkipCepStaging)) {
+$dotnet = Resolve-Dotnet9
+$backendProject = Join-Path $repositoryRoot 'backend/backend.csproj'
+Invoke-DatabasePreflight -Dotnet $dotnet -BackendProject $backendProject
+
+if ($SkipOpenDataFusion -and -not $SkipFusionAdapter) {
+    throw 'Use -SkipFusionAdapter when Open Data Fusion is skipped.'
+}
+$dockerRequired = (-not $SkipTimescale) -or (-not $SkipCepStaging) -or
+    (-not $SkipOpenDataFusion) -or (-not $SkipOdysseus)
+if ($dockerRequired) {
     $docker = Get-Command docker -ErrorAction SilentlyContinue
     if ($null -eq $docker) {
-        throw 'Docker is required for TimescaleDB and CEP staging. Install/start Docker or use the matching -Skip switch for an intentionally reduced demo.'
+        throw 'Docker is required by the selected services. Install/start Docker or use all matching -Skip switches.'
     }
 
     & docker version *> $null
@@ -249,8 +391,12 @@ if ((-not $SkipTimescale) -or (-not $SkipCepStaging)) {
 }
 
 if (-not $SkipTimescale) {
-    Start-DockerCompose -ProjectName 'mkz-timescale' -ComposeFile $timescaleComposeFile -Name 'TimescaleDB'
-    Wait-TimescaleReady
+    Invoke-WithEnvironment -Environment @{ FII_TIMESCALE_PASSWORD = $timescalePassword } -Action {
+        Start-DockerCompose -ProjectName 'mkz-timescale' -ComposeFile $timescaleComposeFile -Name 'TimescaleDB'
+        Wait-TimescaleReady
+        Install-TimescaleMigrations
+        Invoke-TimescaleBackfill -Dotnet $dotnet -BackendProject $backendProject
+    }
 }
 
 if (-not $SkipCepStaging) {
@@ -258,10 +404,12 @@ if (-not $SkipCepStaging) {
     Wait-HttpReady -Name 'CEP staging' -Uri "$cepStagingUrl/health"
 }
 
+if (-not $SkipOdysseus) {
+    Start-Chroma
+}
+
 Stop-RepositoryProcess -ExecutableName 'backend.exe'
 Assert-PortAvailable -Port $BackendPort -Name 'Backend'
-$dotnet = (Get-Command dotnet -ErrorAction Stop).Source
-$backendProject = Join-Path $repositoryRoot 'backend/backend.csproj'
 $backendProcess = @{
     Name = 'backend'
     FilePath = $dotnet
@@ -270,6 +418,7 @@ $backendProcess = @{
     Environment = @{
         ASPNETCORE_ENVIRONMENT = 'Development'
         ASPNETCORE_URLS = $backendBindUrl
+        ConnectionStrings__DefaultConnection = $mkzOperationsConnectionString
         Jwt__Key = $fiiJwtSecret
         Jwt__Issuer = $fiiJwtIssuer
         Jwt__Audience = $fiiJwtAudience
@@ -303,6 +452,7 @@ if (-not $SkipOpenDataFusion) {
         FII_JWT_AUDIENCE = $fiiJwtAudience
         VITE_FII_SSO = 'true'
         FII_MAIN_LOGIN_URL = "$frontendUrl/login"
+        FII_MAIN_LOGOUT_URL = "$frontendUrl/logout"
     }
     $previousOdfEnvironment = @{}
     try {
@@ -323,7 +473,6 @@ if (-not $SkipOpenDataFusion) {
 
 if (-not $SkipFusionAdapter) {
     Stop-RepositoryProcess -ExecutableName 'Fusion.Adapter.exe'
-    $dotnet = (Get-Command dotnet -ErrorAction Stop).Source
     $adapterProject = Join-Path $repositoryRoot 'fusion-adapter/Fusion.Adapter.csproj'
     $adapterProcess = @{
         Name = 'fusion-adapter'
@@ -365,7 +514,7 @@ if (-not $SkipOdysseus) {
         Environment = @{
             MKZ_BACKEND_URL = $backendUrl
             CHROMADB_HOST = '127.0.0.1'
-            CHROMADB_PORT = '8100'
+            CHROMADB_PORT = [string]$ChromaPort
             AUTH_ENABLED = 'true'
             LOCALHOST_BYPASS = 'false'
             FII_SSO_ENABLED = 'true'
@@ -373,10 +522,50 @@ if (-not $SkipOdysseus) {
             FII_JWT_ISSUER = $fiiJwtIssuer
             FII_JWT_AUDIENCE = $fiiJwtAudience
             FII_MAIN_LOGIN_URL = "$frontendUrl/login"
+            FII_MAIN_LOGOUT_URL = "$frontendUrl/logout"
         }
     }
     $null = Start-LoggedProcess @odysseusProcess
-    Wait-HttpReady -Name 'Odysseus' -Uri "$odysseusUrl/api/health"
+    Wait-HttpReady -Name 'Odysseus' -Uri "$odysseusUrl/api/ready"
+
+    $syncUsername = [Environment]::GetEnvironmentVariable('FII_DEMO_USERNAME', 'Process')
+    $syncPassword = [Environment]::GetEnvironmentVariable('FII_DEMO_PASSWORD', 'Process')
+    if ([string]::IsNullOrWhiteSpace($syncUsername) -or [string]::IsNullOrWhiteSpace($syncPassword)) {
+        throw 'Set FII_DEMO_USERNAME and FII_DEMO_PASSWORD to real Operations credentials for the initial Odysseus export.'
+    }
+    $syncSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+    $loginBody = @{ username = $syncUsername; password = $syncPassword } | ConvertTo-Json
+    try {
+        $loginResult = Invoke-RestMethod -Method Post -Uri "$backendUrl/api/auth/login" `
+            -ContentType 'application/json' -Body $loginBody -WebSession $syncSession
+    }
+    catch {
+        throw 'Operations login for the initial Odysseus export failed.'
+    }
+    $syncToken = [string]$loginResult.token
+    if ([string]::IsNullOrWhiteSpace($syncToken)) { throw 'Operations login returned no bearer token.' }
+
+    $syncScript = Join-Path $odysseusRoot 'scripts/sync_mkz_to_odysseus.py'
+    $verifyRagScript = Join-Path $odysseusRoot 'scripts/verify_mkz_rag.py'
+    try {
+        Invoke-WithEnvironment -Environment @{
+            MKZ_BACKEND_URL = $backendUrl
+            MKZ_BACKEND_TOKEN = $syncToken
+            CHROMADB_HOST = '127.0.0.1'
+            CHROMADB_PORT = [string]$ChromaPort
+        } -Action {
+            & $odysseusPython $syncScript
+            if ($LASTEXITCODE -ne 0) { throw 'Initial Odysseus export and Chroma reindex failed.' }
+            & $odysseusPython $verifyRagScript
+            if ($LASTEXITCODE -ne 0) { throw 'The newest Odysseus export is not queryable from Chroma.' }
+        }
+    }
+    finally {
+        try {
+            Invoke-RestMethod -Method Post -Uri "$backendUrl/api/auth/logout" -WebSession $syncSession | Out-Null
+        }
+        catch { }
+    }
 }
 
 Stop-RepositoryProcess -ExecutableName 'node.exe' -CommandLineContains 'frontend'
@@ -393,6 +582,8 @@ if (-not (Test-Path -LiteralPath $vite)) {
 
 $frontendEnvironment = @{
     VITE_API_URL = "$backendUrl/api"
+    VITE_CEP_API_URL = "$backendUrl/api/v1"
+    VITE_ASSET_API_URL = "$backendUrl/api/v1"
     VITE_ODYSSEUS_URL = $odysseusUrl
     VITE_FII_DATA_FUSION_URL = $odfWebUrl
 }
@@ -426,7 +617,6 @@ Wait-HttpReady -Name 'Operations UI' -Uri $frontendUrl
 
 if ($WithClientPlc) {
     Stop-RepositoryProcess -ExecutableName 'ClientPLC.App.exe'
-    $dotnet = (Get-Command dotnet -ErrorAction Stop).Source
     $clientProject = Join-Path $repositoryRoot 'ClientPLC/ClientPLC.App/ClientPLC.App.csproj'
     $clientProcess = @{
         Name = 'client-plc'
@@ -441,10 +631,10 @@ if ($WithClientPlc) {
 }
 
 Write-Host ''
-Write-Host "Operations UI : $frontendUrl" -ForegroundColor Green
-Write-Host "Backend API   : $backendUrl" -ForegroundColor Green
-if (-not $SkipOdysseus) { Write-Host "FII Assistant : $odysseusUrl" -ForegroundColor Green }
-if (-not $SkipOpenDataFusion) { Write-Host "Data Fusion   : $odfWebUrl" -ForegroundColor Green }
+Write-Host "Foxconn UI     : $frontendUrl" -ForegroundColor Green
+Write-Host "Backend API    : $backendUrl" -ForegroundColor Green
+if (-not $SkipOdysseus) { Write-Host "Foxconn ODC    : $odysseusUrl" -ForegroundColor Green }
+if (-not $SkipOpenDataFusion) { Write-Host "Foxconn Fusion : $odfWebUrl" -ForegroundColor Green }
 if (-not $SkipTimescale) { Write-Host 'TimescaleDB  : localhost:55433' -ForegroundColor Green }
 if (-not $SkipCepStaging) { Write-Host "CEP staging  : $cepStagingUrl" -ForegroundColor Green }
 Write-Host "Logs          : $runtimeLogs"

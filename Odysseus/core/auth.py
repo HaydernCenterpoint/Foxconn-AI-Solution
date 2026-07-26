@@ -708,6 +708,7 @@ class AuthManager:
             "authenticated": True,
             "username": username,
             "is_admin": self.is_admin(username),
+            "auth_source": self.users[username].get("auth_source", "native"),
             "privileges": self.get_privileges(username),
         }
 

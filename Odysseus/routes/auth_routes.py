@@ -84,7 +84,11 @@ class SetOpenRegistrationRequest(BaseModel):
 SESSION_COOKIE = "odysseus_session"
 
 
-def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
+def setup_auth_routes(
+    auth_manager: AuthManager,
+    fii_sso_enabled: bool = False,
+    fii_main_logout_url: str = "http://localhost:3001/logout",
+) -> APIRouter:
     router = APIRouter(prefix="/api/auth", tags=["auth"])
 
     _login_limiter = RateLimiter(max_requests=15, window_seconds=60)
@@ -171,7 +175,10 @@ def setup_auth_routes(auth_manager: AuthManager) -> APIRouter:
         if token:
             auth_manager.revoke_token(token)
         response.delete_cookie(SESSION_COOKIE, path="/")
-        return {"ok": True}
+        return {
+            "ok": True,
+            "redirect_url": fii_main_logout_url if fii_sso_enabled else "/login",
+        }
 
     @router.get("/status")
     async def auth_status(request: Request):

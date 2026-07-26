@@ -15,8 +15,8 @@ const testStorage = vi.hoisted(() => {
   return storage;
 });
 
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Outlet } from 'react-router-dom';
+import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Outlet, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAuthStore } from '../shared/store/auth.store';
 import { AppRouter } from './router';
@@ -27,9 +27,17 @@ vi.mock('../shared/components/layout/ViewerLayout', () => ({ default: () => <Out
 vi.mock('../pages/viewer/DashboardPage', () => ({ DashboardPage: () => <div data-testid="viewer-dashboard" /> }));
 vi.mock('../pages/viewer/SlideshowPage', () => ({ SlideshowPage: () => <div data-testid="slideshow" /> }));
 
+const logout = vi.hoisted(() => vi.fn());
+vi.mock('../features/auth/services/auth.api', () => ({ authApi: { logout } }));
+
+function CurrentLocation() {
+  return <div data-testid="location">{useLocation().pathname}</div>;
+}
+
 describe('application authentication boundary', () => {
   beforeEach(() => {
     testStorage.clear();
+    logout.mockReset().mockResolvedValue(undefined);
     useAuthStore.setState({
       token: null,
       username: null,
@@ -48,5 +56,31 @@ describe('application authentication boundary', () => {
     expect(await screen.findByTestId('login-screen')).toBeInTheDocument();
     expect(screen.queryByTestId('viewer-dashboard')).not.toBeInTheDocument();
     expect(screen.queryByTestId('slideshow')).not.toBeInTheDocument();
+  });
+
+  it('clears the authoritative cookie before returning to login', async () => {
+    useAuthStore.setState({
+      username: 'factory.user',
+      role: 'ENGINEER',
+      isAuthenticated: true,
+      welcomePending: true,
+      hasSeenWelcome: false,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/logout']}>
+        <AppRouter />
+        <CurrentLocation />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/login'));
+    expect(useAuthStore.getState()).toEqual(expect.objectContaining({
+      isAuthenticated: false,
+      username: null,
+      role: null,
+      welcomePending: false,
+    }));
   });
 });

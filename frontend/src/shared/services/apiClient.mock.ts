@@ -25,6 +25,25 @@ export function getMockDataForUrl(url: string, method: string): unknown {
       return getMockHourlyProduction(machineId);
     }
 
+    if (/^\/machines\/[^/]+\/health$/.test(cleanUrl)) {
+      const machineId = cleanUrl.split('/')[2] || 'L1-M1';
+      return {
+        machineId,
+        score: 92,
+        band: 'healthy',
+        calculatedAt: new Date().toISOString(),
+        factors: {
+          availability: 98,
+          alarmScore: 88,
+          performance: 91,
+          activeAlarms: 1,
+          recentEvents: 2,
+          cpu: 35,
+          ram: 42,
+        },
+      };
+    }
+
     if (/^\/machines\/[^/]+$/.test(cleanUrl)) {
       const machineId = cleanUrl.split('/')[2] || 'L1-M1';
       return getAllMockMachines().find((machine) => machine.id === machineId);
@@ -444,9 +463,9 @@ function getMockAssetChildren(assetId: string): Record<string, unknown>[] {
 
 function getMockAssetDocuments() {
   return [
-    { id: 'doc-1', assetId: 'plant-mkz', title: 'Maintenance Manual v3.2', docType: 'MANUAL', url: 'https://docs.example.com/manual-v3.2.pdf', uploadedBy: 'admin', uploadedAt: '2026-07-15T08:00:00Z' },
-    { id: 'doc-2', assetId: 'plant-mkz', title: 'Electrical Wiring Diagram', docType: 'DRAWING', url: 'https://docs.example.com/wiring.dwg', uploadedBy: 'engineer', uploadedAt: '2026-07-10T14:30:00Z' },
-    { id: 'doc-3', assetId: 'plant-mkz', title: 'Safety Certification ISO 45001', docType: 'CERTIFICATE', url: 'https://docs.example.com/iso45001.pdf', uploadedBy: 'admin', uploadedAt: '2026-06-20T09:00:00Z' },
+    { documentId: 'doc-1', relationship: 'Maintenance Manual v3.2', createdAt: '2026-07-15T08:00:00Z' },
+    { documentId: 'doc-2', relationship: 'Electrical Wiring Diagram', createdAt: '2026-07-10T14:30:00Z' },
+    { documentId: 'doc-3', relationship: 'Safety Certification ISO 45001', createdAt: '2026-06-20T09:00:00Z' },
   ];
 }
 
