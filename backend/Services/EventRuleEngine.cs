@@ -18,13 +18,14 @@ namespace backend.Services
 {
     /// <summary>
     /// In-process CEP engine. Subscribes to a telemetry channel, evaluates threshold rules
-    /// from event-rules.json, writes matched events to event_log, and pushes CRITICAL/EMERGENCY
-    /// alerts to SignalR.
+    /// from event-rules.json, writes matched events to event_log, persists durable alerts via
+    /// <see cref="AlertService"/>, and pushes CRITICAL/EMERGENCY alerts to SignalR.
     /// </summary>
     public sealed class EventRuleEngine : BackgroundService
     {
         private readonly Channel<TelemetryCaptureInput> _channel;
         private readonly DatabaseService _dbService;
+        private readonly AlertService _alertService;
         private readonly IHubContext<TelemetryHub> _hubContext;
         private readonly ILogger<EventRuleEngine> _logger;
         private readonly ConcurrentDictionary<string, DateTimeOffset> _cooldowns = new();
@@ -34,10 +35,12 @@ namespace backend.Services
 
         public EventRuleEngine(
             DatabaseService dbService,
+            AlertService alertService,
             IHubContext<TelemetryHub> hubContext,
             ILogger<EventRuleEngine> logger)
         {
             _dbService = dbService;
+            _alertService = alertService;
             _hubContext = hubContext;
             _logger = logger;
             _channel = Channel.CreateUnbounded<TelemetryCaptureInput>(
@@ -156,12 +159,33 @@ namespace backend.Services
                 _logger.LogInformation("CEP rule fired: {RuleId} for asset {AssetId} (metric={Metric}, value={Value})",
                     rule.Id, input.MachineId, metric, matchingPoint.Value);
 
+                // Persist durable alert (fail-open so CEP never blocks telemetry hot path)
+                Guid? alertId = null;
+                try
+                {
+                    alertId = await _alertService.CreateAlertAsync(
+                        fusionEvent.EventId,
+                        fusionEvent.AssetId,
+                        rule.Id,
+                        fusionEvent.Severity,
+                        rule.Name ?? rule.Id,
+                        rule.Description,
+                        evidence: fusionEvent.Payload);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "EventRuleEngine: failed to create durable alert for rule {RuleId}; event log retained.",
+                        rule.Id);
+                }
+
                 // Push CRITICAL/EMERGENCY alerts via SignalR
                 if (fusionEvent.Severity is "CRITICAL" or "EMERGENCY")
                 {
                     await _hubContext.Clients.Group("all_clients").SendAsync("CepAlert", new
                     {
                         eventId = fusionEvent.EventId,
+                        alertId,
                         assetId = fusionEvent.AssetId,
                         eventType = fusionEvent.EventType,
                         severity = fusionEvent.Severity,
@@ -175,7 +199,10 @@ namespace backend.Services
             }
         }
 
-        private static bool EvaluateThreshold(double actual, string? op, double threshold) =>
+        /// <summary>
+        /// Pure threshold evaluator used by the CEP loop and unit tests.
+        /// </summary>
+        public static bool EvaluateThreshold(double actual, string? op, double threshold) =>
             op switch
             {
                 ">" => actual > threshold,
@@ -185,6 +212,25 @@ namespace backend.Services
                 "==" => Math.Abs(actual - threshold) < 0.0001,
                 "!=" => Math.Abs(actual - threshold) >= 0.0001,
                 _ => false
+            };
+
+        /// <summary>
+        /// Builds the durable-alert evidence payload for a fired threshold rule.
+        /// Kept pure so bridge semantics can be unit-tested without Timescale.
+        /// </summary>
+        public static Dictionary<string, object?> BuildAlertEvidence(
+            EventRule rule,
+            string metric,
+            double actualValue) =>
+            new()
+            {
+                ["rule_id"] = rule.Id,
+                ["rule_name"] = rule.Name,
+                ["metric"] = metric,
+                ["actual_value"] = actualValue,
+                ["threshold"] = rule.Condition?.Value,
+                ["operator"] = rule.Condition?.Operator,
+                ["unit"] = rule.Condition?.Unit
             };
     }
 

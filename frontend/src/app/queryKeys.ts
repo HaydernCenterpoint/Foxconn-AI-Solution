@@ -22,8 +22,12 @@ export const queryKeys = {
     alarms: (assetId: string) => ['assets', 'alarms', assetId] as const,
   },
   predictiveAlerts: {
-    list: () => ['predictive-alerts', 'list'] as const,
+    list: (status?: string, severity?: string) =>
+      ['predictive-alerts', 'list', status ?? 'all', severity ?? 'all'] as const,
+    detail: (alertId: string) => ['predictive-alerts', 'detail', alertId] as const,
+    stats: () => ['predictive-alerts', 'stats'] as const,
     health: (assetId: string) => ['predictive-alerts', 'health', assetId] as const,
+    healthHistory: (assetId: string) => ['predictive-alerts', 'health-history', assetId] as const,
   },
   admin: {
     users: () => ['users'] as const,

@@ -1,7 +1,9 @@
 ﻿# Phase 2 Implementation Progress
 
-**Started:** 2026-07-22
-**Target Completion:** 2026-08-05
+**Started:** 2026-07-22  
+**Target Completion:** 2026-08-05  
+**Status refresh:** 2026-07-27 — foundation ~41–45%; Sync W5 in progress  
+**Roadmap board:** `docs/roadmap.html` · master plan: `docs/master-plan-4-agents.md`
 
 ## ✅ Completed Workstreams
 
@@ -99,17 +101,37 @@
 
 ### E. Frontend Intelligence (Priority 2)
 - [x] **E1. API Client Updates**
-  - Updated `predictiveAlerts.api.ts` to map the active alert-list and asset-health response envelopes
-  - Kept the client intentionally narrow: only `listAlerts` and `getHealth` are implemented for the dashboard slice
+  - Expanded `predictiveAlerts.api.ts`: list/get/stats, acknowledge/resolve, getHealth + history, healthColorVariant, rollUpHealthScores
+  - Demo-mode fallbacks for all methods
   - File: `frontend/src/features/dashboard/services/predictiveAlerts.api.ts`
+
+- [x] **E2. Health Badge in Asset Browser & Dashboard**
+  - Dashboard health score with color coding and breakdown
+  - Asset Browser tree badges + worst-child parent roll-up (GUID nodes, capped fan-out)
+
+- [x] **E3. Alert Center**
+  - Page: `frontend/src/pages/AlertCenterPage.tsx` at `/admin/alerts` and `/alerts`
+  - Filters (status/severity), stats strip, table, ack/resolve modal, CSV export, 5s refresh
+  - Nav + i18n (en/vi/zh-CN)
+
+- [x] **E4. Drill-Down & Export (partial)**
+  - Dashboard alert detail disclosure with description and recommended actions
+  - Alert Center CSV export of filtered list
+  - Remaining: dedicated alert detail page with full evidence, health history chart
+
+### A. CEP bridge (added 2026-07-27)
+- [x] **CEP → AlertService bridge**
+  - `EventRuleEngine` fail-open calls `AlertService.CreateAlertAsync` after event_log insert
+  - SignalR payload includes `alertId`; unit tests cover threshold ops + evidence
+  - `event-rules.json`: ≥5 enabled threshold rules; non-threshold types disabled with DEFERRED notes
 
 ## 🚧 In Progress / Pending
 
 ### A. CEP & Alerting
-- [ ] **A3. Migrate Priority Alarm Rules**
-  - Need to identify existing alarm rules from legacy system
-  - Map to CEP engine format
-  - Validate against historical data
+- [x] **A3. Migrate Priority Alarm Rules** (threshold subset)
+  - ≥5 threshold CEP rules enabled in `backend/Configuration/event-rules.json`
+  - Correlation/comparison/runtime_threshold evaluators deferred
+  - Remaining: validate against historical telemetry
 
 - [ ] **A5. Latency & Integration Tests**
   - Measure event→alert latency (target <1s p95)
@@ -143,20 +165,9 @@
   - DLQ management
 
 ### E. Frontend Intelligence
-- [ ] **E2. Health Badge in Asset Browser & Dashboard**
-  - [x] Dashboard health score with color coding and breakdown
-  - [ ] Asset Browser badge and tree view roll-up health
-
-- [ ] **E3. Alert Center**
-  - List view with filters
-  - Actions: acknowledge, resolve
-  - Real-time updates
-
-- [ ] **E4. Drill-Down & Export**
-  - [x] Dashboard alert detail disclosure with description and recommended actions
-  - [ ] Dedicated alert detail page with full evidence
-  - Health history chart
-  - CSV export
+- [ ] **E4. Drill-Down & Export (remaining)**
+  - Dedicated alert detail page with full evidence
+  - Health history chart UI
 
 - [ ] **E5. Root Cause Analysis (Basic)**
   - Correlated events display

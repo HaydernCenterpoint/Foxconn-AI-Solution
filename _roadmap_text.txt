@@ -7,24 +7,26 @@ Factory AI Platform — Roadmap
           Kế hoạch 10 tuần ưu tiên các hợp đồng dùng chung, tích hợp end-to-end và các gate vận hành có bằng chứng.
           Đây là baseline lập kế hoạch; production chỉ được chốt sau khi các điều kiện managed-staging được xác minh độc lập.
 
-          Cập nhật 21.07.2026
+          Cập nhật 27.07.2026
           Horizon: 10 tuần
+          NOW · Tuần 5–6
           4 luồng song song
-          Nguồn: tài liệu trong repo
+          Evidence: PR #15–#22
 
         Điểm xuất phát
 
-        Mỗi trạng thái tách rõ phần đã giao, phần sẵn sàng triển khai và phần phụ thuộc môi trường bên ngoài.
+        Mỗi trạng thái tách rõ phần đã giao, phần đang triển khai và phần phụ thuộc môi trường bên ngoài.
+        Cập nhật theo code/PR trên main (HEAD: SSO + durable demo data).
 
-              Operations foundation
-              Frontend React, ASP.NET Core, telemetry MQTT và ranh giới transactional outbox đã là nền tảng hiện hữu.
-
-            Sẵn sàng
-
-              ODF Gate 2
-              Production-like rehearsal cùng cấu hình rollback đã hoàn tất trên nhánh tích hợp; bước kế tiếp là review/merge.
+              Operations + contracts
+              Frontend React, ASP.NET Core, MQTT/outbox, shared asset/telemetry/event contracts và Asset Browser đã merge (PR #16–#19).
 
             Hoàn tất
+
+              Product intelligence
+              Alert/health/prediction APIs, health scoring job, machine health UI và SSO demo path đã có; connectors, Alert Center đầy đủ và E2E còn dở (~40–45%).
+
+            Đang làm
 
               Production pilot
               Ingress, TLS/mTLS, secret manager, retention và connector thực cần được xác minh trên managed staging.
@@ -35,47 +37,47 @@ Factory AI Platform — Roadmap
 
         Các luồng làm việc chạy song song, nhưng chỉ đi qua checkpoint khi contract và bằng chứng kiểm thử đạt yêu cầu.
 
-          - 
-            NOW · GATE 2
-            Review &amp; merge
+          -
+            GATE 2
+            Review & merge
 
-            Review các rehearsal ODF, lưu evidence và chốt owner cho rollout/rollback.
+            ODF production-like rehearsal, rollback config và review artifact trên nhánh tích hợp.
 
             Hoàn tất
 
-          - 
+          -
             TUẦN 1–2
             Shared contracts
 
-            Chốt asset ID, telemetry/event schema, API convention và baseline mock data.
+            Asset ID, telemetry/event schema, API convention, asset catalog và baseline mock/API (PR #16, #18, #19).
 
-            Bắt đầu
+            Hoàn tất
 
-          - 
+          -
             TUẦN 3–4
-            Data &amp; asset plane
+            Data & asset plane
 
-            Timescale migration, Asset CRUD, CEP staging và Asset Browser dùng API thật.
+            Timescale dual-write, Asset CRUD, EventRuleEngine CEP, telemetry query APIs và Asset Browser UI (PR #19).
 
-            Kế hoạch
+            Hoàn tất
 
-          - 
-            TUẦN 5–6
+          -
+            NOW · TUẦN 5–6
             Product intelligence
 
-            Connectors, predictive alerting, health score, dashboard và drill-down.
+            Health score + alert APIs/UI đã merge (PR #20, #22). Còn connectors, Alert Center đầy đủ, rule migration, latency evidence và Playwright E2E.
 
-            Kế hoạch
+            Đang làm · ~45%
 
-          - 
+          -
             TUẦN 7–8
-            Hardening &amp; E2E
+            Hardening & E2E
 
             RCA, access control, performance/security testing, full-stack integration và staging rehearsal.
 
             Kế hoạch
 
-          - 
+          -
             TUẦN 9–10
             Go-live decision
 
@@ -86,48 +88,49 @@ Factory AI Platform — Roadmap
         Bốn luồng thực thi
 
         Các deliverable được chia theo layer để không chờ nhau ngoài những contract bắt buộc.
+        Status phản ánh code đã merge, không suy diễn production readiness.
 
-            A · Data platform
+            A · Data platform · ~55%
 
-            Telemetry &amp; integration
+            Telemetry & integration
 
-              - TimescaleDB schema, migration, benchmark và rollback plan.
+              - Done: Timescale schema, dual-write, continuous aggregates, compression/retention.
 
-              - Connector ERP/file/MES với retry, dead-letter và dashboard trạng thái.
+              - Open: benchmark p95, cutover read traffic, ERP/file/MES connectors + admin dashboard.
 
-              - Giao telemetry schema thật ở checkpoint tuần 2.
+              - Connector schema/DLQ framework đã có; implement concrete còn thiếu.
 
-            B · Event &amp; AI
+            B · Event & AI · ~45%
 
-            CEP, prediction &amp; RCA
+            CEP, prediction & RCA
 
-              - Chốt kiến trúc CEP và event schema trong sprint đầu.
+              - Done: CEP ADR, event schema, rule samples, in-process EventRuleEngine, alert/prediction APIs, z-score baseline.
 
-              - Migrate alarm rules, đo event-to-alert latency và xây inference service.
+              - Open: migrate alarm rules legacy, latency report (<1s p95), ML models thật, RCA API.
 
-              - Trả API alert/RCA để UI tích hợp ở tuần 5–6.
+              - Alert lifecycle + dedup/suppression persistence đã ship.
 
-            C · Core backend
+            C · Core backend · ~65%
 
-            Asset modeling &amp; security
+            Asset modeling & security
 
-              - Giao asset schema và asset_id trong ngày 1–3.
+              - Done: asset schema/asset_id, CRUD/search/tree, document metadata, health score formula + job + APIs.
 
-              - Asset CRUD, liên kết tài liệu, search và health score.
+              - Open: seed 50+ assets end-to-end, RBAC scopes, rate limit, RFC 7807 chuẩn hóa.
 
-              - RBAC, rate limit, validation và RFC 7807 trước staging.
+              - Import template docs đã có; seed production-like còn thiếu.
 
-            D · Frontend &amp; QA
+            D · Frontend & QA · ~50%
 
-            Product surface &amp; evidence
+            Product surface & evidence
 
-              - UI shell/mock, Asset Browser, dashboard và biểu đồ vận hành.
+              - Done: UI shell, Asset Browser, dashboard health/alert slice, machine health UI, shared SSO demo flow.
 
-              - Thay mock bằng API thật tại checkpoint tuần 5.
+              - Open: Alert Center actions, Asset Browser health roll-up, CSV export, Playwright E2E, perf/security audit.
 
-              - E2E, performance, security audit và hỗ trợ go-live.
+              - Sync W5 happy-path component coverage partial; browser E2E chưa chốt.
 
-        Gate &amp; tiêu chí ra quyết định
+        Gate & tiêu chí ra quyết định
 
                 Gate
 
@@ -139,19 +142,27 @@ Factory AI Platform — Roadmap
 
                 Shared contracts
 
-                Ngày 1
+                Tuần 1–2
 
-                Schema asset, telemetry, event và API convention được versioned.
+                Schema asset, telemetry, event và API convention được versioned (PR #16, #18).
 
-                Bắt đầu
+                Hoàn tất
 
                 ODF Gate 2
 
-                Hiện tại
+                Trước Tuần 1
 
                 Production-like rehearsal, cấu hình production/rollback và review artifact trên nhánh tích hợp.
 
                 Hoàn tất
+
+                Sync W5
+
+                Tuần 5–6 · hiện tại
+
+                Event/alert + Asset CRUD + health trên integration path; UI dùng API thật; E2E happy-path pass.
+
+                Đang làm
 
                 Integration W8
 
@@ -169,33 +180,34 @@ Factory AI Platform — Roadmap
 
                 Managed staging
 
-          Owner Production Pilot
+          Next · hoàn tất Tuần 5–6
 
-          Accountable: Deployment Owner / Platform Operations Lead.
+          Focus hiện tại: đóng Sync W5 trước khi nhảy sang hardening.
 
-            - Operator: chạy pilot manifest và quản lý managed staging.
+            - Concrete file/ERP connector + DLQ admin path.
 
-            - Independent reviewer: xác nhận evidence; không được là operator.
+            - Alert Center UI (ack/resolve) + Asset Browser health roll-up.
 
-            - Security owner: phê duyệt ingress, TLS/mTLS, secret-manager và rotation.
+            - Migrate 5–10 alarm rules → CEP; đo event→alert latency.
 
-            - Data/source owner: phê duyệt retention, phạm vi connector và nguồn dữ liệu.
+            - Playwright E2E: Dashboard → alert → health → acknowledge.
 
-          Go: đủ 16 managed checks, attestation độc lập, TLS/mTLS hoạt động, secrets không xuất hiện trong Git/logs và evidence được retention tối thiểu 90 ngày.
+            - PR #21 (ODF contracts/topology hardening) còn mở — review/merge riêng.
 
-          No-go: bất kỳ check nào fail/thiếu, role bị chồng lấn, secret lộ, hoặc không chứng minh được rollback về deployment và secret version đã duyệt.
+          Production Pilot Accountable: Deployment Owner / Platform Operations Lead.
+          Go/No-go vẫn dựa trên 16 managed checks + attestation độc lập; không suy diễn từ CI/local demo.
 
           Rủi ro cần theo dõi
 
-            - Chậm asset schema sẽ chặn mock/API của cả ba luồng còn lại.
+            - Docs/status lệch code đã được refresh 27.07; cần giữ evidence link trước mỗi checkpoint.
 
-            - Data cutover phải có dual-write, validation query và rollback đã kiểm thử.
+            - Data cutover vẫn cần dual-write validation + rollback đã kiểm thử trước khi deprecate PG cũ.
 
-            - Quyết định CEP muộn có thể làm đổi event contract và trì hoãn UI.
+            - Connectors và E2E browser là bottleneck chính của Sync W5.
 
             - Không được suy diễn production readiness từ CI hoặc local rehearsal; staging là gate riêng.
 
-          Baseline tham chiếu: master plan 4 luồng,
-          project overview và
+          Baseline tham chiếu: master plan 4 luồng, phase 2 progress, project overview và
           ODF product gates.
+          Evidence gần nhất: PR #18–#20 (contracts/data/intelligence), PR #22 (SSO + durable demo).
           Cập nhật owner, ngày thực tế và liên kết evidence trước mỗi checkpoint.

@@ -184,10 +184,11 @@
           Đây là baseline lập kế hoạch; production chỉ được chốt sau khi các điều kiện managed-staging được xác minh độc lập.
         </p>
         <div class="meta" aria-label="Thông tin roadmap">
-          <span class="chip">Cập nhật 21.07.2026</span>
+          <span class="chip">Cập nhật 27.07.2026</span>
           <span class="chip">Horizon: 10 tuần</span>
+          <span class="chip">NOW · Tuần 5–6</span>
           <span class="chip">4 luồng song song</span>
-          <span class="chip">Nguồn: tài liệu trong repo</span>
+          <span class="chip">Evidence: PR #15–#22</span>
         </div>
       </div>
     </header>
@@ -195,21 +196,21 @@
     <main class="shell">
       <section aria-labelledby="snapshot-title">
         <h2 id="snapshot-title">Điểm xuất phát</h2>
-        <p class="section-copy">Mỗi trạng thái tách rõ phần đã giao, phần sẵn sàng triển khai và phần phụ thuộc môi trường bên ngoài.</p>
+        <p class="section-copy">Mỗi trạng thái tách rõ phần đã giao, phần đang triển khai và phần phụ thuộc môi trường bên ngoài. Cập nhật theo code/PR trên <code>main</code> (HEAD: SSO + durable demo data).</p>
         <div class="snapshot">
           <article class="card metric">
             <div>
-              <strong>Operations foundation</strong>
-              <p>Frontend React, ASP.NET Core, telemetry MQTT và ranh giới transactional outbox đã là nền tảng hiện hữu.</p>
+              <strong>Operations + contracts</strong>
+              <p>Frontend React, ASP.NET Core, MQTT/outbox, shared asset/telemetry/event contracts và Asset Browser đã merge (PR #16–#19).</p>
             </div>
-            <span class="status ready">Sẵn sàng</span>
+            <span class="status done">Hoàn tất</span>
           </article>
           <article class="card metric">
             <div>
-              <strong>ODF Gate 2</strong>
-              <p>Production-like rehearsal cùng cấu hình rollback đã hoàn tất trên nhánh tích hợp; bước kế tiếp là review/merge.</p>
+              <strong>Product intelligence</strong>
+              <p>Alert/health/prediction APIs, health scoring job, machine health UI và SSO demo path đã có; connectors, Alert Center đầy đủ và E2E còn dở (~40–45%).</p>
             </div>
-            <span class="status done">Hoàn tất</span>
+            <span class="status ready">Đang làm</span>
           </article>
           <article class="card metric">
             <div>
@@ -226,28 +227,28 @@
         <p class="section-copy">Các luồng làm việc chạy song song, nhưng chỉ đi qua checkpoint khi contract và bằng chứng kiểm thử đạt yêu cầu.</p>
         <ol class="timeline">
           <li class="milestone">
-            <span class="week">NOW · GATE 2</span>
+            <span class="week">GATE 2</span>
             <h3>Review &amp; merge</h3>
-            <p>Review các rehearsal ODF, lưu evidence và chốt owner cho rollout/rollback.</p>
+            <p>ODF production-like rehearsal, rollback config và review artifact trên nhánh tích hợp.</p>
             <span class="status done">Hoàn tất</span>
           </li>
           <li class="milestone">
             <span class="week">TUẦN 1–2</span>
             <h3>Shared contracts</h3>
-            <p>Chốt asset ID, telemetry/event schema, API convention và baseline mock data.</p>
-            <span class="status ready">Bắt đầu</span>
+            <p>Asset ID, telemetry/event schema, API convention, asset catalog và baseline mock/API (PR #16, #18, #19).</p>
+            <span class="status done">Hoàn tất</span>
           </li>
           <li class="milestone">
             <span class="week">TUẦN 3–4</span>
             <h3>Data &amp; asset plane</h3>
-            <p>Timescale migration, Asset CRUD, CEP staging và Asset Browser dùng API thật.</p>
-            <span class="status planned">Kế hoạch</span>
+            <p>Timescale dual-write, Asset CRUD, EventRuleEngine CEP, telemetry query APIs và Asset Browser UI (PR #19).</p>
+            <span class="status done">Hoàn tất</span>
           </li>
           <li class="milestone">
-            <span class="week">TUẦN 5–6</span>
+            <span class="week">NOW · TUẦN 5–6</span>
             <h3>Product intelligence</h3>
-            <p>Connectors, predictive alerting, health score, dashboard và drill-down.</p>
-            <span class="status planned">Kế hoạch</span>
+            <p>Health score + alert APIs/UI đã merge (PR #20, #22). Còn connectors, Alert Center đầy đủ, rule migration, latency evidence và Playwright E2E.</p>
+            <span class="status ready">Đang làm · ~45%</span>
           </li>
           <li class="milestone">
             <span class="week">TUẦN 7–8</span>
@@ -266,42 +267,42 @@
 
       <section aria-labelledby="lanes-title">
         <h2 id="lanes-title">Bốn luồng thực thi</h2>
-        <p class="section-copy">Các deliverable được chia theo layer để không chờ nhau ngoài những contract bắt buộc.</p>
+        <p class="section-copy">Các deliverable được chia theo layer để không chờ nhau ngoài những contract bắt buộc. Status phản ánh code đã merge, không suy diễn production readiness.</p>
         <div class="lanes">
           <article class="card lane">
-            <p class="owner">A · Data platform</p>
+            <p class="owner">A · Data platform · ~55%</p>
             <h3>Telemetry &amp; integration</h3>
             <ul>
-              <li>TimescaleDB schema, migration, benchmark và rollback plan.</li>
-              <li>Connector ERP/file/MES với retry, dead-letter và dashboard trạng thái.</li>
-              <li>Giao telemetry schema thật ở checkpoint tuần 2.</li>
+              <li><strong>Done:</strong> Timescale schema, dual-write, continuous aggregates, compression/retention.</li>
+              <li><strong>Open:</strong> benchmark p95, cutover read traffic, ERP/file/MES connectors + admin dashboard.</li>
+              <li>Connector schema/DLQ framework đã có; implement concrete còn thiếu.</li>
             </ul>
           </article>
           <article class="card lane">
-            <p class="owner">B · Event &amp; AI</p>
+            <p class="owner">B · Event &amp; AI · ~45%</p>
             <h3>CEP, prediction &amp; RCA</h3>
             <ul>
-              <li>Chốt kiến trúc CEP và event schema trong sprint đầu.</li>
-              <li>Migrate alarm rules, đo event-to-alert latency và xây inference service.</li>
-              <li>Trả API alert/RCA để UI tích hợp ở tuần 5–6.</li>
+              <li><strong>Done:</strong> CEP ADR, event schema, rule samples, in-process EventRuleEngine, alert/prediction APIs, z-score baseline.</li>
+              <li><strong>Open:</strong> migrate alarm rules legacy, latency report (&lt;1s p95), ML models thật, RCA API.</li>
+              <li>Alert lifecycle + dedup/suppression persistence đã ship.</li>
             </ul>
           </article>
           <article class="card lane">
-            <p class="owner">C · Core backend</p>
+            <p class="owner">C · Core backend · ~65%</p>
             <h3>Asset modeling &amp; security</h3>
             <ul>
-              <li>Giao asset schema và <code>asset_id</code> trong ngày 1–3.</li>
-              <li>Asset CRUD, liên kết tài liệu, search và health score.</li>
-              <li>RBAC, rate limit, validation và RFC 7807 trước staging.</li>
+              <li><strong>Done:</strong> asset schema/<code>asset_id</code>, CRUD/search/tree, document metadata, health score formula + job + APIs.</li>
+              <li><strong>Open:</strong> seed 50+ assets end-to-end, RBAC scopes, rate limit, RFC 7807 chuẩn hóa.</li>
+              <li>Import template docs đã có; seed production-like còn thiếu.</li>
             </ul>
           </article>
           <article class="card lane">
-            <p class="owner">D · Frontend &amp; QA</p>
+            <p class="owner">D · Frontend &amp; QA · ~50%</p>
             <h3>Product surface &amp; evidence</h3>
             <ul>
-              <li>UI shell/mock, Asset Browser, dashboard và biểu đồ vận hành.</li>
-              <li>Thay mock bằng API thật tại checkpoint tuần 5.</li>
-              <li>E2E, performance, security audit và hỗ trợ go-live.</li>
+              <li><strong>Done:</strong> UI shell, Asset Browser, dashboard health/alert slice, machine health UI, shared SSO demo flow.</li>
+              <li><strong>Open:</strong> Alert Center actions, Asset Browser health roll-up, CSV export, Playwright E2E, perf/security audit.</li>
+              <li>Sync W5 happy-path component coverage partial; browser E2E chưa chốt.</li>
             </ul>
           </article>
         </div>
@@ -322,15 +323,21 @@
             <tbody>
               <tr>
                 <td>Shared contracts</td>
-                <td>Ngày 1</td>
-                <td>Schema asset, telemetry, event và API convention được versioned.</td>
-                <td><span class="status ready">Bắt đầu</span></td>
+                <td>Tuần 1–2</td>
+                <td>Schema asset, telemetry, event và API convention được versioned (PR #16, #18).</td>
+                <td><span class="status done">Hoàn tất</span></td>
               </tr>
               <tr>
                 <td>ODF Gate 2</td>
-                <td>Hiện tại</td>
+                <td>Trước Tuần 1</td>
                 <td>Production-like rehearsal, cấu hình production/rollback và review artifact trên nhánh tích hợp.</td>
                 <td><span class="status done">Hoàn tất</span></td>
+              </tr>
+              <tr>
+                <td>Sync W5</td>
+                <td>Tuần 5–6 · hiện tại</td>
+                <td>Event/alert + Asset CRUD + health trên integration path; UI dùng API thật; E2E happy-path pass.</td>
+                <td><span class="status ready">Đang làm</span></td>
               </tr>
               <tr>
                 <td>Integration W8</td>
@@ -351,23 +358,23 @@
 
       <section class="bottom-grid" aria-label="Việc tiếp theo và rủi ro">
         <article class="card next">
-          <h2>Owner Production Pilot</h2>
-          <p class="small"><strong>Accountable:</strong> Deployment Owner / Platform Operations Lead.</p>
+          <h2>Next · hoàn tất Tuần 5–6</h2>
+          <p class="small"><strong>Focus hiện tại:</strong> đóng Sync W5 trước khi nhảy sang hardening.</p>
           <ul class="actions">
-            <li><strong>Operator:</strong> chạy pilot manifest và quản lý managed staging.</li>
-            <li><strong>Independent reviewer:</strong> xác nhận evidence; không được là operator.</li>
-            <li><strong>Security owner:</strong> phê duyệt ingress, TLS/mTLS, secret-manager và rotation.</li>
-            <li><strong>Data/source owner:</strong> phê duyệt retention, phạm vi connector và nguồn dữ liệu.</li>
+            <li>Concrete file/ERP connector + DLQ admin path.</li>
+            <li>Alert Center UI (ack/resolve) + Asset Browser health roll-up.</li>
+            <li>Migrate 5–10 alarm rules → CEP; đo event→alert latency.</li>
+            <li>Playwright E2E: Dashboard → alert → health → acknowledge.</li>
+            <li>PR #21 (ODF contracts/topology hardening) còn mở — review/merge riêng.</li>
           </ul>
-          <p class="small"><strong>Go:</strong> đủ 16 managed checks, attestation độc lập, TLS/mTLS hoạt động, secrets không xuất hiện trong Git/logs và evidence được retention tối thiểu 90 ngày.</p>
-          <p class="small"><strong>No-go:</strong> bất kỳ check nào fail/thiếu, role bị chồng lấn, secret lộ, hoặc không chứng minh được rollback về deployment và secret version đã duyệt.</p>
+          <p class="small"><strong>Production Pilot Accountable:</strong> Deployment Owner / Platform Operations Lead. Go/No-go vẫn dựa trên 16 managed checks + attestation độc lập; không suy diễn từ CI/local demo.</p>
         </article>
         <article class="card risk">
           <h2>Rủi ro cần theo dõi</h2>
           <ul class="actions">
-            <li>Chậm asset schema sẽ chặn mock/API của cả ba luồng còn lại.</li>
-            <li>Data cutover phải có dual-write, validation query và rollback đã kiểm thử.</li>
-            <li>Quyết định CEP muộn có thể làm đổi event contract và trì hoãn UI.</li>
+            <li>Docs/status lệch code đã được refresh 27.07; cần giữ evidence link trước mỗi checkpoint.</li>
+            <li>Data cutover vẫn cần dual-write validation + rollback đã kiểm thử trước khi deprecate PG cũ.</li>
+            <li>Connectors và E2E browser là bottleneck chính của Sync W5.</li>
             <li>Không được suy diễn production readiness từ CI hoặc local rehearsal; staging là gate riêng.</li>
           </ul>
         </article>
@@ -378,8 +385,10 @@
       <div class="shell">
         <p>
           Baseline tham chiếu: <a href="master-plan-4-agents.md">master plan 4 luồng</a>,
+          <a href="phase2-progress.md">phase 2 progress</a>,
           <a href="../README.md">project overview</a> và
           <a href="../Open-Data-Fusion/README.md#roadmap-and-product-boundaries">ODF product gates</a>.
+          Evidence gần nhất: PR #18–#20 (contracts/data/intelligence), PR #22 (SSO + durable demo).
           Cập nhật owner, ngày thực tế và liên kết evidence trước mỗi checkpoint.
         </p>
       </div>

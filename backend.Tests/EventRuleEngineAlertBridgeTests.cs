@@ -1,0 +1,87 @@
+using backend.Services;
+
+namespace backend.Tests;
+
+public class EventRuleEngineAlertBridgeTests
+{
+    [Theory]
+    [InlineData(90, ">", 85, true)]
+    [InlineData(85, ">", 85, false)]
+    [InlineData(0.5, "<", 1.0, true)]
+    [InlineData(1.0, "<", 1.0, false)]
+    [InlineData(65, "<=", 65, true)]
+    [InlineData(66, "<=", 65, false)]
+    [InlineData(90, "==", 90, true)]
+    [InlineData(91, "!=", 90, true)]
+    [InlineData(90, "bogus", 90, false)]
+    public void EvaluateThreshold_MatchesOperators(double actual, string op, double threshold, bool expected)
+    {
+        Assert.Equal(expected, EventRuleEngine.EvaluateThreshold(actual, op, threshold));
+    }
+
+    [Fact]
+    public void BuildAlertEvidence_IncludesRuleAndMetricContext()
+    {
+        var rule = new EventRule
+        {
+            Id = "rule-temp-critical",
+            Name = "Temperature Critical Threshold",
+            Description = "Fires when machine temperature exceeds 85°C",
+            Severity = "CRITICAL",
+            Condition = new EventRuleCondition
+            {
+                Type = "threshold",
+                Metric = "temperature",
+                Operator = ">",
+                Value = 85,
+                Unit = "°C"
+            }
+        };
+
+        var evidence = EventRuleEngine.BuildAlertEvidence(rule, "temperature", 92.5);
+
+        Assert.Equal("rule-temp-critical", evidence["rule_id"]);
+        Assert.Equal("Temperature Critical Threshold", evidence["rule_name"]);
+        Assert.Equal("temperature", evidence["metric"]);
+        Assert.Equal(92.5, evidence["actual_value"]);
+        Assert.Equal(85d, evidence["threshold"]);
+        Assert.Equal(">", evidence["operator"]);
+        Assert.Equal("°C", evidence["unit"]);
+    }
+
+    [Fact]
+    public void EventRulesJson_HasAtLeastFiveEnabledThresholdRules()
+    {
+        var path = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..", "..", "..", "..",
+            "backend", "Configuration", "event-rules.json"));
+
+        Assert.True(File.Exists(path), $"Expected event-rules.json at {path}");
+
+        using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
+        var rules = doc.RootElement.GetProperty("rules").EnumerateArray().ToList();
+
+        var enabledThreshold = rules
+            .Where(r => r.GetProperty("enabled").GetBoolean())
+            .Where(r => string.Equals(
+                r.GetProperty("condition").GetProperty("type").GetString(),
+                "threshold",
+                StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        Assert.True(enabledThreshold.Count >= 5,
+            $"Expected >= 5 enabled threshold rules, found {enabledThreshold.Count}");
+
+        // Non-threshold rule types remain declared but deferred for engine support.
+        var deferredTypes = rules
+            .Select(r => r.GetProperty("condition").GetProperty("type").GetString())
+            .Where(t => !string.Equals(t, "threshold", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        Assert.Contains("correlation", deferredTypes);
+        Assert.Contains("comparison", deferredTypes);
+        Assert.Contains("runtime_threshold", deferredTypes);
+    }
+}

@@ -1,8 +1,31 @@
+const testStorage = vi.hoisted(() => {
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => values.set(key, value),
+    removeItem: (key: string) => values.delete(key),
+    clear: () => values.clear(),
+  };
+
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
+  if (typeof window !== 'undefined') {
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: storage });
+  }
+
+  return storage;
+});
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isAssetId, mapAlertResponse, mapHealthResponse } from './predictiveAlerts.api';
+import {
+  isAssetId,
+  mapAlertResponse,
+  mapHealthResponse,
+  rollUpHealthScores,
+} from './predictiveAlerts.api';
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  testStorage.clear();
 });
 
 describe('predictiveAlerts API contract mapping', () => {
@@ -17,12 +40,15 @@ describe('predictiveAlerts API contract mapping', () => {
         title: 'Bearing temperature high',
         description: null,
         status: 'open',
+        acknowledgedBy: 'engineer',
+        acknowledgedAt: '2026-07-26T08:05:00Z',
       }],
     })).toEqual([expect.objectContaining({
       alert_id: 'alert-1',
       asset_id: 'asset-1',
       event_type: 'bearing-temperature',
       description: '',
+      acknowledged_by: 'engineer',
     })]);
   });
 
@@ -51,6 +77,12 @@ describe('predictiveAlerts API contract mapping', () => {
     expect(isAssetId('L1-M1')).toBe(false);
   });
 
+  it('rolls up worst-child health scores', () => {
+    expect(rollUpHealthScores([90, 40, 75])).toBe(40);
+    expect(rollUpHealthScores([null, undefined])).toBeNull();
+    expect(rollUpHealthScores([])).toBeNull();
+  });
+
   it('serves deterministic mapped responses in demo mode without a backend', async () => {
     vi.resetModules();
     vi.stubEnv('MODE', 'demo');
@@ -58,6 +90,9 @@ describe('predictiveAlerts API contract mapping', () => {
 
     const alerts = await predictiveAlertsApi.listAlerts();
     const health = await predictiveAlertsApi.getHealth(alerts[0].asset_id);
+    const stats = await predictiveAlertsApi.getStats();
+    await predictiveAlertsApi.acknowledgeAlert(alerts[0].alert_id);
+    await predictiveAlertsApi.resolveAlert(alerts[0].alert_id, 'demo resolve');
 
     expect(alerts).toEqual([expect.objectContaining({
       alert_id: '00000000-0000-0000-0000-000000000101',
@@ -72,5 +107,20 @@ describe('predictiveAlerts API contract mapping', () => {
       alarm_frequency: 1,
       maintenance_overdue: true,
     }));
+    expect(stats.openCounts.high).toBe(1);
+  });
+
+  it('filters demo alerts by status and severity', async () => {
+    vi.resetModules();
+    vi.stubEnv('MODE', 'demo');
+    const { predictiveAlertsApi } = await import('./predictiveAlerts.api');
+
+    const open = await predictiveAlertsApi.listAlerts({ status: 'open' });
+    const closed = await predictiveAlertsApi.listAlerts({ status: 'resolved' });
+    const high = await predictiveAlertsApi.listAlerts({ severity: 'high' });
+
+    expect(open).toHaveLength(1);
+    expect(closed).toHaveLength(0);
+    expect(high).toHaveLength(1);
   });
 });
