@@ -37,9 +37,17 @@ interface BadgeProps {
   size?: 'sm' | 'md' | 'lg';
   dot?: boolean;
   className?: string;
+  'aria-label'?: string;
 }
 
-export function Badge({ variant = 'primary', children, size = 'md', dot = false, className = '' }: BadgeProps) {
+export function Badge({
+  variant = 'primary',
+  children,
+  size = 'md',
+  dot = false,
+  className = '',
+  'aria-label': ariaLabel,
+}: BadgeProps) {
   const style = VARIANT_STYLES[variant];
   const badgeStyle: CSSProperties = {
     backgroundColor: style.backgroundColor,
@@ -48,7 +56,11 @@ export function Badge({ variant = 'primary', children, size = 'md', dot = false,
   };
 
   return (
-    <span className={`ui-badge ui-badge--${size} ${className}`.trim()} style={badgeStyle}>
+    <span
+      className={`ui-badge ui-badge--${size} ${className}`.trim()}
+      style={badgeStyle}
+      aria-label={ariaLabel}
+    >
       {dot && <span className="ui-badge__dot" style={{ backgroundColor: style.color }} aria-hidden="true" />}
       {children}
     </span>

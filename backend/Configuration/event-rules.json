@@ -1,7 +1,7 @@
 {
   "$schema": "event-rules-schema",
   "version": 1,
-  "description": "Sample CEP event rules for MKZ Factory — Week 1-2 deliverable",
+  "description": "Priority plant threshold rules for in-process CEP (EventRuleEngine). Non-threshold types are declared but deferred — engine only evaluates condition.type == threshold. Fired threshold rules persist durable alerts via AlertService.",
   "rules": [
     {
       "id": "rule-temp-critical",
@@ -70,8 +70,8 @@
     {
       "id": "rule-multi-machine-error",
       "name": "Multi-Machine Error Correlation",
-      "description": "Fires when 3+ machines on the same line report errors within 5 minutes",
-      "enabled": true,
+      "description": "DEFERRED: correlation evaluator not implemented in EventRuleEngine. Fires when 3+ machines on the same line report errors within 5 minutes",
+      "enabled": false,
       "eventType": "ALARM",
       "severity": "EMERGENCY",
       "condition": {
@@ -86,8 +86,8 @@
     {
       "id": "rule-production-drop",
       "name": "Production Drop >20%",
-      "description": "Fires when hourly production drops more than 20% compared to same hour yesterday",
-      "enabled": true,
+      "description": "DEFERRED: comparison evaluator not implemented in EventRuleEngine. Fires when hourly production drops more than 20% compared to same hour yesterday",
+      "enabled": false,
       "eventType": "PRODUCTION_MILESTONE",
       "severity": "WARNING",
       "condition": {
@@ -118,8 +118,8 @@
     {
       "id": "rule-maintenance-overdue",
       "name": "Maintenance Overdue",
-      "description": "Fires when machine runtime exceeds maintenance interval (500 hours) without service record",
-      "enabled": true,
+      "description": "DEFERRED: runtime_threshold evaluator not implemented in EventRuleEngine. Fires when machine runtime exceeds maintenance interval (500 hours) without service record",
+      "enabled": false,
       "eventType": "MAINTENANCE_DUE",
       "severity": "WARNING",
       "condition": {

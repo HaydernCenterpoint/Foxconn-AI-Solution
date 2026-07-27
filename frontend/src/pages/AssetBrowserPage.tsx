@@ -1,11 +1,16 @@
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Boxes, FileText, FolderTree, Pencil, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { queryKeys } from '../app/queryKeys';
 import { alarmsApi } from '../features/alarms/services/alarms.api';
 import { assetsApi, type AssetTreeNode } from '../features/assets/services/assets.api';
-import { isAssetId, predictiveAlertsApi } from '../features/dashboard/services/predictiveAlerts.api';
+import {
+  healthColorVariant,
+  isAssetId,
+  predictiveAlertsApi,
+  rollUpHealthScores,
+} from '../features/dashboard/services/predictiveAlerts.api';
 import { machinesApi } from '../features/machines/services/machines.api';
 import { Badge, type BadgeVariant } from '../shared/components/ui/Badge';
 import { Button } from '../shared/components/ui/Button';
@@ -16,11 +21,10 @@ import { useAuthStore } from '../shared/store/auth.store';
 
 const EMPTY_ASSET_TREE: AssetTreeNode[] = [];
 const CATALOG_OWNED = new Set(['PLANT', 'AREA', 'SENSOR']);
+const HEALTH_FETCH_LIMIT = 40;
 
 function healthVariant(score: number): BadgeVariant {
-  if (score >= 71) return 'success';
-  if (score >= 41) return 'warning';
-  return 'error';
+  return healthColorVariant(score);
 }
 
 function findAsset(nodes: AssetTreeNode[], assetId: string | null): AssetTreeNode | undefined {
@@ -42,21 +46,51 @@ function filterTree(nodes: AssetTreeNode[], search: string): AssetTreeNode[] {
   });
 }
 
+function collectAssetIds(nodes: AssetTreeNode[], acc: string[] = []): string[] {
+  for (const node of nodes) {
+    if (isAssetId(node.id)) acc.push(node.id);
+    if (node.children.length > 0) collectAssetIds(node.children, acc);
+  }
+  return acc;
+}
+
+/** Worst-child roll-up for parent nodes; leaf keeps own score when present. */
+function computeHealthRollups(
+  nodes: AssetTreeNode[],
+  scores: Record<string, number | null>,
+): Record<string, number | null> {
+  const result: Record<string, number | null> = { ...scores };
+
+  const visit = (node: AssetTreeNode): number | null => {
+    const childScores = node.children.map(visit);
+    const own = scores[node.id] ?? null;
+    const rolled = rollUpHealthScores([own, ...childScores]);
+    result[node.id] = rolled;
+    return rolled;
+  };
+
+  nodes.forEach(visit);
+  return result;
+}
+
 function AssetTree({
   nodes,
   selectedId,
   onSelect,
+  healthById,
   depth = 0,
 }: {
   nodes: AssetTreeNode[];
   selectedId: string | null;
   onSelect: (assetId: string) => void;
+  healthById: Record<string, number | null>;
   depth?: number;
 }) {
   return (
     <ul className={depth === 0 ? 'space-y-1' : 'mt-1 space-y-1'}>
       {nodes.map((node) => {
         const selected = node.id === selectedId;
+        const score = healthById[node.id];
         return (
           <li key={node.id}>
             <button
@@ -71,10 +105,26 @@ function AssetTree({
                 <span className="block truncate text-sm font-medium">{node.name}</span>
                 <span className="block truncate font-mono text-xs text-text-muted">{node.code}</span>
               </span>
+              {typeof score === 'number' && (
+                <Badge
+                  variant={healthVariant(score)}
+                  size="sm"
+                  dot
+                  aria-label={`health ${Math.round(score)}`}
+                >
+                  {Math.round(score)}
+                </Badge>
+              )}
               <Badge variant="neutral" size="sm">{node.type}</Badge>
             </button>
             {node.children.length > 0 && (
-              <AssetTree nodes={node.children} selectedId={selectedId} onSelect={onSelect} depth={depth + 1} />
+              <AssetTree
+                nodes={node.children}
+                selectedId={selectedId}
+                onSelect={onSelect}
+                healthById={healthById}
+                depth={depth + 1}
+              />
             )}
           </li>
         );
@@ -113,6 +163,35 @@ export default function AssetBrowserPage() {
   const isMachine = selectedAsset?.type === 'MACHINE';
   const isCatalogOwned = selectedAsset ? CATALOG_OWNED.has(selectedAsset.type) : false;
 
+  // Cap fan-out: GUID nodes only, first N for tree badges (selected node still has dedicated query).
+  const healthAssetIds = useMemo(() => {
+    const ids = collectAssetIds(tree);
+    return ids.slice(0, HEALTH_FETCH_LIMIT);
+  }, [tree]);
+
+  const treeHealthQueries = useQueries({
+    queries: healthAssetIds.map((assetId) => ({
+      queryKey: queryKeys.predictiveAlerts.health(assetId),
+      queryFn: () => predictiveAlertsApi.getHealth(assetId),
+      staleTime: 30_000,
+      retry: 0,
+    })),
+  });
+
+  const leafHealthScores = useMemo(() => {
+    const scores: Record<string, number | null> = {};
+    healthAssetIds.forEach((assetId, index) => {
+      const result = treeHealthQueries[index];
+      scores[assetId] = result?.data?.health_score ?? null;
+    });
+    return scores;
+  }, [healthAssetIds, treeHealthQueries]);
+
+  const healthById = useMemo(
+    () => computeHealthRollups(tree, leafHealthScores),
+    [tree, leafHealthScores],
+  );
+
   const documentsQuery = useQuery({
     queryKey: queryKeys.assets.documents(activeSelectedId ?? ''),
     queryFn: () => assetsApi.getDocuments(activeSelectedId!),
@@ -150,13 +229,11 @@ export default function AssetBrowserPage() {
 
   const refreshTree = async () => {
     await queryClient.invalidateQueries({ queryKey: queryKeys.assets.tree() });
+    await queryClient.invalidateQueries({ queryKey: ['predictive-alerts', 'health'] });
     if (activeSelectedId) {
       await queryClient.invalidateQueries({ queryKey: queryKeys.assets.documents(activeSelectedId) });
       await queryClient.invalidateQueries({ queryKey: queryKeys.assets.machine(activeSelectedId) });
       await queryClient.invalidateQueries({ queryKey: queryKeys.assets.alarms(activeSelectedId) });
-      if (hasHealthAssetId) {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.predictiveAlerts.health(activeSelectedId) });
-      }
     }
   };
 
@@ -274,7 +351,12 @@ export default function AssetBrowserPage() {
             ) : visibleTree.length === 0 ? (
               <DataState kind="empty" title={t('assetBrowser.noAssets')} description={t('assetBrowser.noAssetsDescription')} />
             ) : (
-              <AssetTree nodes={visibleTree} selectedId={activeSelectedId} onSelect={(id) => { setSelectedId(id); setMode('view'); setActionError(null); }} />
+              <AssetTree
+                nodes={visibleTree}
+                selectedId={activeSelectedId}
+                onSelect={(id) => { setSelectedId(id); setMode('view'); setActionError(null); }}
+                healthById={healthById}
+              />
             )}
           </div>
         </Surface>

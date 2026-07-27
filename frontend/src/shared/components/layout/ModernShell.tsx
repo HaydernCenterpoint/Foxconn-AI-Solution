@@ -19,6 +19,7 @@ import {
   MonitorCog,
   RefreshCw,
   Settings2,
+  ShieldAlert,
   ShieldCheck,
   Tv,
   Users,
@@ -63,6 +64,7 @@ const viewerNavigation: ShellNavigationItem[] = [
   { to: '/machines', labelKey: 'navigation.equipment', icon: MonitorCog },
   { to: '/assets', labelKey: 'assetBrowser.title', icon: DatabaseZap },
   { to: '/alarms', labelKey: 'navigation.alarms', icon: Bell },
+  { to: '/alerts', labelKey: 'navigation.alerts', icon: ShieldAlert },
   { to: '/production-analysis', labelKey: 'navigation.productionAnalysis', icon: FileText },
   { to: '/slideshow', labelKey: 'common.mode.slideshow', icon: Tv },
   { to: '/settings', labelKey: 'navigation.settings', icon: Settings2 },
@@ -74,6 +76,7 @@ const adminNavigation: ShellNavigationItem[] = [
   { to: '/admin/machines', labelKey: 'navigation.equipment', icon: MonitorCog },
   { to: '/admin/assets', labelKey: 'assetBrowser.title', icon: DatabaseZap },
   { to: '/admin/alarms', labelKey: 'navigation.alarms', icon: Bell },
+  { to: '/admin/alerts', labelKey: 'navigation.alerts', icon: ShieldAlert },
   { to: '/admin/reports', labelKey: 'navigation.reports', icon: FileText },
   { to: '/admin/settings', labelKey: 'navigation.settings', icon: Settings2 },
 ];

@@ -61,7 +61,17 @@ vi.mock('../features/alarms/services/alarms.api', () => ({
 
 vi.mock('../features/dashboard/services/predictiveAlerts.api', () => ({
   predictiveAlertsApi: predictiveAlertsApiMock,
-  isAssetId: (value: string) => /^[0-9a-f-]{36}$/i.test(value),
+  isAssetId: (value: string) => /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value),
+  healthColorVariant: (score: number) => {
+    if (score >= 71) return 'success';
+    if (score >= 41) return 'warning';
+    return 'error';
+  },
+  rollUpHealthScores: (scores: Array<number | null | undefined>) => {
+    const values = scores.filter((s): s is number => typeof s === 'number' && Number.isFinite(s));
+    if (values.length === 0) return null;
+    return Math.min(...values);
+  },
 }));
 
 vi.mock('../shared/store/auth.store', () => ({
@@ -206,5 +216,17 @@ describe('AssetBrowserPage', () => {
     renderPage();
     expect(await screen.findByText(/Only ADMIN or ENGINEER can change catalog assets/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Create sensor/i })).not.toBeInTheDocument();
+  });
+
+  it('shows health badges on tree nodes and rolls up worst-child scores to parents', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(predictiveAlertsApiMock.getHealth).toHaveBeenCalledWith(machineId);
+    });
+
+    // Leaf machine score appears as a badge; parent plant inherits min(child) = 82
+    const badges = await screen.findAllByLabelText('health 82');
+    expect(badges.length).toBeGreaterThanOrEqual(1);
   });
 });

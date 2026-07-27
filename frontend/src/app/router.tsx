@@ -34,6 +34,7 @@ const LinesPage = lazy(() => import('../pages/LinesPage'));
 const MachineListPage = lazy(() => import('../pages/MachineListPage'));
 const MachineDetailPage = lazy(() => import('../pages/MachineDetailPage'));
 const AlarmPage = lazy(() => import('../pages/AlarmPage'));
+const AlertCenterPage = lazy(() => import('../pages/AlertCenterPage'));
 
 // ── Shared simulation page ───────────────────────────────────────────
 const SimulationPage = lazy(() => import('../pages/SimulationPage'));
@@ -92,6 +93,7 @@ export function AppRouter() {
         <Route path="machines" element={withSuspense(<MachineListPage />)} />
         <Route path="machines/:id" element={withSuspense(<MachineDetailPage />)} />
         <Route path="alarms" element={withSuspense(<AlarmPage />)} />
+        <Route path="alerts" element={withSuspense(<AlertCenterPage />)} />
         <Route path="settings" element={withSuspense(<SettingsPage />)} />
         <Route path="reports" element={withSuspense(<ReportsPage />)} />
         <Route path="system" element={withSuspense(<SystemPage />)} />
@@ -99,7 +101,7 @@ export function AppRouter() {
         <Route path="simulation" element={withSuspense(<ProtectedRoute allowedRoles={['ADMIN', 'ENGINEER']}><SimulationPage /></ProtectedRoute>)} />
         <Route path="users" element={withSuspense(<ProtectedRoute allowedRoles={['ADMIN']}><AdminUserManagementPage /></ProtectedRoute>)} />
         <Route path="audit-logs" element={withSuspense(<ProtectedRoute allowedRoles={['ADMIN']}><AdminAuditLogPage /></ProtectedRoute>)} />
-        
+
         {/* Redirects inside admin */}
         <Route path="flow-designer" element={<Navigate to="/admin/lines" replace />} />
         <Route path="dashboard" element={<Navigate to="/admin" replace />} />
@@ -112,6 +114,7 @@ export function AppRouter() {
         <Route path="machines" element={withSuspense(<MachineListPage />)} />
         <Route path="machines/:id" element={withSuspense(<MachineDetailPage />)} />
         <Route path="alarms" element={withSuspense(<AlarmPage />)} />
+        <Route path="alerts" element={withSuspense(<AlertCenterPage />)} />
         <Route path="settings" element={withSuspense(<ViewerSettingsPage />)} />
         <Route path="production-analysis" element={withSuspense(<ProductionAnalysisPage />)} />
         <Route path="system" element={withSuspense(<SystemPage />)} />
