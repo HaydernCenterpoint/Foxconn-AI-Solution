@@ -186,31 +186,21 @@ class FileProcessor:
             raise ValueError(f"Unsupported file type: {ext}")
     
     def _transform_row(self, row: dict, mapping: ColumnMapping, source_file: str) -> Optional[dict]:
-        """Transform a row to event format"""
+        """Transform one validated row to the telemetry event format."""
         try:
-            # Parse timestamp
-            timestamp_str = row.get(mapping.timestamp_col, '')
-            timestamp = self._parse_timestamp(timestamp_str)
-            
-            # Get asset_id
-            asset_id = row.get(mapping.asset_id_col, '')
-            
-            # Get metric
-            metric = row.get(mapping.metric_col, 'unknown')
-            
-            # Get value
-            value_str = row.get(mapping.value_col, '0')
-            try:
-                value = float(value_str)
-            except (ValueError, TypeError):
-                value = 0.0
-            
-            # Build tags
+            timestamp = self._parse_timestamp(row.get(mapping.timestamp_col))
+            asset_id = str(row.get(mapping.asset_id_col, '')).strip()
+            metric = str(row.get(mapping.metric_col, '')).strip()
+            value = float(row.get(mapping.value_col))
+
+            if not asset_id or not metric:
+                raise ValueError("asset_id and metric are required")
+
             tags = {'source_file': source_file}
             for tag_name, col_name in mapping.tags_cols.items():
-                if col_name in row:
+                if col_name in row and row[col_name] not in (None, ''):
                     tags[tag_name] = row[col_name]
-            
+
             return {
                 'timestamp': timestamp,
                 'asset_id': asset_id,
@@ -218,30 +208,31 @@ class FileProcessor:
                 'value': value,
                 'tags': tags
             }
-        except Exception as e:
-            logger.warning(f"Row transform failed: {e}")
+        except (TypeError, ValueError) as e:
+            logger.warning("Row transform failed: %s", e)
             return None
-    
+
     def _parse_timestamp(self, value: str) -> datetime:
-        """Parse timestamp from various formats"""
-        formats = [
-            '%Y-%m-%d %H:%M:%S',
-            '%Y-%m-%d %H:%M:%S.%f',
-            '%Y-%m-%dT%H:%M:%S',
-            '%Y-%m-%dT%H:%M:%S.%f',
-            '%d/%m/%Y %H:%M:%S',
-            '%m/%d/%Y %H:%M:%S',
-            '%Y-%m-%d',
-        ]
-        
-        for fmt in formats:
-            try:
-                return datetime.strptime(str(value), fmt)
-            except ValueError:
-                continue
-        
-        # Default to now
-        return datetime.now()
+        """Parse a supported timestamp or raise for invalid input."""
+        text = str(value or '').strip()
+        if not text:
+            raise ValueError("timestamp is required")
+
+        try:
+            return datetime.fromisoformat(text.replace('Z', '+00:00'))
+        except ValueError:
+            formats = (
+                '%d/%m/%Y %H:%M:%S',
+                '%m/%d/%Y %H:%M:%S',
+                '%Y-%m-%d',
+            )
+            for fmt in formats:
+                try:
+                    return datetime.strptime(text, fmt)
+                except ValueError:
+                    continue
+
+        raise ValueError(f"invalid timestamp: {text}")
     
     def import_file(
         self,
