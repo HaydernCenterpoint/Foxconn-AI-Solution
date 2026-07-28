@@ -91,13 +91,13 @@ namespace backend.Services
 
             if (production.TryGetProperty("qty", out var qty) && qty.ValueKind == JsonValueKind.Number && qty.TryGetInt64(out var parsedQuantity))
                 productionCount = parsedQuantity;
-            if (production.TryGetProperty("time", out var time) && time.ValueKind == JsonValueKind.Number && time.TryGetDouble(out var parsedCycleTime))
+            if (production.TryGetProperty("time", out var time) && time.ValueKind == JsonValueKind.Number && time.TryGetDouble(out var parsedCycleTime) && double.IsFinite(parsedCycleTime))
                 cycleTime = parsedCycleTime;
-            if (production.TryGetProperty("uph", out var uphValue) && uphValue.ValueKind == JsonValueKind.Number && uphValue.TryGetDouble(out var parsedUph))
+            if (production.TryGetProperty("uph", out var uphValue) && uphValue.ValueKind == JsonValueKind.Number && uphValue.TryGetDouble(out var parsedUph) && double.IsFinite(parsedUph))
                 uph = parsedUph;
-            if (production.TryGetProperty("oee", out var oeeValue) && oeeValue.ValueKind == JsonValueKind.Number && oeeValue.TryGetDouble(out var parsedOee))
+            if (production.TryGetProperty("oee", out var oeeValue) && oeeValue.ValueKind == JsonValueKind.Number && oeeValue.TryGetDouble(out var parsedOee) && double.IsFinite(parsedOee))
                 oee = parsedOee;
-            if (production.TryGetProperty("yieldRate", out var yieldValue) && yieldValue.ValueKind == JsonValueKind.Number && yieldValue.TryGetDouble(out var parsedYieldRate))
+            if (production.TryGetProperty("yieldRate", out var yieldValue) && yieldValue.ValueKind == JsonValueKind.Number && yieldValue.TryGetDouble(out var parsedYieldRate) && double.IsFinite(parsedYieldRate))
                 yieldRate = parsedYieldRate;
 
             return (productionCount, cycleTime, uph, oee, yieldRate);

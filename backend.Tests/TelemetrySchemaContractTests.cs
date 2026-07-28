@@ -22,6 +22,16 @@ public sealed class TelemetrySchemaContractTests
         Assert.Null(fields.Uph);
         Assert.Null(fields.Oee);
         Assert.Null(fields.YieldRate);
+
+        var input = new TelemetryCaptureInput(
+            Guid.NewGuid(), payloadJson, 1, DateTimeOffset.UtcNow, null, null,
+            "idle", false, fields.ProductionCount, fields.CycleTime, fields.Uph,
+            fields.Oee, fields.YieldRate, null);
+
+        var points = TelemetrySchemaContract.Normalize(input).ToList();
+
+        Assert.DoesNotContain(points, p => p.Metric == TelemetrySchemaContract.Metrics.ProductionQuantity);
+        Assert.DoesNotContain(points, p => p.Metric == TelemetrySchemaContract.Metrics.ProductionTime);
     }
 
     [Fact]
@@ -36,6 +46,26 @@ public sealed class TelemetrySchemaContractTests
         Assert.Null(fields.Uph);
         Assert.Equal(88.0, fields.Oee);
         Assert.Null(fields.YieldRate);
+
+        var input = new TelemetryCaptureInput(
+            Guid.NewGuid(), document.RootElement.GetRawText(), 1, DateTimeOffset.UtcNow, null, null,
+            "running", true, fields.ProductionCount, fields.CycleTime, fields.Uph,
+            fields.Oee, fields.YieldRate, null);
+        var points = TelemetrySchemaContract.Normalize(input).ToList();
+
+        Assert.DoesNotContain(points, p => p.Metric == TelemetrySchemaContract.Metrics.ProductionQuantity);
+        Assert.Contains(points, p => p.Metric == TelemetrySchemaContract.Metrics.ProductionTime && p.Value == 12.5);
+    }
+
+    [Fact]
+    public void ParseProductionFields_RejectsOutOfRangeNumericValues()
+    {
+        using var document = JsonDocument.Parse("{\"production\":{\"qty\":1e100,\"time\":1e400}}");
+
+        var fields = TelemetryIngestionService.ParseProductionFields(document.RootElement);
+
+        Assert.Null(fields.ProductionCount);
+        Assert.Null(fields.CycleTime);
     }
 
     [Fact]
@@ -44,9 +74,16 @@ public sealed class TelemetrySchemaContractTests
         using var document = JsonDocument.Parse("{\"production\":{\"qty\":0,\"time\":0.0}}");
 
         var fields = TelemetryIngestionService.ParseProductionFields(document.RootElement);
+        var input = new TelemetryCaptureInput(
+            Guid.NewGuid(), document.RootElement.GetRawText(), 1, DateTimeOffset.UtcNow, null, null,
+            "running", true, fields.ProductionCount, fields.CycleTime, fields.Uph,
+            fields.Oee, fields.YieldRate, null);
+        var points = TelemetrySchemaContract.Normalize(input).ToList();
 
         Assert.Equal(0, fields.ProductionCount);
         Assert.Equal(0.0, fields.CycleTime);
+        Assert.Contains(points, p => p.Metric == TelemetrySchemaContract.Metrics.ProductionQuantity && p.Value == 0);
+        Assert.Contains(points, p => p.Metric == TelemetrySchemaContract.Metrics.ProductionTime && p.Value == 0);
     }
 
     [Fact]
