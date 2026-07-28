@@ -45,34 +45,54 @@ def test_scan_once_imports_rows_and_moves_file(tmp_path, monkeypatch):
     state_file = tmp_path / "state.json"
     source_file = watch_dir / "telemetry.csv"
     source_file.parent.mkdir()
-    source_file.write_text(
+    source_contents = (
         "timestamp,machine_id,metric,value\n"
         "2026-07-28T12:00:00Z,M-1,temp,42.5\n"
-        "not-a-date,M-2,temp,not-a-number\n",
-        encoding="utf-8",
+        "not-a-date,M-2,temp,not-a-number\n"
+    )
+    source_file.write_text(source_contents, encoding="utf-8")
+    config = FileWatcherConfig(
+        watch_dirs=[str(watch_dir)],
+        processed_dir=str(processed_dir),
+        failed_dir=str(failed_dir),
+        archive_dir=str(archive_dir),
     )
 
-    watcher = FileWatcherConnector(
-        FileWatcherConfig(
-            watch_dirs=[str(watch_dir)],
-            processed_dir=str(processed_dir),
-            failed_dir=str(failed_dir),
-            archive_dir=str(archive_dir),
-        ),
-        state_file=str(state_file),
-    )
-    monkeypatch.setattr(watcher.processor, "_write_telemetry", lambda data: None)
+    watcher = FileWatcherConnector(config, state_file=str(state_file))
+    telemetry = []
+    monkeypatch.setattr(watcher.processor, "_write_telemetry", telemetry.append)
 
     result = watcher.scan_once()
 
     assert result["rows_imported"] == 1
     assert result["rows_failed"] == 1
     assert result["files_processed"] == 1
+    assert telemetry == [
+        {
+            "timestamp": datetime.fromisoformat("2026-07-28T12:00:00+00:00"),
+            "asset_id": "M-1",
+            "metric": "temp",
+            "value": 42.5,
+            "tags": {"source_file": str(source_file)},
+        }
+    ]
     assert not source_file.exists()
     assert (processed_dir / source_file.name).exists()
 
-    second_result = watcher.scan_once()
+    source_file.write_text(source_contents, encoding="utf-8")
+    restarted_watcher = FileWatcherConnector(config, state_file=str(state_file))
+    restarted_telemetry = []
+    monkeypatch.setattr(
+        restarted_watcher.processor, "_write_telemetry", restarted_telemetry.append
+    )
 
-    assert second_result == result
-    assert second_result["files_processed"] == 1
+    restarted_result = restarted_watcher.scan_once()
+
+    assert restarted_watcher.progress.files_processed == 1
+    assert restarted_watcher.progress.rows_imported == 1
+    assert restarted_watcher.progress.rows_failed == 1
+    assert restarted_watcher.progress.last_file == str(source_file)
+    assert restarted_result == result
+    assert restarted_telemetry == []
+    assert source_file.exists()
     assert (processed_dir / source_file.name).exists()
