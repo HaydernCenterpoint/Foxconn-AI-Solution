@@ -1,9 +1,74 @@
+using System.Text.Json;
+using backend.Services;
 using Mkz.Fusion.Contracts;
 
 namespace backend.Tests;
 
 public sealed class TelemetrySchemaContractTests
 {
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"production\":null}")]
+    [InlineData("{\"production\":[]}")]
+    [InlineData("{\"production\":\"invalid\"}")]
+    public void ParseProductionFields_PreservesMissingOrNonObjectAsNull(string payloadJson)
+    {
+        using var document = JsonDocument.Parse(payloadJson);
+
+        var fields = TelemetryIngestionService.ParseProductionFields(document.RootElement);
+
+        Assert.Null(fields.ProductionCount);
+        Assert.Null(fields.CycleTime);
+        Assert.Null(fields.Uph);
+        Assert.Null(fields.Oee);
+        Assert.Null(fields.YieldRate);
+    }
+
+    [Fact]
+    public void ParseProductionFields_PreservesIndependentMalformedAndPartialValues()
+    {
+        using var document = JsonDocument.Parse("{\"production\":{\"qty\":\"bad\",\"time\":12.5,\"uph\":null,\"oee\":88.0,\"yieldRate\":\"bad\"}}");
+
+        var fields = TelemetryIngestionService.ParseProductionFields(document.RootElement);
+
+        Assert.Null(fields.ProductionCount);
+        Assert.Equal(12.5, fields.CycleTime);
+        Assert.Null(fields.Uph);
+        Assert.Equal(88.0, fields.Oee);
+        Assert.Null(fields.YieldRate);
+    }
+
+    [Fact]
+    public void ParseProductionFields_PreservesExplicitZero()
+    {
+        using var document = JsonDocument.Parse("{\"production\":{\"qty\":0,\"time\":0.0}}");
+
+        var fields = TelemetryIngestionService.ParseProductionFields(document.RootElement);
+
+        Assert.Equal(0, fields.ProductionCount);
+        Assert.Equal(0.0, fields.CycleTime);
+    }
+
+    [Fact]
+    public void ParseProductionFields_ExtractsValidValuesAndNormalizePreservesThem()
+    {
+        var machineId = Guid.NewGuid();
+        using var document = JsonDocument.Parse("{\"production\":{\"qty\":100,\"time\":3600.0,\"uph\":50.5,\"oee\":85.2,\"yieldRate\":99.1}}");
+
+        var fields = TelemetryIngestionService.ParseProductionFields(document.RootElement);
+        var input = new TelemetryCaptureInput(
+            machineId, document.RootElement.GetRawText(), 1, DateTimeOffset.UtcNow, null, null,
+            "running", true, fields.ProductionCount, fields.CycleTime, fields.Uph, fields.Oee, fields.YieldRate, null);
+        var points = TelemetrySchemaContract.Normalize(input).ToList();
+
+        Assert.Equal(5, points.Count);
+        Assert.Contains(points, p => p.Metric == TelemetrySchemaContract.Metrics.ProductionQuantity && p.Value == 100);
+        Assert.Contains(points, p => p.Metric == TelemetrySchemaContract.Metrics.ProductionTime && p.Value == 3600.0);
+        Assert.Contains(points, p => p.Metric == TelemetrySchemaContract.Metrics.Uph && p.Value == 50.5);
+        Assert.Contains(points, p => p.Metric == TelemetrySchemaContract.Metrics.Oee && p.Value == 85.2);
+        Assert.Contains(points, p => p.Metric == TelemetrySchemaContract.Metrics.YieldRate && p.Value == 99.1);
+    }
+
     [Fact]
     public void Normalize_ExtractsAllPresentMetrics()
     {
