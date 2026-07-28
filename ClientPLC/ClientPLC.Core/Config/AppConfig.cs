@@ -117,8 +117,17 @@ public class AppConfig
 	[JsonPropertyName("readAddresses")]
 	public string ReadAddresses { get; set; } = "";
 
-	[JsonPropertyName("serverToken")]
-	public string ServerToken { get; set; } = "";
+	private string _transientServerToken = "";
+
+	[JsonIgnore]
+	public string ServerToken
+	{
+		get => Environment.GetEnvironmentVariable("FII_MQTT_DEVICE_TOKEN") ?? _transientServerToken;
+		set => _transientServerToken = value ?? "";
+	}
+
+	[JsonPropertyName("mqttUseTls")]
+	public bool MqttUseTls { get; set; }
 
 	[JsonPropertyName("targetSpeed")]
 	public int TargetSpeed { get; set; } = 60;
@@ -132,8 +141,15 @@ public class AppConfig
 		{
 			AppConfig appConfig = null;
 			string dbJson = Storage?.GetConfigValue("app_config_json");
+			bool hasLegacyServerToken = false;
 			if (!string.IsNullOrEmpty(dbJson))
 			{
+				using (JsonDocument document = JsonDocument.Parse(dbJson))
+				{
+					hasLegacyServerToken = document.RootElement.ValueKind == JsonValueKind.Object
+						&& document.RootElement.EnumerateObject().Any(
+							property => property.Name.Equals("serverToken", StringComparison.OrdinalIgnoreCase));
+				}
 				appConfig = JsonSerializer.Deserialize<AppConfig>(dbJson, _jsonOpts);
 			}
 
@@ -142,6 +158,10 @@ public class AppConfig
 				appConfig = new AppConfig();
 			}
 			appConfig.EnsureDefaultAddresses();
+			if (hasLegacyServerToken)
+			{
+				appConfig.Save();
+			}
 			return appConfig;
 		}
 		catch (Exception ex)

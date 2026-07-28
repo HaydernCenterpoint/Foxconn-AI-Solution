@@ -232,6 +232,44 @@ public class CoreLogicTests
     }
 
     [Fact]
+    public void RegisterPayload_DoesNotContainDeviceToken()
+    {
+        AppConfig.Current.ServerToken = "transient-device-secret";
+
+        string json = new TelemetryPayloadBuilder().BuildRegisterJson(42);
+
+        Assert.DoesNotContain("transient-device-secret", json, StringComparison.Ordinal);
+        using var doc = JsonDocument.Parse(json);
+        Assert.False(doc.RootElement.GetProperty("payload").TryGetProperty("token", out _));
+    }
+
+    [Fact]
+    public void AppConfig_DoesNotPersistDeviceToken()
+    {
+        var storage = new InMemoryConfigStorage();
+        AppConfig.Storage = storage;
+        AppConfig.Current.ServerToken = "transient-device-secret";
+
+        AppConfig.Current.Save();
+
+        Assert.DoesNotContain("transient-device-secret", storage.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("serverToken", storage.Value, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void AppConfig_LoadScrubsLegacyPersistedDeviceToken()
+    {
+        var storage = new InMemoryConfigStorage(
+            """{"machineId":"00000000-0000-0000-0000-000000000123","serverToken":"legacy-secret"}""");
+        AppConfig.Storage = storage;
+
+        _ = AppConfig.Load();
+
+        Assert.DoesNotContain("legacy-secret", storage.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("serverToken", storage.Value, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void CryptoHelper_RequiresConfiguredSecretAndRoundTrips()
     {
         Assert.Throws<ArgumentException>(() => CryptoHelper.Initialize("too-short"));
@@ -240,6 +278,20 @@ public class CoreLogicTests
         const string original = "factory telemetry";
         Assert.Equal(original, CryptoHelper.Decrypt(CryptoHelper.Encrypt(original)));
     }
+}
+
+public sealed class InMemoryConfigStorage : IConfigStorage
+{
+    public InMemoryConfigStorage(string value = "")
+    {
+        Value = value;
+    }
+
+    public string Value { get; private set; }
+
+    public string GetConfigValue(string key) => Value;
+
+    public void SaveConfigValue(string key, string value) => Value = value;
 }
 
 public class MockTelemetryRepository : ITelemetryRepository

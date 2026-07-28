@@ -122,6 +122,13 @@ public class MqttTransport : IServerTransport
 
                 Log($"MQTT: Đang kết nối đến broker {config.ServerHost}:{config.ServerPort}...");
                 _mqttClient = _factory.CreateMqttClient();
+
+                if (string.IsNullOrWhiteSpace(config.ServerToken))
+                {
+                    Log("MQTT: Device token is missing. Configure FII_MQTT_DEVICE_TOKEN before connecting.");
+                    await Task.Delay(3000, token);
+                    continue;
+                }
                 
                 var lwtEnvelope = new
                 {
@@ -140,15 +147,22 @@ public class MqttTransport : IServerTransport
                 string lwtJson = System.Text.Json.JsonSerializer.Serialize(lwtEnvelope);
                 string encryptedLwtPayload = CryptoHelper.Encrypt(lwtJson);
 
-                var options = _factory.CreateClientOptionsBuilder()
+                var optionsBuilder = _factory.CreateClientOptionsBuilder()
                     .WithTcpServer(config.ServerHost, config.ServerPort)
                     .WithClientId(config.MachineId)
+                    .WithCredentials(config.MachineId, config.ServerToken)
                     .WithCleanSession(true)
                     .WithKeepAlivePeriod(TimeSpan.FromSeconds(15))
                     .WithWillTopic($"client/{config.MachineId}/telemetry")
                     .WithWillPayload(encryptedLwtPayload)
-                    .WithWillQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce)
-                    .Build();
+                    .WithWillQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce);
+
+                if (config.MqttUseTls)
+                {
+                    optionsBuilder.WithTlsOptions(tls => tls.UseTls());
+                }
+
+                var options = optionsBuilder.Build();
 
                 _mqttClient.ApplicationMessageReceivedAsync += HandleMessageReceivedAsync;
 
@@ -201,7 +215,7 @@ public class MqttTransport : IServerTransport
             // Decrypt payload from server (e.g. commands)
             string json = CryptoHelper.Decrypt(payloadString);
             
-            Log($"MQTT: Nhận bản tin trên topic {topic}: {json}");
+            Log($"MQTT: Nhận bản tin trên topic {topic}");
             
             if (OnMessageReceived != null)
             {
