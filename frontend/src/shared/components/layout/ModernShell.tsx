@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
+  Activity,
   ArrowUpRight,
   Bell,
   Bot,
@@ -98,6 +99,7 @@ const adminNavigation: ShellNavigationItem[] = [
   { to: '/admin/alarms', labelKey: 'navigation.alarms', icon: Bell },
   { to: '/admin/alerts', labelKey: 'navigation.alerts', icon: ShieldAlert },
   { to: '/admin/reports', labelKey: 'navigation.reports', icon: FileText },
+  { to: '/admin/system', labelKey: 'titles.system', icon: Activity },
   { to: '/admin/settings', labelKey: 'navigation.settings', icon: Settings2 },
 ];
 

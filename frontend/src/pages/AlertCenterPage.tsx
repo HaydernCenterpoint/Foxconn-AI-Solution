@@ -15,6 +15,7 @@ import { queryKeys } from '../app/queryKeys';
 import {
   predictiveAlertsApi,
   type PredictiveAlert,
+  type RootCauseAnalysis,
 } from '../features/dashboard/services/predictiveAlerts.api';
 import { usePermissions } from '../shared/hooks/usePermissions';
 import { Badge } from '../shared/components/ui/Badge';
@@ -63,6 +64,134 @@ function toCsv(alerts: PredictiveAlert[]): string {
   return [header.join(','), ...rows].join('\n');
 }
 
+function AlertEvidence({ evidence }: { evidence?: string | null }) {
+  if (!evidence) {
+    return <span className="text-text-muted">—</span>;
+  }
+
+  let entries: Array<[string, unknown]> | null = null;
+  try {
+    const parsed = JSON.parse(evidence) as unknown;
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      entries = Object.entries(parsed);
+    }
+  } catch {
+    // Evidence from older alerts may be plain text.
+  }
+
+  if (entries) {
+    return (
+      <dl className="grid gap-1 sm:grid-cols-2">
+        {entries.map(([key, value]) => (
+          <div key={key} className="rounded border border-border bg-surface-1 px-2 py-1.5">
+            <dt className="font-mono text-[10px] uppercase text-text-muted">{key}</dt>
+            <dd className="break-words text-xs text-text-secondary">
+              {typeof value === 'string' ? value : JSON.stringify(value)}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
+
+  return <span className="whitespace-pre-wrap text-xs text-text-secondary">{evidence}</span>;
+}
+
+function RcaPanel({
+  analysis,
+  isLoading,
+  isError,
+}: {
+  analysis: RootCauseAnalysis | null | undefined;
+  isLoading: boolean;
+  isError: boolean;
+}) {
+  const { t } = useTranslation();
+  const rawConfidence = analysis
+    ? analysis.confidence_score <= 1
+      ? analysis.confidence_score * 100
+      : analysis.confidence_score
+    : 0;
+  const confidence = Number.isFinite(rawConfidence)
+    ? Math.min(100, Math.max(0, Math.round(rawConfidence)))
+    : 0;
+  const causalChain = analysis?.causal_chain_events.length
+    ? analysis.causal_chain_events.map((event) => event.type.replaceAll('_', ' '))
+    : analysis?.causal_chain ?? [];
+
+  return (
+    <section
+      aria-label={t('alertCenter.rca.title')}
+      className="rounded-lg border border-border bg-surface-2 p-3"
+    >
+      <h3 className="text-xs font-bold uppercase tracking-wider text-text-primary">
+        {t('alertCenter.rca.title')}
+      </h3>
+      {isLoading ? (
+        <p role="status" className="mt-2 text-xs text-text-muted">
+          {t('alertCenter.rca.loading')}
+        </p>
+      ) : isError ? (
+        <p role="alert" className="mt-2 text-xs text-error">
+          {t('alertCenter.rca.error')}
+        </p>
+      ) : !analysis ? (
+        <p className="mt-2 text-xs text-text-muted">{t('alertCenter.rca.unavailable')}</p>
+      ) : (
+        <div className="mt-2 grid gap-3 lg:grid-cols-2">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+              {t('alertCenter.rca.rootCause')}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-text-primary">
+              {analysis.root_cause_description}
+            </p>
+            <p className="mt-1 font-mono text-[11px] text-text-secondary">
+              {analysis.root_cause_type} · {analysis.root_cause_asset_id}
+            </p>
+            <p className="mt-2 text-xs text-text-secondary">
+              {t('alertCenter.rca.confidence')}: <strong>{confidence}%</strong>
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                {t('alertCenter.rca.causalChain')}
+              </p>
+              {causalChain.length > 0 ? (
+                <ol className="mt-1 list-decimal space-y-1 pl-4 text-xs text-text-secondary">
+                  {causalChain.map((item, index) => (
+                    <li key={`${index}-${item}`} className="capitalize">{item}</li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="mt-1 text-xs text-text-muted">{t('alertCenter.rca.none')}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                {t('alertCenter.rca.actions')}
+              </p>
+              {analysis.recommended_actions.length > 0 ? (
+                <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-text-secondary">
+                  {analysis.recommended_actions.map((action, index) => (
+                    <li key={`${index}-${action}`}>{action}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-xs text-text-muted">{t('alertCenter.rca.none')}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      <p className="mt-3 border-t border-border pt-2 text-[11px] text-text-muted">
+        {t('alertCenter.rca.basicCorrelationNote')}
+      </p>
+    </section>
+  );
+}
+
 export default function AlertCenterPage() {
   const { t, i18n } = useTranslation();
   const { canAcknowledge } = usePermissions();
@@ -91,6 +220,23 @@ export default function AlertCenterPage() {
         limit: 200,
       }),
     refetchInterval: 5000,
+  });
+
+  const { data: expandedAlert, isLoading: isEvidenceLoading } = useQuery({
+    queryKey: queryKeys.predictiveAlerts.detail(expandedId ?? ''),
+    queryFn: () => predictiveAlertsApi.getAlert(expandedId!),
+    enabled: !!expandedId,
+  });
+
+  const selectedAlert = alerts.find((alert) => alert.alert_id === expandedId);
+  const {
+    data: rcaResponse,
+    isLoading: isRcaLoading,
+    isError: isRcaError,
+  } = useQuery({
+    queryKey: queryKeys.predictiveAlerts.rca(expandedId ?? ''),
+    queryFn: () => predictiveAlertsApi.getRca(selectedAlert!),
+    enabled: canAcknowledge && !!expandedId && !!selectedAlert,
   });
 
   const invalidate = () => {
@@ -352,12 +498,33 @@ export default function AlertCenterPage() {
                           >
                             <strong className="block text-sm">{alert.title}</strong>
                             <span className="block text-xs text-text-muted">{alert.event_type}</span>
-                            {expanded && alert.description && (
-                              <span className="mt-1 block text-xs text-text-secondary">
-                                {alert.description}
-                              </span>
-                            )}
                           </button>
+                          {expanded && (
+                            <div className="mt-2 space-y-2">
+                              {(expandedAlert?.description ?? alert.description) && (
+                                <p className="text-xs text-text-secondary">
+                                  {expandedAlert?.description ?? alert.description}
+                                </p>
+                              )}
+                              <div>
+                                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                                  {t('alertCenter.evidence', { defaultValue: 'Evidence' })}
+                                </p>
+                                {isEvidenceLoading ? (
+                                  <span className="text-xs text-text-muted">
+                                    {t('common.status.loading', { defaultValue: 'Loading...' })}
+                                  </span>
+                                ) : (
+                                  <AlertEvidence evidence={expandedAlert?.evidence ?? alert.evidence} />
+                                )}
+                              </div>
+                              <RcaPanel
+                                analysis={rcaResponse?.rca}
+                                isLoading={isRcaLoading}
+                                isError={isRcaError}
+                              />
+                            </div>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <StatusBadge status={alert.status.toLowerCase()} size="sm" />

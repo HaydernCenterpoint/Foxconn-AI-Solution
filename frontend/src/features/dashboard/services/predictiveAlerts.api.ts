@@ -49,6 +49,36 @@ export interface AlertStats {
   detailedStats: Array<{ status: string; severity: string; count: number }>;
 }
 
+export interface RcaCausalChainEvent {
+  event_id: string;
+  type: string;
+  timestamp: string;
+  asset_id: string;
+  severity: string;
+  payload: unknown;
+}
+
+export interface RootCauseAnalysis {
+  rca_id: string;
+  timestamp: string;
+  root_cause_event_id: string;
+  root_cause_type: string;
+  root_cause_asset_id: string;
+  root_cause_description: string;
+  causal_chain: string[];
+  causal_chain_events: RcaCausalChainEvent[];
+  confidence_score: number;
+  recommended_actions: string[];
+}
+
+export interface RcaResponse {
+  rca: RootCauseAnalysis | null;
+}
+
+export interface RcaRequest {
+  alertId: string;
+}
+
 interface AlertApiItem {
   alertId: string;
   assetId: string;
@@ -100,6 +130,52 @@ const DEMO_ALERT_RESPONSE: AlertApiResponse = {
     status: 'open',
   }],
 };
+const DEMO_RCA_RESPONSE: RcaResponse = {
+  rca: {
+    rca_id: 'demo-rca-0001',
+    timestamp: '2026-07-26T08:00:01Z',
+    root_cause_event_id: 'demo-event-bearing-temperature',
+    root_cause_type: 'maintenance_overdue',
+    root_cause_asset_id: DEMO_ASSET_ID,
+    root_cause_description: 'Overdue bearing maintenance is correlated with the temperature anomaly.',
+    causal_chain: [
+      'demo-event-maintenance-overdue',
+      'demo-event-bearing-temperature',
+      '00000000-0000-0000-0000-000000000101',
+    ],
+    causal_chain_events: [
+      {
+        event_id: 'demo-event-maintenance-overdue',
+        type: 'maintenance_overdue',
+        timestamp: '2026-07-25T00:00:00Z',
+        asset_id: DEMO_ASSET_ID,
+        severity: 'warning',
+        payload: { overdueDays: 3 },
+      },
+      {
+        event_id: 'demo-event-bearing-temperature',
+        type: 'bearing_temperature_high',
+        timestamp: '2026-07-26T07:58:00Z',
+        asset_id: DEMO_ASSET_ID,
+        severity: 'high',
+        payload: { temperatureC: 92.4, thresholdC: 80 },
+      },
+      {
+        event_id: '00000000-0000-0000-0000-000000000101',
+        type: 'predicted_maintenance',
+        timestamp: '2026-07-26T08:00:00Z',
+        asset_id: DEMO_ASSET_ID,
+        severity: 'high',
+        payload: {},
+      },
+    ],
+    confidence_score: 0.84,
+    recommended_actions: [
+      'Inspect and lubricate the bearing.',
+      'Schedule maintenance before the next production run.',
+    ],
+  },
+};
 
 function createDemoHealthResponse(assetId: string): HealthApiResponse {
   return {
@@ -131,7 +207,7 @@ function createServiceClient(baseURL: string) {
   return client;
 }
 
-const cepApi = createServiceClient(import.meta.env.VITE_CEP_API_URL || '/api/cep');
+const cepApi = createServiceClient(import.meta.env.VITE_CEP_API_URL || '/api/v1');
 const assetApi = createServiceClient(import.meta.env.VITE_ASSET_API_URL || '/api/asset-service');
 
 export function mapAlertResponse(response: AlertApiResponse): PredictiveAlert[] {
@@ -162,6 +238,10 @@ export function mapHealthResponse(response: HealthApiResponse): AssetHealth {
     performance_pct: response.breakdown.performance.ratio,
     maintenance_overdue: response.breakdown.maintenance.overdueDays > 0,
   };
+}
+
+export function buildRcaRequest(alert: PredictiveAlert): RcaRequest {
+  return { alertId: alert.alert_id };
 }
 
 function mapHealthHistory(response: HealthHistoryApiResponse): AssetHealthHistoryPoint[] {
@@ -227,6 +307,14 @@ export const predictiveAlertsApi = {
     }
 
     return cepApi.get<AlertStats>('/alerts/stats').then((response) => response.data);
+  },
+
+  getRca: (alert: PredictiveAlert): Promise<RcaResponse> => {
+    if (DEMO_MODE) return Promise.resolve(DEMO_RCA_RESPONSE);
+
+    return cepApi
+      .post<RcaResponse>('/rca', buildRcaRequest(alert))
+      .then((response) => response.data);
   },
 
   acknowledgeAlert: (alertId: string, notes?: string): Promise<void> => {

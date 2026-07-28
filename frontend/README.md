@@ -23,11 +23,11 @@ Create `.env.local` for local development:
 
 ```env
 VITE_API_URL=/api
-VITE_CEP_API_URL=/api/cep
+VITE_CEP_API_URL=/api/v1
 VITE_ASSET_API_URL=/api/asset-service
 ```
 
-In production, point these paths at the backend, CEP, and asset-service routes served inside the factory network. Direct CEP/asset-service URLs must include `/api/v1`; the Vite development server proxies the defaults to ports 8085 and 8084.
+In production, `VITE_CEP_API_URL` points at the authenticated ASP.NET Core `/api/v1` routes. Point the asset-service path at the corresponding route served inside the factory network; direct asset-service URLs must include `/api/v1`.
 
 ## Scripts
 
