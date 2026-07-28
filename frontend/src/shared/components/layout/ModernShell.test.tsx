@@ -169,6 +169,28 @@ describe('ModernShell', () => {
     expect(dataFusionLink).toHaveAttribute('rel', 'noreferrer');
   });
 
+  it('dynamically adapts service links to match the current page hostname when accessed remotely', () => {
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: new URL('http://192.168.1.100:3000/'),
+    });
+
+    try {
+      renderViewerShell();
+      const assistantLink = screen.getByRole('link', { name: 'Foxconn ODC (Odysseus)' });
+      const dataFusionLink = screen.getByRole('link', { name: 'Foxconn Data Fusion' });
+
+      expect(assistantLink).toHaveAttribute('href', 'http://192.168.1.100:7000');
+      expect(dataFusionLink).toHaveAttribute('href', 'http://192.168.1.100:58088');
+    } finally {
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: originalLocation,
+      });
+    }
+  });
+
   it('clears the shared session before local logout', async () => {
     useAuthStore.setState({
       token: 'token',

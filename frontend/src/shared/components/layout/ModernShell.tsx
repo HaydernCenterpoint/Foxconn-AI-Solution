@@ -50,12 +50,32 @@ interface ShellNavigationItem {
   icon: LucideIcon;
 }
 
-const localServiceUrl = (port: number) =>
-  typeof window === 'undefined'
-    ? `http://localhost:${port}`
-    : `${window.location.protocol}//${window.location.hostname}:${port}`;
-const ODYSSEUS_URL = import.meta.env.VITE_ODYSSEUS_URL?.trim() || localServiceUrl(7000);
-const FII_DATA_FUSION_URL = import.meta.env.VITE_FII_DATA_FUSION_URL?.trim() || localServiceUrl(58088);
+function resolveServiceUrl(envUrl: string | undefined, defaultPort: number): string {
+  const trimmed = envUrl?.trim();
+  const currentHostname = typeof window !== 'undefined' && window.location.hostname ? window.location.hostname : 'localhost';
+  const currentProtocol = typeof window !== 'undefined' && window.location.protocol ? window.location.protocol : 'http:';
+
+  if (!trimmed) {
+    return `${currentProtocol}//${currentHostname}:${defaultPort}`;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    if (
+      (url.hostname === 'localhost' || url.hostname === '127.0.0.1') &&
+      currentHostname !== 'localhost' &&
+      currentHostname !== '127.0.0.1'
+    ) {
+      url.hostname = currentHostname;
+      url.protocol = currentProtocol;
+      return url.toString();
+    }
+    return url.toString();
+  } catch {
+    return trimmed;
+  }
+}
+
 const DEMO_MODE = import.meta.env.MODE === 'demo';
 
 const viewerNavigation: ShellNavigationItem[] = [
@@ -188,6 +208,14 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
   const navigation = viewer
     ? viewerNavigation
     : [...adminNavigation, ...(role === 'ADMIN' ? adminOnlyNavigation : [])];
+  const dataFusionUrl = useMemo(
+    () => resolveServiceUrl(import.meta.env.VITE_FII_DATA_FUSION_URL, 58088),
+    [],
+  );
+  const odysseusUrl = useMemo(
+    () => resolveServiceUrl(import.meta.env.VITE_ODYSSEUS_URL, 7000),
+    [],
+  );
   const unreadNotifications = notifications.reduce(
     (count, notification) => count + (notification.read ? 0 : 1),
     0,
@@ -414,7 +442,7 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
 
           <a
             className="modern-shell__nav-link modern-shell__nav-link--assistant"
-            href={FII_DATA_FUSION_URL}
+            href={dataFusionUrl}
             target="_blank"
             rel="noreferrer"
             title={t('navigation.fiiDataFusion')}
@@ -428,7 +456,7 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
 
           <a
             className="modern-shell__nav-link modern-shell__nav-link--assistant"
-            href={ODYSSEUS_URL}
+            href={odysseusUrl}
             target="_blank"
             rel="noreferrer"
             title={t('navigation.fiiAssistant')}
