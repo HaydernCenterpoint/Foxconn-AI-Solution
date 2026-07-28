@@ -5,13 +5,15 @@ from typing import Dict, Any, List
 
 import os
 
-JWT_SECRET = os.getenv("JWT_SECRET", "factory-jwt-secret-key-1234-long-enough-32bytes")
+JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_ALGORITHM = "HS256"
 
 security = HTTPBearer()
 
 def decode_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
     """Decode and validate the JWT from the Authorization header."""
+    if not JWT_SECRET:
+        raise RuntimeError("JWT_SECRET must be supplied by the deployment secret manager")
     token = credentials.credentials
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
