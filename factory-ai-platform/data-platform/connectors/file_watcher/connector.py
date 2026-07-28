@@ -56,6 +56,10 @@ class SyncStatus(Enum):
     PAUSED = "paused"
 
 
+class FileSchemaError(ValueError):
+    """Raised when a CSV file is missing required columns."""
+
+
 @dataclass
 class FileWatcherConfig:
     watch_dirs: list[str] = field(default_factory=lambda: ["./incoming"])
@@ -136,15 +140,27 @@ class FileProcessor:
                 time.sleep(1)
         return False
     
-    def _read_csv(self, filepath: Path) -> list[dict]:
-        """Read CSV file"""
+    def _read_csv(self, filepath: Path, mapping: ColumnMapping) -> list[dict]:
+        """Read CSV file after validating its required headers."""
         rows = []
-        with open(filepath, 'r', encoding='utf-8-sig') as f:
+        with open(filepath, 'r', encoding='utf-8-sig', newline='') as f:
             reader = csv.DictReader(f)
+            headers = reader.fieldnames or []
+            required = {
+                mapping.timestamp_col,
+                mapping.asset_id_col,
+                mapping.metric_col,
+                mapping.value_col,
+            }
+            missing = sorted(required - set(headers))
+            if missing:
+                raise FileSchemaError(
+                    f"CSV file is missing required headers: {', '.join(missing)}"
+                )
             for row in reader:
                 rows.append(dict(row))
         return rows
-    
+
     def _read_excel(self, filepath: Path) -> list[dict]:
         """Read Excel file (requires openpyxl or xlrd)"""
         try:
@@ -171,15 +187,19 @@ class FileProcessor:
         wb.close()
         return rows
     
-    def process_file(self, filepath: Path) -> tuple[list[dict], str]:
+    def process_file(
+        self, filepath: Path, mapping: Optional[ColumnMapping] = None
+    ) -> tuple[list[dict], str]:
         """
         Process a file and return rows.
         Returns (rows, file_type)
         """
         ext = filepath.suffix.lower()
-        
+
         if ext == '.csv':
-            return self._read_csv(filepath), 'csv'
+            if mapping is None:
+                mapping = ColumnMapping()
+            return self._read_csv(filepath, mapping), 'csv'
         elif ext in ('.xlsx', '.xls'):
             return self._read_excel(filepath), 'excel'
         else:
@@ -248,7 +268,9 @@ class FileProcessor:
             return 0, 0
         
         try:
-            rows, file_type = self.process_file(filepath)
+            rows, file_type = self.process_file(filepath, mapping)
+        except FileSchemaError:
+            raise
         except Exception as e:
             logger.error(f"Failed to process file {filepath}: {e}")
             return 0, 0
