@@ -37,7 +37,7 @@ namespace backend.Services
             _logger = logger;
             _captureOptions = captureOptions;
             _eventRuleEngine = eventRuleEngine;
-            
+
             var options = new UnboundedChannelOptions
             {
                 SingleReader = true,
@@ -78,6 +78,31 @@ namespace backend.Services
             }
         }
 
+        public static (long? ProductionCount, double? CycleTime, double? Uph, double? Oee, double? YieldRate) ParseProductionFields(JsonElement payload)
+        {
+            long? productionCount = null;
+            double? cycleTime = null;
+            double? uph = null;
+            double? oee = null;
+            double? yieldRate = null;
+
+            if (!payload.TryGetProperty("production", out var production) || production.ValueKind != JsonValueKind.Object)
+                return (productionCount, cycleTime, uph, oee, yieldRate);
+
+            if (production.TryGetProperty("qty", out var qty) && qty.ValueKind == JsonValueKind.Number && qty.TryGetInt64(out var parsedQuantity))
+                productionCount = parsedQuantity;
+            if (production.TryGetProperty("time", out var time) && time.ValueKind == JsonValueKind.Number && time.TryGetDouble(out var parsedCycleTime) && double.IsFinite(parsedCycleTime))
+                cycleTime = parsedCycleTime;
+            if (production.TryGetProperty("uph", out var uphValue) && uphValue.ValueKind == JsonValueKind.Number && uphValue.TryGetDouble(out var parsedUph) && double.IsFinite(parsedUph))
+                uph = parsedUph;
+            if (production.TryGetProperty("oee", out var oeeValue) && oeeValue.ValueKind == JsonValueKind.Number && oeeValue.TryGetDouble(out var parsedOee) && double.IsFinite(parsedOee))
+                oee = parsedOee;
+            if (production.TryGetProperty("yieldRate", out var yieldValue) && yieldValue.ValueKind == JsonValueKind.Number && yieldValue.TryGetDouble(out var parsedYieldRate) && double.IsFinite(parsedYieldRate))
+                yieldRate = parsedYieldRate;
+
+            return (productionCount, cycleTime, uph, oee, yieldRate);
+        }
+
         private async Task ProcessMessageAsync(string rawJson)
         {
             using var doc = JsonDocument.Parse(rawJson);
@@ -114,24 +139,7 @@ namespace backend.Services
                 plcProp.ValueKind is JsonValueKind.True or JsonValueKind.False &&
                 plcProp.GetBoolean();
 
-            long productionCount = 0;
-            double cycleTime = 0;
-            double? uph = null;
-            double? oee = null;
-            double? yieldRate = null;
-            if (payload.TryGetProperty("production", out var prodProp) && prodProp.ValueKind == JsonValueKind.Object)
-            {
-                if (prodProp.TryGetProperty("qty", out var qtyProp) && qtyProp.TryGetInt64(out var parsedQuantity))
-                    productionCount = parsedQuantity;
-                if (prodProp.TryGetProperty("time", out var timeProp) && timeProp.TryGetDouble(out var parsedCycleTime))
-                    cycleTime = parsedCycleTime;
-                if (prodProp.TryGetProperty("uph", out var uphProp) && uphProp.TryGetDouble(out var parsedUph))
-                    uph = parsedUph;
-                if (prodProp.TryGetProperty("oee", out var oeeProp) && oeeProp.TryGetDouble(out var parsedOee))
-                    oee = parsedOee;
-                if (prodProp.TryGetProperty("yieldRate", out var yieldProp) && yieldProp.TryGetDouble(out var parsedYieldRate))
-                    yieldRate = parsedYieldRate;
-            }
+            var (productionCount, cycleTime, uph, oee, yieldRate) = ParseProductionFields(payload);
 
             bool? alarmActive = null;
             if (payload.TryGetProperty("alarm", out var alarmProp) && alarmProp.ValueKind == JsonValueKind.Object &&
@@ -172,7 +180,7 @@ namespace backend.Services
                         last_plc_data = @raw,
                         created_at = COALESCE(created_at, NOW())
                     WHERE id = @mid";
-                
+
                 await _dbService.ExecuteNonQueryAsync(updateMachineSql, p =>
                 {
                     p.AddWithValue("status", status);
@@ -182,11 +190,11 @@ namespace backend.Services
                 });
 
                 await _dbService.SaveTelemetryHistoryAsync(
-                    machineGuid, status, plcConnected, (int)productionCount, cycleTime,
+                    machineGuid, status, plcConnected, (int)(productionCount ?? 0), cycleTime ?? 0,
                     0.0, 0.0, 0L, payload.GetRawText());
 
                 await _dbService.UpdateHourlyProductionAsync(
-                    machineGuid, (int)productionCount, 0.0, 0.0, 0L);
+                    machineGuid, (int)(productionCount ?? 0), 0.0, 0.0, 0L);
 
                 // ── Write normalized telemetry to telemetry_data table ───────
                 var dataPoints = TelemetrySchemaContract.Normalize(captureInput).ToList();
