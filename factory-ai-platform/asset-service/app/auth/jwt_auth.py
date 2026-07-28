@@ -19,14 +19,14 @@ import os
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Annotated, Callable, List, Optional
+from typing import Annotated, List, Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "factory-jwt-secret-key-1234-long-enough-32bytes")
+JWT_SECRET = os.environ.get("JWT_SECRET")
 JWT_ALGORITHM = "HS256"
 
 
@@ -94,19 +94,51 @@ security = HTTPBearer(auto_error=False)
 
 
 def decode_token(token: str) -> TokenClaims:
+    if not JWT_SECRET:
+        raise RuntimeError("JWT_SECRET must be supplied by the deployment secret manager")
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        subject = payload.get("sub")
+        role = payload.get("role")
+        if not isinstance(subject, str) or not subject:
+            raise JWTError("missing subject")
+        if not isinstance(role, str) or not role:
+            raise JWTError("missing role")
+
+        def scopes(name: str) -> List[str]:
+            value = payload.get(name, [])
+            if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+                raise JWTError(f"invalid {name}")
+            return value
+
         return TokenClaims(
-            sub=payload["sub"],
-            role=Role(payload["role"]),
-            site_scopes=payload.get("siteScopes", []),
-            line_scopes=payload.get("lineScopes", []),
-            machine_scopes=payload.get("machineScopes", []),
+            sub=subject,
+            role=Role(role),
+            site_scopes=scopes("siteScopes"),
+            line_scopes=scopes("lineScopes"),
+            machine_scopes=scopes("machineScopes"),
         )
-    except JWTError as e:
+    except (JWTError, TypeError, ValueError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token: {e}",
+            detail="Invalid authentication token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+def current_user_from_claims(claims: TokenClaims) -> CurrentUser:
+    try:
+        return CurrentUser(
+            user_id=uuid.UUID(claims.sub),
+            role=claims.role,
+            site_scopes=claims.site_scopes,
+            line_scopes=claims.line_scopes,
+            machine_scopes=claims.machine_scopes,
+        )
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -122,20 +154,7 @@ async def get_current_user(
         )
 
     claims = decode_token(credentials.credentials)
-    try:
-        return CurrentUser(
-            user_id=uuid.UUID(claims.sub),
-            role=claims.role,
-            site_scopes=claims.site_scopes,
-            line_scopes=claims.line_scopes,
-            machine_scopes=claims.machine_scopes,
-        )
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid user ID in token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    return current_user_from_claims(claims)
 
 
 async def get_optional_user(
@@ -143,17 +162,8 @@ async def get_optional_user(
 ) -> Optional[CurrentUser]:
     if credentials is None:
         return None
-    try:
-        claims = decode_token(credentials.credentials)
-        return CurrentUser(
-            user_id=uuid.UUID(claims.sub),
-            role=claims.role,
-            site_scopes=claims.site_scopes,
-            line_scopes=claims.line_scopes,
-            machine_scopes=claims.machine_scopes,
-        )
-    except Exception:
-        return None
+    claims = decode_token(credentials.credentials)
+    return current_user_from_claims(claims)
 
 
 def require_roles(*roles: Role):
