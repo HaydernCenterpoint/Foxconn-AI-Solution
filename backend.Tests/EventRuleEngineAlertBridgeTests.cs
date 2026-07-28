@@ -124,5 +124,18 @@ public class EventRuleEngineAlertBridgeTests
         Assert.Contains("correlation", deferredTypes);
         Assert.Contains("comparison", deferredTypes);
         Assert.Contains("runtime_threshold", deferredTypes);
+        Assert.All(
+            rules.Where(rule => !string.Equals(
+                rule.GetProperty("condition").GetProperty("type").GetString(),
+                "threshold",
+                StringComparison.OrdinalIgnoreCase)),
+            rule =>
+            {
+                Assert.False(rule.GetProperty("enabled").GetBoolean());
+                Assert.StartsWith(
+                    "DEFERRED:",
+                    rule.GetProperty("description").GetString(),
+                    StringComparison.Ordinal);
+            });
     }
 }
