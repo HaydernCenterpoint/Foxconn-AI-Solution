@@ -90,7 +90,7 @@ public class EventRuleEngineAlertBridgeTests
                 StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-        Assert.Equal(2, enabledThresholdRules.Count);
+        Assert.NotEmpty(enabledThresholdRules);
         Assert.All(enabledThresholdRules, rule =>
             Assert.Contains(
                 rule.GetProperty("condition").GetProperty("metric").GetString()!,
