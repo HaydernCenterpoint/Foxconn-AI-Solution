@@ -11,7 +11,7 @@
   box-sizing: border-box;
   display: grid;
   min-height: 100dvh;
-  grid-template-columns: 232px minmax(0, 1fr);
+  grid-template-columns: 260px minmax(0, 1fr);
   gap: 16px;
   overflow: hidden;
   padding: 16px;
@@ -151,6 +151,7 @@
   border-color: rgb(239 68 68 / 24%);
   color: #f6f6f6;
   background: rgb(239 68 68 / 7%);
+  font-size: 13px;
 }
 
 .modern-shell__nav-link--assistant > svg:first-child {
@@ -623,7 +624,7 @@
 
 @media (min-width: 1440px) {
   .modern-shell {
-    grid-template-columns: 209px minmax(0, 1fr);
+    grid-template-columns: 260px minmax(0, 1fr);
     gap: 15px;
     padding-inline: 14px;
   }
