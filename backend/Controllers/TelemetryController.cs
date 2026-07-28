@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Microsoft.AspNetCore.Authorization;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using backend.Services;
 using Mkz.Fusion.Contracts;
@@ -23,7 +23,7 @@ namespace backend.Controllers
         /// <summary>
         /// GET /api/telemetry/live
         /// Returns the latest raw telemetry snapshot per connected PLC client.
-        /// No authentication required – public endpoint for the live monitor screen.
+        /// Requires an authenticated FII session.
         /// </summary>
         [HttpGet("live")]
         public IActionResult GetLive()
@@ -50,10 +50,10 @@ namespace backend.Controllers
         /// <summary>
         /// GET /api/telemetry/log?count=50
         /// Returns the last N raw messages received across all clients (rolling log).
-        /// No authentication required.
+        /// Requires an authenticated FII session.
         /// </summary>
         [HttpGet("log")]
-        public IActionResult GetLog([FromQuery] int count = 50)
+        public IActionResult GetLog([FromQuery, Range(1, 200)] int count = 50)
         {
             var log = _store.GetLog(Math.Min(count, 200));
             var result = log.Select(s =>
@@ -75,7 +75,9 @@ namespace backend.Controllers
         }
 
         [HttpGet("timescale/{machineId:guid}")]
-        public async Task<IActionResult> GetTimescalePoints(Guid machineId, [FromQuery] int limit = 100)
+        public async Task<IActionResult> GetTimescalePoints(
+            Guid machineId,
+            [FromQuery, Range(1, 1000)] int limit = 100)
         {
             if (!_timescaleTelemetry.IsEnabled)
             {
@@ -86,7 +88,9 @@ namespace backend.Controllers
         }
 
         [HttpGet("timescale/{machineId:guid}/hourly")]
-        public async Task<IActionResult> GetTimescaleHourlyRollups(Guid machineId, [FromQuery] int limit = 48)
+        public async Task<IActionResult> GetTimescaleHourlyRollups(
+            Guid machineId,
+            [FromQuery, Range(1, 1000)] int limit = 48)
         {
             if (!_timescaleTelemetry.IsEnabled)
             {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using backend.Services;
@@ -81,6 +82,18 @@ namespace backend.Controllers
             {
                 var fromDate = from ?? DateTime.UtcNow.AddDays(-7);
                 var toDate = to ?? DateTime.UtcNow;
+                if (fromDate > toDate)
+                {
+                    return Problem(
+                        statusCode: StatusCodes.Status400BadRequest,
+                        detail: "from must be before or equal to to.");
+                }
+                if (toDate - fromDate > TimeSpan.FromDays(31))
+                {
+                    return Problem(
+                        statusCode: StatusCodes.Status400BadRequest,
+                        detail: "The query window cannot exceed 31 days.");
+                }
 
                 var history = await _healthService.GetHealthScoreHistoryAsync(assetId, fromDate, toDate);
 
@@ -101,6 +114,7 @@ namespace backend.Controllers
         }
 
         [HttpPost("compute")]
+        [Authorize(Roles = "ADMIN,ENGINEER")]
         public async Task<IActionResult> ComputeHealthScore(Guid assetId)
         {
             try

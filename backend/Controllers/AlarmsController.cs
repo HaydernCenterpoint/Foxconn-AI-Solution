@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -27,7 +28,7 @@ namespace backend.Controllers
         public async Task<IActionResult> GetAlarms(
             [FromQuery] string? status = null,
             [FromQuery] string? severity = null,
-            [FromQuery] int limit = 100)
+            [FromQuery, Range(1, 1000)] int limit = 100)
         {
             try
             {

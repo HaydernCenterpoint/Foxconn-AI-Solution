@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using backend.Services;
@@ -22,6 +23,7 @@ namespace backend.Controllers
         }
 
         [HttpPost("anomaly")]
+        [Authorize(Roles = "ADMIN,ENGINEER")]
         public async Task<IActionResult> DetectAnomaly([FromBody] AnomalyRequest request)
         {
             try

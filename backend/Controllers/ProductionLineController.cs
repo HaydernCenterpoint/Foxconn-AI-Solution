@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -25,8 +26,8 @@ namespace backend.Controllers
 
         // ── GET /api/production-lines ─────────────────────────────────────────────────
         [HttpGet]
-        [AllowAnonymous]
-        public async Task<IActionResult> GetLines()
+        public async Task<IActionResult> GetLines(
+            [FromQuery, Range(1, 1000)] int limit = 500)
         {
             var lines = new List<object>();
             try
@@ -40,9 +41,11 @@ namespace backend.Controllers
                     FROM production_lines pl
                     LEFT JOIN line_machines lm ON lm.line_id = pl.id
                     GROUP BY pl.id, pl.name, pl.description, pl.created_at
-                    ORDER BY pl.created_at ASC";
+                    ORDER BY pl.created_at ASC
+                    LIMIT @limit";
 
                 using var cmd = new NpgsqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("limit", limit);
                 using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
                 {
@@ -163,7 +166,6 @@ namespace backend.Controllers
 
         // ── GET /api/production-lines/{id}/machines ───────────────────────────────────
         [HttpGet("{id}/machines")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetLineMachines(Guid id)
         {
             var machines = new List<object>();

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -26,8 +27,8 @@ namespace backend.Controllers
 
         // ── GET /api/machines ────────────────────────────────────────────────────────
         [HttpGet]
-        [AllowAnonymous]
-        public async Task<IActionResult> GetAllMachines()
+        public async Task<IActionResult> GetAllMachines(
+            [FromQuery, Range(1, 1000)] int limit = 500)
         {
             var machines = new List<object>();
             try
@@ -50,9 +51,11 @@ namespace backend.Controllers
                              m.plc_connected, m.client_id, m.approval_status,
                              m.cpu_percent, m.ram_percent, m.uptime_seconds,
                              m.last_heartbeat, m.created_at, m.last_plc_data
-                    ORDER BY COALESCE(MIN(lm.sequence_order), 999999) ASC, m.created_at ASC";
+                    ORDER BY COALESCE(MIN(lm.sequence_order), 999999) ASC, m.created_at ASC
+                    LIMIT @limit";
 
                 using var cmd = new NpgsqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("limit", limit);
                 using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
                 {
@@ -112,7 +115,6 @@ namespace backend.Controllers
 
         // ── GET /api/machines/{id} ───────────────────────────────────────────────────
         [HttpGet("{id}")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetMachineById(Guid id)
         {
             try
@@ -428,7 +430,6 @@ namespace backend.Controllers
 
         // ── GET /api/machines/{id}/hourly-production ─────────────────────────────────
         [HttpGet("{id}/hourly-production")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetMachineHourlyProduction(Guid id)
         {
             var history = new List<object>();

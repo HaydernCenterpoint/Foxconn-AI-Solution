@@ -21,14 +21,28 @@ namespace backend.Services
             _logger = logger;
         }
 
+        public static string NormalizeSeverity(string severity) =>
+            severity?.Trim().ToUpperInvariant() switch
+            {
+                "EMERGENCY" or "CRITICAL" => "critical",
+                "HIGH" => "high",
+                "WARNING" or "MEDIUM" => "medium",
+                "LOW" => "low",
+                "INFO" => "info",
+                _ => throw new ArgumentException("Unsupported alert severity.", nameof(severity))
+            };
+
         public async Task<Guid> CreateAlertAsync(
             Guid eventId,
             Guid assetId,
             string ruleId,
             string severity,
             string title,
-            string description = null,
-            object evidence = null)
+            string? description = null,
+            object? evidence = null,
+            string? eventType = null,
+            string? source = null,
+            DateTimeOffset? occurredAt = null)
         {
             try
             {
@@ -50,6 +64,26 @@ namespace backend.Services
 
                 var alertId = Guid.NewGuid();
                 var evidenceJson = evidence != null ? JsonSerializer.Serialize(evidence, JsonOptions) : "{}";
+                var normalizedSeverity = NormalizeSeverity(severity);
+
+                var eventSql = @"
+                    INSERT INTO events
+                        (event_id, occurred_at, asset_id, event_type, severity, source, payload)
+                    VALUES
+                        (@event_id, @occurred_at, @asset_id, @event_type, @severity, @source, @payload::jsonb)
+                    ON CONFLICT (event_id) DO NOTHING";
+
+                await using (var eventCommand = new NpgsqlCommand(eventSql, conn))
+                {
+                    eventCommand.Parameters.AddWithValue("event_id", eventId);
+                    eventCommand.Parameters.AddWithValue("occurred_at", occurredAt ?? DateTimeOffset.UtcNow);
+                    eventCommand.Parameters.AddWithValue("asset_id", assetId);
+                    eventCommand.Parameters.AddWithValue("event_type", eventType ?? "alert");
+                    eventCommand.Parameters.AddWithValue("severity", normalizedSeverity);
+                    eventCommand.Parameters.AddWithValue("source", source ?? "alert-service");
+                    eventCommand.Parameters.AddWithValue("payload", evidenceJson);
+                    await eventCommand.ExecuteNonQueryAsync();
+                }
 
                 var sql = @"
                     INSERT INTO alerts (alert_id, event_id, asset_id, rule_id, status, severity, title, description, evidence)
@@ -62,7 +96,7 @@ namespace backend.Services
                 cmd.Parameters.AddWithValue("asset_id", assetId);
                 cmd.Parameters.AddWithValue("rule_id", ruleId);
                 cmd.Parameters.AddWithValue("status", status);
-                cmd.Parameters.AddWithValue("severity", severity);
+                cmd.Parameters.AddWithValue("severity", normalizedSeverity);
                 cmd.Parameters.AddWithValue("title", title);
                 cmd.Parameters.AddWithValue("description", description ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("evidence", evidenceJson);

@@ -1,10 +1,13 @@
 ﻿using System.Text.Json;
 using backend.Configuration;
+using backend.Controllers;
 using backend.Middleware;
 using backend.Services;
 using backend.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -49,7 +52,10 @@ var mqttEncryptionKey = builder.Configuration["Mqtt:EncryptionKey"]
 CryptoHelper.Initialize(mqttEncryptionKey);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add(new ProblemDetailsResultFilter());
+});
 builder.Services.Configure<OpenDataFusionCaptureOptions>(
     builder.Configuration.GetSection(OpenDataFusionCaptureOptions.SectionName));
 builder.Services.Configure<TimescaleOptions>(
@@ -84,6 +90,8 @@ builder.Services.AddSwaggerGen(c =>
 
 // RFC 7807 ProblemDetails for standardized API error responses
 builder.Services.AddProblemDetails();
+builder.Services.AddFiiApiRateLimiting(builder.Configuration);
+builder.Services.AddFiiForwardedHeaders(builder.Configuration);
 
 // Register Custom Services
 builder.Services.AddSingleton<DatabaseService>();
@@ -99,6 +107,12 @@ builder.Services.AddHttpClient(CepStagingPublisher.HttpClientName, (serviceProvi
 
     client.Timeout = TimeSpan.FromSeconds(Math.Clamp(options.RequestTimeoutSeconds, 1, 30));
 });
+builder.Services.AddHttpClient(ConnectorIntegrationController.HttpClientName, client =>
+{
+    var baseUrl = builder.Configuration["ConnectorApi:BaseUrl"] ?? "http://127.0.0.1:8084";
+    client.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 builder.Services.AddSingleton<CepStagingPublisher>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CepStagingPublisher>());
 builder.Services.AddSingleton<TelemetryStore>();
@@ -106,9 +120,11 @@ builder.Services.AddSingleton<IAuditService, AuditService>();
 
 // Phase 2: Product Intelligence Services
 builder.Services.AddSingleton<AlertService>();
+builder.Services.AddSingleton<IRcaAlertContextReader, RcaAlertContextReader>();
 builder.Services.AddSingleton<HealthScoringService>();
 builder.Services.AddSingleton<PredictiveService>();
 builder.Services.AddHostedService<HealthScoringJob>();
+builder.Services.AddHostedService<BatchPredictionJob>();
 
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<TelemetryIngestionService>();
@@ -129,14 +145,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.Events = new JwtBearerEvents
-    {
-        OnMessageReceived = context =>
-        {
-            context.Token = FiiSso.CookieToken(context.Request);
-            return Task.CompletedTask;
-        },
-    };
+    options.Events = ApiSecurity.CreateJwtBearerEvents();
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -150,7 +159,8 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorizationBuilder()
+    .SetFallbackPolicy(ApiSecurity.AuthenticatedFallbackPolicy);
 
 // Configure CORS Whitelist
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
@@ -174,6 +184,7 @@ builder.Services.AddHealthChecks()
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+app.UseForwardedHeaders();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
@@ -182,13 +193,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Foxconn API v1"));
 }
 
+app.UseRouting();
 app.UseCors();
 
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<backend.Hubs.TelemetryHub>("/hubs/telemetry");
+app.MapHub<backend.Hubs.TelemetryHub>("/hubs/telemetry").RequireAuthorization();
 
 // Map Health Checks Endpoint
 app.MapHealthChecks("/api/health", new HealthCheckOptions
@@ -203,6 +216,8 @@ app.MapHealthChecks("/api/health", new HealthCheckOptions
         });
         await context.Response.WriteAsync(result);
     }
-});
+})
+.AllowAnonymous()
+.RequireRateLimiting(ApiSecurity.HealthRateLimitPolicy);
 
 app.Run();
