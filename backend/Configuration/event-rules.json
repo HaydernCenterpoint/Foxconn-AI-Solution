@@ -6,8 +6,8 @@
     {
       "id": "rule-temp-critical",
       "name": "Temperature Critical Threshold",
-      "description": "Fires when machine temperature exceeds 85°C",
-      "enabled": true,
+      "description": "DEFERRED: telemetry normalization does not emit temperature metrics. Fires when machine temperature exceeds 85°C",
+      "enabled": false,
       "eventType": "THRESHOLD_BREACH",
       "severity": "CRITICAL",
       "condition": {
@@ -22,8 +22,8 @@
     {
       "id": "rule-temp-warning",
       "name": "Temperature Warning",
-      "description": "Fires when machine temperature exceeds 70°C",
-      "enabled": true,
+      "description": "DEFERRED: telemetry normalization does not emit temperature metrics. Fires when machine temperature exceeds 70°C",
+      "enabled": false,
       "eventType": "THRESHOLD_BREACH",
       "severity": "WARNING",
       "condition": {
@@ -38,8 +38,8 @@
     {
       "id": "rule-vibration-high",
       "name": "High Vibration Alert",
-      "description": "Fires when vibration sensor reading exceeds 350 Hz",
-      "enabled": true,
+      "description": "DEFERRED: telemetry normalization does not emit vibration metrics. Fires when vibration sensor reading exceeds 350 Hz",
+      "enabled": false,
       "eventType": "THRESHOLD_BREACH",
       "severity": "WARNING",
       "condition": {
@@ -54,8 +54,8 @@
     {
       "id": "rule-pressure-low",
       "name": "Low Pressure Alert",
-      "description": "Fires when pressure drops below 1.0 bar",
-      "enabled": true,
+      "description": "DEFERRED: telemetry normalization does not emit pressure metrics. Fires when pressure drops below 1.0 bar",
+      "enabled": false,
       "eventType": "THRESHOLD_BREACH",
       "severity": "CRITICAL",
       "condition": {
@@ -150,8 +150,8 @@
     {
       "id": "rule-cpu-high",
       "name": "High CPU Usage",
-      "description": "Fires when machine controller CPU exceeds 90%",
-      "enabled": true,
+      "description": "DEFERRED: telemetry normalization does not emit cpu_percent metrics. Fires when machine controller CPU exceeds 90%",
+      "enabled": false,
       "eventType": "THRESHOLD_BREACH",
       "severity": "WARNING",
       "condition": {
