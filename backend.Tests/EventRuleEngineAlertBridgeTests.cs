@@ -1,4 +1,6 @@
+using System.Text.Json;
 using backend.Services;
+using Mkz.Fusion.Contracts;
 
 namespace backend.Tests;
 
@@ -50,7 +52,7 @@ public class EventRuleEngineAlertBridgeTests
     }
 
     [Fact]
-    public void EventRulesJson_HasAtLeastFiveEnabledThresholdRules()
+    public void EventRulesJson_EnabledThresholdMetricsAreEmittedByTelemetryContract()
     {
         var path = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
@@ -59,29 +61,81 @@ public class EventRuleEngineAlertBridgeTests
 
         Assert.True(File.Exists(path), $"Expected event-rules.json at {path}");
 
-        using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
-        var rules = doc.RootElement.GetProperty("rules").EnumerateArray().ToList();
+        var input = new TelemetryCaptureInput(
+            Guid.NewGuid(),
+            "{}",
+            1,
+            DateTimeOffset.UnixEpoch,
+            "message-1",
+            null,
+            "RUNNING",
+            true,
+            100,
+            10,
+            600,
+            60,
+            95,
+            false);
+        var emittedMetrics = TelemetrySchemaContract.Normalize(input)
+            .Select(point => point.Metric)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var enabledThreshold = rules
-            .Where(r => r.GetProperty("enabled").GetBoolean())
-            .Where(r => string.Equals(
-                r.GetProperty("condition").GetProperty("type").GetString(),
+        using var doc = JsonDocument.Parse(File.ReadAllText(path));
+        var rules = doc.RootElement.GetProperty("rules").EnumerateArray().ToList();
+        var enabledThresholdRules = rules
+            .Where(rule => rule.GetProperty("enabled").GetBoolean())
+            .Where(rule => string.Equals(
+                rule.GetProperty("condition").GetProperty("type").GetString(),
                 "threshold",
                 StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-        Assert.True(enabledThreshold.Count >= 5,
-            $"Expected >= 5 enabled threshold rules, found {enabledThreshold.Count}");
+        Assert.NotEmpty(enabledThresholdRules);
+        Assert.All(enabledThresholdRules, rule =>
+            Assert.Contains(
+                rule.GetProperty("condition").GetProperty("metric").GetString()!,
+                emittedMetrics,
+                StringComparer.OrdinalIgnoreCase));
+
+        foreach (var deferredRuleId in new[]
+        {
+            "rule-temp-critical",
+            "rule-temp-warning",
+            "rule-vibration-high",
+            "rule-pressure-low",
+            "rule-cpu-high",
+        })
+        {
+            var rule = rules.Single(candidate => candidate.GetProperty("id").GetString() == deferredRuleId);
+            Assert.False(rule.GetProperty("enabled").GetBoolean(), deferredRuleId);
+            Assert.StartsWith(
+                "DEFERRED:",
+                rule.GetProperty("description").GetString(),
+                StringComparison.Ordinal);
+        }
 
         // Non-threshold rule types remain declared but deferred for engine support.
         var deferredTypes = rules
-            .Select(r => r.GetProperty("condition").GetProperty("type").GetString())
-            .Where(t => !string.Equals(t, "threshold", StringComparison.OrdinalIgnoreCase))
+            .Select(rule => rule.GetProperty("condition").GetProperty("type").GetString())
+            .Where(type => !string.Equals(type, "threshold", StringComparison.OrdinalIgnoreCase))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         Assert.Contains("correlation", deferredTypes);
         Assert.Contains("comparison", deferredTypes);
         Assert.Contains("runtime_threshold", deferredTypes);
+        Assert.All(
+            rules.Where(rule => !string.Equals(
+                rule.GetProperty("condition").GetProperty("type").GetString(),
+                "threshold",
+                StringComparison.OrdinalIgnoreCase)),
+            rule =>
+            {
+                Assert.False(rule.GetProperty("enabled").GetBoolean());
+                Assert.StartsWith(
+                    "DEFERRED:",
+                    rule.GetProperty("description").GetString(),
+                    StringComparison.Ordinal);
+            });
     }
 }
