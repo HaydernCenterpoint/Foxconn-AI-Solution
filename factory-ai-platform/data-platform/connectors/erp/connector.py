@@ -27,9 +27,12 @@ from pathlib import Path
 from typing import Optional, Any
 import threading
 import traceback
+from uuid import UUID
 
 import yaml
 import requests
+import psycopg2
+from psycopg2.extras import Json
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -252,18 +255,172 @@ class ERPConnector:
             with open(self.state_file, 'w') as f:
                 json.dump(data, f, indent=2, default=str)
     
-    def _write_dlq(self, entity: str, records: list, error: str):
-        """Write failed records to dead letter queue"""
-        dlq_file = self._dlq_dir / f"erp_{entity}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        with open(dlq_file, 'w') as f:
-            json.dump({
-                'entity': entity,
-                'error': error,
-                'count': len(records),
-                'timestamp': datetime.now().isoformat(),
-                'records': records[:100]  # Store first 100 as sample
-            }, f, indent=2, default=str)
-        logger.warning(f"Dead letter queue written: {dlq_file}")
+    def _get_db_connection(self):
+        """Create a short-lived connection for connector metadata."""
+        def setting(name: str, default: str) -> str:
+            return os.getenv(
+                f'CONNECTOR_{name}',
+                os.getenv(f'TS_{name}', os.getenv(name, default)),
+            )
+
+        return psycopg2.connect(
+            host=setting('POSTGRES_HOST', 'localhost'),
+            port=int(setting('POSTGRES_PORT', '5432')),
+            dbname=setting('POSTGRES_DB', 'factory_db'),
+            user=setting('POSTGRES_USER', 'factory_user'),
+            password=setting('POSTGRES_PASSWORD', ''),
+            connect_timeout=int(os.getenv('POSTGRES_CONNECT_TIMEOUT', '3')),
+        )
+
+    def _persist_dlq(self, entity: str, records: list, error: str, stage: str):
+        """Persist failures using the shared connector_dlq schema."""
+        conn = self._get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO connector_definitions (name, connector_type, config)
+                    VALUES ('erp', 'erp', %s)
+                    ON CONFLICT (name) DO UPDATE SET
+                        connector_type = EXCLUDED.connector_type,
+                        updated_at = CURRENT_TIMESTAMP
+                    RETURNING id
+                    """,
+                    (Json({'api_url': self.config.api_url}),),
+                )
+                connector_id = cur.fetchone()[0]
+                failed_records = records or [None]
+                for record in failed_records:
+                    cur.execute(
+                        """
+                        INSERT INTO connector_dlq
+                            (connector_id, reason, record_data)
+                        VALUES (%s, %s, %s)
+                        """,
+                        (
+                            connector_id,
+                            str(error)[:255] or 'Unknown connector error',
+                            Json({
+                                'entity': entity,
+                                'stage': stage,
+                                'record': record,
+                            }),
+                        ),
+                    )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+    def _write_dlq(
+        self,
+        entity: str,
+        records: list,
+        error: str,
+        stage: str = 'write',
+    ):
+        """Persist failed records to the database, with a local JSON fallback."""
+        try:
+            self._persist_dlq(entity, records, error, stage)
+            logger.warning(
+                "Persisted %s ERP %s failure(s) to connector_dlq",
+                max(len(records), 1),
+                entity,
+            )
+            return
+        except Exception as db_error:
+            logger.warning("connector_dlq unavailable; using JSON fallback: %s", db_error)
+
+        try:
+            timestamp = datetime.now()
+            dlq_file = self._dlq_dir / (
+                f"erp_{entity}_{timestamp.strftime('%Y%m%d_%H%M%S_%f')}.json"
+            )
+            with open(dlq_file, 'w') as f:
+                json.dump({
+                    'entity': entity,
+                    'stage': stage,
+                    'error': error,
+                    'count': len(records),
+                    'timestamp': timestamp.isoformat(),
+                    'records': records
+                }, f, indent=2, default=str)
+            logger.warning("Dead letter queue fallback written: %s", dlq_file)
+        except Exception as fallback_error:
+            logger.error("Failed to persist ERP dead letter entry: %s", fallback_error)
+
+    def _transform_record(self, entity: str, record: dict) -> dict:
+        transformers = {
+            'production_orders': self._transform_production_order,
+            'material_consumption': self._transform_material_consumption,
+            'downtime_reasons': self._transform_downtime_reason,
+            'quality_data': self._transform_quality_data,
+        }
+        try:
+            transformer = transformers[entity]
+        except KeyError as exc:
+            raise ValueError(f"Unsupported ERP entity: {entity}") from exc
+        return transformer(record)
+
+    def _resolve_asset_id(self, external_id: Any) -> Optional[UUID]:
+        """Resolve an ERP machine/line identifier to an existing canonical asset."""
+        if external_id is None or not str(external_id).strip():
+            return None
+
+        external_id = str(external_id).strip()
+        conn = self._get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                try:
+                    canonical_id = UUID(external_id)
+                except ValueError:
+                    canonical_id = None
+
+                if canonical_id is not None:
+                    cur.execute(
+                        "SELECT id FROM assets WHERE id = %s LIMIT 1",
+                        (str(canonical_id),),
+                    )
+                    row = cur.fetchone()
+                    if row is not None:
+                        return UUID(str(row[0]))
+
+                cur.execute(
+                    """
+                    SELECT mapping.asset_id
+                    FROM asset_mapping_rules mapping
+                    JOIN assets asset ON asset.id = mapping.asset_id
+                    LEFT JOIN connector_definitions connector
+                        ON connector.id = mapping.connector_id
+                    WHERE mapping.external_system = 'erp'
+                      AND mapping.external_id = %s
+                      AND mapping.active
+                      AND (
+                          mapping.connector_id IS NULL
+                          OR connector.name = 'erp'
+                      )
+                    ORDER BY (connector.name = 'erp') DESC NULLS LAST
+                    LIMIT 1
+                    """,
+                    (external_id,),
+                )
+                row = cur.fetchone()
+                return UUID(str(row[0])) if row is not None else None
+        finally:
+            conn.close()
+
+    def retry_dlq_record(self, record_data: dict):
+        """Retry one database DLQ payload without running a full sync."""
+        entity = record_data.get('entity')
+        record = record_data.get('record')
+        stage = record_data.get('stage')
+        if not entity or record is None:
+            raise ValueError("DLQ entry does not contain a retryable ERP record")
+
+        event = record if stage == 'write' else self._transform_record(entity, record)
+        self._write_events([event])
     
     def _transform_production_order(self, record: dict) -> dict:
         """Transform ERP production order to event"""
@@ -362,71 +519,61 @@ class ERPConnector:
             records = self.client.fetch_all(entity, since)
         except Exception as e:
             logger.error(f"Failed to fetch {entity}: {e}")
-            self._write_dlq(entity, [], str(e))
+            self._write_dlq(entity, [], str(e), stage='fetch')
             return 0, 1
         
         if not records:
             return 0, 0
         
-        # Transform records
         transformed = []
-        if entity == 'production_orders':
-            for rec in records:
-                try:
-                    transformed.append(self._transform_production_order(rec))
-                except Exception as e:
-                    logger.warning(f"Transform failed for {entity}: {e}")
-                    self.progress.errors += 1
-        
-        elif entity == 'material_consumption':
-            for rec in records:
-                try:
-                    transformed.append(self._transform_material_consumption(rec))
-                except Exception as e:
-                    logger.warning(f"Transform failed: {e}")
-                    self.progress.errors += 1
-        
-        elif entity == 'downtime_reasons':
-            for rec in records:
-                try:
-                    transformed.append(self._transform_downtime_reason(rec))
-                except Exception as e:
-                    logger.warning(f"Transform failed: {e}")
-                    self.progress.errors += 1
-        
-        elif entity == 'quality_data':
-            for rec in records:
-                try:
-                    transformed.append(self._transform_quality_data(rec))
-                except Exception as e:
-                    logger.warning(f"Transform failed: {e}")
-                    self.progress.errors += 1
+        transform_errors = 0
+        for record in records:
+            try:
+                transformed.append(self._transform_record(entity, record))
+            except Exception as e:
+                logger.warning("Transform failed for %s: %s", entity, e)
+                self._write_dlq(entity, [record], str(e), stage='transform')
+                transform_errors += 1
         
         # Write to TimescaleDB via dualwrite
         try:
             self._write_events(transformed)
             synced = len(transformed)
             logger.info(f"Synced {synced} {entity} records")
-            return synced, 0
+            return synced, transform_errors
         except Exception as e:
             logger.error(f"Failed to write {entity}: {e}")
-            self._write_dlq(entity, transformed, str(e))
-            return 0, len(transformed)
+            self._write_dlq(entity, transformed, str(e), stage='write')
+            return 0, len(transformed) + transform_errors
     
     def _write_events(self, events: list):
         """Write events to TimescaleDB using dualwrite"""
         from dualwrite import write_event
-        import uuid
-        
+
+        resolved_events = []
         for event in events:
-            write_event(
+            external_id = event.get('asset_id')
+            asset_id = self._resolve_asset_id(external_id)
+            if asset_id is None:
+                raise ValueError(
+                    f"Unresolved ERP asset mapping for {external_id!r}"
+                )
+            resolved_events.append((event, asset_id))
+
+        for event, asset_id in resolved_events:
+            written = write_event(
                 timestamp=datetime.now(),
-                asset_id=uuid.UUID(event.get('asset_id') or '00000000-0000-0000-0000-000000000000'),
+                asset_id=asset_id,
                 event_type=event['event_type'],
                 severity=event['severity'],
                 payload=event['payload'],
-                source='erp'
+                source='erp',
+                flush=True,
             )
+            if not written:
+                raise RuntimeError(
+                    f"Dual-write rejected ERP event {event['event_type']!r}"
+                )
     
     def sync_once(self) -> SyncProgress:
         """Run a single sync cycle"""

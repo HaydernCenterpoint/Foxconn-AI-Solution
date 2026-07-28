@@ -1,7 +1,6 @@
-# TimescaleDB Migration Scripts for MKZ Factory Monitor
-# Version: 1.0.0
-# Target: TimescaleDB 2.x on PostgreSQL 16
-# Run order: 001_base_extensions.sql -> 002_telemetry_schema.sql -> 003_policies.sql -> 004_continuous_aggregates.sql
+-- TimescaleDB Migration Scripts for MKZ Factory Monitor
+-- Version: 1.0.0
+-- Target: TimescaleDB 2.x on PostgreSQL 16+
 
 -- ============================================================
 -- MIGRATION 001: Enable TimescaleDB Extension
@@ -120,16 +119,34 @@ CREATE INDEX IF NOT EXISTS idx_assets_parent
 CREATE INDEX IF NOT EXISTS idx_assets_type
     ON assets (type);
 
--- Foreign key from telemetry to assets (deferrable for migration)
-ALTER TABLE telemetry
-    ADD CONSTRAINT fk_telemetry_asset
-    FOREIGN KEY (asset_id) REFERENCES assets(id)
-    DEFERRABLE INITIALLY DEFERRED;
+-- Foreign keys are installed idempotently so the migration can be replayed.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conrelid = 'telemetry'::regclass
+          AND conname = 'fk_telemetry_asset'
+    ) THEN
+        ALTER TABLE telemetry
+            ADD CONSTRAINT fk_telemetry_asset
+            FOREIGN KEY (asset_id) REFERENCES assets(id)
+            DEFERRABLE INITIALLY DEFERRED;
+    END IF;
 
-ALTER TABLE events
-    ADD CONSTRAINT fk_events_asset
-    FOREIGN KEY (asset_id) REFERENCES assets(id)
-    DEFERRABLE INITIALLY DEFERRED;
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conrelid = 'events'::regclass
+          AND conname = 'fk_events_asset'
+    ) THEN
+        ALTER TABLE events
+            ADD CONSTRAINT fk_events_asset
+            FOREIGN KEY (asset_id) REFERENCES assets(id)
+            DEFERRABLE INITIALLY DEFERRED;
+    END IF;
+END
+$$;
 
 -- ─────────────────────────────────────────────────────────
 -- PART D: Migration Tracking Table
@@ -161,23 +178,23 @@ VALUES ('003_policies', 'applied')
 ON CONFLICT (step) DO NOTHING;
 
 COMMIT;
+BEGIN;
 
 -- ─────────────────────────────────────────────────────────
--- PART A: Compression Policy
--- Chunk interval 1 day, compress after 7 days (recent data stays uncompressed)
+-- PART A: Columnstore Policy
+-- Chunk interval 1 day, convert after 7 days (recent data stays rowstore)
 -- ─────────────────────────────────────────────────────────
 
-SELECT add_compression_policy(
-    'telemetry',
-    INTERVAL '7 days',
-    if_not_exists => TRUE
+ALTER TABLE telemetry SET (
+    timescaledb.enable_columnstore,
+    timescaledb.segmentby = 'asset_id, metric',
+    timescaledb.orderby = 'time DESC'
 );
 
--- Use segmentby for asset_id + metric (common query pattern)
-ALTER TABLE telemetry SET (
-    timescaledb.compression,
-    timescaledb.compression.segmentby = 'asset_id, metric',
-    timescaledb.compression.orderby = 'time DESC'
+CALL add_columnstore_policy(
+    'telemetry',
+    after => INTERVAL '7 days',
+    if_not_exists => TRUE
 );
 
 -- ─────────────────────────────────────────────────────────
@@ -191,22 +208,9 @@ SELECT add_retention_policy(
     if_not_exists => TRUE
 );
 
--- Events retention: 1 year (longer for compliance)
-SELECT add_retention_policy(
-    'events',
-    INTERVAL '1 year',
-    if_not_exists => TRUE
-);
-
 -- ─────────────────────────────────────────────────────────
--- PART C: Reorder Policy (keep hot chunks optimized)
+-- Columnstore ordering is configured with the policy above.
 -- ─────────────────────────────────────────────────────────
-
-SELECT add_reorder_policy(
-    'telemetry',
-    'idx_telemetry_asset_metric',
-    if_not_exists => TRUE
-);
 
 COMMIT;
 
@@ -222,6 +226,7 @@ VALUES ('004_continuous_aggregates', 'applied')
 ON CONFLICT (step) DO NOTHING;
 
 COMMIT;
+BEGIN;
 
 -- ─────────────────────────────────────────────────────────
 -- PART A: Hourly Rollup (5-minute granularity)
@@ -247,13 +252,21 @@ GROUP BY 1, 2, 3
 WITH NO DATA;
 
 -- Refresh policy: continuous, 1 hour lag
+SELECT remove_continuous_aggregate_policy(
+    'telemetry_hourly',
+    if_exists => TRUE
+);
+
 SELECT add_continuous_aggregate_policy(
     'telemetry_hourly',
-    start_offset => INTERVAL '3 hours',
+    start_offset => INTERVAL '30 days',
     end_offset   => INTERVAL '1 hour',
     schedule_interval => INTERVAL '1 hour',
-    if_not_exists => TRUE
+    if_not_exists => FALSE
 );
+
+ALTER MATERIALIZED VIEW telemetry_hourly
+    SET (timescaledb.materialized_only = FALSE);
 
 -- Create indexes on the materialized view
 CREATE INDEX IF NOT EXISTS idx_telemetry_hourly_asset_metric
@@ -289,13 +302,21 @@ FROM telemetry
 GROUP BY 1, 2, 3
 WITH NO DATA;
 
+SELECT remove_continuous_aggregate_policy(
+    'telemetry_daily',
+    if_exists => TRUE
+);
+
 SELECT add_continuous_aggregate_policy(
     'telemetry_daily',
-    start_offset => INTERVAL '3 days',
+    start_offset => INTERVAL '30 days',
     end_offset   => INTERVAL '1 day',
     schedule_interval => INTERVAL '1 hour',
-    if_not_exists => TRUE
+    if_not_exists => FALSE
 );
+
+ALTER MATERIALIZED VIEW telemetry_daily
+    SET (timescaledb.materialized_only = FALSE);
 
 CREATE INDEX IF NOT EXISTS idx_telemetry_daily_asset_metric
     ON telemetry_daily (asset_id, metric, bucket DESC);
@@ -317,34 +338,8 @@ SELECT add_retention_policy(
 );
 
 -- ─────────────────────────────────────────────────────────
--- PART C: Event Aggregates by Severity (for dashboard)
+-- Events stay as a regular audit table; dashboard stats query it directly.
 -- ─────────────────────────────────────────────────────────
-
-CREATE MATERIALIZED VIEW IF NOT EXISTS events_hourly
-WITH (timescaledb.continuous) AS
-SELECT
-    time_bucket('1 hour', timestamp) AS bucket,
-    type,
-    severity,
-    COUNT(*) AS event_count,
-    COUNT(DISTINCT asset_id) AS unique_assets
-FROM events
-GROUP BY 1, 2, 3
-WITH NO DATA;
-
-SELECT add_continuous_aggregate_policy(
-    'events_hourly',
-    start_offset => INTERVAL '3 hours',
-    end_offset   => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '1 hour',
-    if_not_exists => TRUE
-);
-
-CREATE INDEX IF NOT EXISTS idx_events_hourly_bucket
-    ON events_hourly (bucket DESC);
-
-CREATE INDEX IF NOT EXISTS idx_events_hourly_severity
-    ON events_hourly (severity, bucket DESC);
 
 COMMIT;
 

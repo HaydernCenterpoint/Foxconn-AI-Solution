@@ -264,16 +264,16 @@ class FileProcessor:
         Returns (success_count, failure_count)
         """
         if not self._wait_for_file_ready(filepath):
-            logger.error(f"File not ready after {self.config.max_file_age_seconds}s: {filepath}")
-            return 0, 0
+            raise TimeoutError(
+                f"File not ready after {self.config.max_file_age_seconds}s: {filepath}"
+            )
         
         try:
             rows, file_type = self.process_file(filepath, mapping)
         except FileSchemaError:
             raise
         except Exception as e:
-            logger.error(f"Failed to process file {filepath}: {e}")
-            return 0, 0
+            raise RuntimeError(f"Failed to process file {filepath}") from e
         
         success = 0
         failed = 0
@@ -297,47 +297,78 @@ class FileProcessor:
         from dualwrite import write_telemetry
         import uuid
         
-        asset_id = data['asset_id']
-        # Validate UUID format
-        try:
-            uuid.UUID(str(asset_id))
-        except ValueError:
-            # Try to look up by machine_code
-            asset_id = self._lookup_asset_id(asset_id)
+        asset_id = self._lookup_asset_id(data['asset_id'])
+
+        if not asset_id:
+            raise ValueError(f"No asset mapping found for '{data['asset_id']}'")
         
-        write_telemetry(
+        written = write_telemetry(
             time=data['timestamp'],
-            asset_id=uuid.UUID(asset_id) if asset_id else uuid.UUID('00000000-0000-0000-0000-000000000000'),
+            asset_id=uuid.UUID(asset_id),
             metric=data['metric'],
             value=data['value'],
-            tags=data['tags']
+            tags=data['tags'],
+            flush=True,
         )
+        if not written:
+            raise RuntimeError("TimescaleDB rejected the telemetry write")
     
-    def _lookup_asset_id(self, machine_code: str) -> str:
-        """Look up asset UUID from machine code"""
+    def _lookup_asset_id(self, identifier: str) -> Optional[str]:
+        """Resolve a canonical UUID or machine code against the active write plane."""
         import psycopg2
-        
+
+        rollback_mode = os.getenv('DUAL_WRITE_MODE', 'full').strip().lower() == 'rollback'
+        prefix = '' if rollback_mode else 'CONNECTOR_'
+
+        def setting(name: str, default: str) -> str:
+            if prefix:
+                return os.getenv(
+                    f'{prefix}{name}',
+                    os.getenv(f'TS_{name}', os.getenv(name, default)),
+                )
+            return os.getenv(name, default)
+
         try:
             conn = psycopg2.connect(
-                host=os.getenv('POSTGRES_HOST', 'localhost'),
-                port=int(os.getenv('POSTGRES_PORT', '5432')),
-                dbname=os.getenv('POSTGRES_DB', 'factory_db'),
-                user=os.getenv('POSTGRES_USER', 'factory_user'),
-                password=os.getenv('POSTGRES_PASSWORD', 'factory_secure_password_9988'),
+                host=setting('POSTGRES_HOST', 'localhost'),
+                port=int(setting('POSTGRES_PORT', '5432')),
+                dbname=setting('POSTGRES_DB', 'factory_db'),
+                user=setting('POSTGRES_USER', 'factory_user'),
+                password=setting('POSTGRES_PASSWORD', ''),
             )
-            cur = conn.cursor()
-            cur.execute(
-                "SELECT id FROM assets WHERE metadata->>'machine_code' = %s LIMIT 1",
-                (machine_code,)
-            )
-            result = cur.fetchone()
-            conn.close()
+            try:
+                with conn.cursor() as cur:
+                    if rollback_mode:
+                        cur.execute(
+                            """
+                            SELECT id
+                            FROM machines
+                            WHERE id::text = %s OR machine_code = %s OR client_id = %s
+                            LIMIT 1
+                            """,
+                            (str(identifier), str(identifier), str(identifier)),
+                        )
+                    else:
+                        cur.execute(
+                            """
+                            SELECT id
+                            FROM assets
+                            WHERE id::text = %s
+                               OR metadata->>'machine_code' = %s
+                               OR metadata->>'clientId' = %s
+                            LIMIT 1
+                            """,
+                            (str(identifier), str(identifier), str(identifier)),
+                        )
+                    result = cur.fetchone()
+            finally:
+                conn.close()
             if result:
                 return str(result[0])
         except Exception as e:
             logger.warning(f"Asset lookup failed: {e}")
         
-        return '00000000-0000-0000-0000-000000000000'
+        return None
 
 
 class FileWatcherConnector:
@@ -432,6 +463,10 @@ class FileWatcherConnector:
         
         try:
             success, failed = self.processor.import_file(filepath, self.DEFAULT_MAPPING)
+
+            if failed and success == 0:
+                self.progress.rows_failed += failed
+                raise ValueError(f"All {failed} rows failed")
             
             # Update progress
             self.progress.files_processed += 1
