@@ -2,6 +2,7 @@ import { render, type RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import type { ReactElement, ReactNode } from 'react';
+import { vi } from 'vitest';
 
 // Mock i18n
 vi.mock('react-i18next', () => ({

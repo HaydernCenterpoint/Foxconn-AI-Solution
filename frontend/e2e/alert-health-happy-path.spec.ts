@@ -195,6 +195,33 @@ async function installApiFixtures(page: Page) {
       return;
     }
 
+    if (path === `/api/v1/assets/${assetId}/health`) {
+      await fulfillJson(route, {
+        assetId,
+        overallScore: 84,
+        colorCode: '#22c55e',
+        breakdown: {
+          uptime: { value: 98, weight: 30, contribution: 29.4 },
+          alarms: { count: 1, weight: 25, contribution: 21 },
+          performance: { ratio: 92, weight: 25, contribution: 23 },
+          maintenance: { overdueDays: 0, weight: 20, contribution: 20 },
+        },
+      });
+      return;
+    }
+
+    if (path === `/api/v1/predictions/risk/${assetId}`) {
+      await fulfillJson(route, {
+        assetId,
+        riskScore: 0.18,
+        riskLevel: 'low',
+        confidence: 0.91,
+        timeWindow: '24h',
+        contributingFactors: { vibration: 'stable' },
+      });
+      return;
+    }
+
     if (path === '/api/v1/rca' && request.method() === 'POST') {
       expect(request.postDataJSON()).toEqual({ alertId });
       await fulfillJson(route, rcaResponse);

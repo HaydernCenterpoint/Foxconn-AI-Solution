@@ -4,7 +4,6 @@ using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 using backend.Services;
 using Npgsql;
@@ -182,7 +181,6 @@ namespace backend.Controllers
 
         [Authorize(Roles = "ADMIN,ENGINEER")]
         [HttpPost("{id}/acknowledge")]
-        [Authorize(Roles = "ADMIN,ENGINEER")]
         public async Task<IActionResult> AcknowledgeAlert(Guid id, [FromBody] AcknowledgeRequest request)
         {
             try
@@ -204,7 +202,6 @@ namespace backend.Controllers
 
         [Authorize(Roles = "ADMIN,ENGINEER")]
         [HttpPost("{id}/resolve")]
-        [Authorize(Roles = "ADMIN,ENGINEER")]
         public async Task<IActionResult> ResolveAlert(Guid id, [FromBody] ResolveRequest request)
         {
             try
