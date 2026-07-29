@@ -151,10 +151,10 @@ describe('ModernShell', () => {
     expect(logo.getAttribute('src')).toContain('Foxconn_Industrial_Internet');
   });
 
-  it('provides a Foxconn ODC link to the configured assistant', () => {
+  it('provides a Foxconn AI link to the configured assistant', () => {
     renderViewerShell();
 
-    const assistantLink = screen.getByRole('link', { name: 'Foxconn ODC (Odysseus)' });
+    const assistantLink = screen.getByRole('link', { name: 'Foxconn AI' });
     expect(assistantLink).toHaveAttribute('href', 'http://localhost:7000');
     expect(assistantLink).toHaveAttribute('target', '_blank');
     expect(assistantLink).toHaveAttribute('rel', 'noreferrer');
@@ -169,6 +169,18 @@ describe('ModernShell', () => {
     expect(dataFusionLink).toHaveAttribute('rel', 'noreferrer');
   });
 
+  it('places Foxconn AI above Foxconn Data Fusion in the service shortcuts', () => {
+    const { container } = renderViewerShell();
+    const serviceLinks = Array.from(
+      container.querySelectorAll<HTMLAnchorElement>('.modern-shell__nav-link--assistant'),
+    );
+
+    expect(serviceLinks.map((link) => link.getAttribute('aria-label'))).toEqual([
+      'Foxconn AI',
+      'Foxconn Data Fusion',
+    ]);
+  });
+
   it('dynamically adapts service links to match the current page hostname when accessed remotely', () => {
     const originalLocation = window.location;
     Object.defineProperty(window, 'location', {
@@ -178,7 +190,7 @@ describe('ModernShell', () => {
 
     try {
       renderViewerShell();
-      const assistantLink = screen.getByRole('link', { name: 'Foxconn ODC (Odysseus)' });
+      const assistantLink = screen.getByRole('link', { name: 'Foxconn AI' });
       const dataFusionLink = screen.getByRole('link', { name: 'Foxconn Data Fusion' });
 
       expect(assistantLink).toHaveAttribute('href', 'http://192.168.1.100:7000');
@@ -287,7 +299,7 @@ describe('ModernShell', () => {
     expect(frame?.inert).toBe(true);
 
     const firstFocusable = sidebar?.querySelector<HTMLElement>('.modern-shell__close-navigation');
-    const lastFocusable = sidebar?.querySelector<HTMLElement>('a[href="http://localhost:7000"]');
+    const lastFocusable = sidebar?.querySelector<HTMLElement>('a[href="http://localhost:58088"]');
     expect(firstFocusable).not.toBeNull();
     expect(lastFocusable).not.toBeNull();
 

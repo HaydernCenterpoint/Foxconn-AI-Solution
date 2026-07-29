@@ -113,6 +113,23 @@
   padding: 0 12px 16px;
 }
 
+.modern-shell__service-group {
+  display: grid;
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px solid var(--modern-shell-border);
+}
+
+.modern-shell__service-group-title {
+  margin: 0 4px 2px;
+  color: #898989;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
 .modern-shell__nav-link {
   display: flex;
   min-width: 0;
@@ -154,7 +171,42 @@
   font-size: 13px;
 }
 
-.modern-shell__nav-link--assistant > svg:first-child {
+.modern-shell__external-link {
+  min-height: 54px;
+  align-items: flex-start;
+  gap: 10px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.modern-shell__external-icon-wrap {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(255 101 103 / 20%);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 6%);
+}
+
+.modern-shell__nav-label-wrap {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 3px;
+}
+
+.modern-shell__external-subtitle {
+  color: #aaaaaa;
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 500;
+  white-space: normal;
+}
+
+.modern-shell__external-icon-wrap svg {
   color: var(--modern-shell-accent-strong);
 }
 

@@ -13,6 +13,7 @@ export interface MachineNodeData extends Record<string, unknown> {
   ip?: string;
   productionCount?: number;
   plcConnected?: boolean;
+  sequenceOrder?: number;
 }
 
 type MachineNodeProps = NodeProps<Node<MachineNodeData, 'machineNode'>>;
@@ -21,35 +22,45 @@ function MachineNodeComponent({ data, selected }: MachineNodeProps) {
   const { t } = useTranslation();
   const { tDynamic } = useDynamicTranslation();
   const hasProductionCount = typeof data.productionCount === 'number' && Number.isFinite(data.productionCount);
+  const sequenceLabel = String(data.sequenceOrder ?? 1).padStart(2, '0');
 
   return (
-    <div className={`w-60 rounded-md border bg-surface-1 text-text-primary shadow-md ${selected ? 'border-primary ring-2 ring-primary/30' : 'border-border'}`}>
-      <Handle type="target" position={Position.Left} id="input" className="!h-3 !w-3 !border-2 !border-surface-1 !bg-primary" />
-      <div className="flex items-start gap-3 border-b border-border px-3 py-3">
-        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-light text-primary">
-          <Cpu size={18} aria-hidden="true" />
+    <div
+      className={`line-flow-node ${selected ? 'line-flow-node--selected' : ''} ${data.plcConnected ? 'line-flow-node--connected' : 'line-flow-node--offline'}`}
+      role="group"
+      aria-label={`${tDynamic(data.name)} · ${data.machineCode || data.id}`}
+    >
+      <Handle type="target" position={Position.Left} id="input" className="line-flow-node__handle line-flow-node__handle--target" />
+      <header className="line-flow-node__header">
+        <span className="line-flow-node__sequence">#{sequenceLabel}</span>
+        <span className="line-flow-node__machine-icon">
+          <Cpu size={17} aria-hidden="true" />
         </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{tDynamic(data.name)}</p>
-          <p className="mt-1 truncate font-mono text-xs text-text-muted">{data.machineCode || data.id}</p>
+        <div className="line-flow-node__identity">
+          <strong>{tDynamic(data.name)}</strong>
+          <span>{data.machineCode || data.id}</span>
         </div>
         <StatusBadge status={data.status} size="sm" />
-      </div>
-      <dl className="space-y-2 px-3 py-3 text-xs">
-        <div className="flex items-center justify-between gap-3">
-          <dt className="inline-flex items-center gap-1 text-text-muted"><Network size={13} aria-hidden="true" />{t('machines.table.plcConnected', { defaultValue: 'PLC' })}</dt>
-          <dd className="font-medium text-text-primary">{data.plcConnected ? t('machines.plcConnected', { defaultValue: 'Connected' }) : t('machines.plcDisconnected', { defaultValue: 'Disconnected' })}</dd>
+      </header>
+      <dl className="line-flow-node__metrics">
+        <div>
+          <dt><Network size={13} aria-hidden="true" />{t('machines.table.plcConnected', { defaultValue: 'PLC' })}</dt>
+          <dd className={data.plcConnected ? 'line-flow-node__value--positive' : 'line-flow-node__value--muted'}>
+            {data.plcConnected
+              ? t('machines.plcConnected', { defaultValue: 'Connected' })
+              : t('machines.plcDisconnected', { defaultValue: 'Disconnected' })}
+          </dd>
         </div>
-        <div className="flex items-center justify-between gap-3">
-          <dt className="inline-flex items-center gap-1 text-text-muted"><Database size={13} aria-hidden="true" />{t('machines.productionCount', { defaultValue: 'Reported output' })}</dt>
-          <dd className="font-mono font-medium text-text-primary">{hasProductionCount ? data.productionCount!.toLocaleString() : '—'}</dd>
+        <div>
+          <dt><Database size={13} aria-hidden="true" />{t('machines.productionCount', { defaultValue: 'Reported output' })}</dt>
+          <dd>{hasProductionCount ? data.productionCount!.toLocaleString() : '—'}</dd>
         </div>
-        <div className="flex items-center justify-between gap-3">
-          <dt className="text-text-muted">IP</dt>
-          <dd className="max-w-28 truncate font-mono text-text-primary">{data.ip || '—'}</dd>
+        <div>
+          <dt>IP</dt>
+          <dd>{data.ip || '—'}</dd>
         </div>
       </dl>
-      <Handle type="source" position={Position.Right} id="output" className="!h-3 !w-3 !border-2 !border-surface-1 !bg-primary" />
+      <Handle type="source" position={Position.Right} id="output" className="line-flow-node__handle line-flow-node__handle--source" />
     </div>
   );
 }
