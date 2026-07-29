@@ -25,6 +25,7 @@ namespace backend.Controllers
         }
 
         [HttpPost("anomaly")]
+        [Authorize(Roles = "ADMIN,ENGINEER")]
         public async Task<IActionResult> DetectAnomaly([FromBody] AnomalyRequest request)
         {
             try

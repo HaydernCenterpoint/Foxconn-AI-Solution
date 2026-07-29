@@ -69,6 +69,9 @@ The full-demo launcher now points both frontend intelligence clients at the main
 $env:FII_JWT_SECRET = '<fresh non-committed secret of at least 32 bytes>'
 .\infrastructure\demo\Start-FullDemo.ps1
 .\infrastructure\demo\Test-FullDemo.ps1
+$env:FII_LIVE_E2E = '1'
+$env:FII_LIVE_FRONTEND_URL = 'http://localhost:3001'
+npm --prefix frontend run e2e:live
 ```
 
 Do not proceed with a customer claim unless `Test-FullDemo.ps1` confirms the main session, Odysseus session, ODF session, data traversal, and global logout. Keep every URL on `localhost`; mixing it with `127.0.0.1` breaks the shared cookie host.

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text.Json;
 using backend.Services;
@@ -24,8 +25,11 @@ public sealed class AssetController : ControllerBase
     }
 
     [HttpGet]
-    [AllowAnonymous]
-    public async Task<IActionResult> List([FromQuery] string? q, [FromQuery] string? type, [FromQuery] Guid? parentId)
+    public async Task<IActionResult> List(
+        [FromQuery, StringLength(200)] string? q,
+        [FromQuery, StringLength(50)] string? type,
+        [FromQuery] Guid? parentId,
+        [FromQuery, Range(1, 1000)] int limit = 500)
     {
         var normalizedType = string.IsNullOrWhiteSpace(type) ? null : AssetCatalogContract.NormalizeType(type);
         if (normalizedType is not null && !AssetCatalogContract.IsKnownType(normalizedType))
@@ -44,6 +48,7 @@ public sealed class AssetController : ControllerBase
                       AND r.child_asset_id = a.id
                       AND r.relationship_type = 'CONTAINS'))
             ORDER BY a.type, a.name, a.id
+            LIMIT @limit
             """;
 
         using var connection = _dbService.CreateConnection();
@@ -52,6 +57,7 @@ public sealed class AssetController : ControllerBase
         command.Parameters.Add("q", NpgsqlDbType.Text).Value = (object?)q?.Trim() ?? DBNull.Value;
         command.Parameters.Add("type", NpgsqlDbType.Text).Value = (object?)normalizedType?.ToLowerInvariant() ?? DBNull.Value;
         command.Parameters.Add("parent_id", NpgsqlDbType.Uuid).Value = (object?)parentId ?? DBNull.Value;
+        command.Parameters.AddWithValue("limit", limit);
         using var reader = await command.ExecuteReaderAsync();
 
         var assets = new List<object>();
@@ -64,7 +70,6 @@ public sealed class AssetController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [AllowAnonymous]
     public async Task<IActionResult> Get(Guid id)
     {
         const string sql = "SELECT id, type, name, code, metadata, created_at, updated_at FROM assets WHERE id = @id";
@@ -81,14 +86,15 @@ public sealed class AssetController : ControllerBase
     }
 
     [HttpGet("tree")]
-    [AllowAnonymous]
-    public async Task<IActionResult> Tree()
+    public async Task<IActionResult> Tree(
+        [FromQuery, Range(1, 5000)] int limit = 1000)
     {
-        const string sql = "SELECT id, type, name, code, parent_id, metadata, created_at, updated_at FROM assets ORDER BY type, name, id";
+        const string sql = "SELECT id, type, name, code, parent_id, metadata, created_at, updated_at FROM assets ORDER BY type, name, id LIMIT @row_limit";
 
         using var connection = _dbService.CreateConnection();
         await connection.OpenAsync();
         using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("row_limit", limit + 1);
         using var reader = await command.ExecuteReaderAsync();
 
         var nodes = new Dictionary<Guid, AssetTreeNode>();
@@ -105,6 +111,13 @@ public sealed class AssetController : ControllerBase
                 reader.GetDateTime(6),
                 reader.GetDateTime(7));
             parents[id] = reader.IsDBNull(4) ? null : reader.GetGuid(4);
+        }
+
+        if (nodes.Count > limit)
+        {
+            return ProblemResponse(
+                StatusCodes.Status400BadRequest,
+                $"Asset tree exceeds the requested limit of {limit}. Increase limit up to 5000.");
         }
 
         var roots = new List<AssetTreeNode>();
@@ -125,7 +138,6 @@ public sealed class AssetController : ControllerBase
     }
 
     [HttpGet("{id:guid}/documents")]
-    [AllowAnonymous]
     public async Task<IActionResult> ListDocuments(Guid id)
     {
         using var connection = _dbService.CreateConnection();

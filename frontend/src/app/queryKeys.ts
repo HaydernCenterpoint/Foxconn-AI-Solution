@@ -38,6 +38,7 @@ export const queryKeys = {
     list: (status?: string, severity?: string) =>
       ['predictive-alerts', 'list', status ?? 'all', severity ?? 'all'] as const,
     detail: (alertId: string) => ['predictive-alerts', 'detail', alertId] as const,
+    rca: (alertId: string) => ['predictive-alerts', 'rca', alertId] as const,
     stats: () => ['predictive-alerts', 'stats'] as const,
     health: (assetId: string) => ['predictive-alerts', 'health', assetId] as const,
     healthHistory: (assetId: string) => ['predictive-alerts', 'health-history', assetId] as const,
@@ -54,5 +55,6 @@ export const queryKeys = {
     health: () => ['system', 'health'] as const,
     liveTelemetry: () => ['system', 'telemetry', 'live'] as const,
     telemetryLog: (count: number) => ['system', 'telemetry', 'log', count] as const,
+    connectors: () => ['system', 'connectors'] as const,
   },
 };

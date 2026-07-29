@@ -163,7 +163,6 @@ public class TelemetryPayloadBuilder
                 clientName = (config.MachineName ?? config.MachineId),
                 machineCode = (config.MachineProfileId ?? ""),
                 clientVersion = "1.0.0",
-                token = (config.ServerToken ?? ""),
                 machineIds = new string[] { config.MachineId },
                 lastSyncSeq = lastSyncSeq
             }

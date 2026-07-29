@@ -49,3 +49,50 @@ it('fails closed when no persisted token or shared cookie is valid', async () =>
     sessionChecked: true,
   }));
 });
+
+it('does not retain the login bearer token in browser state or localStorage', async () => {
+  vi.stubEnv('MODE', 'full');
+  const { useAuthStore } = await import('./auth.store');
+
+  useAuthStore.getState().login('sensitive-bearer-token', 'factory.user', 'ENGINEER');
+
+  expect(useAuthStore.getState()).toEqual(expect.objectContaining({
+    token: null,
+    username: 'factory.user',
+    role: 'ENGINEER',
+    isAuthenticated: true,
+  }));
+  const persisted = JSON.parse(localStorage.getItem('mkz-auth') ?? '{}');
+  expect(persisted.state).toEqual({ hasSeenWelcome: false });
+});
+
+it('migrates legacy persisted tokens to a cookie-validated session', async () => {
+  vi.stubEnv('MODE', 'full');
+  localStorage.setItem('mkz-auth', JSON.stringify({
+    version: 0,
+    state: {
+      token: 'legacy-sensitive-token',
+      username: 'forged-admin',
+      role: 'ADMIN',
+      isAuthenticated: true,
+      hasSeenWelcome: true,
+    },
+  }));
+  getSession.mockResolvedValue({
+    username: 'factory.guest',
+    role: 'GUEST',
+    expiresAt: 1_900_000_000,
+  });
+  const { useAuthStore } = await import('./auth.store');
+
+  await useAuthStore.getState().checkSession();
+
+  expect(getSession).toHaveBeenCalledOnce();
+  expect(useAuthStore.getState()).toEqual(expect.objectContaining({
+    token: null,
+    username: 'factory.guest',
+    role: 'GUEST',
+    isAuthenticated: true,
+  }));
+  expect(localStorage.getItem('mkz-auth')).not.toContain('legacy-sensitive-token');
+});

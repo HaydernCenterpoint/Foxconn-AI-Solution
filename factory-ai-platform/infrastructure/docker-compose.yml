@@ -1,5 +1,3 @@
-version: '3.8'
-
 networks:
   factory-net:
     driver: bridge
@@ -18,9 +16,9 @@ services:
     container_name: factory-postgres
     restart: always
     environment:
-      POSTGRES_DB: factory_db
-      POSTGRES_USER: factory_user
-      POSTGRES_PASSWORD: factory_secure_password_9988
+      POSTGRES_DB: ${POSTGRES_DB:-factory_db}
+      POSTGRES_USER: ${POSTGRES_USER:-factory_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD via the deployment secret manager}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -65,8 +63,8 @@ services:
     container_name: factory-minio
     restart: always
     environment:
-      MINIO_ROOT_USER: minio_admin
-      MINIO_ROOT_PASSWORD: minio_secure_password_7788
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD via the deployment secret manager}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
@@ -100,11 +98,11 @@ services:
       - REPORT_SERVICE_URL=http://report-service:8083
       - BACKEND_URL=http://host.docker.internal:5000
       - LLM_API_URL=http://host.docker.internal:7000/v1
-      - LLM_API_KEY=${LLM_API_KEY:-your-api-key}
+      - LLM_API_KEY=${LLM_API_KEY:?Set LLM_API_KEY via the deployment secret manager}
       - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
       - AI_SERVICE_USER=${AI_SERVICE_USER:-ai_service}
-      - AI_SERVICE_PASSWORD=${AI_SERVICE_PASSWORD:-change-me-ai-service-password}
-      - JWT_SECRET=${JWT_SECRET:-factory-jwt-secret-key-1234-long-enough-32bytes}
+      - AI_SERVICE_PASSWORD=${AI_SERVICE_PASSWORD:?Set AI_SERVICE_PASSWORD via the deployment secret manager}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET via the deployment secret manager}
     networks:
       - factory-net
       - db-net
@@ -157,9 +155,9 @@ services:
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
-      - POSTGRES_DB=factory_db
-      - POSTGRES_USER=factory_user
-      - POSTGRES_PASSWORD=factory_secure_password_9988
+      - POSTGRES_DB=${POSTGRES_DB:-factory_db}
+      - POSTGRES_USER=${POSTGRES_USER:-factory_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD via the deployment secret manager}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
     networks:
       - factory-net
@@ -181,8 +179,8 @@ services:
     restart: always
     environment:
       - MINIO_ENDPOINT=minio:9000
-      - MINIO_ROOT_USER=minio_admin
-      - MINIO_ROOT_PASSWORD=minio_secure_password_7788
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minio_admin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD via the deployment secret manager}
       - MINIO_SECURE=false
     networks:
       - factory-net
@@ -204,9 +202,9 @@ services:
     ports:
       - "8084:8084"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://factory_user:factory_secure_password_9988@postgres:5432/factory_db
-      - SYNC_DATABASE_URL=postgresql://factory_user:factory_secure_password_9988@postgres:5432/factory_db
-      - JWT_SECRET=${JWT_SECRET:-factory-jwt-secret-key-1234-long-enough-32bytes}
+      - DATABASE_URL=${ASSET_DATABASE_URL:?Set ASSET_DATABASE_URL via the deployment secret manager}
+      - SYNC_DATABASE_URL=${ASSET_SYNC_DATABASE_URL:?Set ASSET_SYNC_DATABASE_URL via the deployment secret manager}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET via the deployment secret manager}
       - DEBUG=${DEBUG:-false}
     networks:
       - factory-net
@@ -233,8 +231,8 @@ services:
     restart: always
     command: ["python", "-m", "app.scripts.health_score_job", "--daemon", "--interval", "15"]
     environment:
-      - DATABASE_URL=postgresql+asyncpg://factory_user:factory_secure_password_9988@postgres:5432/factory_db
-      - SYNC_DATABASE_URL=postgresql://factory_user:factory_secure_password_9988@postgres:5432/factory_db
+      - DATABASE_URL=${ASSET_DATABASE_URL:?Set ASSET_DATABASE_URL via the deployment secret manager}
+      - SYNC_DATABASE_URL=${ASSET_SYNC_DATABASE_URL:?Set ASSET_SYNC_DATABASE_URL via the deployment secret manager}
     networks:
       - factory-net
       - db-net
@@ -259,9 +257,9 @@ services:
       - "8085:8084"
     environment:
       - REDIS_URL=redis://redis:6379
-      - POSTGRES_URL=postgresql://factory_user:factory_secure_password_9988@postgres:5432/factory_db
+      - POSTGRES_URL=${CEP_POSTGRES_URL:?Set CEP_POSTGRES_URL via the deployment secret manager}
       - BACKEND_URL=http://host.docker.internal:5000
-      - JWT_SECRET=${JWT_SECRET:-factory-jwt-secret-key-1234-long-enough-32bytes}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET via the deployment secret manager}
       - CEP_MODE=${CEP_MODE:-mock}
     networks:
       - factory-net

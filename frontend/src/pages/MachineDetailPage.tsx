@@ -3,6 +3,17 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { queryKeys } from '../app/queryKeys';
+import { predictiveAlertsApi } from '../features/dashboard/services/predictiveAlerts.api';
 import { MachineDetailTabs } from '../features/machines/components/MachineDetailTabs';
 import { machinesApi } from '../features/machines/services/machines.api';
 import { HealthScoreCard } from '../features/health/components/HealthScoreCard';
@@ -36,6 +47,18 @@ export const MachineDetailPage: React.FC = () => {
     enabled: !!id,
     refetchInterval: 10000,
   });
+
+  const { data: healthHistory = [] } = useQuery({
+    queryKey: queryKeys.predictiveAlerts.healthHistory(id ?? ''),
+    queryFn: () => predictiveAlertsApi.getHealthHistory(id!),
+    enabled: !!id,
+    refetchInterval: 60000,
+  });
+
+  const healthChartData = healthHistory.map((point) => ({
+    time: new Date(point.recorded_at).toLocaleDateString(),
+    score: point.health_score,
+  }));
 
   if (loadingMachine) {
     return (
@@ -101,7 +124,7 @@ export const MachineDetailPage: React.FC = () => {
         <div className="machine-detail__status-group">
           {health && (
             <span className={`machine-detail__health machine-detail__health--${health.band}`}>
-              HEALTH {health.score.toFixed(0)}
+              {t('dashboardPage.modern.healthScore', { score: health.score.toFixed(0) })}
             </span>
           )}
           <span className={`machine-detail__status ${getStatusBadge(machine.status)}`}>
@@ -118,6 +141,37 @@ export const MachineDetailPage: React.FC = () => {
       <section className="machine-detail__intelligence">
         <HealthScoreCard assetId={id!} />
         <RiskGauge assetId={id!} />
+      </section>
+
+      <section className="rounded-xl border border-border bg-surface-1 p-4">
+        <h2 className="mb-3 text-sm font-bold text-text-primary">
+          {t('machines.detail.healthHistory', { defaultValue: 'Health history' })}
+        </h2>
+        {healthChartData.length > 0 ? (
+          <div className="h-56 min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+              <LineChart data={healthChartData} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
+                <CartesianGrid stroke="var(--color-outline)" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="time" tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                <YAxis domain={[0, 100]} tickLine={false} axisLine={false} width={36} />
+                <Tooltip />
+                <Line
+                  type="monotone"
+                  dataKey="score"
+                  name={t('machines.detail.healthScore', { defaultValue: 'Health score' })}
+                  stroke="var(--color-primary)"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4, fill: 'var(--color-primary)' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <p className="text-sm text-text-muted">
+            {t('machines.detail.healthHistoryEmpty', { defaultValue: 'No health history is available yet.' })}
+          </p>
+        )}
       </section>
 
       <MachineDetailTabs

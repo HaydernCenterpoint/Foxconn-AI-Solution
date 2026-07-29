@@ -2,13 +2,12 @@
 from __future__ import annotations
 
 import os
+from http import HTTPStatus
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
-from app.api.routes import router as assets_router
 
 
 def _load_local_env():
@@ -31,6 +30,9 @@ def _load_local_env():
         cur = parent
 
 _load_local_env()
+
+# Local env loading must happen before routes import the database module.
+from app.api.routes import router as assets_router  # noqa: E402
 
 app = FastAPI(
     title="Asset Service",
@@ -65,7 +67,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "type": err["type"],
         })
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        media_type="application/problem+json",
         content={
             "type": "https://factory-monitor.example.com/errors/validation",
             "title": "Validation Error",
@@ -77,10 +80,32 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    try:
+        title = HTTPStatus(exc.status_code).phrase
+    except ValueError:
+        title = "HTTP Error"
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        media_type="application/problem+json",
+        headers=exc.headers,
+        content={
+            "type": f"https://factory-monitor.example.com/errors/http-{exc.status_code}",
+            "title": title,
+            "status": exc.status_code,
+            "detail": str(exc.detail),
+            "instance": str(request.url),
+        },
+    )
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        media_type="application/problem+json",
         content={
             "type": "https://factory-monitor.example.com/errors/internal",
             "title": "Internal Server Error",

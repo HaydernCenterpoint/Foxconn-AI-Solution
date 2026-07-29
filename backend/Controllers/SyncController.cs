@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using backend.Services;
 
 namespace backend.Controllers
 {
+    [Authorize(Roles = "ADMIN,ENGINEER")]
     [ApiController]
     [Route("api/sync")]
     public class SyncController : ControllerBase
@@ -19,12 +21,16 @@ namespace backend.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] SyncRegisterRequest req)
         {
-            if (req == null || string.IsNullOrEmpty(req.MachineId))
+            var machineId = req?.MachineId?.Trim();
+            var validationError = SyncService.ValidateMachineId(machineId);
+            if (validationError is not null)
             {
-                return BadRequest("Invalid sync register request.");
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    detail: validationError);
             }
 
-            long ackSeq = await _syncService.GetMaxSequenceAsync(req.MachineId);
+            long ackSeq = await _syncService.GetMaxSequenceAsync(machineId!);
             return Ok(new SyncRegisterResponse
             {
                 Success = true,
@@ -36,19 +42,23 @@ namespace backend.Controllers
         [HttpPost("upload")]
         public async Task<IActionResult> UploadBatch([FromBody] BatchUploadRequest req)
         {
-            if (req == null || string.IsNullOrEmpty(req.MachineId))
+            var machineId = req?.MachineId?.Trim();
+            var validationError = SyncService.ValidateBatch(machineId, req?.Records);
+            if (validationError is not null)
             {
-                return BadRequest("Invalid batch upload request.");
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    detail: validationError);
             }
 
-            await _syncService.ProcessBatchUploadAsync(req.MachineId, req.Records);
+            await _syncService.ProcessBatchUploadAsync(machineId!, req!.Records);
             return Ok(new { success = true });
         }
     }
 
     public class SyncRegisterRequest
     {
-        public string MachineId { get; set; }
+        public string MachineId { get; set; } = string.Empty;
         public long LastSyncSeq { get; set; }
     }
 
@@ -61,7 +71,7 @@ namespace backend.Controllers
 
     public class BatchUploadRequest
     {
-        public string MachineId { get; set; }
-        public List<TelemetryRecordDto> Records { get; set; }
+        public string MachineId { get; set; } = string.Empty;
+        public List<TelemetryRecordDto> Records { get; set; } = [];
     }
 }

@@ -17,7 +17,9 @@ POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
 POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 POSTGRES_DB = os.getenv("POSTGRES_DB", "factory_db")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "factory_user")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "factory_secure_password_9988")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+if not POSTGRES_PASSWORD:
+    raise RuntimeError("POSTGRES_PASSWORD must be supplied by the deployment secret manager")
 EMBEDDING_DIMS = int(os.getenv("EMBEDDING_DIMS", "384"))
 
 

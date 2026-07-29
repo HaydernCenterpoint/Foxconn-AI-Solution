@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using backend.Controllers;
 using backend.Middleware;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -70,6 +71,14 @@ public sealed class ContractV1Tests
         var result = Assert.IsType<ObjectResult>(response);
         var problem = Assert.IsType<ProblemDetails>(result.Value);
         Assert.Equal(StatusCodes.Status400BadRequest, problem.Status);
+    }
+
+    [Fact]
+    public void SyncEndpoints_RequireOperatorRoles()
+    {
+        var authorization = Assert.Single(typeof(SyncController).GetCustomAttributes<AuthorizeAttribute>());
+
+        Assert.Equal("ADMIN,ENGINEER", authorization.Roles);
     }
 
     [Fact]

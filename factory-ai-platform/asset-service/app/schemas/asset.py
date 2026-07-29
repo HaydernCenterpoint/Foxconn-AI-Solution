@@ -9,7 +9,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 # ===================================================================
@@ -53,6 +53,8 @@ class DocumentRelationship(str, Enum):
 # ===================================================================
 
 class AssetCreateRequest(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     name:           str   = Field(..., min_length=1, max_length=255)
     type:           AssetType
     parent_id:      Optional[uuid.UUID] = None
@@ -66,13 +68,18 @@ class AssetCreateRequest(BaseModel):
     tags:           List[str] = Field(default_factory=list)
     installed_at:   Optional[datetime] = None
 
-    @field_validator("parent_id")
-    @classmethod
-    def validate_parent(cls, v: Optional[uuid.UUID], info) -> Optional[uuid.UUID]:
-        return v
+    @model_validator(mode="after")
+    def validate_parent(self) -> "AssetCreateRequest":
+        if self.type == AssetType.PLANT and self.parent_id is not None:
+            raise ValueError("plant assets cannot have a parent")
+        if self.type != AssetType.PLANT and self.parent_id is None:
+            raise ValueError(f"{self.type.value} assets require a parent")
+        return self
 
 
 class AssetUpdateRequest(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     name:          Optional[str] = Field(None, min_length=1, max_length=255)
     status:        Optional[AssetStatus] = None
     external_id:   Optional[str] = Field(None, max_length=255)
@@ -135,6 +142,8 @@ class HealthScoreRequest(BaseModel):
 # ===================================================================
 
 class AssetResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
+
     id:            uuid.UUID
     name:          str
     type:          AssetType
@@ -147,15 +156,13 @@ class AssetResponse(BaseModel):
     serial_number: Optional[str]
     location_zone: Optional[str]
     location_area: Optional[str]
-    metadata:      Dict[str, Any]
+    metadata:      Dict[str, Any] = Field(
+        validation_alias=AliasChoices("metadata_", "metadata")
+    )
     tags:          List[str]
     installed_at:  Optional[datetime]
     created_at:    datetime
     updated_at:    datetime
-
-    class Config:
-        from_attributes = True
-
 
 class AssetTreeNode(AssetResponse):
     children: List["AssetTreeNode"] = Field(default_factory=list)
@@ -169,19 +176,21 @@ class AssetListResponse(BaseModel):
 
 
 class RelationshipResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id:               uuid.UUID
     asset_id:         uuid.UUID
     related_asset_id: uuid.UUID
     relationship_type: RelationshipType
     description:      Optional[str]
-    metadata:         Dict[str, Any]
+    metadata:         Dict[str, Any] = Field(
+        validation_alias=AliasChoices("metadata_", "metadata")
+    )
     created_at:       datetime
 
-    class Config:
-        from_attributes = True
-
-
 class DocumentLinkResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id:          uuid.UUID
     asset_id:    uuid.UUID
     document_id: str
@@ -189,10 +198,6 @@ class DocumentLinkResponse(BaseModel):
     title:       Optional[str]
     version:     Optional[str]
     uploaded_at:  datetime
-
-    class Config:
-        from_attributes = True
-
 
 class HealthScoreResponse(BaseModel):
     asset_id:        uuid.UUID

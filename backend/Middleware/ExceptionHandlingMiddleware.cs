@@ -1,11 +1,6 @@
-using System;
-using System.Net;
-using System.Text.Json;
-using System.Threading.Tasks;
+using backend.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Mvc;
-using Mkz.Fusion.Contracts;
 
 namespace backend.Middleware
 {
@@ -29,25 +24,22 @@ namespace backend.Middleware
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An unhandled exception occurred during request processing.");
-                await HandleExceptionAsync(context, ex);
+                if (context.Response.HasStarted)
+                {
+                    throw;
+                }
+
+                context.Response.Clear();
+                await HandleExceptionAsync(context);
             }
         }
 
-        private static Task HandleExceptionAsync(HttpContext context, Exception exception)
-        {
-            context.Response.ContentType = ApiConventionV1.ProblemMediaType;
-            context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-
-            var response = new ProblemDetails
-            {
-                Status = (int)HttpStatusCode.InternalServerError,
-                Title = "Internal server error",
-                Detail = "Please try again later.",
-                Type = "about:blank"
-            };
-
-            var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-            return context.Response.WriteAsync(JsonSerializer.Serialize(response, options));
-        }
+        private static Task HandleExceptionAsync(HttpContext context) =>
+            ApiProblemResponse.WriteAsync(
+                context,
+                StatusCodes.Status500InternalServerError,
+                "Please try again later.",
+                "Internal server error",
+                context.RequestAborted);
     }
 }

@@ -11,6 +11,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.auth.jwt_auth import CurrentUser, Role, get_current_user, get_optional_user
 from app.db.database import Base, get_db
 from app.main import app
 
@@ -47,7 +48,28 @@ async def test_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture
-async def client(test_session) -> AsyncGenerator[AsyncClient, None]:
+async def client(test_session, test_admin_user) -> AsyncGenerator[AsyncClient, None]:
+    async def override_get_db():
+        yield test_session
+
+    async def override_current_user():
+        return test_admin_user
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_current_user
+    app.dependency_overrides[get_optional_user] = override_current_user
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def unauthenticated_client(test_session) -> AsyncGenerator[AsyncClient, None]:
     async def override_get_db():
         yield test_session
 
@@ -60,6 +82,11 @@ async def client(test_session) -> AsyncGenerator[AsyncClient, None]:
         yield ac
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def test_admin_user():
+    return CurrentUser(user_id=uuid.uuid4(), role=Role.ADMIN)
 
 
 @pytest.fixture

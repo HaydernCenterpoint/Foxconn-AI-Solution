@@ -52,12 +52,7 @@ $odysseusComposeFile = Join-Path $repositoryRoot 'Odysseus/docker-compose.yml'
 $cepStagingUrl = 'http://localhost:58085'
 
 New-Item -ItemType Directory -Path $runtimeLogs -Force | Out-Null
-$backendDevelopmentSettings = Get-Content (Join-Path $repositoryRoot 'backend/appsettings.Development.json') -Raw |
-    ConvertFrom-Json
 $mkzOperationsConnectionString = [Environment]::GetEnvironmentVariable('FII_OPERATIONS_CONNECTION_STRING', 'Process')
-if ([string]::IsNullOrWhiteSpace($mkzOperationsConnectionString)) {
-    $mkzOperationsConnectionString = [string]$backendDevelopmentSettings.ConnectionStrings.DefaultConnection
-}
 if ([string]::IsNullOrWhiteSpace($mkzOperationsConnectionString)) {
     throw 'Set FII_OPERATIONS_CONNECTION_STRING to the retained PostgreSQL database.'
 }
@@ -102,6 +97,14 @@ if ([string]::IsNullOrWhiteSpace($mqttEncryptionKey)) {
 $mqttEncryptionKey = $mqttEncryptionKey.Trim()
 if ([Text.Encoding]::UTF8.GetByteCount($mqttEncryptionKey) -lt 32) {
     throw 'The shared MQTT encryption key must be at least 32 bytes.'
+}
+$demoMqttClientId = [Environment]::GetEnvironmentVariable('FII_DEMO_MACHINE_CLIENT_ID', 'Process')
+$mqttDeviceToken = [Environment]::GetEnvironmentVariable('FII_MQTT_DEVICE_TOKEN', 'Process')
+if ([string]::IsNullOrWhiteSpace($demoMqttClientId) -xor [string]::IsNullOrWhiteSpace($mqttDeviceToken)) {
+    throw 'Set both FII_DEMO_MACHINE_CLIENT_ID and FII_MQTT_DEVICE_TOKEN for MQTT authentication.'
+}
+if ($WithClientPlc -and [string]::IsNullOrWhiteSpace($mqttDeviceToken)) {
+    throw 'Client PLC requires FII_DEMO_MACHINE_CLIENT_ID and FII_MQTT_DEVICE_TOKEN.'
 }
 
 function Invoke-WithEnvironment {
@@ -432,6 +435,9 @@ $backendProcess = @{
         AllowedOrigins__0 = $frontendUrl
     }
 }
+if (-not [string]::IsNullOrWhiteSpace($mqttDeviceToken)) {
+    $backendProcess.Environment["MqttServer__DeviceTokens__$demoMqttClientId"] = $mqttDeviceToken
+}
 $null = Start-LoggedProcess @backendProcess
 Wait-HttpReady -Name 'Backend' -Uri "$backendUrl/api/health"
 
@@ -625,6 +631,7 @@ if ($WithClientPlc) {
         WorkingDirectory = $repositoryRoot
         Environment = @{
             FII_MQTT_ENCRYPTION_KEY = $mqttEncryptionKey
+            FII_MQTT_DEVICE_TOKEN = $mqttDeviceToken
         }
     }
     $null = Start-LoggedProcess @clientProcess

@@ -170,7 +170,10 @@ namespace backend.Services
                         fusionEvent.Severity,
                         rule.Name ?? rule.Id,
                         rule.Description,
-                        evidence: fusionEvent.Payload);
+                        evidence: fusionEvent.Payload,
+                        eventType: fusionEvent.EventType,
+                        source: fusionEvent.Source,
+                        occurredAt: fusionEvent.Timestamp);
                 }
                 catch (Exception ex)
                 {

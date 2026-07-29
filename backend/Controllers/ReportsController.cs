@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using backend.Services;
 using Npgsql;
@@ -11,9 +10,21 @@ namespace backend.Controllers
 {
     [ApiController]
     [Route("api/reports")]
-    [AllowAnonymous]
     public class ReportsController : ControllerBase
     {
+        private static readonly HashSet<string> TimeRanges = new(StringComparer.Ordinal)
+        {
+            "today",
+            "shift_morning",
+            "shift_night",
+            "last_7_days",
+            "month",
+        };
+        private static readonly HashSet<string> Groupings = new(StringComparer.Ordinal)
+        {
+            "hour",
+            "day",
+        };
         private readonly DatabaseService _dbService;
 
         public ReportsController(DatabaseService dbService)
@@ -28,6 +39,31 @@ namespace backend.Controllers
             [FromQuery] string machineId = "all",
             [FromQuery] string groupBy = "hour")
         {
+            if (!TimeRanges.Contains(timeRange))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    detail: "Unsupported timeRange.");
+            }
+            if (!Groupings.Contains(groupBy))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    detail: "Unsupported groupBy.");
+            }
+            if (lineId != "all" && !Guid.TryParse(lineId, out _))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    detail: "lineId must be 'all' or a valid UUID.");
+            }
+            if (machineId != "all" && !Guid.TryParse(machineId, out _))
+            {
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    detail: "machineId must be 'all' or a valid UUID.");
+            }
+
             try
             {
                 using var conn = _dbService.CreateConnection();

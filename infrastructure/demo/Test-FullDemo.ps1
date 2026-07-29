@@ -30,6 +30,15 @@ param(
 
     [string]$TimescaleConnectionString = '',
 
+    [string]$MqttHost = '127.0.0.1',
+
+    [ValidateRange(1, 65535)]
+    [int]$MqttPort = 1883,
+
+    [string]$MqttDeviceToken = '',
+
+    [switch]$MqttUseTls,
+
     [switch]$SkipOpenDataFusion,
     [switch]$SkipOdysseus,
     [switch]$SkipTimescale,
@@ -53,6 +62,7 @@ if ([string]::IsNullOrWhiteSpace($MachineId)) { $MachineId = $env:FII_DEMO_MACHI
 if ([string]::IsNullOrWhiteSpace($MachineClientId)) { $MachineClientId = $env:FII_DEMO_MACHINE_CLIENT_ID }
 if ([string]::IsNullOrWhiteSpace($OperationsConnectionString)) { $OperationsConnectionString = $env:FII_OPERATIONS_CONNECTION_STRING }
 if ([string]::IsNullOrWhiteSpace($TimescaleConnectionString)) { $TimescaleConnectionString = $env:FII_TIMESCALE_CONNECTION_STRING }
+if ([string]::IsNullOrWhiteSpace($MqttDeviceToken)) { $MqttDeviceToken = $env:FII_MQTT_DEVICE_TOKEN }
 if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($Password)) {
     throw 'Supply real credentials with -Username/-Password or FII_DEMO_USERNAME/FII_DEMO_PASSWORD.'
 }
@@ -64,6 +74,9 @@ if ([string]::IsNullOrWhiteSpace($OperationsConnectionString)) {
 }
 if (-not $SkipTimescale -and [string]::IsNullOrWhiteSpace($TimescaleConnectionString)) {
     throw 'Supply FII_TIMESCALE_CONNECTION_STRING for source-ID uniqueness verification.'
+}
+if ([string]::IsNullOrWhiteSpace($MqttDeviceToken)) {
+    throw 'Supply FII_MQTT_DEVICE_TOKEN for the selected MQTT client.'
 }
 
 function Get-Psql {
@@ -252,6 +265,7 @@ function Add-MqttString {
 
 function Send-MqttMessage {
     param(
+        [Parameter(Mandatory)][string]$ClientId,
         [Parameter(Mandatory)][string]$Topic,
         [Parameter(Mandatory)][string]$Payload
     )
@@ -261,13 +275,21 @@ function Send-MqttMessage {
     try {
         $client.ReceiveTimeout = 5000
         $client.SendTimeout = 5000
-        $client.Connect('127.0.0.1', 1883)
-        $stream = $client.GetStream()
+        $client.Connect($MqttHost, $MqttPort)
+        if ($MqttUseTls) {
+            $stream = [Net.Security.SslStream]::new($client.GetStream(), $false)
+            $stream.AuthenticateAsClient($MqttHost)
+        }
+        else {
+            $stream = $client.GetStream()
+        }
 
         $connectBody = [System.Collections.Generic.List[byte]]::new()
         Add-MqttString -Buffer $connectBody -Value 'MQTT'
-        $connectBody.AddRange([byte[]](4, 2, 0, 30))
-        Add-MqttString -Buffer $connectBody -Value "fii-demo-smoke-$PID"
+        $connectBody.AddRange([byte[]](4, 194, 0, 30))
+        Add-MqttString -Buffer $connectBody -Value $ClientId
+        Add-MqttString -Buffer $connectBody -Value $ClientId
+        Add-MqttString -Buffer $connectBody -Value $MqttDeviceToken
         $connectPacket = [System.Collections.Generic.List[byte]]::new()
         $connectPacket.Add([byte]0x10)
         $connectPacket.AddRange([byte[]](ConvertTo-MqttRemainingLength -Value $connectBody.Count))
@@ -425,7 +447,7 @@ $telemetryObject = @{
     }
 }
 $telemetry = $telemetryObject | ConvertTo-Json -Depth 6 -Compress
-Send-MqttMessage -Topic "client/$smokeClientId/telemetry" -Payload $telemetry
+Send-MqttMessage -ClientId $smokeClientId -Topic "client/$smokeClientId/telemetry" -Payload $telemetry
 
 $liveTelemetry = Wait-ForValue -Name 'Live telemetry snapshot' -Probe {
     $snapshots = @(Invoke-RestMethod -Uri "$backendUrl/api/telemetry/live" -WebSession $browser -TimeoutSec 10 | ForEach-Object { $_ })

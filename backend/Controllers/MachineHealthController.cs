@@ -1,7 +1,6 @@
 using System;
 using System.Threading.Tasks;
 using backend.Services;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 
@@ -19,7 +18,6 @@ namespace backend.Controllers
         }
 
         [HttpGet]
-        [AllowAnonymous]
         public async Task<IActionResult> GetHealth(Guid machineId)
         {
             if (machineId == Guid.Empty)

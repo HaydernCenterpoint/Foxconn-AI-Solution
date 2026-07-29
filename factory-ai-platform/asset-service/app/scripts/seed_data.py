@@ -7,14 +7,7 @@ import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
-
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.db.database import get_db_session, SyncSessionLocal
-from app.models.asset import Asset, AssetMetric, AssetRelationship
-from app.services.asset_service import AssetService
+from typing import Any, Dict, List
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -419,6 +412,107 @@ SENSORS: List[Dict[str, Any]] = [
         },
         "tags": ["temperature", "oven", "zone4"],
     },
+    # Additional machine condition and process sensors
+    {
+        "name": "Press-002-Temperature", "type": "sensor", "parent_external": "PRESS-002",
+        "manufacturer": "Pt100", "external_id": "SENS-P002-T01",
+        "location_zone": "Zone A",
+        "metadata": {
+            "sensor_type": "temperature", "unit": "°C",
+            "min_value": -20, "max_value": 150, "accuracy": "±0.5°C",
+        },
+        "tags": ["temperature", "press"],
+    },
+    {
+        "name": "Press-002-Vibration", "type": "sensor", "parent_external": "PRESS-002",
+        "manufacturer": "Wilcoxon", "external_id": "SENS-P002-V01",
+        "location_zone": "Zone A",
+        "metadata": {
+            "sensor_type": "vibration", "unit": "mm/s",
+            "min_value": 0, "max_value": 50, "accuracy": "±2%",
+        },
+        "tags": ["vibration", "press"],
+    },
+    {
+        "name": "Robot-002-Arc-Current", "type": "sensor", "parent_external": "RW-002",
+        "manufacturer": "Miller", "external_id": "SENS-RW002-AC01",
+        "location_zone": "Zone A",
+        "metadata": {
+            "sensor_type": "current", "unit": "A",
+            "min_value": 0, "max_value": 400, "accuracy": "±1A",
+        },
+        "tags": ["current", "welding", "arc"],
+    },
+    {
+        "name": "Packaging-001-Throughput", "type": "sensor", "parent_external": "PKG-001",
+        "manufacturer": "Sick", "external_id": "SENS-PKG001-TP01",
+        "location_zone": "Zone C",
+        "metadata": {
+            "sensor_type": "throughput", "unit": "units/min",
+            "min_value": 0, "max_value": 80, "accuracy": "±1 unit/min",
+        },
+        "tags": ["throughput", "packaging"],
+    },
+    {
+        "name": "CNC-002-Spindle-Temp", "type": "sensor", "parent_external": "CNC-002",
+        "manufacturer": "NSK", "external_id": "SENS-CNC002-ST01",
+        "location_zone": "Zone A",
+        "metadata": {
+            "sensor_type": "temperature", "unit": "°C",
+            "min_value": 0, "max_value": 100, "accuracy": "±1°C",
+        },
+        "tags": ["temperature", "spindle", "cnc"],
+    },
+    {
+        "name": "CNC-002-Spindle-Vibration", "type": "sensor", "parent_external": "CNC-002",
+        "manufacturer": "Bently Nevada", "external_id": "SENS-CNC002-SV01",
+        "location_zone": "Zone A",
+        "metadata": {
+            "sensor_type": "vibration", "unit": "mm/s",
+            "min_value": 0, "max_value": 25, "accuracy": "±2%",
+        },
+        "tags": ["vibration", "spindle", "cnc"],
+    },
+    {
+        "name": "Lathe-001-Spindle-Vibration", "type": "sensor", "parent_external": "LATHE-001",
+        "manufacturer": "Bently Nevada", "external_id": "SENS-LATHE001-SV01",
+        "location_zone": "Zone A",
+        "metadata": {
+            "sensor_type": "vibration", "unit": "mm/s",
+            "min_value": 0, "max_value": 25, "accuracy": "±2%",
+        },
+        "tags": ["vibration", "spindle", "lathe"],
+    },
+    {
+        "name": "Conveyor-002-Speed", "type": "sensor", "parent_external": "CONV-002",
+        "manufacturer": "Sick", "external_id": "SENS-C002-SP01",
+        "location_zone": "Zone A",
+        "metadata": {
+            "sensor_type": "speed", "unit": "m/s",
+            "min_value": 0, "max_value": 2.0, "accuracy": "±0.01 m/s",
+        },
+        "tags": ["speed", "conveyor"],
+    },
+    {
+        "name": "Conveyor-003-Speed", "type": "sensor", "parent_external": "CONV-003",
+        "manufacturer": "Sick", "external_id": "SENS-C003-SP01",
+        "location_zone": "Zone B",
+        "metadata": {
+            "sensor_type": "speed", "unit": "m/s",
+            "min_value": 0, "max_value": 2.0, "accuracy": "±0.01 m/s",
+        },
+        "tags": ["speed", "conveyor", "painting-line"],
+    },
+    {
+        "name": "Conveyor-003-Load", "type": "sensor", "parent_external": "CONV-003",
+        "manufacturer": "HBM", "external_id": "SENS-C003-L01",
+        "location_zone": "Zone B",
+        "metadata": {
+            "sensor_type": "load", "unit": "kg",
+            "min_value": 0, "max_value": 250, "accuracy": "±0.5 kg",
+        },
+        "tags": ["load", "conveyor", "painting-line"],
+    },
 ]
 
 # Additional machines to bring total to 20+
@@ -517,7 +611,28 @@ EXTRA_MACHINES: List[Dict[str, Any]] = [
 ]
 
 
+def _prepare_child_entries(
+    entries: List[Dict[str, Any]],
+    parent_key: str,
+):
+    """Yield parent references and mutable copies without changing the catalog."""
+    for source_entry in entries:
+        entry = source_entry.copy()
+        parent_external = entry.pop(parent_key)
+        yield parent_external, entry
+
+
 async def run_seed():
+    from app.db.database import get_db_session
+    from app.models.asset import AssetMetric
+    from app.schemas.asset import (
+        AssetCreateRequest,
+        AssetType,
+        RelationshipCreateRequest,
+        RelationshipType,
+    )
+    from app.services.asset_service import AssetService
+
     created_ids: dict[str, uuid.UUID] = {}
 
     async with get_db_session() as session:
@@ -551,8 +666,7 @@ async def run_seed():
 
         # 3. Create machines
         all_machines = MACHINES + EXTRA_MACHINES
-        for mach_data in all_machines:
-            line_ext_id = mach_data.pop("line", None)
+        for line_ext_id, mach_data in _prepare_child_entries(all_machines, "line"):
             parent_id = created_ids.get(line_ext_id)
             if not parent_id:
                 logger.warning(f"  Line {line_ext_id} not found for machine {mach_data['name']}, skipping")
@@ -576,8 +690,7 @@ async def run_seed():
             logger.info(f"  Machine created: {machine.id} — {machine.name}")
 
         # 4. Create sensors
-        for sens_data in SENSORS:
-            parent_ext_id = sens_data.pop("parent_external", None)
+        for parent_ext_id, sens_data in _prepare_child_entries(SENSORS, "parent_external"):
             parent_id = created_ids.get(parent_ext_id)
             if not parent_id:
                 logger.warning(f"  Parent machine {parent_ext_id} not found for sensor {sens_data['name']}, skipping")

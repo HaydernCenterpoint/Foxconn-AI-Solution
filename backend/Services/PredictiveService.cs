@@ -141,14 +141,7 @@ namespace backend.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to detect anomaly for asset {AssetId}", assetId);
-                return new AnomalyPrediction
-                {
-                    AssetId = assetId,
-                    IsAnomaly = false,
-                    Score = 0,
-                    Confidence = 0,
-                    Reason = $"Prediction error: {ex.Message}"
-                };
+                throw;
             }
         }
 
@@ -225,18 +218,7 @@ namespace backend.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to predict failure risk for asset {AssetId}", assetId);
-                return new FailureRiskPrediction
-                {
-                    AssetId = assetId,
-                    RiskScore = 0,
-                    Confidence = 0,
-                    RiskLevel = "unknown",
-                    TimeWindow = timeWindow,
-                    ContributingFactors = new Dictionary<string, object>
-                    {
-                        ["error"] = ex.Message
-                    }
-                };
+                throw;
             }
         }
 
@@ -274,7 +256,8 @@ namespace backend.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to store prediction for asset {AssetId}", assetId);
+                _logger.LogError(ex, "Failed to store prediction for asset {AssetId}", assetId);
+                throw;
             }
         }
     }

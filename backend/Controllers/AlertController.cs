@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 using backend.Services;
 using Npgsql;
@@ -35,12 +37,30 @@ namespace backend.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAlerts(
             [FromQuery] Guid? assetId,
-            [FromQuery] string status,
-            [FromQuery] string severity,
+            [FromQuery, StringLength(50)] string? status,
+            [FromQuery, StringLength(50)] string? severity,
             [FromQuery] DateTime? from,
             [FromQuery] DateTime? to,
-            [FromQuery] int limit = 100)
+            [FromQuery, Range(1, 1000)] int limit = 100)
         {
+            if (from.HasValue || to.HasValue)
+            {
+                to ??= DateTime.UtcNow;
+                from ??= to.Value.AddDays(-31);
+                if (from > to)
+                {
+                    return Problem(
+                        statusCode: StatusCodes.Status400BadRequest,
+                        detail: "from must be before or equal to to.");
+                }
+                if (to.Value - from.Value > TimeSpan.FromDays(31))
+                {
+                    return Problem(
+                        statusCode: StatusCodes.Status400BadRequest,
+                        detail: "The query window cannot exceed 31 days.");
+                }
+            }
+
             try
             {
                 await using var conn = new NpgsqlConnection(_timescaleConnectionString);
@@ -162,6 +182,7 @@ namespace backend.Controllers
 
         [Authorize(Roles = "ADMIN,ENGINEER")]
         [HttpPost("{id}/acknowledge")]
+        [Authorize(Roles = "ADMIN,ENGINEER")]
         public async Task<IActionResult> AcknowledgeAlert(Guid id, [FromBody] AcknowledgeRequest request)
         {
             try
@@ -183,6 +204,7 @@ namespace backend.Controllers
 
         [Authorize(Roles = "ADMIN,ENGINEER")]
         [HttpPost("{id}/resolve")]
+        [Authorize(Roles = "ADMIN,ENGINEER")]
         public async Task<IActionResult> ResolveAlert(Guid id, [FromBody] ResolveRequest request)
         {
             try

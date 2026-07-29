@@ -85,6 +85,18 @@ namespace backend.Controllers
             {
                 var fromDate = from ?? DateTime.UtcNow.AddDays(-7);
                 var toDate = to ?? DateTime.UtcNow;
+                if (fromDate > toDate)
+                {
+                    return Problem(
+                        statusCode: StatusCodes.Status400BadRequest,
+                        detail: "from must be before or equal to to.");
+                }
+                if (toDate - fromDate > TimeSpan.FromDays(31))
+                {
+                    return Problem(
+                        statusCode: StatusCodes.Status400BadRequest,
+                        detail: "The query window cannot exceed 31 days.");
+                }
 
                 var history = await _healthService.GetHealthScoreHistoryAsync(assetId, fromDate, toDate);
 
@@ -106,6 +118,7 @@ namespace backend.Controllers
 
         [Authorize(Roles = "ADMIN,ENGINEER")]
         [HttpPost("compute")]
+        [Authorize(Roles = "ADMIN,ENGINEER")]
         public async Task<IActionResult> ComputeHealthScore(Guid assetId)
         {
             try
