@@ -9,10 +9,8 @@ Provides:
 """
 
 import logging
-import os
 import pickle
-import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
@@ -140,11 +138,12 @@ class AnomalyDetector:
         X = np.array(features.to_array()).reshape(1, -1)
         X_scaled = self.scaler.transform(X)
 
-        # anomaly_score: higher = more anomalous (0-1 range approximation)
-        raw_score = self.model.decision_function(X_scaled)
-        # Convert to 0-1 range where 1 = most anomalous
-        anomaly_score = 1.0 - (raw_score - raw_score.min()) / (raw_score.max() - raw_score.min() + 1e-10)
-        anomaly_score = float(np.clip(anomaly_score[0], 0.0, 1.0))
+        # IsolationForest's decision boundary is zero: negative values are
+        # anomalies and positive values are inliers. Normalize that scalar
+        # directly so single-row inference does not collapse to a constant.
+        raw_score = float(self.model.decision_function(X_scaled)[0])
+        bounded_logit = float(np.clip(raw_score * 12.0, -60.0, 60.0))
+        anomaly_score = float(1.0 / (1.0 + np.exp(bounded_logit)))
 
         is_anomaly = self.model.predict(X_scaled)[0] == -1
 
@@ -293,44 +292,76 @@ class FeatureEngineering:
             by_metric.setdefault(metric, []).append((p["time"], p["value"]))
 
         fv = FeatureVector(asset_id=asset_id)
+        window_end = max(timestamp for values in by_metric.values() for timestamp, _ in values)
+        cutoff_1h = window_end - timedelta(hours=1)
+        cutoff_24h = window_end - timedelta(hours=24)
 
         for metric, values in by_metric.items():
             values.sort(key=lambda x: x[0])
-            vals = [v for _, v in values]
-            times = [t for t, _ in values]
-
             import statistics
 
-            mean = statistics.mean(vals) if vals else 0
-            std = statistics.stdev(vals) if len(vals) > 1 else 0
-            mx = max(vals) if vals else 0
+            def summarize(
+                samples: list[tuple[datetime, float]],
+            ) -> tuple[float, float, float, float]:
+                vals = [value for _, value in samples]
+                if not vals:
+                    return 0.0, 0.0, 0.0, 0.0
 
-            # Compute trend (simple linear slope)
-            trend = 0.0
-            if len(vals) > 1 and len(times) > 1:
-                dt = (times[-1] - times[0]).total_seconds() / 60.0
-                if dt > 0:
-                    trend = (vals[-1] - vals[0]) / dt
+                mean = statistics.mean(vals)
+                std = statistics.stdev(vals) if len(vals) > 1 else 0.0
+                maximum = max(vals)
+                trend = 0.0
+                if len(samples) > 1:
+                    elapsed_minutes = (
+                        samples[-1][0] - samples[0][0]
+                    ).total_seconds() / 60.0
+                    if elapsed_minutes > 0:
+                        trend = (vals[-1] - vals[0]) / elapsed_minutes
+                return mean, std, maximum, trend
+
+            samples_1h = [(time, value) for time, value in values if time >= cutoff_1h]
+            samples_24h = [(time, value) for time, value in values if time >= cutoff_24h]
+            mean_1h, std_1h, max_1h, trend_1h = summarize(samples_1h)
+            mean_24h, std_24h, max_24h, _ = summarize(samples_24h)
+
+            fv.features[metric] = {
+                "mean_1h": mean_1h,
+                "std_1h": std_1h,
+                "max_1h": max_1h,
+                "trend_1h": trend_1h,
+                "mean_24h": mean_24h,
+                "std_24h": std_24h,
+                "max_24h": max_24h,
+            }
 
             # Assign to correct FeatureVector fields based on metric
             if metric == "temperature":
-                fv.temp_mean_1h = mean
-                fv.temp_std_1h = std
-                fv.temp_max_1h = mx
-                fv.temp_trend_1h = trend
+                fv.temp_mean_1h = mean_1h
+                fv.temp_std_1h = std_1h
+                fv.temp_max_1h = max_1h
+                fv.temp_trend_1h = trend_1h
+                fv.temp_mean_24h = mean_24h
+                fv.temp_std_24h = std_24h
+                fv.temp_max_24h = max_24h
             elif metric == "vibration":
-                fv.vib_mean_1h = mean
-                fv.vib_std_1h = std
-                fv.vib_max_1h = mx
-                fv.vib_trend_1h = trend
+                fv.vib_mean_1h = mean_1h
+                fv.vib_std_1h = std_1h
+                fv.vib_max_1h = max_1h
+                fv.vib_trend_1h = trend_1h
+                fv.vib_mean_24h = mean_24h
+                fv.vib_std_24h = std_24h
+                fv.vib_max_24h = max_24h
             elif metric == "current":
-                fv.curr_mean_1h = mean
-                fv.curr_std_1h = std
-                fv.curr_max_1h = mx
+                fv.curr_mean_1h = mean_1h
+                fv.curr_std_1h = std_1h
+                fv.curr_max_1h = max_1h
+                fv.curr_mean_24h = mean_24h
+                fv.curr_std_24h = std_24h
             elif metric == "oee":
-                fv.oee_1h = mean
+                fv.oee_1h = mean_1h
+                fv.oee_24h = mean_24h
             elif metric == "output_count":
-                fv.cycle_count_24h = int(sum(vals))
+                fv.cycle_count_24h = int(sum(value for _, value in samples_24h))
 
         fv.failure_count_7d = failure_history
 

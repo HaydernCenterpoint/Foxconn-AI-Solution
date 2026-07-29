@@ -361,20 +361,29 @@ class MESConnector:
         import uuid
         
         for event in events:
-            asset_id = event.get('asset_id') or '00000000-0000-0000-0000-000000000000'
+            asset_id = event.get('asset_id')
+            if not asset_id:
+                raise ValueError("MES event does not contain an asset identifier")
             try:
-                uuid.UUID(str(asset_id))
-            except ValueError:
-                asset_id = '00000000-0000-0000-0000-000000000000'
+                canonical_asset_id = uuid.UUID(str(asset_id))
+            except ValueError as exc:
+                raise ValueError(
+                    f"MES asset identifier {asset_id!r} is not a canonical UUID"
+                ) from exc
             
-            write_event(
+            written = write_event(
                 timestamp=datetime.now(),
-                asset_id=uuid.UUID(asset_id),
+                asset_id=canonical_asset_id,
                 event_type=event['event_type'],
                 severity=event['severity'],
                 payload=event['payload'],
-                source='mes'
+                source='mes',
+                flush=True,
             )
+            if not written:
+                raise RuntimeError(
+                    f"Dual-write rejected MES event {event['event_type']!r}"
+                )
     
     def _process_entity(self, entity: str) -> tuple[int, int]:
         """Process a single entity type"""

@@ -105,4 +105,5 @@ def test_shadow_user_status_uses_effective_privileges(tmp_path):
     assert status["authenticated"] is True
     assert status["username"] == "factory.engineer"
     assert status["is_admin"] is False
+    assert status["auth_source"] == "fii_sso"
     assert status["privileges"] == manager.get_privileges("factory.engineer")

@@ -605,41 +605,36 @@ namespace backend.Services
                     CREATE INDEX IF NOT EXISTS idx_fusion_outbox_dispatch
                     ON fusion_outbox (status, available_at, created_at);");
 
+                ExecuteSync(conn, @"
+                    CREATE TABLE IF NOT EXISTS telemetry_data (
+                        time TIMESTAMP WITH TIME ZONE NOT NULL,
+                        asset_id UUID NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+                        metric VARCHAR(100) NOT NULL,
+                        value DOUBLE PRECISION NOT NULL,
+                        unit VARCHAR(32),
+                        source VARCHAR(255),
+                        PRIMARY KEY (time, asset_id, metric)
+                    );
 
-                // ─── 12. Seed default users ──────────────────────────────────────────────
-                long count = 0;
-                using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM users", conn))
-                {
-                    count = (long)(cmd.ExecuteScalar() ?? 0L);
-                }
+                    CREATE INDEX IF NOT EXISTS idx_telemetry_data_query
+                    ON telemetry_data (asset_id, metric, time DESC);
 
-                if (count == 0)
-                {
-                    using var cmdInsert = new NpgsqlCommand(@"
-                        INSERT INTO users (username, password, role) VALUES
-                        (@adminUser, @adminPass, 'ADMIN'),
-                        (@engUser,   @engPass,   'ENGINEER'),
-                        (@guestUser, @guestPass, 'GUEST')", conn);
+                    CREATE TABLE IF NOT EXISTS event_log (
+                        event_id UUID PRIMARY KEY,
+                        schema_version INTEGER NOT NULL,
+                        timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
+                        asset_id UUID NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+                        event_type VARCHAR(100) NOT NULL,
+                        severity VARCHAR(20) NOT NULL,
+                        source VARCHAR(255),
+                        payload JSONB,
+                        correlation_id VARCHAR(255)
+                    );
 
-                    cmdInsert.Parameters.AddWithValue("adminUser",  "admin");
-                    cmdInsert.Parameters.AddWithValue("adminPass",  Security.PasswordHasher.HashPassword("admin123"));
-                    cmdInsert.Parameters.AddWithValue("engUser",    "engineer");
-                    cmdInsert.Parameters.AddWithValue("engPass",    Security.PasswordHasher.HashPassword("engineer123"));
-                    cmdInsert.Parameters.AddWithValue("guestUser",  "guest");
-                    cmdInsert.Parameters.AddWithValue("guestPass",  Security.PasswordHasher.HashPassword("guest123"));
-                    cmdInsert.ExecuteNonQuery();
-                }
+                    CREATE INDEX IF NOT EXISTS idx_event_log_query
+                    ON event_log (asset_id, timestamp DESC);");
 
-                using (var cmdAiUser = new NpgsqlCommand(@"
-                    INSERT INTO users (username, password, role)
-                    VALUES (@aiUser, @aiPass, 'GUEST')
-                    ON CONFLICT (username) DO NOTHING;", conn))
-                {
-                    cmdAiUser.Parameters.AddWithValue("aiUser", "ai_service");
-                    cmdAiUser.Parameters.AddWithValue("aiPass", Security.PasswordHasher.HashPassword(
-                        Environment.GetEnvironmentVariable("AI_SERVICE_PASSWORD") ?? "change-me-ai-service-password"));
-                    cmdAiUser.ExecuteNonQuery();
-                }
+                // Accounts are provisioned explicitly; startup must never create or change credentials.
 
                 // Auto-create simulation configs for machines and enable them by default
                 string seedSimConfigsSql = @"
@@ -649,14 +644,11 @@ namespace backend.Services
                     ON CONFLICT (machine_id) DO NOTHING;";
                 ExecuteSync(conn, seedSimConfigsSql);
 
-                ExecuteSync(conn, "TRUNCATE machine_telemetry_history, machine_hourly_production, alarms CASCADE;");
-                ExecuteSync(conn, "UPDATE machines SET status = 'OFFLINE', plc_connected = false, production_count = 0, last_plc_data = NULL, uptime_seconds = 0, cpu_percent = 0.0, ram_percent = 0.0;");
-
                 Console.WriteLine("[DB] Database initialized successfully.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DB] Initialization failed: {ex.Message}");
+                throw new InvalidOperationException("Database initialization failed.", ex);
             }
         }
 
@@ -948,6 +940,155 @@ namespace backend.Services
             command.Parameters.AddWithValue("occurredAt", fusionEvent.OccurredAt.UtcDateTime);
             command.Parameters.AddWithValue("availableAt", DateTime.UtcNow);
             await command.ExecuteNonQueryAsync();
+        }
+
+        public async Task InsertTelemetryDataPointsAsync(IEnumerable<TelemetryDataPoint> dataPoints)
+        {
+            await using var connection = CreateConnection();
+            await connection.OpenAsync();
+            await using var transaction = await connection.BeginTransactionAsync();
+
+            const string sql = @"
+                INSERT INTO telemetry_data (time, asset_id, metric, value, unit, source)
+                VALUES (@time, @assetId, @metric, @value, @unit, @source)
+                ON CONFLICT (time, asset_id, metric) DO UPDATE SET
+                    value = EXCLUDED.value,
+                    unit = EXCLUDED.unit,
+                    source = EXCLUDED.source";
+
+            foreach (var point in dataPoints)
+            {
+                await using var command = new NpgsqlCommand(sql, connection, transaction);
+                command.Parameters.AddWithValue("time", point.Time.UtcDateTime);
+                command.Parameters.AddWithValue("assetId", point.AssetId);
+                command.Parameters.AddWithValue("metric", point.Metric);
+                command.Parameters.AddWithValue("value", point.Value);
+                command.Parameters.AddWithValue("unit", (object?)point.Unit ?? DBNull.Value);
+                command.Parameters.AddWithValue("source", (object?)point.Source ?? DBNull.Value);
+                await command.ExecuteNonQueryAsync();
+            }
+
+            await transaction.CommitAsync();
+        }
+
+        public async Task InsertEventLogAsync(FusionEvent fusionEvent)
+        {
+            const string sql = @"
+                INSERT INTO event_log
+                    (event_id, schema_version, timestamp, asset_id, event_type, severity, source, payload, correlation_id)
+                VALUES
+                    (@eventId, @schemaVersion, @timestamp, @assetId, @eventType, @severity, @source, @payload, @correlationId)
+                ON CONFLICT (event_id) DO NOTHING";
+
+            await ExecuteNonQueryAsync(sql, parameters =>
+            {
+                parameters.AddWithValue("eventId", fusionEvent.EventId);
+                parameters.AddWithValue("schemaVersion", fusionEvent.SchemaVersion);
+                parameters.AddWithValue("timestamp", fusionEvent.Timestamp.UtcDateTime);
+                parameters.AddWithValue("assetId", fusionEvent.AssetId);
+                parameters.AddWithValue("eventType", fusionEvent.EventType);
+                parameters.AddWithValue("severity", fusionEvent.Severity);
+                parameters.AddWithValue("source", (object?)fusionEvent.Source ?? DBNull.Value);
+                parameters.AddWithValue(
+                    "payload",
+                    NpgsqlDbType.Jsonb,
+                    fusionEvent.Payload is null
+                        ? (object)DBNull.Value
+                        : JsonSerializer.Serialize(fusionEvent.Payload, FusionJsonSerializerOptions));
+                parameters.AddWithValue("correlationId", (object?)fusionEvent.CorrelationId ?? DBNull.Value);
+            });
+        }
+
+        public async Task<IReadOnlyList<object>> QueryTelemetryDataAsync(
+            Guid assetId,
+            string metric,
+            DateTime from,
+            DateTime to,
+            int limit)
+        {
+            const string sql = @"
+                SELECT time, asset_id, metric, value, unit, source
+                FROM telemetry_data
+                WHERE asset_id = @assetId
+                  AND metric = @metric
+                  AND time >= @from
+                  AND time <= @to
+                ORDER BY time DESC
+                LIMIT @limit";
+
+            var rows = new List<object>();
+            await using var connection = CreateConnection();
+            await connection.OpenAsync();
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("assetId", assetId);
+            command.Parameters.AddWithValue("metric", metric);
+            command.Parameters.AddWithValue("from", from.ToUniversalTime());
+            command.Parameters.AddWithValue("to", to.ToUniversalTime());
+            command.Parameters.AddWithValue("limit", limit);
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                rows.Add(new
+                {
+                    time = reader.GetFieldValue<DateTimeOffset>(0),
+                    assetId = reader.GetGuid(1),
+                    metric = reader.GetString(2),
+                    value = reader.GetDouble(3),
+                    unit = reader.IsDBNull(4) ? null : reader.GetString(4),
+                    source = reader.IsDBNull(5) ? null : reader.GetString(5),
+                });
+            }
+
+            return rows;
+        }
+
+        public async Task<IReadOnlyList<object>> QueryEventLogAsync(
+            Guid? assetId,
+            string? eventType,
+            string? severity,
+            DateTime? from,
+            DateTime? to,
+            int limit)
+        {
+            const string sql = @"
+                SELECT event_id, schema_version, timestamp, asset_id, event_type, severity, source, payload, correlation_id
+                FROM event_log
+                WHERE (@assetId IS NULL OR asset_id = @assetId)
+                  AND (@eventType IS NULL OR event_type = @eventType)
+                  AND (@severity IS NULL OR severity = @severity)
+                  AND (@from IS NULL OR timestamp >= @from)
+                  AND (@to IS NULL OR timestamp <= @to)
+                ORDER BY timestamp DESC
+                LIMIT @limit";
+
+            var rows = new List<object>();
+            await using var connection = CreateConnection();
+            await connection.OpenAsync();
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("assetId", NpgsqlDbType.Uuid, (object?)assetId ?? DBNull.Value);
+            command.Parameters.AddWithValue("eventType", NpgsqlDbType.Varchar, (object?)eventType ?? DBNull.Value);
+            command.Parameters.AddWithValue("severity", NpgsqlDbType.Varchar, (object?)severity ?? DBNull.Value);
+            command.Parameters.AddWithValue("from", NpgsqlDbType.TimestampTz, from.HasValue ? from.Value.ToUniversalTime() : DBNull.Value);
+            command.Parameters.AddWithValue("to", NpgsqlDbType.TimestampTz, to.HasValue ? to.Value.ToUniversalTime() : DBNull.Value);
+            command.Parameters.AddWithValue("limit", limit);
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                rows.Add(new
+                {
+                    eventId = reader.GetGuid(0),
+                    schemaVersion = reader.GetInt32(1),
+                    timestamp = reader.GetFieldValue<DateTimeOffset>(2),
+                    assetId = reader.GetGuid(3),
+                    eventType = reader.GetString(4),
+                    severity = reader.GetString(5),
+                    source = reader.IsDBNull(6) ? null : reader.GetString(6),
+                    payload = reader.IsDBNull(7) ? null : JsonSerializer.Deserialize<object>(reader.GetString(7)),
+                    correlationId = reader.IsDBNull(8) ? null : reader.GetString(8),
+                });
+            }
+
+            return rows;
         }
 
         public async Task InsertRawTelemetryAsync(string machineId, string rawJson, long sequence = 0, DateTime? createdAt = null)

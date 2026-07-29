@@ -1,8 +1,9 @@
-import { Suspense, lazy, type ReactNode } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Suspense, lazy, useEffect, type ReactNode } from 'react';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { LoadingState } from '../shared/components/ui/EmptyState';
 import { AppLayout } from '../shared/components/layout/AppLayout';
 import { ProtectedRoute } from '../features/auth/components/ProtectedRoute';
+import { authApi } from '../features/auth/services/auth.api';
 import { useAuthStore } from '../shared/store/auth.store';
 
 const ViewerLayout = lazy(() => import('../shared/components/layout/ViewerLayout'));
@@ -33,7 +34,7 @@ const LinesPage = lazy(() => import('../pages/LinesPage'));
 const MachineListPage = lazy(() => import('../pages/MachineListPage'));
 const MachineDetailPage = lazy(() => import('../pages/MachineDetailPage'));
 const AlarmPage = lazy(() => import('../pages/AlarmPage'));
-const AssetBrowserPage = lazy(() => import('../pages/AssetBrowserPage'));
+const AlertCenterPage = lazy(() => import('../pages/AlertCenterPage'));
 
 // ── Shared simulation page ───────────────────────────────────────────
 const SimulationPage = lazy(() => import('../pages/SimulationPage'));
@@ -41,7 +42,7 @@ const ReportsPage = lazy(() => import('../pages/ReportsPage'));
 const SystemPage = lazy(() => import('../pages/SystemPage'));
 
 // ── Asset Browser page (Sprint D2) ──────────────────────────────────
-const AlertManagementPage = lazy(() => import('../pages/AlertManagementPage'));
+const AssetBrowserPage = lazy(() => import('../pages/AssetBrowserPage'));
 
 // ── Role-based routing gates ─────────────────────────────────────────
 const DashboardPage = () => {
@@ -61,31 +62,46 @@ function withSuspense(children: ReactNode) {
   return <Suspense fallback={<LoadingState />}>{children}</Suspense>;
 }
 
+function GlobalLogout() {
+  const logout = useAuthStore((state) => state.logout);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    void authApi.logout().catch(() => undefined).then(() => {
+      logout();
+      navigate('/login', { replace: true });
+    });
+  }, [logout, navigate]);
+
+  return <LoadingState />;
+}
+
 export function AppRouter() {
   return (
     <Routes>
       {/* Auth routes (public) */}
       <Route path="/login" element={withSuspense(<LoginPage />)} />
+      <Route path="/logout" element={<GlobalLogout />} />
 
       {/* Presentation slideshow layout */}
       <Route path="/slideshow" element={withSuspense(<ProtectedRoute><SlideshowPage /></ProtectedRoute>)} />
 
       {/* Authenticated Admin/Engineer shell */}
-      <Route path="admin" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+      <Route path="admin" element={<ProtectedRoute allowedRoles={['ADMIN', 'ENGINEER']}><AppLayout /></ProtectedRoute>}>
         <Route index element={withSuspense(<DashboardPage />)} />
         <Route path="lines" element={withSuspense(<LinesPage />)} />
         <Route path="machines" element={withSuspense(<MachineListPage />)} />
         <Route path="machines/:id" element={withSuspense(<MachineDetailPage />)} />
         <Route path="alarms" element={withSuspense(<AlarmPage />)} />
+        <Route path="alerts" element={withSuspense(<AlertCenterPage />)} />
         <Route path="assets" element={withSuspense(<AssetBrowserPage />)} />
-        <Route path="alert-center" element={withSuspense(<AlertManagementPage />)} />
         <Route path="settings" element={withSuspense(<SettingsPage />)} />
         <Route path="reports" element={withSuspense(<ReportsPage />)} />
         <Route path="system" element={withSuspense(<SystemPage />)} />
         <Route path="simulation" element={withSuspense(<ProtectedRoute allowedRoles={['ADMIN', 'ENGINEER']}><SimulationPage /></ProtectedRoute>)} />
         <Route path="users" element={withSuspense(<ProtectedRoute allowedRoles={['ADMIN']}><AdminUserManagementPage /></ProtectedRoute>)} />
         <Route path="audit-logs" element={withSuspense(<ProtectedRoute allowedRoles={['ADMIN']}><AdminAuditLogPage /></ProtectedRoute>)} />
-        
+
         {/* Redirects inside admin */}
         <Route path="flow-designer" element={<Navigate to="/admin/lines" replace />} />
         <Route path="dashboard" element={<Navigate to="/admin" replace />} />
@@ -98,7 +114,7 @@ export function AppRouter() {
         <Route path="machines" element={withSuspense(<MachineListPage />)} />
         <Route path="machines/:id" element={withSuspense(<MachineDetailPage />)} />
         <Route path="alarms" element={withSuspense(<AlarmPage />)} />
-        <Route path="assets" element={withSuspense(<AssetBrowserPage />)} />
+        <Route path="alerts" element={withSuspense(<AlertCenterPage />)} />
         <Route path="settings" element={withSuspense(<ViewerSettingsPage />)} />
         <Route path="production-analysis" element={withSuspense(<ProductionAnalysisPage />)} />
         <Route path="system" element={withSuspense(<SystemPage />)} />

@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.event import EventSeverity, EventType
 
@@ -32,6 +32,27 @@ class AlertChannel(str, Enum):
 
 class Alert(BaseModel):
     """An alert generated from a triggered CEP rule."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "alert_id": "alert-123",
+                "rule_id": "temp-high-001",
+                "rule_name": "Temperature Exceeds Threshold",
+                "event_id": "event-456",
+                "asset_id": "a1b2c3d4",
+                "line_code": "LS18",
+                "event_type": "temperature_high",
+                "severity": "critical",
+                "title": "Cảnh báo: Nhiệt độ vượt ngưỡng",
+                "description": "Nhiệt độ máy Press-001 vượt 100°C trong hơn 2 phút. Giá trị hiện tại: 105.3°C",
+                "recommended_actions": [
+                    "Kiểm tra hệ thống làm mát",
+                    "Dừng máy nếu nhiệt độ > 110°C",
+                ],
+            }
+        }
+    )
 
     alert_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -61,23 +82,3 @@ class Alert(BaseModel):
     correlation_id: Optional[str] = None
 
     payload: dict[str, Any] = Field(default_factory=dict)
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "alert_id": "alert-123",
-                "rule_id": "temp-high-001",
-                "rule_name": "Temperature Exceeds Threshold",
-                "event_id": "event-456",
-                "asset_id": "a1b2c3d4",
-                "line_code": "LS18",
-                "event_type": "temperature_high",
-                "severity": "critical",
-                "title": "Cảnh báo: Nhiệt độ vượt ngưỡng",
-                "description": "Nhiệt độ máy Press-001 vượt 100°C trong hơn 2 phút. Giá trị hiện tại: 105.3°C",
-                "recommended_actions": [
-                    "Kiểm tra hệ thống làm mát",
-                    "Dừng máy nếu nhiệt độ > 110°C",
-                ],
-            }
-        }

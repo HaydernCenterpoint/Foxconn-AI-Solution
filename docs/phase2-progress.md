@@ -1,7 +1,9 @@
 ﻿# Phase 2 Implementation Progress
 
-**Started:** 2026-07-22
-**Target Completion:** 2026-08-05
+**Started:** 2026-07-22  
+**Target Completion:** 2026-08-05  
+**Status refresh:** 2026-07-27 — foundation ~41–45%; Sync W5 in progress  
+**Roadmap board:** `docs/roadmap.html` · master plan: `docs/master-plan-4-agents.md`
 
 ## ✅ Completed Workstreams
 
@@ -99,18 +101,37 @@
 
 ### E. Frontend Intelligence (Priority 2)
 - [x] **E1. API Client Updates**
-  - Updated `predictiveAlerts.api.ts` to use real Phase 2 APIs
-  - Added endpoints: listAlerts, getAlert, getAlertStats, getHealth, getHealthHistory, getFailureRisk, detectAnomaly, acknowledgeAlert, resolveAlert
-  - Removed mock endpoints
+  - Expanded `predictiveAlerts.api.ts`: list/get/stats, acknowledge/resolve, getHealth + history, healthColorVariant, rollUpHealthScores
+  - Demo-mode fallbacks for all methods
   - File: `frontend/src/features/dashboard/services/predictiveAlerts.api.ts`
+
+- [x] **E2. Health Badge in Asset Browser & Dashboard**
+  - Dashboard health score with color coding and breakdown
+  - Asset Browser tree badges + worst-child parent roll-up (GUID nodes, capped fan-out)
+
+- [x] **E3. Alert Center**
+  - Page: `frontend/src/pages/AlertCenterPage.tsx` at `/admin/alerts` and `/alerts`
+  - Filters (status/severity), stats strip, table, ack/resolve modal, CSV export, 5s refresh
+  - Nav + i18n (en/vi/zh-CN)
+
+- [x] **E4. Drill-Down & Export (partial)**
+  - Dashboard alert detail disclosure with description and recommended actions
+  - Alert Center CSV export of filtered list
+  - Remaining: dedicated alert detail page with full evidence, health history chart
+
+### A. CEP bridge (added 2026-07-27)
+- [x] **CEP → AlertService bridge**
+  - `EventRuleEngine` fail-open calls `AlertService.CreateAlertAsync` after event_log insert
+  - SignalR payload includes `alertId`; unit tests cover threshold ops + evidence
+  - `event-rules.json`: ≥5 enabled threshold rules; non-threshold types disabled with DEFERRED notes
 
 ## 🚧 In Progress / Pending
 
 ### A. CEP & Alerting
-- [ ] **A3. Migrate Priority Alarm Rules**
-  - Need to identify existing alarm rules from legacy system
-  - Map to CEP engine format
-  - Validate against historical data
+- [x] **A3. Migrate Priority Alarm Rules** (threshold subset)
+  - ≥5 threshold CEP rules enabled in `backend/Configuration/event-rules.json`
+  - Correlation/comparison/runtime_threshold evaluators deferred
+  - Remaining: validate against historical telemetry
 
 - [ ] **A5. Latency & Integration Tests**
   - Measure event→alert latency (target <1s p95)
@@ -144,20 +165,9 @@
   - DLQ management
 
 ### E. Frontend Intelligence
-- [ ] **E2. Health Badge in Asset Browser & Dashboard**
-  - Display health score with color coding
-  - Tooltip with breakdown
-  - Tree view roll-up health
-
-- [ ] **E3. Alert Center**
-  - List view with filters
-  - Actions: acknowledge, resolve
-  - Real-time updates
-
-- [ ] **E4. Drill-Down & Export**
-  - Alert detail page with evidence
-  - Health history chart
-  - CSV export
+- [ ] **E4. Drill-Down & Export (remaining)**
+  - Dedicated alert detail page with full evidence
+  - Health history chart UI
 
 - [ ] **E5. Root Cause Analysis (Basic)**
   - Correlated events display
@@ -165,6 +175,7 @@
   - Basic text matching
 
 - [ ] **E6. E2E Happy Path**
+  - [x] Component contract path: Dashboard → alert → health → drill-down
   - Playwright test: Dashboard → alert → health → acknowledge → export
   - No console errors
 
@@ -220,8 +231,8 @@
 2. **ML model:** Currently using simple z-score baseline; Phase 3 will integrate Isolation Forest / LSTM
 3. **Feature extraction:** SQL-based for Phase 2; Phase 3 will use dedicated feature engineering pipeline
 4. **Connector implementations:** Framework ready, need concrete File/ERP/MES implementations
-5. **Frontend integration:** API client updated, components need wiring to real APIs
-6. **Tests:** Unit tests needed for services; integration/E2E tests pending
+5. **Frontend integration:** Dashboard alert/health slice is wired; Asset Browser roll-up, Alert Center actions, export, and RCA remain
+6. **Tests:** Dashboard contract/component coverage exists; service integration and browser E2E tests remain
 
 ## Database Migrations Applied
 
@@ -255,8 +266,8 @@
 
 1. **Immediate (Today)**
    - Run database migrations on TimescaleDB instance
-   - Test API endpoints with Postman/curl
-   - Wire frontend components to real APIs
+   - Test alert and health endpoints with the configured Timescale database
+   - Preserve the verified dashboard alert/health contract
 
 2. **Short-term (This Week)**
    - Implement File Watcher connector
@@ -281,9 +292,23 @@
 - ✅ Predictive baseline model operational
 - ✅ Background jobs running
 - ⏳ At least 2 connectors working (0/2 complete)
-- ⏳ Frontend using real APIs (API client ready, UI pending)
+- ✅ Dashboard alert/health vertical slice uses real API contracts
 - ⏳ E2E test passing (not started)
 - ⏳ Latency targets met (<1s alerts, <200ms predictions)
 - ⏳ No hot path impact (MQTT ingestion unchanged)
 
-**Overall Phase 2 Progress: ~45% complete**
+## 2026-07-26 Afternoon Checkpoint
+
+**Baseline:** the 2026-07-22 report placed Phase 2 at ~45% with backend foundations complete and frontend integration pending.
+
+**Completed slice:** the alert controller now reuses the existing `ConnectionStrings:Timescale` setting; the dashboard maps the active alert and health envelopes, displays a color-coded health badge and breakdown, opens alert details, and visibly degrades when the intelligence API is unavailable.
+
+**Evidence:** `frontend/src/features/dashboard/services/predictiveAlerts.api.test.ts` covers response mapping and deterministic demo data; `frontend/src/features/dashboard/components/AlertHealthHappyPath.test.tsx` covers the dashboard happy path, breakdown, drill-down, and unavailable state; `frontend/src/pages/AssetBrowserPage.test.tsx` covers selected-asset health and health failure degradation; `frontend/src/shared/store/auth.store.demo.test.ts` proves the explicit synthetic viewer session. On 2026-07-26, all 45 frontend tests passed, followed by a clean TypeScript check, production build, and demo build. The single-command demo returned HTTP 200 at `http://127.0.0.1:3000`.
+
+**Validation limits:** backend tests could not run because this workstation has .NET runtimes but no .NET SDK. PostgreSQL port 5432 was reachable, but the configured Timescale port 55433 was closed, so no database-backed alert/health smoke result is claimed. `npm ci` also reported four dependency audit findings (one moderate, three high); no dependency versions were changed in this scoped checkpoint.
+
+**Deferred:** connectors, ERP/MES, batch/drift, Alert Center actions, RCA/LLM, export, broad API clients, load/security work, staging, and rollout.
+
+**Customer demo:** Foxconn branding and coherent links to Foxconn ODC (Odysseus) and Foxconn Data Fusion are present. The local walkthrough is explicitly synthetic. Genuine same-host main/ODC shared login exists, but ODF factory-cookie authentication and the live database-backed alert/health story remain unverified and must not be presented as complete.
+
+**Overall Phase 2 Progress: ~60% checkpoint. This is integration progress, not production readiness.**

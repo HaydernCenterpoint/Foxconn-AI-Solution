@@ -141,7 +141,7 @@ describe('ModernShell', () => {
     await waitFor(() => expect(within(alarmsLink as HTMLAnchorElement).getByText('3')).toBeInTheDocument());
     expect(within(alarmsLink as HTMLAnchorElement).queryByText('1')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Refresh data' })).toBeInTheDocument();
-    await waitFor(() => expect(document.title).toBe('Overview | FII Production Monitoring'));
+    await waitFor(() => expect(document.title).toBe('Overview | Foxconn'));
   });
 
   it('renders the supplied Foxconn Industrial Internet logo', () => {
@@ -151,22 +151,44 @@ describe('ModernShell', () => {
     expect(logo.getAttribute('src')).toContain('Foxconn_Industrial_Internet');
   });
 
-  it('provides an FII Assistant link to Odysseus', () => {
+  it('provides a Foxconn ODC link to the configured assistant', () => {
     renderViewerShell();
 
-    const assistantLink = screen.getByRole('link', { name: 'FII Assistant' });
+    const assistantLink = screen.getByRole('link', { name: 'Foxconn ODC (Odysseus)' });
     expect(assistantLink).toHaveAttribute('href', 'http://localhost:7000');
     expect(assistantLink).toHaveAttribute('target', '_blank');
     expect(assistantLink).toHaveAttribute('rel', 'noreferrer');
   });
 
-  it('provides an FII Data Fusion link to the Open Data Fusion window', () => {
+  it('provides a Foxconn Data Fusion link to its configured window', () => {
     renderViewerShell();
 
-    const dataFusionLink = screen.getByRole('link', { name: 'FII Data Fusion' });
+    const dataFusionLink = screen.getByRole('link', { name: 'Foxconn Data Fusion' });
     expect(dataFusionLink).toHaveAttribute('href', 'http://localhost:58088');
     expect(dataFusionLink).toHaveAttribute('target', '_blank');
     expect(dataFusionLink).toHaveAttribute('rel', 'noreferrer');
+  });
+
+  it('dynamically adapts service links to match the current page hostname when accessed remotely', () => {
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: new URL('http://192.168.1.100:3000/'),
+    });
+
+    try {
+      renderViewerShell();
+      const assistantLink = screen.getByRole('link', { name: 'Foxconn ODC (Odysseus)' });
+      const dataFusionLink = screen.getByRole('link', { name: 'Foxconn Data Fusion' });
+
+      expect(assistantLink).toHaveAttribute('href', 'http://192.168.1.100:7000');
+      expect(dataFusionLink).toHaveAttribute('href', 'http://192.168.1.100:58088');
+    } finally {
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: originalLocation,
+      });
+    }
   });
 
   it('clears the shared session before local logout', async () => {

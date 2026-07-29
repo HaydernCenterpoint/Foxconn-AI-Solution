@@ -1,9 +1,12 @@
 # Kế hoạch Tổng hợp: Xây dựng Industrial IoT Platform (MKZ Factory Monitor)
 ## Chia việc cho 4 Sub-agent làm song song
 
-> **Ngày:** 2026-07-09
-> **Nguồn:** Tổng hợp từ `cdf-features-analysis.md` + `prompt-framework.md`
-> **Mục tiêu:** Chia 18 tuần roadmap thành 4 luồng công việc chạy song song, giảm thời gian còn ~8-10 tuần
+> **Ngày:** 2026-07-09  
+> **Cập nhật tiến độ:** 2026-07-27  
+> **Nguồn:** Tổng hợp từ `cdf-features-analysis.md` + `prompt-framework.md`  
+> **Mục tiêu:** Chia 18 tuần roadmap thành 4 luồng công việc chạy song song, giảm thời gian còn ~8-10 tuần  
+> **Vị trí hiện tại:** Tuần 5–6 (Product Intelligence) — Gate 2 + Tuần 1–4 đã merge; Sync W5 đang làm  
+> **Evidence:** PR #16–#20, #22 · xem `docs/roadmap.html` và `docs/phase2-progress.md`
 
 ---
 
@@ -92,29 +95,30 @@ Checkpoint:  ▲Kickoff        ▲Sync W2        ▲Sync W5        ▲Integratio
 **Nguồn gốc:** Phase 2 + Phase 5 trong roadmap gốc
 
 ### Sprint B1 (Tuần 1-2): Thiết kế CEP & Mock Data
-- [ ] Không chờ Agent A — dùng **mock telemetry stream** theo schema đã chốt Ngày 1
+- [x] Không chờ Agent A — dùng **mock telemetry stream** theo schema đã chốt Ngày 1
 - [x] Đánh giá Apache Flink vs Drools (ma trận ưu/nhược điểm, quyết định kiến trúc)
 - [x] Định nghĩa event schema (Avro/JSON): `event_id, timestamp, asset_id, type, severity, payload`
 - [x] Viết 5-10 rule mẫu (VD: "3 máy cùng line lỗi trong 5 phút", "sản lượng giảm >20% so cùng giờ hôm qua")
 
-**Deliverables:** Architecture decision doc, event schema, rule set mẫu
+**Deliverables:** Architecture decision doc, event schema, rule set mẫu — **đã giao** (`docs/superpowers/specs/2026-07-23-cep-architecture-decision.md`, `backend/Configuration/event-rules.json`)
 
 ### Sprint B2 (Tuần 3-4): Setup Engine & Alarm Migration
-- [ ] Setup Flink/Drools trên staging
-- [ ] Migrate alarm rules cũ (threshold-based) sang engine mới
+- [x] Setup CEP engine in-process (`EventRuleEngine`) — Flink/Drools staging deferred; ADR chốt path nhẹ hơn
+- [ ] Migrate alarm rules cũ (threshold-based) sang engine mới (còn 5–10 rule priority)
 - [ ] Đo latency event→alert (mục tiêu <1s)
-- [ ] Tích hợp input thật từ Agent A khi TimescaleDB sẵn sàng (Tuần 3+)
+- [x] Tích hợp input thật từ Agent A khi TimescaleDB sẵn sàng (Tuần 3+)
 
-**Deliverables:** CEP engine chạy trên staging, migration report
+**Deliverables:** CEP engine chạy (in-process trên backend), migration report (partial)
 
 ### Sprint B3 (Tuần 5-6): Predictive Alerting (ML)
 - [ ] EDA trên dữ liệu sensor (temperature, vibration, current draw) 3 tháng
-- [ ] Feature engineering (rolling stats: mean/std/max theo 1h, 24h)
+- [x] Feature engineering schema (rolling stats tables: `asset_features`, predictions) — SQL pipeline Phase 2
 - [ ] Huấn luyện model anomaly detection (Isolation Forest / Autoencoder) và/hoặc
       classification "failure trong 1 giờ tới" (mục tiêu precision >85%, recall >80%)
-- [ ] Inference service (FastAPI, latency <100ms)
+- [x] Inference baseline service (z-score anomaly + failure risk APIs; ML models deferred Phase 3)
+      — `PredictiveService`, `PredictionController`
 
-**Deliverables:** Notebook EDA + training, inference API, model monitoring cơ bản
+**Deliverables:** Baseline inference API đã ship; notebook EDA + ML models vẫn mở
 
 ### Sprint B4 (Tuần 7-8): Root Cause Analysis
 - [ ] Event correlation graph (backward tracing từ alarm về nguồn gốc)
@@ -137,10 +141,10 @@ Checkpoint:  ▲Kickoff        ▲Sync W2        ▲Sync W5        ▲Integratio
 - [x] Chốt schema `assets` và `asset_relationships` (xem chi tiết SQL trong `prompt-framework.md` mục 4.1)
 - [x] Chốt schema `asset_documents` (metadata link; full RAG sync deferred)
 - [x] Publish schema này cho A/B/D dùng làm `asset_id` reference **ngay trong buổi kick-off**
-- [ ] Thiết kế template import Excel + script import
+- [x] Thiết kế template import Excel + script import (`docs/asset-import-template.md`)
 - [ ] Seed data 50+ asset thực tế (Plant → Line → Machine → Sensor) cho nhà máy MKZ
 
-**Deliverables:** SQL schema final, Excel template, seed data — **giao Ngày 1-3, gấp nhất**
+**Deliverables:** SQL schema final + import template đã giao; seed 50+ production-like còn mở
 
 ### Sprint C2 (Tuần 3-4): Asset CRUD API + Liên kết Document
 - [x] REST API: `GET/POST/PUT/DELETE /api/assets` cho catalog-native asset
@@ -148,15 +152,15 @@ Checkpoint:  ▲Kickoff        ▲Sync W2        ▲Sync W5        ▲Integratio
 - [x] Link document (manual, drawing, warranty) với asset — metadata API; pgvector binary sync deferred
 - [x] Search asset theo tên/loại/metadata
 
-**Deliverables:** API + Swagger docs, unit test (xUnit)
+**Deliverables:** API + unit test (xUnit) — **đã merge** (PR #16, #18, #19)
 
 ### Sprint C3 (Tuần 5-6): Asset Health Score
-- [ ] Công thức: Uptime 40% + Alarm frequency 30% + Performance vs baseline 20% + Maintenance overdue 10%
-- [ ] Job tính định kỳ (mỗi 15 phút), lưu vào `asset_metrics`
-- [ ] Kết hợp input alert/prediction từ Agent B (Tuần 6+)
-- [ ] API: `GET /api/v1/assets/{id}/health`
+- [x] Công thức: Uptime 40% + Alarm frequency 30% + Performance vs baseline 20% + Maintenance overdue 10%
+- [x] Job tính định kỳ (mỗi 15 phút), lưu vào `asset_metrics` (`HealthScoringJob`)
+- [x] Kết hợp input alert/prediction từ Agent B (baseline z-score + alert frequency)
+- [x] API: `GET /api/v1/assets/{id}/health` (+ history/compute, machine health)
 
-**Deliverables:** Scheduled job, API, tài liệu công thức
+**Deliverables:** Scheduled job, API, tài liệu công thức — **đã merge** (PR #20; phase2 services)
 
 ### Sprint C4 (Tuần 7-8): Access Control & Hardening
 - [ ] Role-based access control (JWT + scopes) cho toàn bộ API asset/telemetry
@@ -176,25 +180,26 @@ Checkpoint:  ▲Kickoff        ▲Sync W2        ▲Sync W5        ▲Integratio
 **Nguồn gốc:** Component prompts (mục 7) + Testing prompts (mục 8) trong `prompt-framework.md`
 
 ### Sprint D1 (Tuần 1-2): UI Shell + Mock Integration
-- [ ] Không chờ backend — dựng UI shell với **mock API** theo contract đã chốt (asset_id, telemetry, event schema)
-- [ ] Layout tổng: Dashboard, Asset Browser, Alarms, Reports (tận dụng Odysseus/React 19 stack có sẵn)
+- [x] Không chờ backend — dựng UI shell với **mock API** theo contract đã chốt (asset_id, telemetry, event schema)
+- [x] Layout tổng: Dashboard, Asset Browser, Alarms, Reports (Operations React stack + shared SSO)
 - [ ] Storybook setup cho các component tái sử dụng
 
-**Deliverables:** UI shell chạy được với mock data, Storybook
+**Deliverables:** UI shell + mock data — **đã có**; Storybook còn mở
 
 ### Sprint D2 (Tuần 3-4): Asset Browser UI
-- [ ] Tree view phân cấp asset (react-arborist), search theo tên/loại/metadata
-- [ ] Panel chi tiết: metadata, telemetry gần nhất (chart), alarm đang active, document liên kết
-- [ ] Tích hợp Asset CRUD API thật từ Agent C khi sẵn sàng (Tuần 4)
+- [x] Tree view phân cấp asset, search theo tên/loại/metadata (`AssetBrowserPage`)
+- [x] Panel chi tiết: metadata, telemetry/alarm surface, document liên kết (baseline)
+- [x] Tích hợp Asset CRUD API thật từ Agent C khi sẵn sàng (Tuần 4)
 
-**Deliverables:** Asset Browser hoàn chỉnh, E2E test cơ bản (Playwright)
+**Deliverables:** Asset Browser đã merge (PR #19); Playwright E2E browser còn mở
 
 ### Sprint D3 (Tuần 5-6): Dashboards & Charts
-- [ ] ProductionChart, DowntimeAnalysis, health score badge (màu theo ngưỡng đỏ/vàng/xanh)
-- [ ] Tích hợp Predictive Alert + RCA UI (dùng API từ Agent B)
-- [ ] Export CSV, drill-down khi click vào data point
+- [x] Health score badge dashboard (màu theo ngưỡng đỏ/vàng/xanh) + machine health UI
+- [x] Tích hợp Predictive Alert panel (API thật partial); RCA UI deferred
+- [ ] Export CSV, drill-down full evidence page
+- [ ] Alert Center actions (ack/resolve) + Asset Browser health roll-up
 
-**Deliverables:** Dashboard pages, unit test (Jest + RTL)
+**Deliverables:** Dashboard alert/health slice + SSO demo (PR #20, #22); Alert Center/export/E2E còn mở
 
 ### Sprint D4 (Tuần 7-9): Testing toàn diện
 - [ ] **Performance test:** Query 1 tuần data / 50 máy / 10 metric — mục tiêu <500ms p95, >100 query/s (dùng k6/JMeter, phối hợp Agent A)
@@ -213,12 +218,12 @@ Checkpoint:  ▲Kickoff        ▲Sync W2        ▲Sync W5        ▲Integratio
 
 ## 7. Điểm đồng bộ (Sync Checkpoints)
 
-| Checkpoint | Deadline | Accountable owner | Deliverable bắt buộc để qua gate | Contributors |
-|---|---|---|---|---|
-| **Sync W2** | Cuối tuần 2 | **C · Core backend** | Contract v1 cho asset/telemetry/event/API được versioned; A bàn giao telemetry schema thật; contract test pass. | A, B, D |
-| **Sync W5** | Cuối tuần 5 | **D · Frontend & QA** | Event/alert API (B) và Asset CRUD API (C) có trên integration environment; UI dùng API thật, kèm một E2E happy-path pass. | B, C |
-| **Integration W8** | Cuối tuần 8 | **D · Frontend & QA** | PLC mock → Data → Event/AI → Backend → UI chạy end-to-end; báo cáo test và danh sách known risks được lưu. | A, B, C |
-| **Go-live W10** | Cuối tuần 10 | **Deployment Owner / Platform Operations Lead** | Regression pass; security và data/source owner sign-off; managed-staging acceptance; rollout và rollback owner được nêu tên. | A, B, C, D |
+| Checkpoint | Deadline | Accountable owner | Deliverable bắt buộc để qua gate | Contributors | Status 2026-07-27 |
+|---|---|---|---|---|---|
+| **Sync W2** | Cuối tuần 2 | **C · Core backend** | Contract v1 cho asset/telemetry/event/API được versioned; A bàn giao telemetry schema thật; contract test pass. | A, B, D | ✅ Done (PR #16, #18, #19) |
+| **Sync W5** | Cuối tuần 5 | **D · Frontend & QA** | Event/alert API (B) và Asset CRUD API (C) có trên integration environment; UI dùng API thật, kèm một E2E happy-path pass. | B, C | 🟡 In progress — APIs/UI partial; Playwright E2E + connectors còn mở |
+| **Integration W8** | Cuối tuần 8 | **D · Frontend & QA** | PLC mock → Data → Event/AI → Backend → UI chạy end-to-end; báo cáo test và danh sách known risks được lưu. | A, B, C | ⬜ Planned |
+| **Go-live W10** | Cuối tuần 10 | **Deployment Owner / Platform Operations Lead** | Regression pass; security và data/source owner sign-off; managed-staging acceptance; rollout và rollback owner được nêu tên. | A, B, C, D | ⬜ Needs approval / managed staging |
 
 Owner chỉ đóng gate khi deliverable và link evidence đã được lưu; thiếu một mục thì checkpoint giữ trạng thái blocked.
 
@@ -243,5 +248,6 @@ Owner chỉ đóng gate khi deliverable và link evidence đã được lưu; th
 ## 9. Tổng kết
 
 - **Thời gian:** ~10 tuần (so với 18 tuần chạy tuần tự) nhờ chạy 4 luồng song song
-- **Điều kiện thành công:** Chốt Shared Contracts ngay Ngày 1 và Agent C giao asset schema sớm (Tuần 1-3) vì đây là điểm nghẽn chung
-- **Nguồn tham khảo chi tiết từng task:** xem `docs/cdf-features-analysis.md` (phân tích chức năng) và `docs/prompt-framework.md` (prompt mẫu cho từng task)
+- **Điều kiện thành công:** Chốt Shared Contracts ngay Ngày 1 và Agent C giao asset schema sớm (Tuần 1-3) vì đây là điểm nghẽn chung — **đã đạt** cho W2
+- **Tiến độ 2026-07-27:** Gate 2 + Tuần 1–4 done; Tuần 5–6 ~40–45%; bottleneck hiện tại = connectors, Alert Center/E2E, latency evidence
+- **Nguồn tham khảo chi tiết từng task:** xem `docs/cdf-features-analysis.md` (phân tích chức năng), `docs/prompt-framework.md` (prompt mẫu), `docs/roadmap.html` (status board), `docs/phase2-progress.md` (Phase 2 checklist)

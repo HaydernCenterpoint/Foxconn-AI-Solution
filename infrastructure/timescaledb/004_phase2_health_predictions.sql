@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS asset_predictions (
     prediction_window INTERVAL,  -- e.g., '1 hour', '24 hours'
     predicted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     valid_until TIMESTAMPTZ,
-    PRIMARY KEY (predicted_at, prediction_id)
+    PRIMARY KEY (prediction_id, predicted_at)
 );
 
 -- Hypertable for predictions

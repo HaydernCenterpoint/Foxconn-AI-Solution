@@ -55,6 +55,21 @@ class DualWriteMode(Enum):
     MIGRATION = "migration"  # Write to TimescaleDB only
     ROLLBACK = "rollback"  # Write to PostgreSQL only (TimescaleDB decommissioned)
 
+    @classmethod
+    def resolve(cls, mode: Optional["DualWriteMode | str"] = None) -> "DualWriteMode":
+        """Resolve an explicit mode or the DUAL_WRITE_MODE environment setting."""
+        if isinstance(mode, cls):
+            return mode
+
+        value = mode if mode is not None else os.getenv("DUAL_WRITE_MODE", cls.FULL.value)
+        try:
+            return cls(str(value).strip().lower())
+        except ValueError as exc:
+            valid_modes = ", ".join(item.value for item in cls)
+            raise ValueError(
+                f"Invalid DUAL_WRITE_MODE {value!r}; expected one of: {valid_modes}"
+            ) from exc
+
 
 @dataclass
 class DBConfig:
@@ -63,7 +78,7 @@ class DBConfig:
     port: int = 5432
     dbname: str = "factory_db"
     user: str = "factory_user"
-    password: str = "factory_secure_password_9988"
+    password: str = ""
     minconn: int = 2
     maxconn: int = 10
     
@@ -74,7 +89,16 @@ class DBConfig:
             port=int(os.getenv(f"{prefix}POSTGRES_PORT", "5432")),
             dbname=os.getenv(f"{prefix}POSTGRES_DB", "factory_db"),
             user=os.getenv(f"{prefix}POSTGRES_USER", "factory_user"),
-            password=os.getenv(f"{prefix}POSTGRES_PASSWORD", "factory_secure_password_9988"),
+            password=os.getenv(f"{prefix}POSTGRES_PASSWORD", ""),
+        )
+
+    def connect(self):
+        return psycopg2.connect(
+            host=self.host,
+            port=self.port,
+            dbname=self.dbname,
+            user=self.user,
+            password=self.password,
         )
 
 
@@ -180,12 +204,12 @@ class DualWriteSession:
     
     def __init__(
         self,
-        mode: DualWriteMode = DualWriteMode.FULL,
+        mode: Optional[DualWriteMode | str] = None,
         pg_config: Optional[DBConfig] = None,
         ts_config: Optional[DBConfig] = None,
         auto_commit: bool = False,
     ):
-        self.mode = mode
+        self.mode = DualWriteMode.resolve(mode)
         self.auto_commit = auto_commit
         self._pg_conn = None
         self._ts_conn = None
@@ -318,12 +342,12 @@ class TelemetryWriter:
     
     def __init__(
         self,
-        mode: DualWriteMode = DualWriteMode.FULL,
+        mode: Optional[DualWriteMode | str] = None,
         batch_size: int = 100,
         flush_interval: float = 1.0,
         max_retries: int = 3,
     ):
-        self.mode = mode
+        self.mode = DualWriteMode.resolve(mode)
         self.batch_size = batch_size
         self.flush_interval = flush_interval
         self.max_retries = max_retries
@@ -336,6 +360,22 @@ class TelemetryWriter:
         self._pool_manager = ConnectionPool.get_instance()
         self._pg_config = DBConfig.from_env()
         self._ts_config = DBConfig.from_env("TS_")
+
+    def set_mode(self, mode: DualWriteMode | str):
+        """Atomically flush queued data under the old mode, then change mode."""
+        new_mode = DualWriteMode.resolve(mode)
+        with self._lock:
+            if self.mode == new_mode:
+                return
+            telemetry_flushed = self._flush_telemetry()
+            events_flushed = self._flush_events()
+            if not telemetry_flushed or not events_flushed:
+                raise RuntimeError(
+                    f"Cannot change dual-write mode from {self.mode.value} "
+                    f"to {new_mode.value}: buffered writes failed to flush"
+                )
+            self.mode = new_mode
+            logger.info("Dual-write mode changed to %s", new_mode.value)
     
     @contextmanager
     def session(self, **kwargs):
@@ -385,7 +425,7 @@ class TelemetryWriter:
             )
             
             if should_flush:
-                self._flush_telemetry()
+                return self._flush_telemetry()
         
         return True
     
@@ -418,41 +458,58 @@ class TelemetryWriter:
             )
             
             if should_flush:
-                self._flush_events()
+                return self._flush_events()
         
         return True
     
-    def _flush_telemetry(self):
+    def _flush_telemetry(self) -> bool:
         """Flush telemetry buffer to database(s)"""
         if not self._telemetry_buffer:
-            return
+            return True
         
         rows = self._telemetry_buffer.copy()
         self._telemetry_buffer.clear()
-        self._last_flush = datetime.now()
         
         tuples = [r.to_tuple() for r in rows]
         
+        success = True
         if self.mode in (DualWriteMode.FULL, DualWriteMode.MIGRATION):
-            self._flush_to_ts(tuples)
+            success = self._flush_to_ts(tuples)
         
         if self.mode in (DualWriteMode.FULL, DualWriteMode.ROLLBACK):
-            self._flush_to_pg_legacy(rows)
+            success = self._flush_to_pg_legacy(rows) and success
+
+        if success:
+            self._last_flush = datetime.now()
+        else:
+            self._telemetry_buffer[0:0] = rows
+
+        return success
     
-    def _flush_events(self):
+    def _flush_events(self) -> bool:
         """Flush event buffer to database(s)"""
         if not self._event_buffer:
-            return
+            return True
         
         rows = self._event_buffer.copy()
         self._event_buffer.clear()
         
         tuples = [r.to_tuple() for r in rows]
-        
+
+        success = False
         if self.mode in (DualWriteMode.FULL, DualWriteMode.MIGRATION):
-            self._flush_events_to_ts(tuples)
+            success = self._flush_events_to_ts(tuples)
+        else:
+            logger.error(
+                "Event flush refused in rollback mode because no legacy event sink is configured"
+            )
+
+        if not success:
+            self._event_buffer[0:0] = rows
+
+        return success
     
-    def _flush_to_ts(self, tuples: list[tuple]):
+    def _flush_to_ts(self, tuples: list[tuple]) -> bool:
         """Flush telemetry to TimescaleDB with retry"""
         insert_query = """
             INSERT INTO telemetry (time, asset_id, metric, value, tags)
@@ -461,6 +518,7 @@ class TelemetryWriter:
         """
         
         for attempt in range(self.max_retries):
+            conn = None
             try:
                 conn = self._ts_config.connect()
                 with conn.cursor() as cur:
@@ -472,15 +530,18 @@ class TelemetryWriter:
                         page_size=1000
                     )
                 conn.commit()
-                conn.close()
                 logger.debug(f"Flushed {len(tuples)} telemetry points to TimescaleDB")
-                return
+                return True
             except Exception as e:
                 logger.warning(f"TimescaleDB flush attempt {attempt + 1} failed: {e}")
                 if attempt == self.max_retries - 1:
                     self._dead_letter_queue("telemetry", tuples, str(e))
+            finally:
+                if conn is not None:
+                    conn.close()
+        return False
     
-    def _flush_events_to_ts(self, tuples: list[tuple]):
+    def _flush_events_to_ts(self, tuples: list[tuple]) -> bool:
         """Flush events to TimescaleDB"""
         insert_query = """
             INSERT INTO events (asset_id, type, severity, payload, source, timestamp)
@@ -488,6 +549,7 @@ class TelemetryWriter:
             ON CONFLICT DO NOTHING
         """
         
+        conn = None
         try:
             conn = self._ts_config.connect()
             with conn.cursor() as cur:
@@ -499,13 +561,17 @@ class TelemetryWriter:
                     page_size=1000
                 )
             conn.commit()
-            conn.close()
             logger.debug(f"Flushed {len(tuples)} events to TimescaleDB")
+            return True
         except Exception as e:
             logger.error(f"Events flush failed: {e}")
             self._dead_letter_queue("events", tuples, str(e))
+            return False
+        finally:
+            if conn is not None:
+                conn.close()
     
-    def _flush_to_pg_legacy(self, rows: list[TelemetryPoint]):
+    def _flush_to_pg_legacy(self, rows: list[TelemetryPoint]) -> bool:
         """Write to legacy PostgreSQL tables (for migration compatibility)"""
         # This writes to machine_telemetry_history for backward compatibility
         # during the migration period
@@ -532,18 +598,24 @@ class TelemetryWriter:
                 ))
         
         if tuples:
+            conn = None
             try:
                 conn = self._pg_config.connect()
                 with conn.cursor() as cur:
                     execute_values(cur, insert_query, tuples, page_size=1000)
                 conn.commit()
-                conn.close()
+                return True
             except Exception as e:
                 logger.warning(f"Legacy PostgreSQL write failed: {e}")
+                return False
+            finally:
+                if conn is not None:
+                    conn.close()
+        return True
     
     def _dead_letter_queue(self, topic: str, data: list, error: str):
         """Store failed writes for later retry"""
-        dlq_file = f"dlq_{topic}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        dlq_file = f"dlq_{topic}_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.json"
         try:
             with open(dlq_file, 'w') as f:
                 json.dump({
@@ -551,25 +623,26 @@ class TelemetryWriter:
                     'error': error,
                     'count': len(data),
                     'timestamp': datetime.now().isoformat(),
-                    'data': data[:10]  # Store first 10 rows as sample
+                    'data': data
                 }, f, indent=2, default=str)
             logger.info(f"Dead letter queue written to {dlq_file}")
         except Exception as e:
             logger.error(f"Failed to write dead letter queue: {e}")
     
-    def flush(self):
+    def flush(self) -> bool:
         """Manually flush all buffers"""
         with self._lock:
-            self._flush_telemetry()
-            self._flush_events()
+            telemetry_flushed = self._flush_telemetry()
+            events_flushed = self._flush_events()
+            return telemetry_flushed and events_flushed
     
-    def close(self):
+    def close(self) -> bool:
         """Flush and close the writer"""
-        self.flush()
+        return self.flush()
 
 
 # Decorator for automatic dual-write
-def dual_write(mode: DualWriteMode = DualWriteMode.FULL):
+def dual_write(mode: Optional[DualWriteMode | str] = None):
     """Decorator to add dual-write capability to a function"""
     def decorator(func):
         def wrapper(*args, **kwargs):
@@ -585,14 +658,19 @@ def dual_write(mode: DualWriteMode = DualWriteMode.FULL):
 
 # Singleton instance for convenience
 _default_writer: Optional[TelemetryWriter] = None
+_default_writer_lock = threading.Lock()
 
 
-def get_writer(mode: DualWriteMode = DualWriteMode.FULL) -> TelemetryWriter:
-    """Get the default telemetry writer singleton"""
+def get_writer(mode: Optional[DualWriteMode | str] = None) -> TelemetryWriter:
+    """Get the singleton, applying explicit or environment mode changes safely."""
     global _default_writer
-    if _default_writer is None:
-        _default_writer = TelemetryWriter(mode=mode)
-    return _default_writer
+    resolved_mode = DualWriteMode.resolve(mode)
+    with _default_writer_lock:
+        if _default_writer is None:
+            _default_writer = TelemetryWriter(mode=resolved_mode)
+        else:
+            _default_writer.set_mode(resolved_mode)
+        return _default_writer
 
 
 def write_telemetry(
@@ -601,11 +679,12 @@ def write_telemetry(
     metric: str,
     value: float,
     tags: Optional[dict] = None,
-    mode: DualWriteMode = DualWriteMode.FULL,
+    mode: Optional[DualWriteMode | str] = None,
+    flush: bool = False,
 ) -> bool:
     """Convenience function for single telemetry writes"""
     writer = get_writer(mode)
-    return writer.write_telemetry(time, asset_id, metric, value, tags)
+    return writer.write_telemetry(time, asset_id, metric, value, tags, flush)
 
 
 def write_event(
@@ -615,8 +694,17 @@ def write_event(
     severity: str = "info",
     payload: Optional[dict] = None,
     source: str = "unknown",
-    mode: DualWriteMode = DualWriteMode.FULL,
+    mode: Optional[DualWriteMode | str] = None,
+    flush: bool = False,
 ) -> bool:
     """Convenience function for single event writes"""
     writer = get_writer(mode)
-    return writer.write_event(timestamp, asset_id, event_type, severity, payload, source)
+    return writer.write_event(
+        timestamp,
+        asset_id,
+        event_type,
+        severity,
+        payload,
+        source,
+        flush,
+    )

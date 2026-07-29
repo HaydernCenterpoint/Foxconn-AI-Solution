@@ -56,6 +56,10 @@ class SyncStatus(Enum):
     PAUSED = "paused"
 
 
+class FileSchemaError(ValueError):
+    """Raised when a CSV file is missing required columns."""
+
+
 @dataclass
 class FileWatcherConfig:
     watch_dirs: list[str] = field(default_factory=lambda: ["./incoming"])
@@ -136,15 +140,27 @@ class FileProcessor:
                 time.sleep(1)
         return False
     
-    def _read_csv(self, filepath: Path) -> list[dict]:
-        """Read CSV file"""
+    def _read_csv(self, filepath: Path, mapping: ColumnMapping) -> list[dict]:
+        """Read CSV file after validating its required headers."""
         rows = []
-        with open(filepath, 'r', encoding='utf-8-sig') as f:
+        with open(filepath, 'r', encoding='utf-8-sig', newline='') as f:
             reader = csv.DictReader(f)
+            headers = reader.fieldnames or []
+            required = {
+                mapping.timestamp_col,
+                mapping.asset_id_col,
+                mapping.metric_col,
+                mapping.value_col,
+            }
+            missing = sorted(required - set(headers))
+            if missing:
+                raise FileSchemaError(
+                    f"CSV file is missing required headers: {', '.join(missing)}"
+                )
             for row in reader:
                 rows.append(dict(row))
         return rows
-    
+
     def _read_excel(self, filepath: Path) -> list[dict]:
         """Read Excel file (requires openpyxl or xlrd)"""
         try:
@@ -171,46 +187,40 @@ class FileProcessor:
         wb.close()
         return rows
     
-    def process_file(self, filepath: Path) -> tuple[list[dict], str]:
+    def process_file(
+        self, filepath: Path, mapping: Optional[ColumnMapping] = None
+    ) -> tuple[list[dict], str]:
         """
         Process a file and return rows.
         Returns (rows, file_type)
         """
         ext = filepath.suffix.lower()
-        
+
         if ext == '.csv':
-            return self._read_csv(filepath), 'csv'
+            if mapping is None:
+                mapping = ColumnMapping()
+            return self._read_csv(filepath, mapping), 'csv'
         elif ext in ('.xlsx', '.xls'):
             return self._read_excel(filepath), 'excel'
         else:
             raise ValueError(f"Unsupported file type: {ext}")
     
     def _transform_row(self, row: dict, mapping: ColumnMapping, source_file: str) -> Optional[dict]:
-        """Transform a row to event format"""
+        """Transform one validated row to the telemetry event format."""
         try:
-            # Parse timestamp
-            timestamp_str = row.get(mapping.timestamp_col, '')
-            timestamp = self._parse_timestamp(timestamp_str)
-            
-            # Get asset_id
-            asset_id = row.get(mapping.asset_id_col, '')
-            
-            # Get metric
-            metric = row.get(mapping.metric_col, 'unknown')
-            
-            # Get value
-            value_str = row.get(mapping.value_col, '0')
-            try:
-                value = float(value_str)
-            except (ValueError, TypeError):
-                value = 0.0
-            
-            # Build tags
+            timestamp = self._parse_timestamp(row.get(mapping.timestamp_col))
+            asset_id = str(row.get(mapping.asset_id_col, '')).strip()
+            metric = str(row.get(mapping.metric_col, '')).strip()
+            value = float(row.get(mapping.value_col))
+
+            if not asset_id or not metric:
+                raise ValueError("asset_id and metric are required")
+
             tags = {'source_file': source_file}
             for tag_name, col_name in mapping.tags_cols.items():
-                if col_name in row:
+                if col_name in row and row[col_name] not in (None, ''):
                     tags[tag_name] = row[col_name]
-            
+
             return {
                 'timestamp': timestamp,
                 'asset_id': asset_id,
@@ -218,30 +228,31 @@ class FileProcessor:
                 'value': value,
                 'tags': tags
             }
-        except Exception as e:
-            logger.warning(f"Row transform failed: {e}")
+        except (TypeError, ValueError) as e:
+            logger.warning("Row transform failed: %s", e)
             return None
-    
+
     def _parse_timestamp(self, value: str) -> datetime:
-        """Parse timestamp from various formats"""
-        formats = [
-            '%Y-%m-%d %H:%M:%S',
-            '%Y-%m-%d %H:%M:%S.%f',
-            '%Y-%m-%dT%H:%M:%S',
-            '%Y-%m-%dT%H:%M:%S.%f',
-            '%d/%m/%Y %H:%M:%S',
-            '%m/%d/%Y %H:%M:%S',
-            '%Y-%m-%d',
-        ]
-        
-        for fmt in formats:
-            try:
-                return datetime.strptime(str(value), fmt)
-            except ValueError:
-                continue
-        
-        # Default to now
-        return datetime.now()
+        """Parse a supported timestamp or raise for invalid input."""
+        text = str(value or '').strip()
+        if not text:
+            raise ValueError("timestamp is required")
+
+        try:
+            return datetime.fromisoformat(text.replace('Z', '+00:00'))
+        except ValueError:
+            formats = (
+                '%d/%m/%Y %H:%M:%S',
+                '%m/%d/%Y %H:%M:%S',
+                '%Y-%m-%d',
+            )
+            for fmt in formats:
+                try:
+                    return datetime.strptime(text, fmt)
+                except ValueError:
+                    continue
+
+        raise ValueError(f"invalid timestamp: {text}")
     
     def import_file(
         self,
@@ -253,14 +264,16 @@ class FileProcessor:
         Returns (success_count, failure_count)
         """
         if not self._wait_for_file_ready(filepath):
-            logger.error(f"File not ready after {self.config.max_file_age_seconds}s: {filepath}")
-            return 0, 0
+            raise TimeoutError(
+                f"File not ready after {self.config.max_file_age_seconds}s: {filepath}"
+            )
         
         try:
-            rows, file_type = self.process_file(filepath)
+            rows, file_type = self.process_file(filepath, mapping)
+        except FileSchemaError:
+            raise
         except Exception as e:
-            logger.error(f"Failed to process file {filepath}: {e}")
-            return 0, 0
+            raise RuntimeError(f"Failed to process file {filepath}") from e
         
         success = 0
         failed = 0
@@ -284,47 +297,78 @@ class FileProcessor:
         from dualwrite import write_telemetry
         import uuid
         
-        asset_id = data['asset_id']
-        # Validate UUID format
-        try:
-            uuid.UUID(str(asset_id))
-        except ValueError:
-            # Try to look up by machine_code
-            asset_id = self._lookup_asset_id(asset_id)
+        asset_id = self._lookup_asset_id(data['asset_id'])
+
+        if not asset_id:
+            raise ValueError(f"No asset mapping found for '{data['asset_id']}'")
         
-        write_telemetry(
+        written = write_telemetry(
             time=data['timestamp'],
-            asset_id=uuid.UUID(asset_id) if asset_id else uuid.UUID('00000000-0000-0000-0000-000000000000'),
+            asset_id=uuid.UUID(asset_id),
             metric=data['metric'],
             value=data['value'],
-            tags=data['tags']
+            tags=data['tags'],
+            flush=True,
         )
+        if not written:
+            raise RuntimeError("TimescaleDB rejected the telemetry write")
     
-    def _lookup_asset_id(self, machine_code: str) -> str:
-        """Look up asset UUID from machine code"""
+    def _lookup_asset_id(self, identifier: str) -> Optional[str]:
+        """Resolve a canonical UUID or machine code against the active write plane."""
         import psycopg2
-        
+
+        rollback_mode = os.getenv('DUAL_WRITE_MODE', 'full').strip().lower() == 'rollback'
+        prefix = '' if rollback_mode else 'CONNECTOR_'
+
+        def setting(name: str, default: str) -> str:
+            if prefix:
+                return os.getenv(
+                    f'{prefix}{name}',
+                    os.getenv(f'TS_{name}', os.getenv(name, default)),
+                )
+            return os.getenv(name, default)
+
         try:
             conn = psycopg2.connect(
-                host=os.getenv('POSTGRES_HOST', 'localhost'),
-                port=int(os.getenv('POSTGRES_PORT', '5432')),
-                dbname=os.getenv('POSTGRES_DB', 'factory_db'),
-                user=os.getenv('POSTGRES_USER', 'factory_user'),
-                password=os.getenv('POSTGRES_PASSWORD', 'factory_secure_password_9988'),
+                host=setting('POSTGRES_HOST', 'localhost'),
+                port=int(setting('POSTGRES_PORT', '5432')),
+                dbname=setting('POSTGRES_DB', 'factory_db'),
+                user=setting('POSTGRES_USER', 'factory_user'),
+                password=setting('POSTGRES_PASSWORD', ''),
             )
-            cur = conn.cursor()
-            cur.execute(
-                "SELECT id FROM assets WHERE metadata->>'machine_code' = %s LIMIT 1",
-                (machine_code,)
-            )
-            result = cur.fetchone()
-            conn.close()
+            try:
+                with conn.cursor() as cur:
+                    if rollback_mode:
+                        cur.execute(
+                            """
+                            SELECT id
+                            FROM machines
+                            WHERE id::text = %s OR machine_code = %s OR client_id = %s
+                            LIMIT 1
+                            """,
+                            (str(identifier), str(identifier), str(identifier)),
+                        )
+                    else:
+                        cur.execute(
+                            """
+                            SELECT id
+                            FROM assets
+                            WHERE id::text = %s
+                               OR metadata->>'machine_code' = %s
+                               OR metadata->>'clientId' = %s
+                            LIMIT 1
+                            """,
+                            (str(identifier), str(identifier), str(identifier)),
+                        )
+                    result = cur.fetchone()
+            finally:
+                conn.close()
             if result:
                 return str(result[0])
         except Exception as e:
             logger.warning(f"Asset lookup failed: {e}")
         
-        return '00000000-0000-0000-0000-000000000000'
+        return None
 
 
 class FileWatcherConnector:
@@ -419,6 +463,10 @@ class FileWatcherConnector:
         
         try:
             success, failed = self.processor.import_file(filepath, self.DEFAULT_MAPPING)
+
+            if failed and success == 0:
+                self.progress.rows_failed += failed
+                raise ValueError(f"All {failed} rows failed")
             
             # Update progress
             self.progress.files_processed += 1

@@ -36,6 +36,7 @@ npm-debug.log*
 
 # Other temp files or backups
 may_data.rar
+.runtime-backups/
 
 # Python Virtual Environments
 venv*/

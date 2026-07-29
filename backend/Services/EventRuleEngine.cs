@@ -18,8 +18,8 @@ namespace backend.Services
 {
     /// <summary>
     /// In-process CEP engine. Subscribes to a telemetry channel, evaluates threshold rules
-    /// from event-rules.json, writes matched events to event_log, and pushes CRITICAL/EMERGENCY
-    /// alerts to SignalR.
+    /// from event-rules.json, writes matched events to event_log, persists durable alerts via
+    /// <see cref="AlertService"/>, and pushes CRITICAL/EMERGENCY alerts to SignalR.
     /// </summary>
     public sealed class EventRuleEngine : BackgroundService
     {
@@ -159,22 +159,24 @@ namespace backend.Services
                 _logger.LogInformation("CEP rule fired: {RuleId} for asset {AssetId} (metric={Metric}, value={Value})",
                     rule.Id, input.MachineId, metric, matchingPoint.Value);
 
-                // Create Timescale alert for the matched rule (best-effort)
+                // Persist durable alert (fail-open so CEP never blocks telemetry hot path)
+                Guid? alertId = null;
                 try
                 {
-                    var tsSeverity = MapToTimescaleSeverity(fusionEvent.Severity);
-                    await _alertService.CreateAlertAsync(
-                        eventId: fusionEvent.EventId,
-                        assetId: fusionEvent.AssetId,
-                        ruleId: rule.Id,
-                        severity: tsSeverity,
-                        title: $"[{rule.Name}] {metric} {rule.Condition.Operator} {rule.Condition.Value}",
-                        description: rule.Description,
-                        evidence: (object?)fusionEvent.Payload);
+                    alertId = await _alertService.CreateAlertAsync(
+                        fusionEvent.EventId,
+                        fusionEvent.AssetId,
+                        rule.Id,
+                        fusionEvent.Severity,
+                        rule.Name ?? rule.Id,
+                        rule.Description,
+                        evidence: fusionEvent.Payload);
                 }
-                catch (Exception alertEx)
+                catch (Exception ex)
                 {
-                    _logger.LogWarning(alertEx, "Failed to create Timescale alert for rule {RuleId}", rule.Id);
+                    _logger.LogWarning(ex,
+                        "EventRuleEngine: failed to create durable alert for rule {RuleId}; event log retained.",
+                        rule.Id);
                 }
 
                 // Push CRITICAL/EMERGENCY alerts via SignalR
@@ -183,6 +185,7 @@ namespace backend.Services
                     await _hubContext.Clients.Group("all_clients").SendAsync("CepAlert", new
                     {
                         eventId = fusionEvent.EventId,
+                        alertId,
                         assetId = fusionEvent.AssetId,
                         eventType = fusionEvent.EventType,
                         severity = fusionEvent.Severity,
@@ -197,18 +200,9 @@ namespace backend.Services
         }
 
         /// <summary>
-        /// Maps CEP contract severity (UPPERCASE) to Timescale CHECK-compatible severity (lowercase).
+        /// Pure threshold evaluator used by the CEP loop and unit tests.
         /// </summary>
-        private static string MapToTimescaleSeverity(string cepSeverity) => cepSeverity switch
-        {
-            "INFO" => "info",
-            "WARNING" => "medium",
-            "CRITICAL" => "high",
-            "EMERGENCY" => "critical",
-            _ => "low"
-        };
-
-        private static bool EvaluateThreshold(double actual, string? op, double threshold) =>
+        public static bool EvaluateThreshold(double actual, string? op, double threshold) =>
             op switch
             {
                 ">" => actual > threshold,
@@ -218,6 +212,25 @@ namespace backend.Services
                 "==" => Math.Abs(actual - threshold) < 0.0001,
                 "!=" => Math.Abs(actual - threshold) >= 0.0001,
                 _ => false
+            };
+
+        /// <summary>
+        /// Builds the durable-alert evidence payload for a fired threshold rule.
+        /// Kept pure so bridge semantics can be unit-tested without Timescale.
+        /// </summary>
+        public static Dictionary<string, object?> BuildAlertEvidence(
+            EventRule rule,
+            string metric,
+            double actualValue) =>
+            new()
+            {
+                ["rule_id"] = rule.Id,
+                ["rule_name"] = rule.Name,
+                ["metric"] = metric,
+                ["actual_value"] = actualValue,
+                ["threshold"] = rule.Condition?.Value,
+                ["operator"] = rule.Condition?.Operator,
+                ["unit"] = rule.Condition?.Unit
             };
     }
 
