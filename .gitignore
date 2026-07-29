@@ -23,6 +23,7 @@ dist-app-v2/
 .vs/
 .vscode/
 .idea/
+.serena/
 *.suo
 *.ntvs*
 *.njsproj
