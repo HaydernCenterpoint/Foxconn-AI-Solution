@@ -19,8 +19,7 @@ from pydantic import BaseModel
 from app.rules.engine import CEPEngine
 from app.rules.rca import RCAResult, RCAService
 from app.schemas.alert import Alert, AlertStatus
-from app.schemas.event import Event, EventQuery
-from app.schemas.ml import AnomalyResult, FailurePrediction, FeatureVector
+from app.schemas.event import Event
 from app.schemas.rule import CEPRule, RuleStatus
 
 logger = logging.getLogger(__name__)

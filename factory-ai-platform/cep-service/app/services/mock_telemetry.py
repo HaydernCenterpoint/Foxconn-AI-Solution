@@ -12,7 +12,7 @@ import asyncio
 import random
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import AsyncIterator, Optional
 
 from app.schemas.telemetry import MetricType, SensorConfig, TelemetryPoint
 
@@ -328,9 +328,5 @@ class MockTelemetryGenerator:
                 if key in self.assets:
                     yield self.generate_point(key, ts)
             await asyncio.sleep(interval_seconds)
-
-
-# Alias for type hint
-from typing import AsyncIterator
 
 __all__ = ["MockTelemetryGenerator", "MOCK_ASSETS", "ASSET_INDEX"]

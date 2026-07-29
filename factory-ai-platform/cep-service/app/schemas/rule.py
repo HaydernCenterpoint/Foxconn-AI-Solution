@@ -9,9 +9,9 @@ A CEP rule consists of:
 - Action to execute on match
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -151,7 +151,6 @@ class CEPRule(BaseModel):
         Override in subclasses for complex logic.
         """
         cfg = self.condition_config
-        event_type = event.get("type", "")
         asset_id = event.get("asset_id", "")
         line_code = event.get("line_code", "")
 
