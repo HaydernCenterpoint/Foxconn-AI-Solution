@@ -16,6 +16,8 @@ Usage:
 """
 
 import json
+import hashlib
+import hmac
 import logging
 import os
 import sys
@@ -25,8 +27,9 @@ from typing import Optional
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
@@ -40,20 +43,71 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv("CONNECTOR_CORS_ORIGINS", "").split(",")
+    if origin.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials=bool(cors_origins),
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["X-Connector-API-Key", "Content-Type"],
 )
+
+PUBLIC_PATHS = {"/health", "/docs", "/redoc", "/openapi.json"}
+
+
+@app.middleware("http")
+async def require_connector_api_key(request: Request, call_next):
+    """Fail closed for data and connector-management routes."""
+    if request.method == "OPTIONS" or request.url.path in PUBLIC_PATHS:
+        return await call_next(request)
+
+    configured_key = os.getenv("CONNECTOR_API_KEY", "").strip()
+    if not configured_key:
+        logger.error("CONNECTOR_API_KEY is not configured")
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Connector API authentication is not configured"},
+        )
+
+    supplied_key = request.headers.get("X-Connector-API-Key", "")
+    configured_digest = hashlib.sha256(configured_key.encode("utf-8")).digest()
+    supplied_digest = hashlib.sha256(supplied_key.encode("utf-8")).digest()
+    if not hmac.compare_digest(configured_digest, supplied_digest):
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "Invalid connector API key"},
+        )
+
+    return await call_next(request)
 
 # Configuration
 POSTGRES_HOST = os.getenv('POSTGRES_HOST', 'localhost')
 POSTGRES_PORT = int(os.getenv('POSTGRES_PORT', '5432'))
 POSTGRES_DB = os.getenv('POSTGRES_DB', 'factory_db')
 POSTGRES_USER = os.getenv('POSTGRES_USER', 'factory_user')
-POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD', 'factory_secure_password_9988')
+POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD', '')
+BUCKET_INTERVALS = {
+    '5m': '5 minutes',
+    '15m': '15 minutes',
+    '1h': '1 hour',
+    '1d': '1 day',
+}
+AGGREGATE_EXPRESSIONS = {
+    'avg': 'AVG(value)',
+    'min': 'MIN(value)',
+    'max': 'MAX(value)',
+    'sum': 'SUM(value)',
+    'count': 'COUNT(value)',
+}
+ROLLUP_AGGREGATE_COLUMNS = {
+    'avg': 'avg_value',
+    'min': 'min_value',
+    'max': 'max_value',
+}
 
 
 def get_db_connection():
@@ -115,12 +169,37 @@ class EventPoint(BaseModel):
     payload: dict
 
 
+class DLQResolveRequest(BaseModel):
+    resolved_by: str = Field(default="admin", min_length=1, max_length=100)
+
+
 # Connector registry (in-memory state)
 class ConnectorRegistry:
     """In-memory registry of connector processes"""
     
     _connectors: dict = {}
     _states: dict = {}
+
+    @classmethod
+    def get_or_create(cls, name: str):
+        """Return the live connector instance used by admin operations."""
+        if name in cls._connectors:
+            return cls._connectors[name]
+
+        if name == 'erp':
+            from connectors.erp.connector import ERPConnector, ERPConfig
+            connector = ERPConnector(ERPConfig.from_env())
+        elif name == 'file_watcher':
+            from connectors.file_watcher.connector import FileWatcherConnector, FileWatcherConfig
+            connector = FileWatcherConnector(FileWatcherConfig.from_env())
+        elif name == 'mes':
+            from connectors.mes.connector import MESConnector, MESConfig
+            connector = MESConnector(MESConfig.from_env())
+        else:
+            raise HTTPException(status_code=404, detail=f"Unknown connector: {name}")
+
+        cls._connectors[name] = connector
+        return connector
     
     @classmethod
     def load_states(cls):
@@ -141,6 +220,11 @@ class ConnectorRegistry:
     @classmethod
     def get_status(cls, name: str) -> Optional[dict]:
         """Get connector status"""
+        if name in cls._connectors:
+            status = cls._connectors[name].get_status()
+            status['name'] = name
+            return status
+
         cls.load_states()
         
         if name in cls._states:
@@ -222,25 +306,11 @@ async def start_connector(name: str, background_tasks: BackgroundTasks):
     
     # Try to import and start the connector
     try:
-        if name == 'erp':
-            from connectors.erp.connector import ERPConnector, ERPConfig
-            config = ERPConfig.from_env()
-            conn = ERPConnector(config)
-            conn.start()
-        elif name == 'file_watcher':
-            from connectors.file_watcher.connector import FileWatcherConnector, FileWatcherConfig
-            config = FileWatcherConfig.from_env()
-            conn = FileWatcherConnector(config)
-            conn.start()
-        elif name == 'mes':
-            from connectors.mes.connector import MESConnector, MESConfig
-            config = MESConfig.from_env()
-            conn = MESConnector(config)
-            conn.start()
-        else:
-            raise HTTPException(status_code=404, detail=f"Unknown connector: {name}")
-        
+        conn = ConnectorRegistry.get_or_create(name)
+        conn.start()
         return {"status": "started", "connector": name}
+    except HTTPException:
+        raise
     except ImportError as e:
         raise HTTPException(status_code=400, detail=f"Connector module not available: {e}")
     except Exception as e:
@@ -251,7 +321,10 @@ async def start_connector(name: str, background_tasks: BackgroundTasks):
 async def stop_connector(name: str):
     """Stop a connector"""
     logger.info(f"Stopping connector: {name}")
-    # In production, this would stop the connector process
+    conn = ConnectorRegistry._connectors.get(name)
+    if conn is None:
+        raise HTTPException(status_code=404, detail=f"Connector '{name}' is not running")
+    conn.stop()
     return {"status": "stopped", "connector": name}
 
 
@@ -259,23 +332,15 @@ async def stop_connector(name: str):
 async def trigger_sync(name: str, background_tasks: BackgroundTasks):
     """Trigger immediate sync for a connector"""
     logger.info(f"Triggering sync for: {name}")
+    conn = ConnectorRegistry.get_or_create(name)
     
     def run_sync():
         try:
             if name == 'erp':
-                from connectors.erp.connector import ERPConnector, ERPConfig
-                config = ERPConfig.from_env()
-                conn = ERPConnector(config)
                 conn.sync_once()
             elif name == 'file_watcher':
-                from connectors.file_watcher.connector import FileWatcherConnector, FileWatcherConfig
-                config = FileWatcherConfig.from_env()
-                conn = FileWatcherConnector(config)
                 conn.scan_once()
             elif name == 'mes':
-                from connectors.mes.connector import MESConnector, MESConfig
-                config = MESConfig.from_env()
-                conn = MESConnector(config)
                 conn.sync_once()
         except Exception as e:
             logger.error(f"Sync failed for {name}: {e}")
@@ -301,6 +366,160 @@ async def connector_health(name: str):
     }
 
 
+@app.get("/connectors/{name}/dlq")
+async def list_connector_dlq(
+    name: str,
+    resolved: Optional[bool] = Query(False),
+    limit: int = Query(100, ge=1, le=1000),
+):
+    """List connector dead-letter entries for administration."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT d.id, d.failed_at, d.reason, d.record_data,
+                       d.retry_count, d.last_retry_at, d.resolved,
+                       d.resolved_at, d.resolved_by
+                FROM connector_dlq d
+                JOIN connector_definitions c ON c.id = d.connector_id
+                WHERE c.name = %s AND (%s IS NULL OR d.resolved = %s)
+                ORDER BY d.failed_at DESC
+                LIMIT %s
+                """,
+                (name, resolved, resolved, limit),
+            )
+            rows = cur.fetchall()
+        return {'data': [dict(row) for row in rows], 'count': len(rows)}
+    except psycopg2.Error as exc:
+        logger.error("DLQ list failed for %s: %s", name, exc)
+        raise HTTPException(status_code=503, detail="Connector DLQ is unavailable") from exc
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+@app.post("/connectors/{name}/dlq/{dlq_id}/retry")
+async def retry_connector_dlq(name: str, dlq_id: int):
+    """Retry one unresolved ERP DLQ record and resolve it on success."""
+    if name != 'erp':
+        raise HTTPException(
+            status_code=400,
+            detail=f"Connector '{name}' does not support record retry",
+        )
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT d.id, d.record_data, d.resolved
+                FROM connector_dlq d
+                JOIN connector_definitions c ON c.id = d.connector_id
+                WHERE d.id = %s AND c.name = %s
+                FOR UPDATE
+                """,
+                (dlq_id, name),
+            )
+            row = cur.fetchone()
+            if row is None:
+                raise HTTPException(status_code=404, detail="DLQ entry not found")
+            if row['resolved']:
+                raise HTTPException(status_code=409, detail="DLQ entry is already resolved")
+
+            connector = ConnectorRegistry.get_or_create(name)
+            try:
+                connector.retry_dlq_record(row['record_data'])
+            except Exception as exc:
+                cur.execute(
+                    """
+                    UPDATE connector_dlq
+                    SET retry_count = retry_count + 1,
+                        last_retry_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                    """,
+                    (dlq_id,),
+                )
+                conn.commit()
+                logger.warning("DLQ retry failed for %s/%s: %s", name, dlq_id, exc)
+                raise HTTPException(status_code=502, detail="DLQ retry failed") from exc
+
+            cur.execute(
+                """
+                UPDATE connector_dlq
+                SET retry_count = retry_count + 1,
+                    last_retry_at = CURRENT_TIMESTAMP,
+                    resolved = TRUE,
+                    resolved_at = CURRENT_TIMESTAMP,
+                    resolved_by = 'retry'
+                WHERE id = %s
+                """,
+                (dlq_id,),
+            )
+        conn.commit()
+        return {"status": "resolved", "connector": name, "dlq_id": dlq_id}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except psycopg2.Error as exc:
+        if conn is not None:
+            conn.rollback()
+        logger.error("DLQ retry transaction failed for %s/%s: %s", name, dlq_id, exc)
+        raise HTTPException(status_code=503, detail="Connector DLQ is unavailable") from exc
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+@app.post("/connectors/{name}/dlq/{dlq_id}/resolve")
+async def resolve_connector_dlq(
+    name: str,
+    dlq_id: int,
+    request: DLQResolveRequest,
+):
+    """Manually resolve one connector dead-letter entry."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE connector_dlq d
+                SET resolved = TRUE,
+                    resolved_at = CURRENT_TIMESTAMP,
+                    resolved_by = %s
+                FROM connector_definitions c
+                WHERE d.id = %s
+                  AND d.connector_id = c.id
+                  AND c.name = %s
+                  AND NOT d.resolved
+                RETURNING d.id
+                """,
+                (request.resolved_by, dlq_id, name),
+            )
+            row = cur.fetchone()
+            if row is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Unresolved DLQ entry not found",
+                )
+        conn.commit()
+        return {"status": "resolved", "connector": name, "dlq_id": dlq_id}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except psycopg2.Error as exc:
+        if conn is not None:
+            conn.rollback()
+        logger.error("DLQ resolve failed for %s/%s: %s", name, dlq_id, exc)
+        raise HTTPException(status_code=503, detail="Connector DLQ is unavailable") from exc
+    finally:
+        if conn is not None:
+            conn.close()
+
+
 # Telemetry API
 @app.get("/api/v1/telemetry/query")
 async def query_telemetry(
@@ -309,8 +528,8 @@ async def query_telemetry(
     start_time: Optional[datetime] = Query(None, description="Start time (ISO 8601)"),
     end_time: Optional[datetime] = Query(None, description="End time (ISO 8601)"),
     bucket: Optional[str] = Query("5m", description="Time bucket: 5m, 15m, 1h, 1d"),
-    limit: int = Query(1000, le=10000),
-    aggregate: Optional[str] = Query(None, description="Aggregation: avg, min, max, sum")
+    limit: int = Query(1000, ge=1, le=10000),
+    aggregate: Optional[str] = Query(None, description="Aggregation: avg, min, max, sum, count")
 ):
     """
     Query telemetry data from TimescaleDB.
@@ -321,6 +540,18 @@ async def query_telemetry(
     - Time bucketing for downsampling
     - Basic aggregation
     """
+    bucket_interval = BUCKET_INTERVALS.get(bucket or '')
+    if bucket_interval is None:
+        raise HTTPException(status_code=400, detail="Unsupported telemetry bucket")
+
+    aggregate_name = aggregate.strip().lower() if aggregate else None
+    aggregate_expression = None
+    if aggregate_name:
+        aggregate_expression = AGGREGATE_EXPRESSIONS.get(aggregate_name)
+        if aggregate_expression is None:
+            raise HTTPException(status_code=400, detail="Unsupported telemetry aggregation")
+
+    conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -330,9 +561,14 @@ async def query_telemetry(
         conditions = []
         
         # Determine aggregation level
-        use_continuous_agg = False
-        if bucket in ('1h', '1d'):
-            use_continuous_agg = True
+        rollup_column = ROLLUP_AGGREGATE_COLUMNS.get(aggregate_name or 'avg')
+        use_continuous_agg = (
+            bucket in ('1h', '1d')
+            and rollup_column is not None
+            and start_time is None
+            and end_time is None
+        )
+        time_column = 'bucket' if use_continuous_agg else 'time'
         
         # Build WHERE clause
         if asset_ids:
@@ -348,64 +584,48 @@ async def query_telemetry(
             params.extend(metric_list)
         
         if start_time:
-            conditions.append("time >= %s")
+            conditions.append(f"{time_column} >= %s")
             params.append(start_time)
         
         if end_time:
-            conditions.append("time <= %s")
+            conditions.append(f"{time_column} <= %s")
             params.append(end_time)
         
         where_clause = " AND ".join(conditions) if conditions else "1=1"
         
         # Build aggregation
-        agg_clause = ""
-        group_clause = ""
         order_clause = "time DESC"
         
-        if use_continuous_agg and not aggregate:
+        if use_continuous_agg:
             # Use continuous aggregate for hourly/daily queries
             if bucket == '1h':
                 table = 'telemetry_hourly'
-                bucket_expr = "time_bucket('1 hour', bucket)"
             else:
                 table = 'telemetry_daily'
-                bucket_expr = "time_bucket('1 day', bucket)"
             
             query = f"""
                 SELECT 
-                    {bucket_expr} AS time,
+                    bucket AS time,
                     asset_id,
                     metric,
-                    AVG(avg_value) AS value,
-                    COUNT(*) AS sample_count
+                    {rollup_column} AS value
                 FROM {table}
                 WHERE {where_clause}
-                GROUP BY 1, 2, 3
-                ORDER BY {order_clause}
+                ORDER BY bucket DESC
                 LIMIT %s
             """
             params.append(limit)
-        elif aggregate:
+        elif aggregate_expression:
             # Aggregation without continuous aggregate
-            agg_func = aggregate.upper()
-            if agg_func == 'AVG':
-                agg_clause = f"{agg_func}(value)"
-            elif agg_func in ('MIN', 'MAX', 'SUM', 'COUNT'):
-                agg_clause = f"{agg_func}(value)"
-            else:
-                agg_clause = f"AVG(value)"
-            
-            group_clause = "GROUP BY asset_id, metric"
-            
             query = f"""
                 SELECT 
-                    time_bucket('{bucket}', time) AS time,
+                    time_bucket('{bucket_interval}', time) AS time,
                     asset_id,
                     metric,
-                    {agg_clause} AS value
+                    {aggregate_expression} AS value
                 FROM telemetry
                 WHERE {where_clause}
-                {group_clause}
+                GROUP BY 1, 2, 3
                 ORDER BY {order_clause}
                 LIMIT %s
             """
@@ -423,7 +643,6 @@ async def query_telemetry(
         
         cur.execute(query, params)
         rows = cur.fetchall()
-        conn.close()
         
         results = []
         for row in rows:
@@ -431,7 +650,7 @@ async def query_telemetry(
                 'time': row['time'].isoformat() if hasattr(row['time'], 'isoformat') else row['time'],
                 'asset_id': str(row['asset_id']),
                 'metric': row['metric'],
-                'value': float(row['value']) if row['value'] else None,
+                'value': float(row['value']) if row['value'] is not None else None,
                 'tags': row.get('tags', {})
             })
         
@@ -451,6 +670,9 @@ async def query_telemetry(
     except Exception as e:
         logger.error(f"Telemetry query failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 @app.get("/api/v1/events/query")

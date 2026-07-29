@@ -2,23 +2,22 @@
 # TimescaleDB Migration Docker Setup
 # ============================================
 
-version: '3.8'
-
 services:
   # TimescaleDB Service (replaces standard PostgreSQL for time-series)
   timescaledb:
-    image: timescale/timescaledb:latest-pg16
+    image: timescale/timescaledb:2.28.3-pg17
     container_name: factory-timescaledb
     restart: unless-stopped
     environment:
       POSTGRES_DB: factory_db
       POSTGRES_USER: factory_user
-      POSTGRES_PASSWORD: factory_secure_password_9988
+      POSTGRES_PASSWORD: ${FII_DATA_POSTGRES_PASSWORD:?Set FII_DATA_POSTGRES_PASSWORD}
     volumes:
       - timescaledb_data:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d:ro
+      - ./migrations/001_timescale_setup.sql:/docker-entrypoint-initdb.d/001_timescale_setup.sql:ro
+      - ../../infrastructure/connectors/001_connector_schema.sql:/docker-entrypoint-initdb.d/003_connector_schema.sql:ro
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${FII_DATA_TIMESCALE_PORT:-55434}:5432"
     networks:
       - db-net
     healthcheck:
@@ -49,9 +48,11 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=factory_db
       - POSTGRES_USER=factory_user
-      - POSTGRES_PASSWORD=factory_secure_password_9988
+      - POSTGRES_PASSWORD=${FII_DATA_POSTGRES_PASSWORD:?Set FII_DATA_POSTGRES_PASSWORD}
+      - CONNECTOR_API_KEY=${CONNECTOR_API_KEY:?Set CONNECTOR_API_KEY via the deployment secret manager}
+      - CONNECTOR_CORS_ORIGINS=${CONNECTOR_CORS_ORIGINS:-}
     ports:
-      - "8084:8084"
+      - "127.0.0.1:${FII_DATA_API_PORT:-8084}:8084"
     networks:
       - factory-net
       - db-net
@@ -78,11 +79,22 @@ services:
     restart: unless-stopped
     command: python -m connectors.erp.connector --daemon
     environment:
-      - POSTGRES_HOST=timescaledb
-      - POSTGRES_PORT=5432
-      - POSTGRES_DB=factory_db
-      - POSTGRES_USER=factory_user
-      - POSTGRES_PASSWORD=factory_secure_password_9988
+      - DUAL_WRITE_MODE=${DUAL_WRITE_MODE:-migration}
+      - POSTGRES_HOST=${LEGACY_POSTGRES_HOST:-timescaledb}
+      - POSTGRES_PORT=${LEGACY_POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${LEGACY_POSTGRES_DB:-factory_db}
+      - POSTGRES_USER=${LEGACY_POSTGRES_USER:-factory_user}
+      - POSTGRES_PASSWORD=${LEGACY_POSTGRES_PASSWORD:-${FII_DATA_POSTGRES_PASSWORD:?Set FII_DATA_POSTGRES_PASSWORD}}
+      - CONNECTOR_POSTGRES_HOST=timescaledb
+      - CONNECTOR_POSTGRES_PORT=5432
+      - CONNECTOR_POSTGRES_DB=factory_db
+      - CONNECTOR_POSTGRES_USER=factory_user
+      - CONNECTOR_POSTGRES_PASSWORD=${FII_DATA_POSTGRES_PASSWORD:?Set FII_DATA_POSTGRES_PASSWORD}
+      - TS_POSTGRES_HOST=timescaledb
+      - TS_POSTGRES_PORT=5432
+      - TS_POSTGRES_DB=factory_db
+      - TS_POSTGRES_USER=factory_user
+      - TS_POSTGRES_PASSWORD=${FII_DATA_POSTGRES_PASSWORD:?Set FII_DATA_POSTGRES_PASSWORD}
       - ERP_API_URL=${ERP_API_URL:-http://erp-service:8080/api}
       - ERP_API_KEY=${ERP_API_KEY:-}
       - ERP_SYNC_INTERVAL=300
@@ -100,6 +112,7 @@ services:
 
   # MES Connector Worker
   mes-connector:
+    profiles: ["mes"]
     build:
       context: .
       dockerfile: Dockerfile.connector
@@ -107,11 +120,22 @@ services:
     restart: unless-stopped
     command: python -m connectors.mes.connector --daemon
     environment:
-      - POSTGRES_HOST=timescaledb
-      - POSTGRES_PORT=5432
-      - POSTGRES_DB=factory_db
-      - POSTGRES_USER=factory_user
-      - POSTGRES_PASSWORD=factory_secure_password_9988
+      - DUAL_WRITE_MODE=${DUAL_WRITE_MODE:-migration}
+      - POSTGRES_HOST=${LEGACY_POSTGRES_HOST:-timescaledb}
+      - POSTGRES_PORT=${LEGACY_POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${LEGACY_POSTGRES_DB:-factory_db}
+      - POSTGRES_USER=${LEGACY_POSTGRES_USER:-factory_user}
+      - POSTGRES_PASSWORD=${LEGACY_POSTGRES_PASSWORD:-${FII_DATA_POSTGRES_PASSWORD:?Set FII_DATA_POSTGRES_PASSWORD}}
+      - CONNECTOR_POSTGRES_HOST=timescaledb
+      - CONNECTOR_POSTGRES_PORT=5432
+      - CONNECTOR_POSTGRES_DB=factory_db
+      - CONNECTOR_POSTGRES_USER=factory_user
+      - CONNECTOR_POSTGRES_PASSWORD=${FII_DATA_POSTGRES_PASSWORD:?Set FII_DATA_POSTGRES_PASSWORD}
+      - TS_POSTGRES_HOST=timescaledb
+      - TS_POSTGRES_PORT=5432
+      - TS_POSTGRES_DB=factory_db
+      - TS_POSTGRES_USER=factory_user
+      - TS_POSTGRES_PASSWORD=${FII_DATA_POSTGRES_PASSWORD:?Set FII_DATA_POSTGRES_PASSWORD}
       - MES_CONNECTION_TYPE=${MES_CONNECTION_TYPE:-api}
       - MES_API_URL=${MES_API_URL:-http://mes-service:8080/api}
       - MES_API_KEY=${MES_API_KEY:-}
@@ -140,11 +164,22 @@ services:
       - ./processed:/app/processed
       - ./failed:/app/failed
     environment:
-      - POSTGRES_HOST=timescaledb
-      - POSTGRES_PORT=5432
-      - POSTGRES_DB=factory_db
-      - POSTGRES_USER=factory_user
-      - POSTGRES_PASSWORD=factory_secure_password_9988
+      - DUAL_WRITE_MODE=${DUAL_WRITE_MODE:-migration}
+      - POSTGRES_HOST=${LEGACY_POSTGRES_HOST:-timescaledb}
+      - POSTGRES_PORT=${LEGACY_POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${LEGACY_POSTGRES_DB:-factory_db}
+      - POSTGRES_USER=${LEGACY_POSTGRES_USER:-factory_user}
+      - POSTGRES_PASSWORD=${LEGACY_POSTGRES_PASSWORD:-${FII_DATA_POSTGRES_PASSWORD:?Set FII_DATA_POSTGRES_PASSWORD}}
+      - CONNECTOR_POSTGRES_HOST=timescaledb
+      - CONNECTOR_POSTGRES_PORT=5432
+      - CONNECTOR_POSTGRES_DB=factory_db
+      - CONNECTOR_POSTGRES_USER=factory_user
+      - CONNECTOR_POSTGRES_PASSWORD=${FII_DATA_POSTGRES_PASSWORD:?Set FII_DATA_POSTGRES_PASSWORD}
+      - TS_POSTGRES_HOST=timescaledb
+      - TS_POSTGRES_PORT=5432
+      - TS_POSTGRES_DB=factory_db
+      - TS_POSTGRES_USER=factory_user
+      - TS_POSTGRES_PASSWORD=${FII_DATA_POSTGRES_PASSWORD:?Set FII_DATA_POSTGRES_PASSWORD}
       - FILE_WATCHER_DIRS=/app/incoming
       - FILE_WATCHER_POLL_INTERVAL=30
     networks:
@@ -172,7 +207,7 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=factory_db
       - POSTGRES_USER=factory_user
-      - POSTGRES_PASSWORD=factory_secure_password_9988
+      - POSTGRES_PASSWORD=${FII_DATA_POSTGRES_PASSWORD:?Set FII_DATA_POSTGRES_PASSWORD}
     networks:
       - db-net
     depends_on:
@@ -189,7 +224,6 @@ networks:
     driver: bridge
   db-net:
     driver: bridge
-    internal: true
 
 volumes:
   timescaledb_data:

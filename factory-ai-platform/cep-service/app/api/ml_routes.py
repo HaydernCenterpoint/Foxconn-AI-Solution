@@ -8,9 +8,9 @@ Provides endpoints for:
 """
 
 import logging
-from typing import Any
+from typing import Any, cast
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException
 
 from app.ml.models import AnomalyDetector, FailurePredictor, FeatureEngineering
 from app.schemas.ml import AnomalyResult, FailurePrediction, FeatureVector
@@ -77,7 +77,6 @@ async def detect_anomaly_batch(
 
     for i, req in enumerate(requests):
         try:
-            asset_id = req.get("asset_id", f"unknown-{i}")
             # Reconstruct FeatureVector from dict
             fv = FeatureVector(**req)
             result = _anomaly_detector.detect(fv)
@@ -119,14 +118,23 @@ async def predict_failure_batch(
     """Run failure prediction on multiple asset feature vectors."""
     if _failure_predictor is None:
         raise HTTPException(status_code=503, detail="ML models not initialized")
+    anomaly_detector = _anomaly_detector
+    requires_anomaly_detection = any(
+        request.get("anomaly_result") is None for request in requests
+    )
+    if requires_anomaly_detection and anomaly_detector is None:
+        raise HTTPException(status_code=503, detail="ML models not initialized")
+    required_detector = cast(AnomalyDetector, anomaly_detector)
 
     results = []
     for req in requests:
         try:
             features = FeatureVector(**req)
-            anomaly_result = None
-            if "anomaly_result" in req:
-                anomaly_result = AnomalyResult(**req["anomaly_result"])
+            anomaly_payload = req.get("anomaly_result")
+            if anomaly_payload is not None:
+                anomaly_result = AnomalyResult(**anomaly_payload)
+            else:
+                anomaly_result = required_detector.detect(features)
             prediction = _failure_predictor.predict(features, anomaly_result)
             results.append(prediction.model_dump(mode="json"))
         except Exception as exc:

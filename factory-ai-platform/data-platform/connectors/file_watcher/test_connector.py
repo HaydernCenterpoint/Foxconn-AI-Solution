@@ -1,6 +1,13 @@
 from datetime import datetime
+import uuid
 
-from connector import ColumnMapping, FileProcessor, FileWatcherConfig, FileWatcherConnector
+import dualwrite
+from connectors.file_watcher.connector import (
+    ColumnMapping,
+    FileProcessor,
+    FileWatcherConfig,
+    FileWatcherConnector,
+)
 
 
 def processor(tmp_path) -> FileProcessor:
@@ -46,6 +53,75 @@ def test_transform_row_returns_valid_telemetry(tmp_path):
     assert result["asset_id"] == "M-1"
     assert result["metric"] == "temp"
     assert result["value"] == 42.5
+
+
+def test_write_telemetry_maps_machine_code(tmp_path, monkeypatch):
+    file_processor = processor(tmp_path)
+    asset_id = "11111111-1111-1111-1111-111111111111"
+    writes = []
+    monkeypatch.setattr(file_processor, "_lookup_asset_id", lambda _: asset_id)
+    monkeypatch.setattr(
+        dualwrite,
+        "write_telemetry",
+        lambda **kwargs: writes.append(kwargs) or True,
+    )
+
+    file_processor._write_telemetry({
+        "timestamp": datetime.fromisoformat("2026-07-28T12:00:00+00:00"),
+        "asset_id": "M-1",
+        "metric": "temp",
+        "value": 42.5,
+        "tags": {},
+    })
+
+    assert writes[0]["asset_id"] == uuid.UUID(asset_id)
+    assert writes[0]["flush"] is True
+
+
+def test_write_telemetry_rejects_failed_database_write(tmp_path, monkeypatch):
+    file_processor = processor(tmp_path)
+    asset_id = "11111111-1111-1111-1111-111111111111"
+    monkeypatch.setattr(file_processor, "_lookup_asset_id", lambda _: asset_id)
+    monkeypatch.setattr(dualwrite, "write_telemetry", lambda **_kwargs: False)
+
+    try:
+        file_processor._write_telemetry({
+            "timestamp": datetime.fromisoformat("2026-07-28T12:00:00+00:00"),
+            "asset_id": "M-1",
+            "metric": "temp",
+            "value": 42.5,
+            "tags": {},
+        })
+    except RuntimeError as error:
+        assert "rejected" in str(error)
+    else:
+        raise AssertionError("Expected failed database write to raise")
+
+
+def test_write_telemetry_rejects_unknown_canonical_uuid(tmp_path, monkeypatch):
+    file_processor = processor(tmp_path)
+    writes = []
+    monkeypatch.setattr(file_processor, "_lookup_asset_id", lambda _: None)
+    monkeypatch.setattr(
+        dualwrite,
+        "write_telemetry",
+        lambda **kwargs: writes.append(kwargs) or True,
+    )
+
+    try:
+        file_processor._write_telemetry({
+            "timestamp": datetime.fromisoformat("2026-07-28T12:00:00+00:00"),
+            "asset_id": "11111111-1111-1111-1111-111111111111",
+            "metric": "temp",
+            "value": 42.5,
+            "tags": {},
+        })
+    except ValueError as error:
+        assert "No asset mapping" in str(error)
+    else:
+        raise AssertionError("Expected unknown canonical UUID to be rejected")
+
+    assert writes == []
 
 
 def test_scan_once_imports_rows_and_moves_file(tmp_path, monkeypatch):
@@ -133,6 +209,25 @@ def test_missing_required_csv_header_moves_file_to_failed(tmp_path, monkeypatch)
     assert not (tmp_path / ".processed_hashes.json").exists()
 
 
+def test_unmapped_asset_moves_file_to_failed(tmp_path, monkeypatch):
+    watcher_connector, watch_dir = watcher(tmp_path)
+    source_file = watch_dir / "telemetry.csv"
+    source_file.write_text(
+        "timestamp,machine_id,metric,value\n"
+        "2026-07-28T12:00:00Z,UNKNOWN,temp,42.5\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(watcher_connector.processor, "_lookup_asset_id", lambda _: None)
+
+    result = watcher_connector.scan_once()
+
+    assert result["files_failed"] == 1
+    assert result["files_processed"] == 0
+    assert result["rows_failed"] == 1
+    assert not source_file.exists()
+    assert (tmp_path / "failed" / source_file.name).exists()
+
+
 def test_csv_with_valid_headers_and_no_rows_is_processed(tmp_path, monkeypatch):
     watcher_connector, watch_dir = watcher(tmp_path)
     source_file = watch_dir / "empty.csv"
@@ -152,3 +247,25 @@ def test_csv_with_valid_headers_and_no_rows_is_processed(tmp_path, monkeypatch):
     assert telemetry == []
     assert not source_file.exists()
     assert (tmp_path / "processed" / source_file.name).exists()
+
+
+def test_parser_failure_moves_file_to_failed_without_recording_hash(tmp_path, monkeypatch):
+    watcher_connector, watch_dir = watcher(tmp_path)
+    source_file = watch_dir / "broken.xlsx"
+    source_file.write_bytes(b"not an Excel workbook")
+
+    def fail_to_parse(*_args, **_kwargs):
+        raise ValueError("invalid workbook")
+
+    monkeypatch.setattr(watcher_connector.processor, "process_file", fail_to_parse)
+
+    result = watcher_connector.scan_once()
+
+    assert result["files_failed"] == 1
+    assert result["files_processed"] == 0
+    assert result["rows_imported"] == 0
+    assert result["rows_failed"] == 0
+    assert not source_file.exists()
+    assert (tmp_path / "failed" / source_file.name).exists()
+    assert not (tmp_path / "processed" / source_file.name).exists()
+    assert not (tmp_path / ".processed_hashes.json").exists()

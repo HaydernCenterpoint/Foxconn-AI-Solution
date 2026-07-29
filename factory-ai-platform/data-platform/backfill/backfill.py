@@ -97,7 +97,7 @@ class BackfillRunner:
             port=int(os.getenv('POSTGRES_PORT', '5432')),
             dbname=os.getenv('POSTGRES_DB', 'factory_db'),
             user=os.getenv('POSTGRES_USER', 'factory_user'),
-            password=os.getenv('POSTGRES_PASSWORD', 'factory_secure_password_9988'),
+            password=os.getenv('POSTGRES_PASSWORD', ''),
         )
     
     def _get_batch_query(self) -> tuple[str, str, list]:

@@ -8,7 +8,7 @@ postgres:
   port: 5432
   database: "factory_db"
   username: "factory_user"
-  password: "factory_secure_password_9988"
+  password: ""
   timescaledb:
     enabled: true
     # Chunk interval for hypertables

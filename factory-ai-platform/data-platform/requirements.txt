@@ -2,8 +2,7 @@
 # Python 3.10+
 
 # Database
-psycopg2-binary==2.9.9
-timescaleb==0.1.0  # Not real, use: pip install timescaledb
+psycopg2-binary==2.9.12
 
 # Web Framework
 fastapi==0.110.0

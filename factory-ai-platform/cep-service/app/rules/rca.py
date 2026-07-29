@@ -6,12 +6,11 @@ Integrates with the Factory AI Gateway for natural language explanations.
 """
 
 import uuid
-from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any
 
-from app.schemas.event import Event, EventSeverity, EventType
+from app.schemas.event import Event, EventSeverity
 
 
 @dataclass
@@ -212,26 +211,12 @@ class RCAService:
 
         candidates = []
         for candidate in self._event_history:
-            if candidate.timestamp < window_start:
+            if not window_start <= candidate.timestamp < event.timestamp:
                 continue
             if candidate.event_id == event.event_id:
                 continue
-
-            # Check causality pattern
-            pattern_causes = self.CAUSALITY_PATTERNS.get(event.type.value, [])
-            if candidate.type.value in pattern_causes:
+            if self._shares_scope(candidate, event):
                 candidates.append(candidate)
-                continue
-
-            # Same asset, earlier time
-            if candidate.asset_id == event.asset_id and candidate.timestamp < event.timestamp:
-                candidates.append(candidate)
-                continue
-
-            # Same line, earlier time, higher severity
-            if candidate.line_code == event.line_code:
-                if candidate.timestamp < event.timestamp:
-                    candidates.append(candidate)
 
         return candidates
 
@@ -281,6 +266,7 @@ class RCAService:
             for e in self._event_history
             if window_start <= e.timestamp <= window_end
             and e.event_id not in (root.event_id, target.event_id)
+            and self._shares_scope(e, target)
         ]
         intermediates.sort(key=lambda e: e.timestamp)
 
@@ -288,6 +274,16 @@ class RCAService:
         chain.append(target)
 
         return chain
+
+    @staticmethod
+    def _shares_scope(candidate: Event, target: Event) -> bool:
+        if candidate.asset_id == target.asset_id:
+            return True
+        return bool(
+            target.line_code
+            and candidate.line_code
+            and candidate.line_code == target.line_code
+        )
 
     def _infer_root_cause_type(self, event: Event) -> str:
         """Infer the root cause type from an event."""

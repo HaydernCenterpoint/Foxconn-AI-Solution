@@ -23,7 +23,6 @@ import asyncio
 import logging
 import threading
 import uuid
-from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
@@ -115,6 +114,8 @@ class CEPEngine:
 
                 try:
                     matched = self._evaluate_rule(rule, state, event, now)
+                    state.event_buffer.append(event)
+                    self._prune_buffer(state, now)
                     if matched:
                         triggered_event = self._create_triggered_event(rule, event, matched)
                         if triggered_event:
@@ -123,10 +124,6 @@ class CEPEngine:
                             state.last_match = now
                             rule.match_count += 1
                             rule.last_match_time = now
-
-                            # Store in pattern buffer
-                            state.event_buffer.append(event)
-                            self._prune_buffer(state, now)
 
                 except Exception as exc:
                     state.error_count += 1
@@ -319,6 +316,14 @@ class CEPEngine:
         event_type_filter = cfg.event_type_filter or event.type.value
         target_machines = cfg.target_machine_codes or []
         target_line = cfg.target_line_code
+        current_machine = event.payload.extra.get("machine_code") or event.payload.machine_code
+
+        if event.type.value != event_type_filter:
+            return None
+        if target_line is not None and event.line_code != target_line:
+            return None
+        if target_machines and current_machine not in target_machines:
+            return None
 
         window_start = now - timedelta(minutes=cfg.time_window_minutes)
         recent_events = [
@@ -330,6 +335,13 @@ class CEPEngine:
                 or (not event_type_filter and True)
             )
             and (target_line is None or e.line_code == target_line)
+            and (
+                not target_machines
+                or (
+                    e.payload.extra.get("machine_code") or e.payload.machine_code
+                )
+                in target_machines
+            )
         ]
 
         # Count unique machines in window
@@ -340,7 +352,6 @@ class CEPEngine:
                 machines_seen.add(mc)
 
         # Add current event's machine
-        current_machine = event.payload.extra.get("machine_code") or event.payload.machine_code
         if current_machine:
             machines_seen.add(current_machine)
 
