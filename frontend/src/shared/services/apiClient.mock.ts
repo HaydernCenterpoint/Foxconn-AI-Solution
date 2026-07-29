@@ -2,6 +2,14 @@ export function getMockDataForUrl(url: string, method: string): unknown {
   const cleanUrl = url.split('?')[0];
 
   if (method === 'get') {
+    if (cleanUrl.endsWith('/integrations/connectors')) {
+      return [
+        { name: 'erp', status: 'success', last_sync_at: new Date().toISOString(), last_successful_sync: new Date().toISOString(), records_synced: 1240, errors: 0, error_message: null, running: true },
+        { name: 'file_watcher', status: 'idle', last_sync_at: new Date().toISOString(), last_successful_sync: new Date().toISOString(), records_synced: 86, errors: 0, error_message: null, running: true },
+        { name: 'mes', status: 'unknown', last_sync_at: null, last_successful_sync: null, records_synced: 0, errors: 0, error_message: null, running: false },
+      ];
+    }
+
     if (cleanUrl.endsWith('/production-lines')) {
       return [
         { id: 'line-1', name: 'Dây chuyền lắp ráp điện tử (L1)', description: 'Lắp ráp bản mạch, linh kiện điện tử', status: 'active', createdAt: '2026-06-15T00:00:00.000Z', machineCount: 5 },
@@ -458,7 +466,12 @@ function getMockAssetChildren(assetId: string): Record<string, unknown>[] {
     return null;
   };
   const found = findNode(tree);
-  return (found ?? []).map(({ children: _children, parentId: _parentId, ...rest }) => rest);
+  return (found ?? []).map((node) => {
+    const child = { ...node };
+    delete child.children;
+    delete child.parentId;
+    return child;
+  });
 }
 
 function getMockAssetDocuments() {
