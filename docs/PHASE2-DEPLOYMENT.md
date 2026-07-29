@@ -183,18 +183,26 @@ curl -X POST http://localhost:5000/api/v1/predictions/anomaly \
 
 ## Configuration Reference
 
-**appsettings.json:**
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=plc_monitoring;Username=postgres;Password=12345678",
-    "TimescaleConnection": "Host=localhost;Port=55433;Database=plc_timescale;Username=postgres;Password=12345678"
-  },
-  "HealthScoring": {
-    "IntervalMinutes": 15
-  }
-}
+Connection strings and signing keys are intentionally absent from tracked
+`appsettings*.json` files. Inject them from the deployment secret manager:
+
+```text
+ConnectionStrings__DefaultConnection
+ConnectionStrings__Timescale
+Jwt__Key
+Mqtt__EncryptionKey
+MqttServer__DeviceTokens__<client-id>
+MqttServer__Tls__CertificatePassword
 ```
+
+For TLS deployments, also set `MqttServer__Tls__CertificatePath` to the
+mounted PFX path. Production defaults to the encrypted endpoint and refuses
+to start when the certificate is missing. See `docs/security-secrets.md`.
+
+When the API is behind HTTPS ingress, set
+`ForwardedHeaders__KnownProxies__0` or
+`ForwardedHeaders__KnownNetworks__0` to the exact trusted ingress IP/CIDR.
+This must be validated before relying on per-client login rate limiting.
 
 **Registered Services:**
 - AlertService (singleton)

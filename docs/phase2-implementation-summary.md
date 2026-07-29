@@ -112,7 +112,7 @@ The hot path (MQTT telemetry ingestion) remains untouched. All intelligence feat
 ```json
 {
   "ConnectionStrings": {
-    "TimescaleConnection": "Host=localhost;Port=55433;Database=plc_timescale;Username=postgres;Password=12345678"
+    "TimescaleConnection": "<injected through ConnectionStrings__Timescale>"
   },
   "HealthScoring": {
     "IntervalMinutes": 15

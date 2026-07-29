@@ -70,3 +70,4 @@ jobs:
           if ($LASTEXITCODE -ne 1) {
             throw "git grep failed with exit code $LASTEXITCODE."
           }
+          exit 0
