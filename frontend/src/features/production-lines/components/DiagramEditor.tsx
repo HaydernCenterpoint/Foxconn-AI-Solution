@@ -1,5 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { useGSAP } from '@gsap/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import gsap from 'gsap';
 import {
   Background,
   MarkerType,
@@ -15,7 +17,25 @@ import {
   useEdgesState,
   useNodesState,
 } from '@xyflow/react';
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Link2, Maximize2, Minus, Network, Plus, Save, Trash2 } from 'lucide-react';
+import {
+  Activity,
+  ArrowLeft,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  CircleDot,
+  Cpu,
+  GitBranch,
+  Link2,
+  Maximize2,
+  Minus,
+  MousePointer2,
+  Network,
+  Plus,
+  RefreshCw,
+  Save,
+  Trash2,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { linesApi } from '../services/lines.api';
 import { machinesApi, type Machine } from '../../machines/services/machines.api';
@@ -47,6 +67,8 @@ type SerializedConnection = {
 };
 
 const nodeTypes: NodeTypes = { machineNode: MachineNode };
+
+gsap.registerPlugin(useGSAP);
 
 function createEdge(source: string, target: string): DiagramEdge {
   return {
@@ -211,7 +233,7 @@ function buildNodes(machines: Machine[], edges: DiagramEdge[]): DiagramNode[] {
     groupedByLevel.set(level, machinesAtLevel);
   });
 
-  return machines.map((machine) => {
+  return machines.map((machine, index) => {
     const level = levels[machine.id] ?? 0;
     const machinesAtLevel = [...(groupedByLevel.get(level) ?? [])].sort((left, right) => (left.sequenceOrder ?? 1) - (right.sequenceOrder ?? 1));
     const row = machinesAtLevel.findIndex((candidate) => candidate.id === machine.id);
@@ -219,7 +241,7 @@ function buildNodes(machines: Machine[], edges: DiagramEdge[]): DiagramNode[] {
     return {
       id: machine.id,
       type: 'machineNode',
-      position: { x: 56 + level * 300, y: 56 + Math.max(0, row) * 190 },
+      position: { x: 56 + level * 330, y: 56 + Math.max(0, row) * 190 },
       data: {
         id: machine.id,
         name: machine.name,
@@ -228,6 +250,7 @@ function buildNodes(machines: Machine[], edges: DiagramEdge[]): DiagramNode[] {
         ip: machine.ip,
         productionCount: typeof productionCount === 'number' && Number.isFinite(productionCount) ? productionCount : undefined,
         plcConnected: machine.plcConnected,
+        sequenceOrder: machine.sequenceOrder ?? index + 1,
       },
     };
   });
@@ -238,12 +261,20 @@ function formatOutput(machine: Machine | undefined, locale: string) {
   return typeof count === 'number' && Number.isFinite(count) ? count.toLocaleString(locale) : '—';
 }
 
+function formatHeartbeat(machine: Machine | undefined, locale: string) {
+  if (!machine?.lastHeartbeat) return '—';
+  const heartbeat = new Date(machine.lastHeartbeat);
+  if (Number.isNaN(heartbeat.getTime())) return '—';
+  return heartbeat.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
 export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar = false }: DiagramEditorProps) {
   const { t, i18n } = useTranslation();
   const { tDynamic } = useDynamicTranslation();
   const { canEdit, canCreate } = usePermissions();
   const queryClient = useQueryClient();
   const addToast = useUiStore((state) => state.addToast);
+  const workspaceRef = useRef<HTMLDivElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [removeTargetId, setRemoveTargetId] = useState<string | null>(null);
@@ -285,16 +316,41 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
   const displayNodes = isEditing ? nodes : persistedNodes;
   const displayEdges = isEditing ? edges : persistedEdges;
 
+  const machineById = useMemo(
+    () => new Map([...(allMachinesQuery.data ?? []), ...lineMachines].map((machine) => [machine.id, machine])),
+    [allMachinesQuery.data, lineMachines],
+  );
+
   const selectedMachine = useMemo(() => {
     if (!selectedNodeId) return undefined;
-    return lineMachines.find((machine) => machine.id === selectedNodeId)
-      ?? (allMachinesQuery.data ?? []).find((machine) => machine.id === selectedNodeId);
-  }, [allMachinesQuery.data, lineMachines, selectedNodeId]);
+    return machineById.get(selectedNodeId);
+  }, [machineById, selectedNodeId]);
 
   const availableMachines = useMemo(() => {
     const usedIds = new Set(displayNodes.map((node) => node.id));
     return (allMachinesQuery.data ?? []).filter((machine) => !usedIds.has(machine.id));
   }, [allMachinesQuery.data, displayNodes]);
+
+  const connectedStationCount = displayNodes.filter((node) => node.data.plcConnected).length;
+  const reportedOutput = displayNodes.reduce(
+    (total, node) => total + (typeof node.data.productionCount === 'number' ? node.data.productionCount : 0),
+    0,
+  );
+  const incomingConnections = selectedNodeId
+    ? displayEdges.filter((edge) => edge.target === selectedNodeId)
+    : [];
+  const outgoingConnections = selectedNodeId
+    ? displayEdges.filter((edge) => edge.source === selectedNodeId)
+    : [];
+
+  useGSAP(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo(
+      '.line-flow-workspace__reveal',
+      { opacity: 0, y: 14 },
+      { duration: 0.48, ease: 'power3.out', opacity: 1, stagger: 0.06, y: 0 },
+    );
+  }, { scope: workspaceRef, dependencies: [lineId, lineMachinesQuery.isLoading] });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -391,7 +447,7 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
       {
         id: machine.id,
         type: 'machineNode',
-        position: { x: 56 + (currentNodes.length % 3) * 300, y: 56 + Math.floor(currentNodes.length / 3) * 190 },
+        position: { x: 56 + (currentNodes.length % 3) * 330, y: 56 + Math.floor(currentNodes.length / 3) * 190 },
         data: {
           id: machine.id,
           name: machine.name,
@@ -400,6 +456,10 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
           ip: machine.ip,
           productionCount: typeof productionCount === 'number' && Number.isFinite(productionCount) ? productionCount : undefined,
           plcConnected: machine.plcConnected,
+          sequenceOrder: currentNodes.reduce(
+            (highestOrder, node) => Math.max(highestOrder, Number(node.data.sequenceOrder) || 0),
+            0,
+          ) + 1,
         },
       },
     ]);
@@ -415,9 +475,14 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
   };
 
   const connectionTargets = new Set(displayEdges.filter((edge) => edge.source === selectedNodeId).map((edge) => edge.target));
+  const selectedSequence = displayNodes.find((node) => node.id === selectedNodeId)?.data.sequenceOrder;
+  const lineStatus = currentLine?.status ?? 'active';
+  const lineStatusLabel = t(`flowDesigner.workspace.status.${lineStatus}`, {
+    defaultValue: lineStatus === 'maintenance' ? 'Maintenance' : lineStatus === 'inactive' ? 'Inactive' : 'Active',
+  });
 
   const headerActions = (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="line-flow-workspace__actions">
       {onClose && <Button variant="secondary" size="sm" startIcon={<ArrowLeft size={16} aria-hidden="true" />} onClick={onClose}>{t('common.actions.back', { defaultValue: 'Back' })}</Button>}
       {isEditing ? (
         <>
@@ -425,7 +490,14 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
           <Button size="sm" loading={saveMutation.isPending} startIcon={<Save size={16} aria-hidden="true" />} onClick={() => saveMutation.mutate()}>{t('flowDesigner.toolbar.save', { defaultValue: 'Save flow' })}</Button>
         </>
       ) : canConfigure ? (
-        <Button size="sm" startIcon={<Network size={16} aria-hidden="true" />} onClick={startEditing}>{t('flowDesigner.edit', { defaultValue: 'Edit flow' })}</Button>
+        <Button
+          size="sm"
+          disabled={lineMachinesQuery.isLoading || linesQuery.isLoading || !currentLine}
+          startIcon={<Network size={16} aria-hidden="true" />}
+          onClick={startEditing}
+        >
+          {t('flowDesigner.edit', { defaultValue: 'Edit flow' })}
+        </Button>
       ) : null}
     </div>
   );
@@ -449,145 +521,313 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
   }
 
   return (
-    <div className="space-y-4">
-      <PageHeader
-        eyebrow={t('flowDesigner.eyebrow', { defaultValue: 'Line flow configuration' })}
-        title={currentLine ? tDynamic(currentLine.name) : t('flowDesigner.title', { defaultValue: 'Production line flow' })}
-        description={isEditing
-          ? t('flowDesigner.editDescription', { defaultValue: 'Edit station membership and connections. The saved flow is serialized in the production-line description.' })
-          : t('flowDesigner.viewDescription', { defaultValue: 'Inspect station connections and their latest machine-record values.' })}
-        actions={headerActions}
-      />
-
-      {isEditing && (
-        <Surface variant="quiet" padding="sm" className="flex flex-wrap items-center gap-2 text-sm text-text-secondary">
-          <Link2 size={16} aria-hidden="true" />
-          <span>{t('flowDesigner.editHint', { defaultValue: 'Connect station handles on the canvas, or use the selected station panel. Flow sequence is saved; display positions are recalculated from saved connections.' })}</span>
-        </Surface>
-      )}
-
-      <div className={`grid gap-4 ${hideSidebar ? '' : 'xl:grid-cols-[minmax(0,1fr)_20rem]'}`}>
-        <Surface variant="raised" padding="none" className="relative min-h-[32rem] overflow-hidden">
-          {displayNodes.length === 0 ? (
-            <DataState
-              kind="empty"
-              title={t('flowDesigner.empty.title', { defaultValue: 'No stations assigned to this line' })}
-              description={canAddRemove && isEditing
-                ? t('flowDesigner.empty.editDescription', { defaultValue: 'Use the station library below to add an available machine.' })
-                : t('flowDesigner.empty.description', { defaultValue: 'No station assignments were returned for this production line.' })}
-            />
-          ) : (
-            <ReactFlow<DiagramNode, DiagramEdge>
-              nodes={displayNodes}
-              edges={displayEdges}
-              onNodesChange={handleNodesChange}
-              onEdgesChange={handleEdgesChange}
-              onConnect={handleConnect}
-              onNodeClick={(_event, node) => setSelectedNodeId(node.id)}
-              onPaneClick={() => setSelectedNodeId(null)}
-              onInit={setFlowInstance}
-              nodeTypes={nodeTypes}
-              nodesDraggable={false}
-              nodesConnectable={isEditing}
-              edgesFocusable={isEditing}
-              fitView
-              fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
-              minZoom={0.35}
-              maxZoom={1.5}
-              proOptions={{ hideAttribution: true }}
-              className="bg-surface-container-lowest"
+    <div ref={workspaceRef} className="line-flow-workspace">
+      <header className="line-flow-workspace__header line-flow-workspace__reveal">
+        <div className="line-flow-workspace__context">
+          <div className="line-flow-workspace__kicker">
+            <span>{t('flowDesigner.eyebrow', { defaultValue: 'Line flow configuration' })}</span>
+            <span aria-hidden="true">/</span>
+            <Badge
+              variant={lineStatus === 'maintenance' ? 'maintenance' : lineStatus === 'inactive' ? 'offline' : 'success'}
+              size="sm"
+              dot
             >
-              <Background color="var(--color-outline)" gap={18} size={1} />
-              <Panel position="bottom-right" className="m-3 flex gap-2">
-                <Button variant="secondary" size="sm" aria-label={t('common.actions.zoomOut', { defaultValue: 'Zoom out' })} title={t('common.actions.zoomOut', { defaultValue: 'Zoom out' })} onClick={() => flowInstance?.zoomOut()}><Minus size={15} aria-hidden="true" /></Button>
-                <Button variant="secondary" size="sm" aria-label={t('common.actions.fitView', { defaultValue: 'Fit flow' })} title={t('common.actions.fitView', { defaultValue: 'Fit flow' })} onClick={() => flowInstance?.fitView({ padding: 0.2, maxZoom: 1 })}><Maximize2 size={15} aria-hidden="true" /></Button>
-                <Button variant="secondary" size="sm" aria-label={t('common.actions.zoomIn', { defaultValue: 'Zoom in' })} title={t('common.actions.zoomIn', { defaultValue: 'Zoom in' })} onClick={() => flowInstance?.zoomIn()}><Plus size={15} aria-hidden="true" /></Button>
-              </Panel>
-            </ReactFlow>
+              {lineStatusLabel}
+            </Badge>
+          </div>
+          <div className="line-flow-workspace__title-row">
+            <h1>{currentLine ? tDynamic(currentLine.name) : t('flowDesigner.title', { defaultValue: 'Production line flow' })}</h1>
+            <span className="line-flow-workspace__refresh">
+              <RefreshCw size={13} aria-hidden="true" />
+              {t('flowDesigner.workspace.liveRefresh', { defaultValue: 'Live · 2s' })}
+            </span>
+          </div>
+          <p>
+            {isEditing
+              ? t('flowDesigner.editDescription', { defaultValue: 'Edit station membership and connections, then save the new sequence.' })
+              : t('flowDesigner.viewDescription', { defaultValue: 'Inspect station connections and their latest machine-record values.' })}
+          </p>
+        </div>
+        {headerActions}
+      </header>
+
+      <section
+        className="line-flow-workspace__metrics line-flow-workspace__reveal"
+        aria-label={t('flowDesigner.workspace.summary', { defaultValue: 'Line summary' })}
+      >
+        <article className="line-flow-metric">
+          <span className="line-flow-metric__icon"><Network size={17} aria-hidden="true" /></span>
+          <span className="line-flow-metric__copy">
+            <span>{t('flowDesigner.workspace.stations', { defaultValue: 'Stations' })}</span>
+            <strong>{displayNodes.length}</strong>
+          </span>
+        </article>
+        <article className="line-flow-metric">
+          <span className="line-flow-metric__icon line-flow-metric__icon--positive"><Cpu size={17} aria-hidden="true" /></span>
+          <span className="line-flow-metric__copy">
+            <span>{t('flowDesigner.workspace.plcOnline', { defaultValue: 'PLC connected' })}</span>
+            <strong>{connectedStationCount}<small>/{displayNodes.length}</small></strong>
+          </span>
+        </article>
+        <article className="line-flow-metric">
+          <span className="line-flow-metric__icon"><GitBranch size={17} aria-hidden="true" /></span>
+          <span className="line-flow-metric__copy">
+            <span>{t('flowDesigner.workspace.connections', { defaultValue: 'Connections' })}</span>
+            <strong>{displayEdges.length}</strong>
+          </span>
+        </article>
+        <article className="line-flow-metric">
+          <span className="line-flow-metric__icon line-flow-metric__icon--accent"><Activity size={17} aria-hidden="true" /></span>
+          <span className="line-flow-metric__copy">
+            <span>{t('flowDesigner.workspace.reportedOutput', { defaultValue: 'Reported output' })}</span>
+            <strong>{reportedOutput.toLocaleString(locale)}</strong>
+          </span>
+        </article>
+      </section>
+
+      <div className={`line-flow-workspace__body line-flow-workspace__reveal ${hideSidebar ? 'line-flow-workspace__body--wide' : ''}`}>
+        <section className="line-flow-canvas" aria-labelledby="line-flow-canvas-title">
+          <div className="line-flow-canvas__header">
+            <div className="line-flow-canvas__heading">
+              <span className="line-flow-canvas__heading-icon"><CircleDot size={15} aria-hidden="true" /></span>
+              <span>
+                <h2 id="line-flow-canvas-title">{t('flowDesigner.workspace.canvasTitle', { defaultValue: 'Line topology' })}</h2>
+                <p>{t('flowDesigner.workspace.canvasDescription', { defaultValue: 'Select a station to inspect live signals and sequence.' })}</p>
+              </span>
+            </div>
+            <span className={`line-flow-canvas__mode ${isEditing ? 'line-flow-canvas__mode--editing' : ''}`}>
+              <span aria-hidden="true" />
+              {isEditing
+                ? t('flowDesigner.workspace.editMode', { defaultValue: 'Editing flow' })
+                : t('flowDesigner.workspace.viewMode', { defaultValue: 'Monitoring' })}
+            </span>
+          </div>
+
+          {isEditing && (
+            <div className="line-flow-canvas__hint">
+              <Link2 size={15} aria-hidden="true" />
+              <span>{t('flowDesigner.editHint', { defaultValue: 'Connect station handles on the canvas or use the selected station panel. Positions are recalculated from saved connections.' })}</span>
+            </div>
           )}
-        </Surface>
+
+          <div className="line-flow-canvas__stage">
+            {displayNodes.length === 0 ? (
+              <div className="line-flow-canvas__empty">
+                <span><Network size={24} aria-hidden="true" /></span>
+                <h3>{t('flowDesigner.empty.title', { defaultValue: 'No stations assigned to this line' })}</h3>
+                <p>{canAddRemove && isEditing
+                  ? t('flowDesigner.empty.editDescription', { defaultValue: 'Open the station library to add an available machine.' })
+                  : t('flowDesigner.empty.description', { defaultValue: 'No station assignments were returned for this production line.' })}</p>
+                {canAddRemove && isEditing && (
+                  <Button size="sm" startIcon={<Plus size={14} aria-hidden="true" />} onClick={() => setLibraryOpen(true)}>
+                    {t('flowDesigner.workspace.openLibrary', { defaultValue: 'Open station library' })}
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <ReactFlow<DiagramNode, DiagramEdge>
+                nodes={displayNodes}
+                edges={displayEdges}
+                onNodesChange={handleNodesChange}
+                onEdgesChange={handleEdgesChange}
+                onConnect={handleConnect}
+                onNodeClick={(_event, node) => setSelectedNodeId(node.id)}
+                onPaneClick={() => setSelectedNodeId(null)}
+                onInit={setFlowInstance}
+                nodeTypes={nodeTypes}
+                nodesDraggable={false}
+                nodesConnectable={isEditing}
+                edgesFocusable={isEditing}
+                fitView
+                fitViewOptions={{ padding: 0.28, maxZoom: 0.95 }}
+                minZoom={0.35}
+                maxZoom={1.5}
+                proOptions={{ hideAttribution: true }}
+                className="line-flow-canvas__flow"
+              >
+                <Background color="#3b4c68" gap={22} size={1} />
+                <Panel position="bottom-right" className="line-flow-canvas__controls">
+                  <Button variant="secondary" size="sm" aria-label={t('common.actions.zoomOut', { defaultValue: 'Zoom out' })} title={t('common.actions.zoomOut', { defaultValue: 'Zoom out' })} onClick={() => flowInstance?.zoomOut()}><Minus size={15} aria-hidden="true" /></Button>
+                  <Button variant="secondary" size="sm" aria-label={t('common.actions.fitView', { defaultValue: 'Fit flow' })} title={t('common.actions.fitView', { defaultValue: 'Fit flow' })} onClick={() => flowInstance?.fitView({ padding: 0.28, maxZoom: 0.95 })}><Maximize2 size={15} aria-hidden="true" /></Button>
+                  <Button variant="secondary" size="sm" aria-label={t('common.actions.zoomIn', { defaultValue: 'Zoom in' })} title={t('common.actions.zoomIn', { defaultValue: 'Zoom in' })} onClick={() => flowInstance?.zoomIn()}><Plus size={15} aria-hidden="true" /></Button>
+                </Panel>
+              </ReactFlow>
+            )}
+          </div>
+        </section>
 
         {!hideSidebar && (
-          <aside className="space-y-4">
-            <Surface variant="raised" padding="md" className="space-y-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="title-small text-text-primary">{selectedMachine ? tDynamic(selectedMachine.name) : t('flowDesigner.inspectorTitle', { defaultValue: 'Station details' })}</h2>
-                  <p className="mt-1 text-xs text-text-muted">{selectedMachine ? selectedMachine.machineCode || selectedMachine.id : t('flowDesigner.inspectorDescription', { defaultValue: 'Select a station in the flow to inspect it.' })}</p>
-                </div>
-                {selectedMachine && <StatusBadge status={selectedMachine.status} size="sm" />}
+          <aside className="line-flow-inspector" aria-label={t('flowDesigner.inspectorTitle', { defaultValue: 'Station details' })}>
+            <div className="line-flow-inspector__header">
+              <div>
+                <span className="line-flow-inspector__eyebrow">
+                  {selectedMachine
+                    ? t('flowDesigner.workspace.selectedStation', { defaultValue: 'Selected station' })
+                    : t('flowDesigner.workspace.inspector', { defaultValue: 'Inspector' })}
+                </span>
+                <h2>{selectedMachine ? tDynamic(selectedMachine.name) : t('flowDesigner.inspectorTitle', { defaultValue: 'Station details' })}</h2>
+                <p>{selectedMachine ? selectedMachine.machineCode || selectedMachine.id : t('flowDesigner.inspectorDescription', { defaultValue: 'Select a station in the flow to inspect it.' })}</p>
               </div>
+              {selectedMachine && <StatusBadge status={selectedMachine.status} size="sm" />}
+            </div>
 
-              {selectedMachine ? (
-                <>
-                  <dl className="space-y-3 border-y border-border py-3 text-sm">
-                    <div className="flex items-center justify-between gap-3"><dt className="text-text-muted">IP</dt><dd className="font-mono text-text-primary">{selectedMachine.ip || '—'}</dd></div>
-                    <div className="flex items-center justify-between gap-3"><dt className="text-text-muted">{t('machines.table.plcConnected', { defaultValue: 'PLC connection' })}</dt><dd><Badge variant={selectedMachine.plcConnected ? 'success' : 'offline'} size="sm" dot>{selectedMachine.plcConnected ? t('machines.plcConnected', { defaultValue: 'Connected' }) : t('machines.plcDisconnected', { defaultValue: 'Disconnected' })}</Badge></dd></div>
-                    <div className="flex items-center justify-between gap-3"><dt className="text-text-muted">{t('machines.productionCount', { defaultValue: 'Reported output' })}</dt><dd className="font-mono text-text-primary">{formatOutput(selectedMachine, locale)}</dd></div>
-                  </dl>
-
-                  {isEditing && canConfigure && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between gap-3"><h3 className="label-small text-text-secondary">{t('flowDesigner.nextStations', { defaultValue: 'Next stations' })}</h3><Badge variant="neutral" size="sm">{connectionTargets.size}</Badge></div>
-                      <div className="max-h-52 space-y-2 overflow-y-auto pr-1">
-                        {displayNodes.filter((node) => node.id !== selectedMachine.id).map((node) => {
-                          const targetMachine = lineMachines.find((machine) => machine.id === node.id) ?? (allMachinesQuery.data ?? []).find((machine) => machine.id === node.id);
-                          const isConnected = connectionTargets.has(node.id);
-                          return (
-                            <label key={node.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-surface-3">
-                              <input type="checkbox" checked={isConnected} onChange={(event) => toggleConnection(selectedMachine.id, node.id, event.target.checked)} />
-                              <span className="min-w-0 flex-1 truncate text-text-primary">{targetMachine ? tDynamic(targetMachine.name) : node.data.name}</span>
-                              {isConnected && <Check size={14} className="text-primary" aria-hidden="true" />}
-                            </label>
-                          );
-                        })}
-                      </div>
+            {selectedMachine ? (
+              <div className="line-flow-inspector__content">
+                <section className="line-flow-inspector__section">
+                  <div className="line-flow-inspector__section-heading">
+                    <h3>{t('flowDesigner.workspace.liveData', { defaultValue: 'Live machine data' })}</h3>
+                    {selectedSequence && <Badge variant="neutral" size="sm">#{String(selectedSequence).padStart(2, '0')}</Badge>}
+                  </div>
+                  <dl className="line-flow-inspector__data-grid">
+                    <div>
+                      <dt>IP</dt>
+                      <dd className="line-flow-inspector__mono">{selectedMachine.ip || '—'}</dd>
                     </div>
-                  )}
+                    <div>
+                      <dt>{t('machines.table.plcConnected', { defaultValue: 'PLC connection' })}</dt>
+                      <dd>
+                        <Badge variant={selectedMachine.plcConnected ? 'success' : 'offline'} size="sm" dot>
+                          {selectedMachine.plcConnected
+                            ? t('machines.plcConnected', { defaultValue: 'Connected' })
+                            : t('machines.plcDisconnected', { defaultValue: 'Disconnected' })}
+                        </Badge>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>{t('machines.productionCount', { defaultValue: 'Reported output' })}</dt>
+                      <dd className="line-flow-inspector__value">{formatOutput(selectedMachine, locale)}</dd>
+                    </div>
+                    <div>
+                      <dt>{t('machines.detail.lastHeartbeat', { defaultValue: 'Last received' })}</dt>
+                      <dd className="line-flow-inspector__mono">{formatHeartbeat(selectedMachine, locale)}</dd>
+                    </div>
+                    <div>
+                      <dt>{t('machines.detail.cpu', { defaultValue: 'CPU' })}</dt>
+                      <dd className="line-flow-inspector__value">{Number.isFinite(selectedMachine.cpuPercent) ? `${Math.round(selectedMachine.cpuPercent)}%` : '—'}</dd>
+                    </div>
+                    <div>
+                      <dt>{t('machines.detail.ram', { defaultValue: 'RAM' })}</dt>
+                      <dd className="line-flow-inspector__value">{Number.isFinite(selectedMachine.ramPercent) ? `${Math.round(selectedMachine.ramPercent)}%` : '—'}</dd>
+                    </div>
+                  </dl>
+                </section>
 
-                  {isEditing && canAddRemove && (
-                    <Button variant="danger" size="sm" startIcon={<Trash2 size={15} aria-hidden="true" />} onClick={() => setRemoveTargetId(selectedMachine.id)}>
-                      {t('flowDesigner.removeStation', { defaultValue: 'Remove from line' })}
-                    </Button>
-                  )}
-                </>
-              ) : null}
-            </Surface>
+                <section className="line-flow-inspector__section">
+                  <div className="line-flow-inspector__section-heading">
+                    <h3>{t('flowDesigner.workspace.connectionMap', { defaultValue: 'Connection map' })}</h3>
+                    <Badge variant="neutral" size="sm">{incomingConnections.length + outgoingConnections.length}</Badge>
+                  </div>
+                  <div className="line-flow-inspector__connection-grid">
+                    <div>
+                      <span>{t('flowDesigner.workspace.incoming', { defaultValue: 'Incoming' })}</span>
+                      <strong>{incomingConnections.length}</strong>
+                      <small>{incomingConnections.map((edge) => {
+                        const machine = machineById.get(edge.source);
+                        return machine ? tDynamic(machine.name) : edge.source;
+                      }).join(', ') || '—'}</small>
+                    </div>
+                    <div>
+                      <span>{t('flowDesigner.workspace.outgoing', { defaultValue: 'Outgoing' })}</span>
+                      <strong>{outgoingConnections.length}</strong>
+                      <small>{outgoingConnections.map((edge) => {
+                        const machine = machineById.get(edge.target);
+                        return machine ? tDynamic(machine.name) : edge.target;
+                      }).join(', ') || '—'}</small>
+                    </div>
+                  </div>
+                </section>
+
+                {isEditing && canConfigure && (
+                  <section className="line-flow-inspector__section">
+                    <div className="line-flow-inspector__section-heading">
+                      <h3>{t('flowDesigner.nextStations', { defaultValue: 'Next stations' })}</h3>
+                      <Badge variant="neutral" size="sm">{connectionTargets.size}</Badge>
+                    </div>
+                    <div className="line-flow-inspector__checklist">
+                      {displayNodes.filter((node) => node.id !== selectedMachine.id).map((node) => {
+                        const targetMachine = machineById.get(node.id);
+                        const isConnected = connectionTargets.has(node.id);
+                        return (
+                          <label key={node.id}>
+                            <input type="checkbox" checked={isConnected} onChange={(event) => toggleConnection(selectedMachine.id, node.id, event.target.checked)} />
+                            <span>{targetMachine ? tDynamic(targetMachine.name) : node.data.name}</span>
+                            {isConnected && <Check size={14} aria-hidden="true" />}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </section>
+                )}
+
+                {isEditing && canAddRemove && (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    className="line-flow-inspector__remove"
+                    startIcon={<Trash2 size={15} aria-hidden="true" />}
+                    onClick={() => setRemoveTargetId(selectedMachine.id)}
+                  >
+                    {t('flowDesigner.removeStation', { defaultValue: 'Remove from line' })}
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="line-flow-inspector__empty">
+                <span><MousePointer2 size={22} aria-hidden="true" /></span>
+                <h3>{t('flowDesigner.workspace.selectTitle', { defaultValue: 'Choose a station' })}</h3>
+                <p>{t('flowDesigner.workspace.selectDescription', { defaultValue: 'Select any station card on the canvas to see connectivity, output and runtime details.' })}</p>
+                <ol>
+                  <li><span>1</span>{t('flowDesigner.workspace.selectStep', { defaultValue: 'Select a station on the canvas' })}</li>
+                  <li><span>2</span>{t('flowDesigner.workspace.inspectStep', { defaultValue: 'Review signals and connections here' })}</li>
+                </ol>
+              </div>
+            )}
+
+            {isEditing && canAddRemove && (
+              <section className="line-flow-library">
+                <button
+                  type="button"
+                  className="line-flow-library__toggle"
+                  onClick={() => setLibraryOpen((open) => !open)}
+                  aria-expanded={libraryOpen}
+                  aria-controls="line-flow-station-library"
+                >
+                  <span>
+                    <strong>{t('flowDesigner.stationLibrary', { defaultValue: 'Available stations' })}</strong>
+                    <small>{t('flowDesigner.workspace.libraryCount', { count: availableMachines.length, defaultValue: '{{count}} ready to add' })}</small>
+                  </span>
+                  {libraryOpen ? <ChevronUp size={17} aria-hidden="true" /> : <ChevronDown size={17} aria-hidden="true" />}
+                </button>
+                {libraryOpen && (
+                  <div id="line-flow-station-library" className="line-flow-library__content">
+                    {allMachinesQuery.isLoading ? (
+                      <DataState kind="loading" title={t('flowDesigner.loadingAvailable', { defaultValue: 'Loading available stations' })} />
+                    ) : allMachinesQuery.isError ? (
+                      <DataState kind="error" title={t('flowDesigner.availableError', { defaultValue: 'Available stations are unavailable' })} action={<Button variant="secondary" size="sm" onClick={() => void allMachinesQuery.refetch()}>{t('common.actions.retry', { defaultValue: 'Retry' })}</Button>} />
+                    ) : availableMachines.length === 0 ? (
+                      <DataState kind="empty" title={t('flowDesigner.noAvailable', { defaultValue: 'No unassigned stations available' })} />
+                    ) : (
+                      <div className="line-flow-library__list">
+                        {availableMachines.map((machine) => (
+                          <div key={machine.id} className="line-flow-library__item">
+                            <span>
+                              <strong>{tDynamic(machine.name)}</strong>
+                              <small>{machine.machineCode || machine.id}</small>
+                            </span>
+                            <Button size="sm" startIcon={<Plus size={14} aria-hidden="true" />} onClick={() => addMachineToDraft(machine)}>
+                              {t('common.actions.add', { defaultValue: 'Add' })}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+            )}
           </aside>
         )}
       </div>
-
-      {isEditing && canAddRemove && (
-        <Surface variant="raised" padding="none" className="overflow-hidden">
-          <button type="button" className="panel-header w-full text-left" onClick={() => setLibraryOpen((open) => !open)} aria-expanded={libraryOpen}>
-            <span>
-              <span className="title-small text-text-primary">{t('flowDesigner.stationLibrary', { defaultValue: 'Available stations' })}</span>
-              <span className="mt-1 block text-xs text-text-muted">{t('flowDesigner.stationLibraryDescription', { defaultValue: 'Only administrators can add or remove station assignments.' })}</span>
-            </span>
-            {libraryOpen ? <ChevronUp size={18} className="text-text-secondary" aria-hidden="true" /> : <ChevronDown size={18} className="text-text-secondary" aria-hidden="true" />}
-          </button>
-          {libraryOpen && (
-            <div className="p-4">
-              {allMachinesQuery.isLoading ? (
-                <DataState kind="loading" title={t('flowDesigner.loadingAvailable', { defaultValue: 'Loading available stations' })} />
-              ) : allMachinesQuery.isError ? (
-                <DataState kind="error" title={t('flowDesigner.availableError', { defaultValue: 'Available stations are unavailable' })} action={<Button variant="secondary" size="sm" onClick={() => void allMachinesQuery.refetch()}>{t('common.actions.retry', { defaultValue: 'Retry' })}</Button>} />
-              ) : availableMachines.length === 0 ? (
-                <DataState kind="empty" title={t('flowDesigner.noAvailable', { defaultValue: 'No unassigned stations available' })} />
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {availableMachines.map((machine) => (
-                    <Surface key={machine.id} variant="quiet" padding="sm" className="flex items-center justify-between gap-3">
-                      <div className="min-w-0"><p className="truncate text-sm font-medium text-text-primary">{tDynamic(machine.name)}</p><p className="mt-1 truncate font-mono text-xs text-text-muted">{machine.machineCode || machine.id}</p></div>
-                      <Button size="sm" startIcon={<Plus size={14} aria-hidden="true" />} onClick={() => addMachineToDraft(machine)}>{t('common.actions.add', { defaultValue: 'Add' })}</Button>
-                    </Surface>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </Surface>
-      )}
 
       <ConfirmDialog
         open={Boolean(removeTargetId)}
