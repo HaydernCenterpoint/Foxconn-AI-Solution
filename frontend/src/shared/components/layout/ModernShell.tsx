@@ -442,33 +442,47 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
             );
           })}
 
-          <a
-            className="modern-shell__nav-link modern-shell__nav-link--assistant"
-            href={dataFusionUrl}
-            target="_blank"
-            rel="noreferrer"
-            title={t('navigation.fiiDataFusion')}
-            aria-label={t('navigation.fiiDataFusion')}
-            onClick={() => setMobileNavigationOpen(false)}
-          >
-            <DatabaseZap size={18} strokeWidth={1.75} aria-hidden="true" />
-            <span className="modern-shell__nav-label">{t('navigation.fiiDataFusion')}</span>
-            <ArrowUpRight className="modern-shell__nav-external-icon" size={15} strokeWidth={1.9} aria-hidden="true" />
-          </a>
+          <div className="modern-shell__service-group" aria-label={t('navigation.externalServicesTitle')}>
+            <p className="modern-shell__service-group-title">{t('navigation.externalServicesTitle')}</p>
 
-          <a
-            className="modern-shell__nav-link modern-shell__nav-link--assistant"
-            href={odysseusUrl}
-            target="_blank"
-            rel="noreferrer"
-            title={t('navigation.fiiAssistant')}
-            aria-label={t('navigation.fiiAssistant')}
-            onClick={() => setMobileNavigationOpen(false)}
-          >
-            <Bot size={18} strokeWidth={1.75} aria-hidden="true" />
-            <span className="modern-shell__nav-label">{t('navigation.fiiAssistant')}</span>
-            <ArrowUpRight className="modern-shell__nav-external-icon" size={15} strokeWidth={1.9} aria-hidden="true" />
-          </a>
+            <a
+              className="modern-shell__nav-link modern-shell__nav-link--assistant modern-shell__external-link"
+              href={odysseusUrl}
+              target="_blank"
+              rel="noreferrer"
+              title={t('navigation.fiiAssistant')}
+              aria-label={t('navigation.fiiAssistant')}
+              onClick={() => setMobileNavigationOpen(false)}
+            >
+              <span className="modern-shell__external-icon-wrap">
+                <Bot size={20} strokeWidth={2.1} aria-hidden="true" />
+              </span>
+              <span className="modern-shell__nav-label-wrap">
+                <span className="modern-shell__nav-label">{t('navigation.fiiAssistant')}</span>
+                <small className="modern-shell__external-subtitle">{t('navigation.fiiAssistantHint')}</small>
+              </span>
+              <ArrowUpRight className="modern-shell__nav-external-icon" size={15} strokeWidth={1.9} aria-hidden="true" />
+            </a>
+
+            <a
+              className="modern-shell__nav-link modern-shell__nav-link--assistant modern-shell__external-link"
+              href={dataFusionUrl}
+              target="_blank"
+              rel="noreferrer"
+              title={t('navigation.fiiDataFusion')}
+              aria-label={t('navigation.fiiDataFusion')}
+              onClick={() => setMobileNavigationOpen(false)}
+            >
+              <span className="modern-shell__external-icon-wrap">
+                <DatabaseZap size={20} strokeWidth={2.1} aria-hidden="true" />
+              </span>
+              <span className="modern-shell__nav-label-wrap">
+                <span className="modern-shell__nav-label">{t('navigation.fiiDataFusion')}</span>
+                <small className="modern-shell__external-subtitle">{t('navigation.fiiDataFusionHint')}</small>
+              </span>
+              <ArrowUpRight className="modern-shell__nav-external-icon" size={15} strokeWidth={1.9} aria-hidden="true" />
+            </a>
+          </div>
 
         </nav>
 
