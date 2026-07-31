@@ -118,7 +118,6 @@ namespace backend.Controllers
 
         [Authorize(Roles = "ADMIN,ENGINEER")]
         [HttpPost("compute")]
-        [Authorize(Roles = "ADMIN,ENGINEER")]
         public async Task<IActionResult> ComputeHealthScore(Guid assetId)
         {
             try

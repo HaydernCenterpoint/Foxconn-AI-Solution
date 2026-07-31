@@ -433,6 +433,7 @@ $backendProcess = @{
         CepStaging__Enabled = (-not $SkipCepStaging).ToString().ToLowerInvariant()
         CepStaging__BaseUrl = $cepStagingUrl
         AllowedOrigins__0 = $frontendUrl
+        AllowedOrigins__1 = "http://127.0.0.1:$FrontendPort"
     }
 }
 if (-not [string]::IsNullOrWhiteSpace($mqttDeviceToken)) {

@@ -8,7 +8,7 @@ using backend.Services;
 namespace backend.Controllers
 {
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = "ADMIN,ENGINEER")]
     [Route("api/v1/predictions")]
     [Route("api/predictions")]
     public class PredictionController : ControllerBase

@@ -175,7 +175,6 @@ describe('ModernShell', () => {
     expect(logo.getAttribute('src')).toContain('Foxconn_Industrial_Internet');
   });
 
-<<<<<<< HEAD
   it('links operations users to the system and connector monitor', () => {
     useAuthStore.setState({
       token: 'token',
@@ -189,10 +188,7 @@ describe('ModernShell', () => {
     expect(container.querySelector('a[href="/admin/system"]')).not.toBeNull();
   });
 
-  it('provides a Foxconn ODC link to the configured assistant', () => {
-=======
   it('provides a Foxconn AI link to the configured assistant', () => {
->>>>>>> main
     renderViewerShell();
 
     const assistantLink = screen.getByRole('link', { name: 'Foxconn AI' });

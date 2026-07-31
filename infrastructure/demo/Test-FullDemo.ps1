@@ -522,6 +522,24 @@ if (-not $SkipCepStaging) {
     }
 }
 
+# Phase 2 alert/health APIs live on the main backend (Timescale-backed).
+# Frontend Alert Center defaults status=open and may omit severity; both must be optional.
+$phase2AlertCount = $null
+$phase2HealthScore = $null
+if (-not $SkipTimescale) {
+    $alertList = Invoke-RestMethod -Uri "$backendUrl/api/v1/alerts?status=open&limit=5" -WebSession $browser -TimeoutSec 10
+    if ($null -eq $alertList.alerts) {
+        throw 'Phase 2 alert list did not return an alerts array.'
+    }
+    $phase2AlertCount = if ($null -ne $alertList.count) { [int]$alertList.count } else { @($alertList.alerts).Count }
+
+    $health = Invoke-RestMethod -Uri "$backendUrl/api/v1/assets/$machineId/health" -WebSession $browser -TimeoutSec 10
+    if ($null -eq $health.overallScore -and $null -eq $health.assetId) {
+        throw 'Phase 2 asset health endpoint did not return a score payload.'
+    }
+    $phase2HealthScore = $health.overallScore
+}
+
 $fusionTelemetry = $null
 if (-not $SkipOpenDataFusion) {
     $odfScopeHeaders = @{
@@ -607,6 +625,8 @@ if (-not $SkipOpenDataFusion -and (Get-HttpStatus -Uri "$odfWebUrl/api/v1/auth/s
     PostgreSqlRawAndOutbox = $outboxStatus
     TimescaleRawAndRollup = $(if ($SkipTimescale) { 'Skipped' } else { 'Passed' })
     CepStaging = $(if ($SkipCepStaging) { 'Skipped' } else { 'Passed' })
+    Phase2AlertList = $(if ($SkipTimescale) { 'Skipped' } else { "Passed ($phase2AlertCount)" })
+    Phase2AssetHealth = $(if ($SkipTimescale) { 'Skipped' } else { "Passed ($phase2HealthScore)" })
     FusionTelemetryAndReplay = $(if ($SkipOpenDataFusion) { 'Skipped' } else { 'Passed' })
     ChromaFreshness = $(if ($SkipOdysseus) { 'Skipped' } else { 'Passed' })
     FactoryRagDocuments = $ragExports.Count

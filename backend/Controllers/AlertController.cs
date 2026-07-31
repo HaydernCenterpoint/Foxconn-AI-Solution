@@ -185,7 +185,7 @@ namespace backend.Controllers
         {
             try
             {
-                var username = User!.Identity!.Name!;
+                var username = User.Identity?.Name ?? "unknown";
                 var success = await _alertService.AcknowledgeAlertAsync(id, username);
 
                 if (success)
@@ -206,7 +206,7 @@ namespace backend.Controllers
         {
             try
             {
-                var username = User!.Identity!.Name!;
+                var username = User.Identity?.Name ?? "unknown";
                 var success = await _alertService.ResolveAlertAsync(id, username, request?.Notes);
 
                 if (success)
