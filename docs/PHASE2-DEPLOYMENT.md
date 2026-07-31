@@ -140,20 +140,24 @@ info: Microsoft.Hosting.Lifetime[14]
 
 **Manual Tests:**
 ```bash
+# Set a token issued by /api/auth/login before calling protected endpoints.
+export FII_DEMO_ACCESS_TOKEN='<access-token>'
+
 # Alert Stats
-curl http://localhost:5000/api/v1/alerts/stats
+curl -H "Authorization: Bearer $FII_DEMO_ACCESS_TOKEN" http://localhost:5000/api/v1/alerts/stats
 
 # List Alerts
-curl http://localhost:5000/api/v1/alerts?limit=10
+curl -H "Authorization: Bearer $FII_DEMO_ACCESS_TOKEN" http://localhost:5000/api/v1/alerts?limit=10
 
 # Health Score (replace with real asset UUID)
-curl http://localhost:5000/api/v1/assets/{asset-uuid}/health
+curl -H "Authorization: Bearer $FII_DEMO_ACCESS_TOKEN" http://localhost:5000/api/v1/assets/{asset-uuid}/health
 
 # Failure Risk
-curl http://localhost:5000/api/v1/predictions/risk/{asset-uuid}
+curl -H "Authorization: Bearer $FII_DEMO_ACCESS_TOKEN" http://localhost:5000/api/v1/predictions/risk/{asset-uuid}
 
 # Anomaly Detection
 curl -X POST http://localhost:5000/api/v1/predictions/anomaly \
+  -H "Authorization: Bearer $FII_DEMO_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"assetId": "{asset-uuid}", "metricType": "temperature"}'
 ```

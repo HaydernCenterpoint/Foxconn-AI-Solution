@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using backend.Services;
@@ -8,6 +9,7 @@ namespace backend.Controllers
 {
     [ApiController]
     [Route("api/v1/predictions")]
+    [Authorize(Roles = "ADMIN,ENGINEER")]
     public class PredictionController : ControllerBase
     {
         private readonly PredictiveService _predictiveService;

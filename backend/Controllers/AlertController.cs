@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using backend.Services;
@@ -11,6 +12,7 @@ namespace backend.Controllers
 {
     [ApiController]
     [Route("api/v1/alerts")]
+    [Authorize]
     public class AlertController : ControllerBase
     {
         private readonly AlertService _alertService;
@@ -31,10 +33,10 @@ namespace backend.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAlerts(
             [FromQuery] Guid? assetId,
-            [FromQuery] string status,
-            [FromQuery] string severity,
-            [FromQuery] DateTime? from,
-            [FromQuery] DateTime? to,
+                    [FromQuery] string? status = null,
+                    [FromQuery] string? severity = null,
+                    [FromQuery] DateTime? from = null,
+                    [FromQuery] DateTime? to = null,
             [FromQuery] int limit = 100)
         {
             try
@@ -157,11 +159,12 @@ namespace backend.Controllers
         }
 
         [HttpPost("{id}/acknowledge")]
+        [Authorize(Roles = "ADMIN,ENGINEER")]
         public async Task<IActionResult> AcknowledgeAlert(Guid id, [FromBody] AcknowledgeRequest request)
         {
             try
             {
-                var username = User?.Identity?.Name ?? "system";
+                var username = User.Identity?.Name ?? "unknown";
                 var success = await _alertService.AcknowledgeAlertAsync(id, username);
 
                 if (success)
@@ -177,11 +180,12 @@ namespace backend.Controllers
         }
 
         [HttpPost("{id}/resolve")]
+        [Authorize(Roles = "ADMIN,ENGINEER")]
         public async Task<IActionResult> ResolveAlert(Guid id, [FromBody] ResolveRequest request)
         {
             try
             {
-                var username = User?.Identity?.Name ?? "system";
+                var username = User.Identity?.Name ?? "unknown";
                 var success = await _alertService.ResolveAlertAsync(id, username, request?.Notes);
 
                 if (success)

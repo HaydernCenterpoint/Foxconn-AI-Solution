@@ -223,7 +223,7 @@
   <link rel="modulepreload" href="/static/app.js?v=20260709fii">
   <link rel="modulepreload" href="/static/js/chat.js?v=20260709fii">
   <link rel="modulepreload" href="/static/js/ui.js">
-  <link rel="modulepreload" href="/static/js/sessions.js?v=20260709fii">
+  <link rel="modulepreload" href="/static/js/sessions.js">
   <link rel="modulepreload" href="/static/js/markdown.js">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content, viewport-fit=cover" />
 </head>
@@ -1018,8 +1018,8 @@
         <textarea id="message" placeholder="Message FII AE AI..." required autocomplete="off" aria-label="Message input" rows="1" autofocus></textarea>
         <!-- Model picker (inside chatbox, top-right) -->
         <div class="model-picker-wrap" id="model-picker-wrap">
-          <button type="button" class="model-picker-btn" id="model-picker-btn" title="Switch model"><span id="model-picker-label">Select model</span> <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"/></svg></button>
-          <div class="model-picker-menu hidden" id="model-picker-menu">
+          <button type="button" class="model-picker-btn" id="model-picker-btn" title="Switch model" aria-controls="model-picker-menu" aria-haspopup="listbox" aria-expanded="false"><span id="model-picker-label">Select model</span> <svg class="model-picker-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 15 12 9 18 15"/></svg></button>
+          <div class="model-picker-menu hidden" id="model-picker-menu" role="listbox" aria-label="Available models">
             <div class="model-picker-search-row">
               <div class="model-picker-search-wrap">
                 <input type="text" id="model-picker-search" placeholder="Search models..." autocomplete="off" aria-label="Search models">
@@ -2458,7 +2458,6 @@
 <script type="module" src="/static/js/ui.js"></script>
 <script type="module" src="/static/js/markdown.js"></script>
 <script type="module" src="/static/js/dragSort.js"></script>
-<script type="module" src="/static/js/sessions.js?v=20260709fii"></script>
 <script type="module" src="/static/js/memory.js"></script>
 <script type="module" src="/static/js/skills.js"></script>
 <script type="module" src="/static/js/tourHints.js"></script>

@@ -7,6 +7,19 @@ namespace backend.Tests;
 public class EventRuleEngineAlertBridgeTests
 {
     [Theory]
+    [InlineData("EMERGENCY", "critical")]
+    [InlineData("CRITICAL", "high")]
+    [InlineData("WARNING", "medium")]
+    [InlineData("INFO", "info")]
+    [InlineData("LOW", "low")]
+    [InlineData("unknown", "low")]
+    [InlineData(null, "low")]
+    public void MapToTimescaleSeverity_UsesAlertCheckConstraintValues(string? cepSeverity, string expected)
+    {
+        Assert.Equal(expected, EventRuleEngine.MapToTimescaleSeverity(cepSeverity));
+    }
+
+    [Theory]
     [InlineData(90, ">", 85, true)]
     [InlineData(85, ">", 85, false)]
     [InlineData(0.5, "<", 1.0, true)]

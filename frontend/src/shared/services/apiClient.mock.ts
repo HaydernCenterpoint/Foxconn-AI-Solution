@@ -458,7 +458,9 @@ function getMockAssetChildren(assetId: string): Record<string, unknown>[] {
     return null;
   };
   const found = findNode(tree);
-  return (found ?? []).map(({ children: _children, parentId: _parentId, ...rest }) => rest);
+  return (found ?? []).map((node) =>
+    Object.fromEntries(Object.entries(node).filter(([key]) => key !== 'children' && key !== 'parentId')),
+  );
 }
 
 function getMockAssetDocuments() {

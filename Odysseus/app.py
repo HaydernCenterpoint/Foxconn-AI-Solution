@@ -273,6 +273,7 @@ if AUTH_ENABLED:
         "/api/auth/settings",
         "/api/auth/integrations/presets",
         "/api/health",
+        "/api/ready",
         "/api/version",
         "/login",
     }
@@ -955,6 +956,12 @@ async def serve_backgrounds(request: Request):
 async def serve_login(request: Request):
     if not AUTH_ENABLED:
         return RedirectResponse(url="/", status_code=302)
+    # In the shared FII deployment, the main Operations UI is the only
+    # credential authority. Do not expose a second native Odysseus login form
+    # that can create a separate account/session and make users appear logged
+    # out when they switch between sibling services.
+    if FII_SSO_ENABLED:
+        return RedirectResponse(url=FII_MAIN_LOGIN_URL, status_code=302)
     return serve_html_with_nonce(request, abs_join(BASE_DIR, "static/login.html"))
 
 @app.get("/api/version")
