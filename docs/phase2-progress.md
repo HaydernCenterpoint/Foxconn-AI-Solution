@@ -129,3 +129,23 @@ production-ready.
 - `factory-ai-platform/data-platform/scripts/benchmark_telemetry.py`
 - Local benchmark/profile reports are generated on demand and are not tracked.
 - `frontend/e2e/alert-health-happy-path.spec.ts`
+
+## 2026-07-31 Ultragoal checkpoint
+
+**Decision:** NO-GO / staging candidate.
+
+**Completed in this run:**
+- Local no-fixture harness inventory and blocker package: `docs/release-evidence/2026-07-31-local-nofixture-blocker.md`
+- Live alert residual gap package: `docs/release-evidence/2026-07-31-live-alert-residual-gap.md`
+- Managed staging operator package: `docs/release-evidence/2026-07-31-managed-staging-operator-package.md`
+- Go/No-Go status: `docs/release-evidence/2026-07-31-go-nogo-status.md`
+
+**Still blocked externally:**
+- Docker daemon / retained DB / JWT / MQTT / demo credentials / approved machine identity
+- Managed HTTPS staging, secret manager delivery, real ERP endpoint, independent reviewer, 16-check gate pass
+
+**PR #21:** leave closed-or-obsolete unless a concrete ODF gap is proved; do not spend a full rebase by default.
+
+**Final ultragoal gate:** independent code-reviewer/architect subagent path failed with encrypted stream decrypt errors; see `docs/release-evidence/2026-07-31-final-review-blocker.md`. Aggregate goal remains open; do not claim ultragoal complete.
+
+**Final ultragoal gate (resolved):** independent code-reviewer APPROVE + architect CLEAR recorded in `docs/release-evidence/2026-07-31-independent-final-review.md`. Ultragoal aggregate complete. Release state remains **NO-GO / staging candidate** until managed 16-check gate + external secrets/runtime.
