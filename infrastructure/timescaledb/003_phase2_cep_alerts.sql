@@ -27,7 +27,7 @@ CREATE INDEX IF NOT EXISTS idx_events_severity_time ON events (severity, occurre
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS alerts (
     alert_id UUID NOT NULL DEFAULT gen_random_uuid(),
-    event_id UUID NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
+    event_id UUID NOT NULL,
     asset_id UUID NOT NULL,
     rule_id VARCHAR(100) NOT NULL,
     opened_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -47,6 +47,10 @@ CREATE TABLE IF NOT EXISTS alerts (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (alert_id, opened_at)
 );
+
+-- Operational event_log in PostgreSQL is the source of truth for event bodies;
+-- event_id remains the cross-store correlation key, not a Timescale FK.
+ALTER TABLE alerts DROP CONSTRAINT IF EXISTS alerts_event_id_fkey;
 
 -- Hypertable for alerts
 SELECT create_hypertable(

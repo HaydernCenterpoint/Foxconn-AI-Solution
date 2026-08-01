@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using backend.Services;
@@ -7,7 +8,9 @@ using backend.Services;
 namespace backend.Controllers
 {
     [ApiController]
+    [Authorize(Roles = "ADMIN,ENGINEER")]
     [Route("api/v1/predictions")]
+    [Route("api/predictions")]
     public class PredictionController : ControllerBase
     {
         private readonly PredictiveService _predictiveService;
@@ -22,6 +25,7 @@ namespace backend.Controllers
         }
 
         [HttpPost("anomaly")]
+        [Authorize(Roles = "ADMIN,ENGINEER")]
         public async Task<IActionResult> DetectAnomaly([FromBody] AnomalyRequest request)
         {
             try

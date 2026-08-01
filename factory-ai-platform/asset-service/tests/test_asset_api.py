@@ -10,6 +10,35 @@ from httpx import AsyncClient
 @pytest.mark.asyncio
 class TestAssetCRUD:
 
+    async def test_create_requires_authentication(
+        self,
+        unauthenticated_client: AsyncClient,
+        sample_plant_data: dict,
+    ):
+        """Production auth remains enforced when no test override is installed."""
+        response = await unauthenticated_client.post(
+            "/api/v1/assets",
+            json=sample_plant_data,
+        )
+
+        assert response.status_code == 401
+        assert response.headers["content-type"].startswith("application/problem+json")
+        assert response.json()["detail"] == "Missing authentication"
+
+    async def test_invalid_optional_token_is_not_downgraded_to_anonymous(
+        self,
+        unauthenticated_client: AsyncClient,
+    ):
+        """A supplied invalid token cannot bypass asset scope filtering."""
+        response = await unauthenticated_client.get(
+            "/api/v1/assets",
+            headers={"Authorization": "Bearer invalid-token"},
+        )
+
+        assert response.status_code == 401
+        assert response.headers["content-type"].startswith("application/problem+json")
+        assert response.json()["detail"] == "Invalid authentication token"
+
     async def test_create_plant(self, client: AsyncClient, sample_plant_data: dict):
         """Plants can be created with no parent."""
         response = await client.post("/api/v1/assets", json=sample_plant_data)
@@ -19,34 +48,77 @@ class TestAssetCRUD:
         assert data["type"] == "plant"
         assert data["status"] == "active"
         assert data["parent_id"] is None
+        assert data["metadata"] == {"capacity": "1000 units/day"}
         assert "id" in data
 
     async def test_create_machine_requires_parent(self, client: AsyncClient, sample_plant_data: dict):
         """Machines must have a parent_id."""
-        # First create a plant to be the parent
+        # Create the required plant → line parent chain.
         plant_resp = await client.post("/api/v1/assets", json=sample_plant_data)
         plant_id = plant_resp.json()["id"]
+        line_resp = await client.post(
+            "/api/v1/assets",
+            json={"name": "Parent Line", "type": "line", "parent_id": plant_id},
+        )
+        line_id = line_resp.json()["id"]
 
         machine_data = {
             "name": "Test Machine",
             "type": "machine",
-            "parent_id": plant_id,
+            "parent_id": line_id,
         }
         response = await client.post("/api/v1/assets", json=machine_data)
         assert response.status_code == 201
         data = response.json()
-        assert data["parent_id"] == plant_id
+        assert data["parent_id"] == line_id
 
     async def test_create_machine_without_parent_fails(self, client: AsyncClient, sample_plant_data: dict):
         """Machine without parent returns validation error."""
         machine_data = {"name": "Orphan Machine", "type": "machine"}
         response = await client.post("/api/v1/assets", json=machine_data)
-        # Without parent_id, the DB trigger enforces the constraint
-        # The API should handle this gracefully
-        # Note: This may return 201 with a null parent_id or 500 depending on trigger behavior
-        # The SQL CHECK constraint validates type=plant requires parent_id=null
-        # For machine, parent_id should not be null
-        pass
+
+        assert response.status_code == 422
+        assert response.headers["content-type"].startswith("application/problem+json")
+        assert "require a parent" in str(response.json()["extensions"]["errors"])
+
+    async def test_create_plant_with_parent_fails(self, client: AsyncClient):
+        """Plant is the hierarchy root and cannot reference a parent."""
+        response = await client.post(
+            "/api/v1/assets",
+            json={
+                "name": "Nested Plant",
+                "type": "plant",
+                "parent_id": str(uuid.uuid4()),
+            },
+        )
+
+        assert response.status_code == 422
+        assert "cannot have a parent" in str(response.json()["extensions"]["errors"])
+
+    async def test_create_rejects_invalid_parent_type(
+        self,
+        client: AsyncClient,
+        sample_plant_data: dict,
+    ):
+        """Hierarchy enforces Plant → Line → Machine → Sensor."""
+        plant_response = await client.post("/api/v1/assets", json=sample_plant_data)
+        plant_id = plant_response.json()["id"]
+        line_response = await client.post(
+            "/api/v1/assets",
+            json={"name": "Line A", "type": "line", "parent_id": plant_id},
+        )
+        line_id = line_response.json()["id"]
+
+        invalid_requests = [
+            {"name": "Nested Line", "type": "line", "parent_id": line_id},
+            {"name": "Machine under plant", "type": "machine", "parent_id": plant_id},
+            {"name": "Sensor under line", "type": "sensor", "parent_id": line_id},
+        ]
+
+        for payload in invalid_requests:
+            response = await client.post("/api/v1/assets", json=payload)
+            assert response.status_code == 400
+            assert "require a" in response.json()["detail"]
 
     async def test_get_asset_by_id(self, client: AsyncClient, sample_plant_data: dict):
         """GET returns the correct asset."""
@@ -76,6 +148,10 @@ class TestAssetCRUD:
         assert update_resp.status_code == 200
         data = update_resp.json()
         assert data["status"] == "maintenance"
+        assert data["metadata"] == {
+            "capacity": "1000 units/day",
+            "note": "updated",
+        }
 
     async def test_delete_asset(self, client: AsyncClient, sample_plant_data: dict):
         """DELETE removes the asset."""
@@ -107,21 +183,29 @@ class TestAssetCRUD:
     async def test_list_assets_filter_by_type(self, client: AsyncClient, sample_plant_data: dict):
         """List filtering by type works."""
         # Create a plant and a line
-        await client.post("/api/v1/assets", json=sample_plant_data)
-        line_data = {**sample_plant_data, "name": "Test Line", "type": "line"}
-        await client.post("/api/v1/assets", json=line_data)
+        plant_response = await client.post("/api/v1/assets", json=sample_plant_data)
+        line_response = await client.post(
+            "/api/v1/assets",
+            json={
+                "name": "Test Line",
+                "type": "line",
+                "parent_id": plant_response.json()["id"],
+            },
+        )
+        assert line_response.status_code == 201
 
         resp = await client.get("/api/v1/assets?type=plant")
         assert resp.status_code == 200
         items = resp.json()["items"]
+        assert items
         assert all(item["type"] == "plant" for item in items)
+        assert all(item["name"] != "Test Line" for item in items)
 
     async def test_list_assets_filter_by_name(self, client: AsyncClient, sample_plant_data: dict):
         """Name search is case-insensitive partial match."""
-        for name in ["Alpha Plant", "Beta Plant", "Gamma Line"]:
+        for name in ["Alpha Plant", "Beta Plant", "Gamma Plant"]:
             data = sample_plant_data.copy()
             data["name"] = name
-            data["type"] = "line" if "Line" in name else "plant"
             await client.post("/api/v1/assets", json=data)
 
         resp = await client.get("/api/v1/assets?name=alpha")

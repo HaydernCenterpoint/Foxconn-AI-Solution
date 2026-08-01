@@ -17,6 +17,7 @@ const testStorage = vi.hoisted(() => {
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  buildRcaRequest,
   isAssetId,
   mapAlertResponse,
   mapHealthResponse,
@@ -83,6 +84,23 @@ describe('predictiveAlerts API contract mapping', () => {
     expect(rollUpHealthScores([])).toBeNull();
   });
 
+  it('submits only the alert identity for server-authoritative RCA context', () => {
+    const [alert] = mapAlertResponse({
+      alerts: [{
+        alertId: 'alert-1',
+        assetId: 'asset-from-client',
+        ruleId: 'client-rule',
+        openedAt: '2026-07-26T08:00:00Z',
+        severity: 'high',
+        title: 'Client alert',
+        evidence: '{"untrusted":true}',
+        status: 'open',
+      }],
+    });
+
+    expect(buildRcaRequest(alert)).toEqual({ alertId: 'alert-1' });
+  });
+
   it('serves deterministic mapped responses in demo mode without a backend', async () => {
     vi.resetModules();
     vi.stubEnv('MODE', 'demo');
@@ -91,6 +109,7 @@ describe('predictiveAlerts API contract mapping', () => {
     const alerts = await predictiveAlertsApi.listAlerts();
     const health = await predictiveAlertsApi.getHealth(alerts[0].asset_id);
     const stats = await predictiveAlertsApi.getStats();
+    const rca = await predictiveAlertsApi.getRca(alerts[0]);
     await predictiveAlertsApi.acknowledgeAlert(alerts[0].alert_id);
     await predictiveAlertsApi.resolveAlert(alerts[0].alert_id, 'demo resolve');
 
@@ -108,6 +127,21 @@ describe('predictiveAlerts API contract mapping', () => {
       maintenance_overdue: true,
     }));
     expect(stats.openCounts.high).toBe(1);
+    expect(rca).toEqual({
+      rca: expect.objectContaining({
+        rca_id: 'demo-rca-0001',
+        root_cause_asset_id: '00000000-0000-0000-0000-000000000001',
+        confidence_score: 0.84,
+        causal_chain: expect.arrayContaining(['demo-event-bearing-temperature']),
+        causal_chain_events: expect.arrayContaining([
+          expect.objectContaining({
+            event_id: 'demo-event-bearing-temperature',
+            type: 'bearing_temperature_high',
+          }),
+        ]),
+        recommended_actions: expect.arrayContaining(['Inspect and lubricate the bearing.']),
+      }),
+    });
   });
 
   it('filters demo alerts by status and severity', async () => {

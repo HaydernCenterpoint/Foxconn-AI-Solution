@@ -140,23 +140,37 @@ info: Microsoft.Hosting.Lifetime[14]
 
 **Manual Tests:**
 ```bash
+# Set a token issued by /api/auth/login before calling protected endpoints.
+export FII_DEMO_ACCESS_TOKEN='<access-token>'
+
 # Alert Stats
-curl http://localhost:5000/api/v1/alerts/stats
+curl -H "Authorization: Bearer $FII_DEMO_ACCESS_TOKEN" http://localhost:5000/api/v1/alerts/stats
 
 # List Alerts
-curl http://localhost:5000/api/v1/alerts?limit=10
+curl -H "Authorization: Bearer $FII_DEMO_ACCESS_TOKEN" http://localhost:5000/api/v1/alerts?limit=10
 
 # Health Score (replace with real asset UUID)
-curl http://localhost:5000/api/v1/assets/{asset-uuid}/health
+curl -H "Authorization: Bearer $FII_DEMO_ACCESS_TOKEN" http://localhost:5000/api/v1/assets/{asset-uuid}/health
 
 # Failure Risk
-curl http://localhost:5000/api/v1/predictions/risk/{asset-uuid}
+curl -H "Authorization: Bearer $FII_DEMO_ACCESS_TOKEN" http://localhost:5000/api/v1/predictions/risk/{asset-uuid}
 
 # Anomaly Detection
 curl -X POST http://localhost:5000/api/v1/predictions/anomaly \
+  -H "Authorization: Bearer $FII_DEMO_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"assetId": "{asset-uuid}", "metricType": "temperature"}'
+
+# Basic RCA (requires ADMIN or ENGINEER session/token)
+curl -X POST http://localhost:5000/api/v1/rca \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"alertId":"{alert-uuid}"}'
 ```
+
+The backend resolves the alert's event ID, occurrence time, asset, event type,
+rule, severity, and evidence from Timescale. Client-supplied event context is
+not trusted.
 
 ### 4. Verify Background Jobs
 
@@ -167,34 +181,39 @@ curl -X POST http://localhost:5000/api/v1/predictions/anomaly \
 # Should appear every 15 minutes
 ```
 
-### 5. Frontend Integration (Next Step)
+### 5. Frontend Integration
 
 **Current Status:**
 - ✅ API client updated with real endpoints
-- ⏳ Components need wiring (PredictiveAlertPanel, Alert Center)
-- ⏳ Health badges need integration
-
-**To Wire:**
-1. Update ModernDashboard.tsx to call `predictiveAlertsApi.listAlerts()`
-2. Add Alert Center page with filter/action controls
-3. Add health badge to Asset Browser with tooltip
+- ✅ Predictive Alert, Alert Center evidence/actions, health badges/history wired
+- ✅ Basic RCA panel and its alertId-only browser contract covered through the
+  authenticated backend facade
+- ⏳ Real no-fixture full-stack browser run and managed-staging acceptance
 
 ---
 
 ## Configuration Reference
 
-**appsettings.json:**
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=plc_monitoring;Username=postgres;Password=12345678",
-    "TimescaleConnection": "Host=localhost;Port=55433;Database=plc_timescale;Username=postgres;Password=12345678"
-  },
-  "HealthScoring": {
-    "IntervalMinutes": 15
-  }
-}
+Connection strings and signing keys are intentionally absent from tracked
+`appsettings*.json` files. Inject them from the deployment secret manager:
+
+```text
+ConnectionStrings__DefaultConnection
+ConnectionStrings__Timescale
+Jwt__Key
+Mqtt__EncryptionKey
+MqttServer__DeviceTokens__<client-id>
+MqttServer__Tls__CertificatePassword
 ```
+
+For TLS deployments, also set `MqttServer__Tls__CertificatePath` to the
+mounted PFX path. Production defaults to the encrypted endpoint and refuses
+to start when the certificate is missing. See `docs/security-secrets.md`.
+
+When the API is behind HTTPS ingress, set
+`ForwardedHeaders__KnownProxies__0` or
+`ForwardedHeaders__KnownNetworks__0` to the exact trusted ingress IP/CIDR.
+This must be validated before relying on per-client login rate limiting.
 
 **Registered Services:**
 - AlertService (singleton)
@@ -212,6 +231,7 @@ curl -X POST http://localhost:5000/api/v1/predictions/anomaly \
 - `POST /api/v1/alerts/{id}/acknowledge`
 - `POST /api/v1/alerts/{id}/resolve`
 - `GET /api/v1/alerts/stats`
+- `POST /api/v1/rca` (`ADMIN`/`ENGINEER`; bounded proxy to CEP basic correlation)
 
 ### Health
 - `GET /api/v1/assets/{id}/health`
@@ -226,40 +246,29 @@ curl -X POST http://localhost:5000/api/v1/predictions/anomaly \
 
 ## Known Limitations (Phase 2)
 
-1. **Prediction Model:** Statistical baseline (z-score) only; Phase 3 will add trained ML models
-2. **Connector Implementations:** Framework ready, File/ERP/MES need concrete code
-3. **Frontend Integration:** API client ready, UI components need wiring
-4. **Tests:** Unit/integration/E2E tests pending
-5. **RCA:** Basic correlation only; no LLM explanations yet
+1. **Prediction Model:** Backend uses a statistical baseline; CEP also has a
+   synthetic-trained Isolation Forest development baseline. Neither is a
+   production model trained/validated on three months of real factory data.
+2. **Connector Implementations:** File Watcher and ERP are implemented; MES is optional and not accepted for production
+3. **Frontend Integration:** Alert evidence, machine health history, and
+   operator-gated basic RCA are wired; the fixture browser path asserts the
+   alertId-only request and RCA result
+4. **Tests:** Local regression and browser E2E pass; independent managed-staging smoke remains
+5. **RCA:** Backward event correlation only; state is process-local and no LLM explanations are generated
 6. **Real-time Updates:** Polling-based; SignalR pending
 
 ---
 
 ## Next Steps (Priority Order)
 
-### Immediate (Today)
-1. ✅ Apply database migrations
-2. ✅ Start backend and verify services running
-3. ✅ Run API test script
-4. ✅ Check logs for errors
-
-### Short-term (This Week)
-5. Seed sample assets if needed
-6. Test alert creation via API
-7. Implement File Watcher connector
-8. Wire frontend Alert Center
-
-### Medium-term (Next Week)
-9. Migrate 5-10 alarm rules to CEP
-10. Run latency benchmarks
-11. Complete frontend health badges
-12. Build E2E test
-
-### Phase 2 Gate (2 Weeks)
-13. Extended demo/smoke tests
-14. Accuracy & latency report
-15. Known limitations document
-16. Go/no-go decision
+1. Provision managed HTTPS ingress, MQTT certificate, database TLS, and secret-manager values.
+2. Connect one real ERP/MES source and validate canonical mappings.
+3. Rehearse `migration → full → rollback → migration` with unique row evidence.
+4. Set `FII_LIVE_E2E=1`, `FII_LIVE_FRONTEND_URL`, `FII_DEMO_USERNAME`, and
+   `FII_DEMO_PASSWORD`, then run `npm --prefix frontend run e2e:live`.
+5. Complete all 16 managed checks and obtain independent reviewer approval.
+6. Run `infrastructure/staging/Test-ManagedStagingGate.ps1`.
+7. Make the go/no-go and canary rollout decision only after the gate passes.
 
 ---
 
@@ -267,16 +276,19 @@ curl -X POST http://localhost:5000/api/v1/predictions/anomaly \
 
 | Metric | Target | Status |
 |--------|--------|--------|
-| Build | Success | ✅ Complete |
-| Database schema | All tables created | ⏳ Pending migration |
-| API endpoints | 10 endpoints live | ⏳ Pending startup |
-| Background jobs | Health scoring running | ⏳ Pending startup |
-| Alert latency | <1s p95 | ⏳ Pending benchmark |
-| Prediction latency | <200ms p95 | ⏳ Pending benchmark |
-| Frontend integration | Components wired | ⏳ In progress |
-| E2E test | 100% pass | ⏳ Not started |
+| Build | Success | ✅ Local pass |
+| Database schema | All tables created | ✅ Local migration replay |
+| API endpoints | Alert/health/prediction/RCA live | ✅ Local component smoke |
+| Background jobs | Health + batch prediction running | ✅ Local smoke |
+| Alert latency | <1s p95 | ✅ 3.79 ms local p95 |
+| Prediction latency | <200ms p95 | ✅ 9.38 ms local p95 |
+| Timescale rollup profile | <500ms + result parity | ✅ 2.022–5.062 ms; 0 mismatches |
+| Frontend integration | Components wired | ✅ Local pass |
+| Fixture browser E2E | 100% pass | ✅ Playwright 1/1 |
+| No-fixture full-stack E2E | 100% pass | ⏳ Requires approved live identity/credentials |
 
-**Phase 2 Progress: 45% complete**
+**Phase 2 state: local implementation slice complete; real full-stack and
+managed-staging acceptance pending.**
 
 ---
 

@@ -37,11 +37,78 @@ export interface AuthenticationContext {
 }
 
 export interface IdentityProvider {
-  readonly mode: 'development' | 'oidc';
+  readonly mode: 'development' | 'oidc' | 'fii_sso';
   authenticate(request: Request, context?: AuthenticationContext): Promise<AuthenticatedIdentity>;
 }
 
 export class AuthenticationError extends Error {}
+
+function parseCookieHeader(cookieHeader: string | undefined): Record<string, string> {
+  const list: Record<string, string> = {};
+  if (!cookieHeader) return list;
+  for (const pair of cookieHeader.split(';')) {
+    const idx = pair.indexOf('=');
+    if (idx < 0) continue;
+    const key = pair.substring(0, idx).trim();
+    const val = pair.substring(idx + 1).trim();
+    if (key) list[key] = decodeURIComponent(val);
+  }
+  return list;
+}
+
+export class FiiSsoIdentityProvider implements IdentityProvider {
+  readonly mode = 'fii_sso' as const;
+
+  constructor(
+    private readonly secret: string,
+    private readonly issuer: string = 'MKZ_PLC_Server',
+    private readonly audience: string = 'MKZ_PLC_Client',
+  ) {
+    if (!secret || secret.trim().length < 32) {
+      throw new Error('FII SSO secret must be at least 32 bytes');
+    }
+  }
+
+  async authenticate(request: Request): Promise<AuthenticatedIdentity> {
+    let token: string | undefined;
+
+    const authHeader = request.header('authorization');
+    if (authHeader) {
+      const match = authHeader.match(/^Bearer\s+(\S+)$/i);
+      if (match?.[1]) token = match[1];
+    }
+
+    if (!token) {
+      const cookies = parseCookieHeader(request.header('cookie'));
+      token = cookies['fii_sso'];
+    }
+
+    if (!token) {
+      throw new AuthenticationError('A valid fii_sso cookie or Bearer token is required');
+    }
+
+    try {
+      const secretBytes = new TextEncoder().encode(this.secret);
+      const { payload } = await jwtVerify(token, secretBytes, {
+        issuer: this.issuer,
+        audience: this.audience,
+        algorithms: ['HS256'],
+      });
+
+      const userId = normalizedUserId(payload.sub ?? payload.name);
+      const displayName = optionalClaim(payload, 'name') ?? userId;
+      return {
+        userId,
+        displayName,
+        claims: payload,
+        permissions: allDataPlanePermissions,
+      };
+    } catch (error) {
+      if (error instanceof AuthenticationError) throw error;
+      throw new AuthenticationError('A valid fii_sso session is required');
+    }
+  }
+}
 
 function normalizedUserId(value: unknown): string {
   if (typeof value !== 'string') throw new AuthenticationError('The authenticated token has no usable user identity');
@@ -176,6 +243,15 @@ export function createIdentityProviderFromEnvironment(
 
   if (mode === 'development') {
     return new DevelopmentIdentityProvider(environment.ODF_DEV_USER?.trim() || 'local-user');
+  }
+  if (mode === 'fii_sso') {
+    const secret = environment.FII_JWT_SECRET?.trim();
+    if (!secret) throw new Error('FII_JWT_SECRET is required when ODF_AUTH_MODE=fii_sso');
+    return new FiiSsoIdentityProvider(
+      secret,
+      environment.FII_JWT_ISSUER?.trim() || 'MKZ_PLC_Server',
+      environment.FII_JWT_AUDIENCE?.trim() || 'MKZ_PLC_Client',
+    );
   }
   if (mode !== 'oidc') {
     throw new Error(`Unsupported ODF_AUTH_MODE '${mode}'`);

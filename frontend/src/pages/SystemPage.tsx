@@ -9,7 +9,13 @@ import { DataState } from '../shared/components/ui/DataState';
 import { PageHeader } from '../shared/components/ui/PageHeader';
 import { StatCard } from '../shared/components/ui/StatCard';
 import { Surface } from '../shared/components/ui/Surface';
-import { systemApi, type HealthCheck, type TelemetrySnapshot } from '../features/system/services/system.api';
+import { useAuthStore } from '../shared/store/auth.store';
+import {
+  systemApi,
+  type ConnectorStatus,
+  type HealthCheck,
+  type TelemetrySnapshot,
+} from '../features/system/services/system.api';
 
 function toLocale(language: string) {
   if (language === 'zh' || language === 'zh-CN') return 'zh-CN';
@@ -26,6 +32,14 @@ function healthVariant(status: string): BadgeVariant {
   if (normalized === 'healthy') return 'success';
   if (normalized === 'degraded') return 'warning';
   if (normalized === 'unhealthy') return 'error';
+  return 'neutral';
+}
+
+function connectorVariant(connector: ConnectorStatus): BadgeVariant {
+  const status = connector.status.toLowerCase();
+  if (connector.errors > 0 || status === 'error' || status === 'failed') return 'error';
+  if (connector.running || status === 'success' || status === 'idle') return 'success';
+  if (status === 'degraded' || status === 'stopped') return 'warning';
   return 'neutral';
 }
 
@@ -103,9 +117,60 @@ function HealthChecks({ checks }: { checks: HealthCheck[] }) {
   );
 }
 
+function ConnectorTable({
+  connectors,
+  locale,
+}: {
+  connectors: ConnectorStatus[];
+  locale: string;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="data-table min-w-176">
+        <thead>
+          <tr>
+            <th>{t('systemMonitor.connectorColumns.name')}</th>
+            <th>{t('systemMonitor.connectorColumns.status')}</th>
+            <th>{t('systemMonitor.connectorColumns.lastSuccessfulSync')}</th>
+            <th>{t('systemMonitor.connectorColumns.records')}</th>
+            <th>{t('systemMonitor.connectorColumns.errors')}</th>
+            <th>{t('systemMonitor.connectorColumns.error')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {connectors.map((connector) => (
+            <tr key={connector.name}>
+              <td className="font-mono text-xs text-text-primary">{connector.name}</td>
+              <td>
+                <Badge
+                  variant={connectorVariant(connector)}
+                  size="sm"
+                  dot
+                >
+                  {connector.status}
+                </Badge>
+              </td>
+              <td className="whitespace-nowrap text-text-secondary">
+                {connector.lastSuccessfulSync ? formatDate(connector.lastSuccessfulSync, locale) : '—'}
+              </td>
+              <td>{connector.recordsSynced.toLocaleString(locale)}</td>
+              <td>{connector.errors.toLocaleString(locale)}</td>
+              <td className="max-w-80 text-text-secondary">{connector.errorMessage ?? '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function SystemPage() {
   const { t, i18n } = useTranslation();
   const locale = toLocale(i18n.language);
+  const role = useAuthStore((state) => state.role);
+  const canViewConnectors = role === 'ADMIN' || role === 'ENGINEER';
   const healthQuery = useQuery({
     queryKey: queryKeys.system.health(),
     queryFn: systemApi.getHealth,
@@ -124,14 +189,27 @@ export default function SystemPage() {
     refetchInterval: queryTimings.system,
     retry: 1,
   });
+  const connectorsQuery = useQuery({
+    queryKey: queryKeys.system.connectors(),
+    queryFn: systemApi.getConnectors,
+    refetchInterval: queryTimings.system,
+    retry: 1,
+    enabled: canViewConnectors,
+  });
 
-  const isRefreshing = healthQuery.isFetching || liveQuery.isFetching || logQuery.isFetching;
+  const isRefreshing = healthQuery.isFetching || liveQuery.isFetching || logQuery.isFetching || connectorsQuery.isFetching;
   const refresh = async () => {
-    await Promise.all([healthQuery.refetch(), liveQuery.refetch(), logQuery.refetch()]);
+    await Promise.all([
+      healthQuery.refetch(),
+      liveQuery.refetch(),
+      logQuery.refetch(),
+      ...(canViewConnectors ? [connectorsQuery.refetch()] : []),
+    ]);
   };
   const health = healthQuery.data;
   const liveSnapshots = liveQuery.data ?? [];
   const logSnapshots = logQuery.data ?? [];
+  const connectors = connectorsQuery.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -234,6 +312,36 @@ export default function SystemPage() {
           )}
         </Surface>
       </div>
+
+      {canViewConnectors && (
+        <Surface variant="raised" padding="none" className="overflow-hidden">
+          <div className="panel-header">
+            <div>
+              <h2 className="title-small text-text-primary">{t('systemMonitor.connectors')}</h2>
+              <p className="mt-1 text-xs text-text-muted">{t('systemMonitor.connectorsDescription')}</p>
+            </div>
+            {!connectorsQuery.isLoading && !connectorsQuery.isError && (
+              <Badge variant="info" size="sm">
+                {t('systemMonitor.connectorCount', { count: connectors.length })}
+              </Badge>
+            )}
+          </div>
+          {connectorsQuery.isLoading ? (
+            <DataState kind="loading" title={t('systemMonitor.loadingConnectors')} />
+          ) : connectorsQuery.isError ? (
+            <DataState
+              kind="error"
+              title={t('systemMonitor.connectorsUnavailable')}
+              description={t('systemMonitor.connectorsUnavailableDescription')}
+              action={<Button variant="secondary" size="sm" onClick={() => { void connectorsQuery.refetch(); }}>{t('common.actions.retry')}</Button>}
+            />
+          ) : connectors.length === 0 ? (
+            <DataState kind="empty" title={t('systemMonitor.noConnectors')} description={t('systemMonitor.noConnectorsDescription')} />
+          ) : (
+            <ConnectorTable connectors={connectors} locale={locale} />
+          )}
+        </Surface>
+      )}
 
       <Surface variant="raised" padding="none" className="overflow-hidden">
         <div className="panel-header">

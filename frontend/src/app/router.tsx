@@ -94,10 +94,10 @@ export function AppRouter() {
         <Route path="machines/:id" element={withSuspense(<MachineDetailPage />)} />
         <Route path="alarms" element={withSuspense(<AlarmPage />)} />
         <Route path="alerts" element={withSuspense(<AlertCenterPage />)} />
+        <Route path="assets" element={withSuspense(<AssetBrowserPage />)} />
         <Route path="settings" element={withSuspense(<SettingsPage />)} />
         <Route path="reports" element={withSuspense(<ReportsPage />)} />
         <Route path="system" element={withSuspense(<SystemPage />)} />
-        <Route path="assets" element={withSuspense(<AssetBrowserPage />)} />
         <Route path="simulation" element={withSuspense(<ProtectedRoute allowedRoles={['ADMIN', 'ENGINEER']}><SimulationPage /></ProtectedRoute>)} />
         <Route path="users" element={withSuspense(<ProtectedRoute allowedRoles={['ADMIN']}><AdminUserManagementPage /></ProtectedRoute>)} />
         <Route path="audit-logs" element={withSuspense(<ProtectedRoute allowedRoles={['ADMIN']}><AdminAuditLogPage /></ProtectedRoute>)} />
@@ -118,7 +118,6 @@ export function AppRouter() {
         <Route path="settings" element={withSuspense(<ViewerSettingsPage />)} />
         <Route path="production-analysis" element={withSuspense(<ProductionAnalysisPage />)} />
         <Route path="system" element={withSuspense(<SystemPage />)} />
-        <Route path="assets" element={withSuspense(<AssetBrowserPage />)} />
         <Route path="viewer/*" element={<Navigate to="/" replace />} />
         <Route path="flow-designer" element={<Navigate to="/lines" replace />} />
         <Route path="dashboard" element={<Navigate to="/" replace />} />

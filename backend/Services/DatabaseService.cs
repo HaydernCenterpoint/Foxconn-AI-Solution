@@ -546,8 +546,42 @@ namespace backend.Services
                     );");
 
                 ExecuteSync(conn, @"
-                    CREATE INDEX IF NOT EXISTS idx_machine_telemetry_machine_seq 
+                    CREATE INDEX IF NOT EXISTS idx_machine_telemetry_machine_seq
                     ON machine_telemetry(machine_id, sequence DESC);");
+
+                // ─── 12. normalized telemetry and CEP event log ──────────────────────────
+                // Kept in the operational PostgreSQL database; TimescaleDB is the staged
+                // analytical target and receives the append-only raw stream separately.
+                ExecuteSync(conn, @"
+                    CREATE TABLE IF NOT EXISTS telemetry_data (
+                        time TIMESTAMPTZ NOT NULL,
+                        asset_id UUID NOT NULL,
+                        metric VARCHAR(64) NOT NULL,
+                        value DOUBLE PRECISION NOT NULL,
+                        unit VARCHAR(16),
+                        source VARCHAR(256)
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_telemetry_data_asset_metric_time
+                        ON telemetry_data (asset_id, metric, time DESC);
+                    CREATE INDEX IF NOT EXISTS idx_telemetry_data_time_brin
+                        ON telemetry_data USING BRIN (time) WITH (pages_per_range = 32);
+
+                    CREATE TABLE IF NOT EXISTS event_log (
+                        event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        schema_version INTEGER NOT NULL DEFAULT 1,
+                        timestamp TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        asset_id UUID NOT NULL,
+                        event_type VARCHAR(64) NOT NULL,
+                        severity VARCHAR(16) NOT NULL,
+                        source VARCHAR(256),
+                        payload JSONB,
+                        correlation_id VARCHAR(256),
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_event_log_asset_time
+                        ON event_log (asset_id, timestamp DESC);
+                    CREATE INDEX IF NOT EXISTS idx_event_log_type_severity
+                        ON event_log (event_type, severity);");
 
                 ExecuteSync(conn, @"
                     CREATE TABLE IF NOT EXISTS fusion_outbox (

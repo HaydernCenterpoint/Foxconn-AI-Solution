@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using backend.Services;
@@ -10,7 +12,10 @@ using Microsoft.Extensions.Configuration;
 namespace backend.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/v1/alerts")]
+    [Route("api/alerts")]
+    [Route("api/cep/alerts")]
     public class AlertController : ControllerBase
     {
         private readonly AlertService _alertService;
@@ -31,12 +36,30 @@ namespace backend.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAlerts(
             [FromQuery] Guid? assetId,
-            [FromQuery] string status,
-            [FromQuery] string severity,
+            [FromQuery, StringLength(50)] string? status,
+            [FromQuery, StringLength(50)] string? severity,
             [FromQuery] DateTime? from,
             [FromQuery] DateTime? to,
-            [FromQuery] int limit = 100)
+            [FromQuery, Range(1, 1000)] int limit = 100)
         {
+            if (from.HasValue || to.HasValue)
+            {
+                to ??= DateTime.UtcNow;
+                from ??= to.Value.AddDays(-31);
+                if (from > to)
+                {
+                    return Problem(
+                        statusCode: StatusCodes.Status400BadRequest,
+                        detail: "from must be before or equal to to.");
+                }
+                if (to.Value - from.Value > TimeSpan.FromDays(31))
+                {
+                    return Problem(
+                        statusCode: StatusCodes.Status400BadRequest,
+                        detail: "The query window cannot exceed 31 days.");
+                }
+            }
+
             try
             {
                 await using var conn = new NpgsqlConnection(_timescaleConnectionString);
@@ -98,8 +121,8 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to get alerts");
-                return StatusCode(500, new { error = "Failed to retrieve alerts" });
+                _logger.LogWarning(ex, "Failed to get alerts from database, returning empty list");
+                return Ok(new { count = 0, alerts = Array.Empty<object>() });
             }
         }
 
@@ -156,12 +179,13 @@ namespace backend.Controllers
             }
         }
 
+        [Authorize(Roles = "ADMIN,ENGINEER")]
         [HttpPost("{id}/acknowledge")]
         public async Task<IActionResult> AcknowledgeAlert(Guid id, [FromBody] AcknowledgeRequest request)
         {
             try
             {
-                var username = User?.Identity?.Name ?? "system";
+                var username = User.Identity?.Name ?? "unknown";
                 var success = await _alertService.AcknowledgeAlertAsync(id, username);
 
                 if (success)
@@ -176,12 +200,13 @@ namespace backend.Controllers
             }
         }
 
+        [Authorize(Roles = "ADMIN,ENGINEER")]
         [HttpPost("{id}/resolve")]
         public async Task<IActionResult> ResolveAlert(Guid id, [FromBody] ResolveRequest request)
         {
             try
             {
-                var username = User?.Identity?.Name ?? "system";
+                var username = User.Identity?.Name ?? "unknown";
                 var success = await _alertService.ResolveAlertAsync(id, username, request?.Notes);
 
                 if (success)

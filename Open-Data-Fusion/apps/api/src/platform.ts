@@ -531,6 +531,11 @@ export class PlatformCatalog {
   }
 
   rebuildSqliteAssetSearchIndex(): void {
+    const hasIndustrialTable = Boolean(
+      this.database.prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name='industrial_assets'`).get()
+    );
+    if (!hasIndustrialTable) return;
+
     this.transaction(() => {
       this.database.prepare(`DELETE FROM platform_search_index WHERE entity_type='asset'`).run();
       this.database.prepare(`

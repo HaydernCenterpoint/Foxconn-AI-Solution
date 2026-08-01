@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { hasPermission, type Permission } from '../../app/permissions';
 import type { UserRole } from '../types/domain';
-import { getJwtUser, isJwtExpired } from '../services/session.service';
 import { authApi } from '../../features/auth/services/auth.api';
 
 const DEMO_MODE = import.meta.env.MODE === 'demo';
@@ -35,9 +34,9 @@ export const useAuthStore = create<AuthState>()(
       hasSeenWelcome: false,
       sessionMessage: null,
 
-      login: (token, username, role) =>
+      login: (_token, username, role) =>
         set({
-          token,
+          token: null,
           username,
           role,
           isAuthenticated: true,
@@ -60,7 +59,7 @@ export const useAuthStore = create<AuthState>()(
         }),
 
       checkSession: async () => {
-        const { token, username, role, hasSeenWelcome } = get();
+        const { hasSeenWelcome } = get();
         if (DEMO_MODE) {
           set({
             token: null,
@@ -70,19 +69,6 @@ export const useAuthStore = create<AuthState>()(
             sessionChecked: true,
             welcomePending: false,
             hasSeenWelcome: true,
-            sessionMessage: null,
-          });
-          return;
-        }
-
-        if (token && !isJwtExpired(token)) {
-          const jwtUser = getJwtUser(token);
-          set({
-            username: username ?? jwtUser.username ?? 'user',
-            role: role ?? jwtUser.role ?? 'GUEST',
-            isAuthenticated: true,
-            sessionChecked: true,
-            welcomePending: !hasSeenWelcome,
             sessionMessage: null,
           });
           return;
@@ -108,7 +94,7 @@ export const useAuthStore = create<AuthState>()(
             sessionChecked: true,
             welcomePending: false,
             hasSeenWelcome: false,
-            sessionMessage: token ? 'auth.errors.sessionExpired' : null,
+            sessionMessage: null,
           });
         }
       },
@@ -122,11 +108,21 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'mkz-auth',
+      version: 1,
+      migrate: (persistedState) => {
+        const previous = persistedState as { hasSeenWelcome?: unknown } | undefined;
+        return {
+          token: null,
+          username: null,
+          role: null,
+          isAuthenticated: false,
+          sessionChecked: false,
+          welcomePending: false,
+          hasSeenWelcome: previous?.hasSeenWelcome === true,
+          sessionMessage: null,
+        };
+      },
       partialize: (state) => ({
-        token: state.token,
-        username: state.username,
-        role: state.role,
-        isAuthenticated: state.isAuthenticated,
         hasSeenWelcome: state.hasSeenWelcome,
       }),
     }

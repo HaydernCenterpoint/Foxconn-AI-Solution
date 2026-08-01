@@ -248,3 +248,8 @@ export type WorkspaceLiveEvent =
 
 export * from "./platform.js";
 export * from "./model-graph.js";
+export * from "./labels.js";
+export * from "./relationships.js";
+export * from "./events.js";
+export * from "./sequences.js";
+export * from "./annotations.js";

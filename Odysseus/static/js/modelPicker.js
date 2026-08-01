@@ -182,25 +182,55 @@ function _initModelPickerDropdown() {
   const refreshBtn = document.getElementById('model-picker-refresh-btn');
   if (!wrap || !btn || !menu || !search || !listEl) return;
 
+  let _closeTimer = null;
+  let _closeAnimationEnd = null;
+
+  function _setOpenState(open) {
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function _cancelClose() {
+    if (_closeTimer !== null) {
+      clearTimeout(_closeTimer);
+      _closeTimer = null;
+    }
+    if (_closeAnimationEnd) {
+      menu.removeEventListener('animationend', _closeAnimationEnd);
+      _closeAnimationEnd = null;
+    }
+  }
+
   function _close() {
-    if (menu.classList.contains('hidden')) return;
+    _cancelClose();
+    if (menu.classList.contains('hidden')) {
+      _setOpenState(false);
+      return;
+    }
+    _setOpenState(false);
     // Restore scroll button
     const _scrollBtn = document.getElementById('scroll-bottom-btn');
     if (_scrollBtn) _scrollBtn.style.display = '';
     menu.classList.add('closing');
-    menu.addEventListener('animationend', function _onDone() {
-      menu.removeEventListener('animationend', _onDone);
+    const _onDone = () => {
+      _closeAnimationEnd = null;
+      _closeTimer = null;
       menu.classList.remove('closing');
       menu.classList.add('hidden');
       search.value = '';
-    }, { once: true });
+    };
+    _closeAnimationEnd = _onDone;
+    menu.addEventListener('animationend', _onDone, { once: true });
     // Fallback if animationend doesn't fire
-    setTimeout(() => {
-      if (!menu.classList.contains('hidden')) {
-        menu.classList.remove('closing');
-        menu.classList.add('hidden');
-        search.value = '';
+    _closeTimer = setTimeout(() => {
+      _closeTimer = null;
+      if (!menu.classList.contains('closing')) return;
+      if (_closeAnimationEnd) {
+        menu.removeEventListener('animationend', _closeAnimationEnd);
+        _closeAnimationEnd = null;
       }
+      menu.classList.remove('closing');
+      menu.classList.add('hidden');
+      search.value = '';
     }, 200);
   }
 
@@ -654,7 +684,9 @@ function _initModelPickerDropdown() {
     e.stopPropagation();
     if (menu.classList.contains('hidden') || menu.classList.contains('closing')) {
       // Force-clear any in-progress close animation
+      _cancelClose();
       menu.classList.remove('closing', 'hidden');
+      _setOpenState(true);
       _populate('');
       if (window.modelsModule && window.modelsModule.refreshModels) {
         window.modelsModule.refreshModels().then(() => {

@@ -7,6 +7,29 @@ namespace backend.Tests;
 public class EventRuleEngineAlertBridgeTests
 {
     [Theory]
+    [InlineData("EMERGENCY", "critical")]
+    [InlineData("CRITICAL", "critical")]
+    [InlineData("WARNING", "medium")]
+    [InlineData("high", "high")]
+    public void NormalizeSeverity_MapsCepValuesToDatabaseContract(string input, string expected)
+    {
+        Assert.Equal(expected, AlertService.NormalizeSeverity(input));
+    }
+
+    [Theory]
+    [InlineData("EMERGENCY", "critical")]
+    [InlineData("CRITICAL", "high")]
+    [InlineData("WARNING", "medium")]
+    [InlineData("INFO", "info")]
+    [InlineData("LOW", "low")]
+    [InlineData("unknown", "low")]
+    [InlineData(null, "low")]
+    public void MapToTimescaleSeverity_UsesAlertCheckConstraintValues(string? cepSeverity, string expected)
+    {
+        Assert.Equal(expected, EventRuleEngine.MapToTimescaleSeverity(cepSeverity));
+    }
+
+    [Theory]
     [InlineData(90, ">", 85, true)]
     [InlineData(85, ">", 85, false)]
     [InlineData(0.5, "<", 1.0, true)]
@@ -90,7 +113,9 @@ public class EventRuleEngineAlertBridgeTests
                 StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-        Assert.NotEmpty(enabledThresholdRules);
+        Assert.True(
+            enabledThresholdRules.Count >= 5,
+            $"Expected at least five reachable threshold rules, found {enabledThresholdRules.Count}.");
         Assert.All(enabledThresholdRules, rule =>
             Assert.Contains(
                 rule.GetProperty("condition").GetProperty("metric").GetString()!,

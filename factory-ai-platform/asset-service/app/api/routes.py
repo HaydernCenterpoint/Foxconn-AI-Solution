@@ -12,8 +12,6 @@ from app.auth.jwt_auth import (
     CurrentUser,
     get_current_user,
     get_optional_user,
-    require_delete,
-    require_write,
 )
 from app.core.rate_limit import check_rate_limit
 from app.db.database import get_db
@@ -27,6 +25,7 @@ from app.schemas.asset import (
     AssetTreeRequest,
     AssetType,
     AssetUpdateRequest,
+    DocumentLinkRequest,
     DocumentLinkResponse,
     HealthScoreResponse,
     HealthScoreHistoryResponse,
@@ -35,7 +34,11 @@ from app.schemas.asset import (
     RelationshipResponse,
     RelationshipType,
 )
-from app.services.asset_service import AssetService
+from app.services.asset_service import (
+    AssetHierarchyError,
+    AssetService,
+    ParentAssetNotFoundError,
+)
 
 router = APIRouter(prefix="/api/v1/assets", tags=["Assets"])
 
@@ -74,7 +77,12 @@ async def create_asset(
         if not user.has_scope_for_asset(parent.type, parent.external_id):
             raise HTTPException(status_code=403, detail="No scope for parent asset")
 
-    asset = await service.create_asset(req, user_id=user.user_id)
+    try:
+        asset = await service.create_asset(req, user_id=user.user_id)
+    except ParentAssetNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except AssetHierarchyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return AssetResponse.model_validate(asset)
 
 
@@ -112,7 +120,7 @@ async def update_asset(
     for field, value in update_data.items():
         if value is not None:
             if field == "metadata":
-                setattr(existing, field, {**existing.metadata, **value} if existing.metadata else value)
+                existing.metadata_ = {**existing.metadata_, **value} if existing.metadata_ else value
             else:
                 setattr(existing, field, value)
 

@@ -87,6 +87,7 @@
       .status { padding: 4px 8px; }
       .done { color: #062313; background: var(--green); }
       .ready { color: #06222a; background: var(--cyan); }
+      .active { color: #2c2000; background: var(--amber); }
       .planned { color: #2c2000; background: var(--amber); }
       .external { color: #351515; background: var(--red); }
 
@@ -184,7 +185,7 @@
           Đây là baseline lập kế hoạch; production chỉ được chốt sau khi các điều kiện managed-staging được xác minh độc lập.
         </p>
         <div class="meta" aria-label="Thông tin roadmap">
-          <span class="chip">Cập nhật 27.07.2026</span>
+          <span class="chip">Cập nhật 28.07.2026</span>
           <span class="chip">Horizon: 10 tuần</span>
           <span class="chip">NOW · Tuần 5–6</span>
           <span class="chip">4 luồng song song</span>
@@ -208,7 +209,7 @@
           <article class="card metric">
             <div>
               <strong>Product intelligence</strong>
-              <p>Alert/health/prediction APIs, health scoring job, machine health UI và SSO demo path đã có; connectors, Alert Center đầy đủ và E2E còn dở (~40–45%).</p>
+              <p>4/4 implementation lane đã đạt local gate: Timescale/File Watcher, ERP + DLQ, CEP/prediction/UI và MQTT/TLS/secrets/rollback. Managed staging vẫn là gate riêng.</p>
             </div>
             <span class="status ready">Đang làm</span>
           </article>
@@ -247,14 +248,14 @@
           <li class="milestone">
             <span class="week">NOW · TUẦN 5–6</span>
             <h3>Product intelligence</h3>
-            <p>Health score + alert APIs/UI đã merge (PR #20, #22). Còn connectors, Alert Center đầy đủ, rule migration, latency evidence và Playwright E2E.</p>
-            <span class="status ready">Đang làm · ~45%</span>
+            <p>Local gate đã pass cho ERP, DLQ, 5+ CEP rule, evidence/health UI, batch prediction, latency và Playwright. Còn nguồn ERP thật + managed staging.</p>
+            <span class="status ready">Local pass · chờ staging</span>
           </li>
           <li class="milestone">
             <span class="week">TUẦN 7–8</span>
             <h3>Hardening &amp; E2E</h3>
-            <p>RCA, access control, performance/security testing, full-stack integration và staging rehearsal.</p>
-            <span class="status planned">Kế hoạch</span>
+            <p>Basic RCA, access control và database performance đã pass local; full-stack integration, pentest và staging rehearsal còn mở.</p>
+            <span class="status active">Đang làm</span>
           </li>
           <li class="milestone">
             <span class="week">TUẦN 9–10</span>
@@ -267,42 +268,42 @@
 
       <section aria-labelledby="lanes-title">
         <h2 id="lanes-title">Bốn luồng thực thi</h2>
-        <p class="section-copy">Các deliverable được chia theo layer để không chờ nhau ngoài những contract bắt buộc. Status phản ánh code đã merge, không suy diễn production readiness.</p>
+        <p class="section-copy">Các deliverable được chia theo layer để không chờ nhau ngoài những contract bắt buộc. Status phản ánh code đã triển khai và kiểm chứng trong worktree hiện tại, không suy diễn production readiness.</p>
         <div class="lanes">
           <article class="card lane">
-            <p class="owner">A · Data platform · ~55%</p>
+            <p class="owner">A · Data platform · ~90% local scope</p>
             <h3>Telemetry &amp; integration</h3>
             <ul>
               <li><strong>Done:</strong> Timescale schema, dual-write, continuous aggregates, compression/retention.</li>
-              <li><strong>Open:</strong> benchmark p95, cutover read traffic, ERP/file/MES connectors + admin dashboard.</li>
-              <li>Connector schema/DLQ framework đã có; implement concrete còn thiếu.</li>
+              <li><strong>Open:</strong> full read-cutover benchmark, nguồn ERP/MES thật và managed rollback rehearsal.</li>
+              <li>File Watcher → Timescale smoke, ERP connector, asset mapping và DLQ admin path đã có local evidence.</li>
             </ul>
           </article>
           <article class="card lane">
-            <p class="owner">B · Event &amp; AI · ~45%</p>
+            <p class="owner">B · Event &amp; AI · ~80% local scope</p>
             <h3>CEP, prediction &amp; RCA</h3>
             <ul>
-              <li><strong>Done:</strong> CEP ADR, event schema, rule samples, in-process EventRuleEngine, alert/prediction APIs, z-score baseline.</li>
-              <li><strong>Open:</strong> migrate alarm rules legacy, latency report (&lt;1s p95), ML models thật, RCA API.</li>
-              <li>Alert lifecycle + dedup/suppression persistence đã ship.</li>
+              <li><strong>Done:</strong> CEP ADR, normalized rules, alert/prediction APIs, latency gate, basic RCA graph/API và regression baseline ML.</li>
+              <li><strong>Open:</strong> EDA 3 tháng, model huấn luyện/đánh giá trên dữ liệu thật và lớp giải thích RCA bằng LLM.</li>
+              <li>Alert lifecycle + dedup/suppression persistence đã ship; RCA hiện là process-local basic correlation.</li>
             </ul>
           </article>
           <article class="card lane">
-            <p class="owner">C · Core backend · ~65%</p>
+            <p class="owner">C · Core backend · ~100% local scope</p>
             <h3>Asset modeling &amp; security</h3>
             <ul>
-              <li><strong>Done:</strong> asset schema/<code>asset_id</code>, CRUD/search/tree, document metadata, health score formula + job + APIs.</li>
-              <li><strong>Open:</strong> seed 50+ assets end-to-end, RBAC scopes, rate limit, RFC 7807 chuẩn hóa.</li>
-              <li>Import template docs đã có; seed production-like còn thiếu.</li>
+              <li><strong>Done:</strong> asset schema/<code>asset_id</code>, CRUD/search/tree, document metadata, health score, RBAC/rate limit/RFC 7807 và catalog demo 50 asset.</li>
+              <li><strong>Open:</strong> inventory MKZ thật được data owner xác minh và managed security acceptance.</li>
+              <li>Catalog production-like gồm 1 plant, 3 line, 20 machine và 26 sensor; không phải inventory nhà máy đã xác nhận.</li>
             </ul>
           </article>
           <article class="card lane">
-            <p class="owner">D · Frontend &amp; QA · ~50%</p>
+            <p class="owner">D · Frontend &amp; QA · ~70% local scope</p>
             <h3>Product surface &amp; evidence</h3>
             <ul>
-              <li><strong>Done:</strong> UI shell, Asset Browser, dashboard health/alert slice, machine health UI, shared SSO demo flow.</li>
-              <li><strong>Open:</strong> Alert Center actions, Asset Browser health roll-up, CSV export, Playwright E2E, perf/security audit.</li>
-              <li>Sync W5 happy-path component coverage partial; browser E2E chưa chốt.</li>
+              <li><strong>Done:</strong> UI shell, Asset Browser health roll-up, dashboard health/alert slice, Alert Center actions/export, operator-gated RCA và shared SSO demo flow.</li>
+              <li><strong>Open:</strong> full-stack no-fixture E2E, managed-staging E2E và security acceptance.</li>
+              <li>Structured alert evidence, health history, RCA component coverage và Playwright fixture E2E đã pass local.</li>
             </ul>
           </article>
         </div>
@@ -358,13 +359,13 @@
 
       <section class="bottom-grid" aria-label="Việc tiếp theo và rủi ro">
         <article class="card next">
-          <h2>Next · hoàn tất Tuần 5–6</h2>
-          <p class="small"><strong>Focus hiện tại:</strong> đóng Sync W5 trước khi nhảy sang hardening.</p>
+          <h2>Next · managed-staging acceptance</h2>
+          <p class="small"><strong>Focus hiện tại:</strong> chuyển local evidence thành evidence vận hành được reviewer độc lập xác nhận.</p>
           <ul class="actions">
-            <li>Concrete file/ERP connector + DLQ admin path.</li>
-            <li>Alert Center UI (ack/resolve) + Asset Browser health roll-up.</li>
-            <li>Migrate 5–10 alarm rules → CEP; đo event→alert latency.</li>
-            <li>Playwright E2E: Dashboard → alert → health → acknowledge.</li>
+            <li>Provision HTTPS ingress, MQTT PFX, database TLS và secret-manager delivery.</li>
+            <li>Kết nối một ERP/MES thật và nạp canonical asset mappings.</li>
+            <li>Rehearse migration → full → rollback → migration với evidence có ID duy nhất.</li>
+            <li>Hoàn tất 16 managed checks, independent smoke và approval trong 30 ngày.</li>
             <li>PR #21 (ODF contracts/topology hardening) còn mở — review/merge riêng.</li>
           </ul>
           <p class="small"><strong>Production Pilot Accountable:</strong> Deployment Owner / Platform Operations Lead. Go/No-go vẫn dựa trên 16 managed checks + attestation độc lập; không suy diễn từ CI/local demo.</p>
@@ -372,9 +373,9 @@
         <article class="card risk">
           <h2>Rủi ro cần theo dõi</h2>
           <ul class="actions">
-            <li>Docs/status lệch code đã được refresh 27.07; cần giữ evidence link trước mỗi checkpoint.</li>
+            <li>Docs/status lệch code đã được refresh 28.07; cần giữ evidence link trước mỗi checkpoint.</li>
             <li>Data cutover vẫn cần dual-write validation + rollback đã kiểm thử trước khi deprecate PG cũ.</li>
-            <li>Connectors và E2E browser là bottleneck chính của Sync W5.</li>
+            <li>ERP/MES live integration và managed infrastructure là bottleneck còn lại; browser E2E local đã pass.</li>
             <li>Không được suy diễn production readiness từ CI hoặc local rehearsal; staging là gate riêng.</li>
           </ul>
         </article>

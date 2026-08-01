@@ -148,6 +148,54 @@
       "cooldownSeconds": 600
     },
     {
+      "id": "rule-output-stalled",
+      "name": "Production Output Stalled",
+      "description": "Fires when the reported production quantity is below one piece",
+      "enabled": true,
+      "eventType": "THRESHOLD_BREACH",
+      "severity": "WARNING",
+      "condition": {
+        "type": "threshold",
+        "metric": "production_quantity",
+        "operator": "<",
+        "value": 1,
+        "unit": "pcs"
+      },
+      "cooldownSeconds": 900
+    },
+    {
+      "id": "rule-cycle-time-high",
+      "name": "Cycle Time High",
+      "description": "Fires when the reported production cycle time exceeds 60 seconds",
+      "enabled": true,
+      "eventType": "THRESHOLD_BREACH",
+      "severity": "WARNING",
+      "condition": {
+        "type": "threshold",
+        "metric": "production_time",
+        "operator": ">",
+        "value": 60,
+        "unit": "s"
+      },
+      "cooldownSeconds": 600
+    },
+    {
+      "id": "rule-uph-low",
+      "name": "Units Per Hour Low",
+      "description": "Fires when reported throughput drops below 20 units per hour",
+      "enabled": true,
+      "eventType": "THRESHOLD_BREACH",
+      "severity": "WARNING",
+      "condition": {
+        "type": "threshold",
+        "metric": "uph",
+        "operator": "<",
+        "value": 20,
+        "unit": "pcs/h"
+      },
+      "cooldownSeconds": 600
+    },
+    {
       "id": "rule-cpu-high",
       "name": "High CPU Usage",
       "description": "DEFERRED: telemetry normalization does not emit cpu_percent metrics. Fires when machine controller CPU exceeds 90%",

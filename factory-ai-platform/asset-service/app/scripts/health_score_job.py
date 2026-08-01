@@ -11,13 +11,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-import time
 from datetime import datetime, timezone
 
-from sqlalchemy import select, and_
+from sqlalchemy import select
 
 from app.db.database import get_db_session
-from app.models.asset import Asset, AssetMetric
+from app.models.asset import Asset
 from app.services.asset_service import AssetService
 
 logging.basicConfig(

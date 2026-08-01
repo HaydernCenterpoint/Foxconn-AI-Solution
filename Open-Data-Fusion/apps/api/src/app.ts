@@ -29,6 +29,7 @@ import { ObjectStorageUnavailableError, type ImmutableBlobStore } from './object
 import { GovernedObjectStore, type GovernedObjectPersistence } from './object-store.js';
 import {
   industrialIngestRunId,
+  LegacySqliteIndustrialPersistence,
   type IndustrialPersistence,
   type IndustrialRequestScope,
 } from './industrial-persistence.js';
@@ -45,7 +46,12 @@ import {
   registerPostgresPlatformCompatibilityRoutes,
 } from './postgres-platform-compatibility-routes.js';
 import type { PostgresPlatformCompatibilityPersistence } from './postgres-platform-compatibility.js';
+import { registerAnnotationRoutes } from './annotations-routes.js';
+import { registerEventRoutes } from './events-routes.js';
+import { registerLabelRoutes } from './labels-routes.js';
 import { registerPlatformRoutes } from './platform-routes.js';
+import { registerRelationshipRoutes } from './relationships-routes.js';
+import { registerSequenceRoutes } from './sequences-routes.js';
 import { cursorListQuerySchema, platformContextSchema, platformIdSchema, type PlatformContext } from './platform-schemas.js';
 import { PlatformCatalog } from './platform.js';
 import { PostgresGovernedObjectStore } from './postgres-governed-object-store.js';
@@ -288,7 +294,7 @@ export function createApp(
   const industrialPersistence = options.industrialPersistence ?? new SqliteIndustrialPersistence(database.database);
   const usesScopedSqliteIndustrialPersistence = industrialPersistence instanceof SqliteIndustrialPersistence;
   const platformCatalog = new PlatformCatalog(database.database);
-  if (usesScopedSqliteIndustrialPersistence) platformCatalog.rebuildSqliteAssetSearchIndex();
+  if (industrialPersistence.mode === 'sqlite') platformCatalog.rebuildSqliteAssetSearchIndex();
   const platformDiscovery = options.platformDiscovery ?? new SqlitePlatformDiscoveryPersistence(platformCatalog);
   const advancedPlatformCatalog = new AdvancedPlatformCatalog(database.database, {
     ...(options.writebackPolicy ? { writebackPolicy: options.writebackPolicy } : {}),
@@ -555,6 +561,11 @@ export function createApp(
     ...(options.platformAdministration ? { platformAdministration: options.platformAdministration } : {}),
     postgresMode: postgresPlatformMode,
   });
+  registerLabelRoutes(app, platformCatalog, identityProvider);
+  registerRelationshipRoutes(app, platformCatalog, identityProvider);
+  registerEventRoutes(app, platformCatalog, identityProvider);
+  registerSequenceRoutes(app, platformCatalog, identityProvider);
+  registerAnnotationRoutes(app, platformCatalog, identityProvider);
 
   app.get('/api/v1/platform/ingestion/raw', async (request, response) => {
     const context = await industrialScope(request, 'audit:read');

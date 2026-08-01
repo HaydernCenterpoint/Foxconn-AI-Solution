@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 using backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,10 +25,10 @@ namespace backend.Controllers
         [HttpGet("query")]
         public async Task<IActionResult> Query(
             [FromQuery] Guid assetId,
-            [FromQuery] string metric,
+            [FromQuery, Required, StringLength(100)] string metric,
             [FromQuery] DateTime? from,
             [FromQuery] DateTime? to,
-            [FromQuery] int limit = 1000)
+            [FromQuery, Range(1, 10000)] int limit = 1000)
         {
             if (assetId == Guid.Empty)
                 return BadRequest(new { error = "assetId is required." });
@@ -36,7 +37,14 @@ namespace backend.Controllers
 
             var fromDate = from ?? DateTime.UtcNow.AddDays(-1);
             var toDate = to ?? DateTime.UtcNow;
-            if (limit < 1 || limit > 10000) limit = 1000;
+            if (fromDate > toDate)
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    detail: "from must be before or equal to to.");
+            if (toDate - fromDate > TimeSpan.FromDays(31))
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    detail: "The query window cannot exceed 31 days.");
 
             var data = await _dbService.QueryTelemetryDataAsync(assetId, metric, fromDate, toDate, limit);
             return Ok(data);

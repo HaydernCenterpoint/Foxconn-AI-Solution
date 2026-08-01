@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.SignalR;
 using backend.Hubs;
 using MQTTnet;
+using MQTTnet.Protocol;
 using MQTTnet.Server;
 using backend.Security;
 
@@ -16,13 +20,16 @@ namespace backend.Services
 {
     public class MqttServerService : BackgroundService
     {
-        private readonly int _port;
+        private readonly MqttServerOptions _serverOptions;
+        private readonly int _listenPort;
+        private readonly bool _tlsEnabled;
         private readonly DatabaseService _dbService;
         private readonly TelemetryStore _telemetryStore;
         private readonly TelemetryIngestionService _telemetryIngestionService;
         private readonly SyncService _syncService;
         private readonly IHubContext<TelemetryHub> _hubContext;
         private readonly ILogger<MqttServerService> _logger;
+        private readonly MqttDeviceTokenValidator _deviceTokenValidator;
         private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _clientIps = new();
         private MqttServer? _mqttServer;
         private Timer? _pruningTimer;
@@ -34,9 +41,18 @@ namespace backend.Services
             TelemetryIngestionService telemetryIngestionService,
             SyncService syncService,
             IHubContext<TelemetryHub> hubContext,
-            ILogger<MqttServerService> logger)
+            ILogger<MqttServerService> logger,
+            IHostEnvironment hostEnvironment)
         {
-            _port = configuration.GetValue<int>("MqttServer:Port", 1883);
+            _serverOptions = BuildServerOptions(
+                configuration,
+                hostEnvironment.IsDevelopment(),
+                hostEnvironment.ContentRootPath);
+            _tlsEnabled = _serverOptions.TlsEndpointOptions.IsEnabled;
+            _listenPort = _tlsEnabled
+                ? _serverOptions.TlsEndpointOptions.Port
+                : _serverOptions.DefaultEndpointOptions.Port;
+            _deviceTokenValidator = new MqttDeviceTokenValidator(configuration);
             _dbService = dbService;
             _telemetryStore = telemetryStore;
             _telemetryIngestionService = telemetryIngestionService;
@@ -45,17 +61,98 @@ namespace backend.Services
             _logger = logger;
         }
 
+        public static MqttServerOptions BuildServerOptions(
+            IConfiguration configuration,
+            bool isDevelopment,
+            string? contentRootPath = null)
+        {
+            ArgumentNullException.ThrowIfNull(configuration);
+
+            bool tlsEnabled = configuration.GetValue<bool?>("MqttServer:Tls:Enabled")
+                ?? !isDevelopment;
+            var builder = new MqttServerOptionsBuilder();
+
+            if (!tlsEnabled)
+            {
+                return builder
+                    .WithDefaultEndpoint()
+                    .WithDefaultEndpointPort(configuration.GetValue("MqttServer:Port", 1883))
+                    .WithoutEncryptedEndpoint()
+                    .Build();
+            }
+
+            string? configuredPath = configuration["MqttServer:Tls:CertificatePath"];
+            if (string.IsNullOrWhiteSpace(configuredPath))
+            {
+                throw new InvalidOperationException(
+                    "MQTT TLS is enabled, but MqttServer:Tls:CertificatePath is not configured.");
+            }
+
+            string certificatePath = Path.IsPathRooted(configuredPath)
+                ? configuredPath
+                : Path.GetFullPath(
+                    configuredPath,
+                    string.IsNullOrWhiteSpace(contentRootPath)
+                        ? Directory.GetCurrentDirectory()
+                        : contentRootPath);
+            if (!File.Exists(certificatePath))
+            {
+                throw new InvalidOperationException(
+                    $"MQTT TLS certificate was not found at '{certificatePath}'.");
+            }
+
+            X509Certificate2 certificate;
+            try
+            {
+                certificate = X509CertificateLoader.LoadPkcs12FromFile(
+                    certificatePath,
+                    configuration["MqttServer:Tls:CertificatePassword"],
+                    X509KeyStorageFlags.EphemeralKeySet);
+            }
+            catch (CryptographicException ex)
+            {
+                throw new InvalidOperationException(
+                    $"MQTT TLS certificate at '{certificatePath}' could not be loaded.",
+                    ex);
+            }
+
+            if (!certificate.HasPrivateKey)
+            {
+                certificate.Dispose();
+                throw new InvalidOperationException(
+                    $"MQTT TLS certificate at '{certificatePath}' does not contain a private key.");
+            }
+
+            return builder
+                .WithoutDefaultEndpoint()
+                .WithEncryptedEndpoint()
+                .WithEncryptedEndpointPort(
+                    configuration.GetValue("MqttServer:Tls:Port", 8883))
+                .WithEncryptionCertificate(certificate)
+                .Build();
+        }
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             try
             {
                 var factory = new MqttServerFactory();
-                var options = new MqttServerOptionsBuilder()
-                    .WithDefaultEndpoint()
-                    .WithDefaultEndpointPort(_port)
-                    .Build();
+                _mqttServer = factory.CreateMqttServer(_serverOptions);
 
-                _mqttServer = factory.CreateMqttServer(options);
+                _mqttServer.ValidatingConnectionAsync += e =>
+                {
+                    if (_deviceTokenValidator.Validate(e.ClientId, e.UserName, e.Password))
+                    {
+                        e.ReasonCode = MqttConnectReasonCode.Success;
+                    }
+                    else
+                    {
+                        e.ReasonCode = MqttConnectReasonCode.BadUserNameOrPassword;
+                        _logger.LogWarning("Rejected unauthenticated MQTT connection for client {ClientId}", e.ClientId);
+                    }
+
+                    return Task.CompletedTask;
+                };
 
                 _mqttServer.ClientConnectedAsync += async e =>
                 {
@@ -126,9 +223,26 @@ namespace backend.Services
 
                 // Handle incoming publishes
                 _mqttServer.InterceptingPublishAsync += HandlePublishAsync;
+                _mqttServer.InterceptingSubscriptionAsync += e =>
+                {
+                    if (!MqttDeviceTokenValidator.IsOwnedSubscription(e.ClientId, e.TopicFilter.Topic))
+                    {
+                        e.ProcessSubscription = false;
+                        e.CloseConnection = true;
+                        _logger.LogWarning(
+                            "Rejected MQTT subscription outside client ownership. Client: {ClientId}, Topic: {Topic}",
+                            e.ClientId,
+                            e.TopicFilter.Topic);
+                    }
+
+                    return Task.CompletedTask;
+                };
 
                 await _mqttServer.StartAsync();
-                _logger.LogInformation("MQTT Broker listening on port {Port}", _port);
+                _logger.LogInformation(
+                    "MQTT Broker listening with {Transport} on port {Port}",
+                    _tlsEnabled ? "TLS" : "plaintext",
+                    _listenPort);
 
                 // Start periodic database pruner (once a day, starts after 1 hour)
                 _pruningTimer = new Timer(async _ => await RunDatabasePrunerAsync(), null, 
@@ -143,7 +257,11 @@ namespace backend.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to start MQTT broker on port {Port}", _port);
+                _logger.LogError(
+                    ex,
+                    "Failed to start MQTT broker using {Transport} on port {Port}",
+                    _tlsEnabled ? "TLS" : "plaintext",
+                    _listenPort);
             }
         }
 
@@ -152,12 +270,31 @@ namespace backend.Services
             try
             {
                 string topic = e.ApplicationMessage.Topic;
+                if (string.IsNullOrEmpty(e.ClientId))
+                {
+                    // Server-injected command messages do not have a client session.
+                    return;
+                }
+
+                if (!MqttDeviceTokenValidator.IsOwnedPublishTopic(e.ClientId, topic))
+                {
+                    e.ProcessPublish = false;
+                    _logger.LogWarning(
+                        "Rejected MQTT publish outside client ownership. Client: {ClientId}, Topic: {Topic}",
+                        e.ClientId,
+                        topic);
+                    return;
+                }
+
                 string rawPayload = e.ApplicationMessage.ConvertPayloadToString();
 
                 // Symmetrical payload decryption
                 string decryptedPayload = CryptoHelper.Decrypt(rawPayload);
 
-                _logger.LogDebug("MQTT Msg Topic: {Topic}, Payload: {Payload}", topic, decryptedPayload);
+                _logger.LogDebug(
+                    "MQTT message received from client {ClientId} on topic {Topic}",
+                    e.ClientId,
+                    topic);
 
                 // Detect topic patterns
                 // Pattern: client/{clientId}/register, client/{clientId}/telemetry, client/{clientId}/heartbeat

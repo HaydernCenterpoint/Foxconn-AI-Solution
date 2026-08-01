@@ -508,3 +508,17 @@
     border-radius: .85rem !important;
   }
 }
+
+/* ── Phase 2: Health & Risk Intelligence ─────────────────────────────── */
+.machine-detail__intelligence {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+@media (max-width: 768px) {
+  .machine-detail__intelligence {
+    grid-template-columns: 1fr;
+  }
+}

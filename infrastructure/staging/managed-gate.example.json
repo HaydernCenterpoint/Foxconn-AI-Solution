@@ -1,0 +1,23 @@
+{
+  "environment": "replace-with-managed-staging-name",
+  "reviewer": "replace-with-independent-reviewer",
+  "approvedAtUtc": "2026-07-28T00:00:00Z",
+  "checks": [
+    { "id": "backend-https-ingress", "status": "pending", "evidence": "" },
+    { "id": "frontend-https-ingress", "status": "pending", "evidence": "" },
+    { "id": "certificate-lifetime", "status": "pending", "evidence": "" },
+    { "id": "mqtt-tls", "status": "pending", "evidence": "" },
+    { "id": "mqtt-device-auth", "status": "pending", "evidence": "" },
+    { "id": "mqtt-topic-isolation", "status": "pending", "evidence": "" },
+    { "id": "secret-manager-delivery", "status": "pending", "evidence": "" },
+    { "id": "operations-db-tls", "status": "pending", "evidence": "" },
+    { "id": "timescale-db-tls", "status": "pending", "evidence": "" },
+    { "id": "managed-backup", "status": "pending", "evidence": "" },
+    { "id": "restore-drill", "status": "pending", "evidence": "" },
+    { "id": "retention-policies", "status": "pending", "evidence": "" },
+    { "id": "dual-write-validation", "status": "pending", "evidence": "" },
+    { "id": "dual-write-rollback", "status": "pending", "evidence": "" },
+    { "id": "live-erp-mes-connector", "status": "pending", "evidence": "" },
+    { "id": "independent-full-stack-smoke", "status": "pending", "evidence": "" }
+  ]
+}

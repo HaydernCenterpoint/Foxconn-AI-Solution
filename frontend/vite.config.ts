@@ -52,12 +52,12 @@ export default defineConfig(({ mode }) => ({
     port: 3000,
     proxy: {
       '/api/cep': {
-        target: 'http://localhost:8085',
+        target: process.env.VITE_CEP_TARGET || 'http://localhost:5165',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/cep/, '/api/v1'),
       },
       '/api/asset-service': {
-        target: 'http://localhost:8084',
+        target: process.env.VITE_ASSET_TARGET || 'http://localhost:5165',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/asset-service/, '/api/v1'),
       },
@@ -75,5 +75,6 @@ export default defineConfig(({ mode }) => ({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    exclude: ['e2e/**', 'node_modules/**', 'dist-app-v2/**'],
   },
 }));

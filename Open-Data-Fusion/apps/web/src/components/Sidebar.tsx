@@ -1,5 +1,6 @@
 import {
   Activity,
+  Bell,
   Box,
   ChevronsLeft,
   ChevronsRight,
@@ -7,9 +8,11 @@ import {
   Database,
   FileSearch,
   GitCompareArrows,
+  Link2,
   Network,
   ShieldAlert,
   ShieldCheck,
+  Tag,
   Tags,
   Workflow,
 } from "lucide-react";
@@ -21,6 +24,7 @@ export const navigationGroups = [
     items: [
       { label: "Overview", icon: Activity },
       { label: "Explorer", icon: Network },
+      { label: "Events", icon: Bell },
     ],
   },
   {
@@ -35,6 +39,8 @@ export const navigationGroups = [
     label: "Contextualize",
     items: [
       { label: "Context", icon: Tags },
+      { label: "Labels", icon: Tag },
+      { label: "Relationships", icon: Link2 },
       { label: "Diagrams", icon: FileSearch },
       { label: "Matching", icon: GitCompareArrows },
       { label: "Spatial", icon: Cuboid },

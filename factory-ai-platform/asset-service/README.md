@@ -53,6 +53,10 @@ CREATE TABLE telemetry (
 
 ## Asset Hierarchy
 
+The seed catalog is production-like demo data for integration and UI testing; it is not a verified inventory of real MKZ equipment.
+The shared business service enforces `Plant → Line → Machine → Sensor`, so
+HTTP creation and Excel imports cannot bypass parent existence/type checks.
+
 ```
 MKZ Factory (plant)
 ├── LS18 — Assembly Line 18 (line)
@@ -66,7 +70,7 @@ MKZ Factory (plant)
 │   ├── Robot-Weld-003 (machine) [FANUC M-20iD-25]
 │   ├── CMM-001 (machine)       [Hexagon Global-S]
 │   ├── Packaging-001 (machine)  [Bosch SVE-1412]
-│   └── Sensors (15 sensors)
+│   └── Sensors (12 sensors)
 │       ├── Press-001-Temperature
 │       ├── Press-001-Vibration
 │       ├── Press-001-Pressure
@@ -83,14 +87,14 @@ MKZ Factory (plant)
 │   ├── Laser-Cut-001 (machine) [Trumpf TruLaser-3030]
 │   ├── EDM-001 (machine)       [Makino U6 H.E.A.T.]
 │   ├── Hydraulic-Press-001 (machine) [Beckhoff HP-500T]
-│   └── Sensors (3 sensors)
+│   └── Sensors (6 sensors)
 └── LS20 — Painting Line (line)
     ├── Paint-Booth-001 (machine) [Dürr EcoRP-3]
     ├── Oven-Cure-001 (machine)   [Dürr EcoCure]
     ├── Conveyor-003 (machine)    [Interroll MCP-200]
     └── Sensors (8 sensors)
 
-Total: 1 plant + 3 lines + 20 machines + 15 sensors = 39 assets seeded
+Total: 1 plant + 3 lines + 20 machines + 26 sensors = 50 assets seeded
 ```
 
 ---
@@ -277,8 +281,14 @@ python -m app.scripts.import_assets --file data/assets.xlsx --live
 ### Run Tests
 ```bash
 pip install pytest pytest-asyncio httpx aiosqlite
+export DATABASE_URL="sqlite+aiosqlite:///:memory:"
+export SYNC_DATABASE_URL="sqlite:///:memory:"
+export JWT_SECRET="asset-test-secret-at-least-32-characters"
 pytest tests/ -v
 ```
+
+PowerShell uses the same names via `$env:DATABASE_URL`,
+`$env:SYNC_DATABASE_URL`, and `$env:JWT_SECRET`.
 
 ---
 
@@ -314,7 +324,10 @@ asset-service/
 │   └── 001_asset_schema.sql    # PostgreSQL schema
 ├── tests/
 │   ├── conftest.py
-│   └── test_asset_api.py       # 20+ unit tests
+│   ├── test_asset_api.py       # API/auth/hierarchy/RFC 7807 tests
+│   ├── test_asset_model.py     # Cross-dialect ORM metadata contract
+│   ├── test_import_assets.py   # Excel import hierarchy boundary
+│   └── test_seed_data.py       # Catalog count/reference/mutation contracts
 ├── Dockerfile
 ├── requirements.txt
 └── README.md                   # This file
@@ -327,7 +340,7 @@ asset-service/
 | Deliverable | Status | Available | For Agent |
 |------------|--------|-----------|-----------|
 | `asset_id` schema + SQL | ✅ **READY** | Day 1 | A, B, D |
-| Seed data (39 assets) | ✅ **READY** | Day 1 | A, B, D |
+| Production-like demo seed data (50 assets) | ✅ **READY** | Day 1 | A, B, D |
 | Excel import template | ✅ **READY** | Day 1 | A, B, D |
 | Asset CRUD API | ✅ **READY** | Day 1 | D (Asset Browser UI) |
 | Health score API | ✅ **READY** | Day 1 | D (Health badges) |

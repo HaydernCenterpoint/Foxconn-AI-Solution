@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 using backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,13 +25,30 @@ namespace backend.Controllers
         [HttpGet]
         public async Task<IActionResult> GetEvents(
             [FromQuery] Guid? assetId,
-            [FromQuery] string? eventType,
-            [FromQuery] string? severity,
+            [FromQuery, StringLength(100)] string? eventType,
+            [FromQuery, StringLength(50)] string? severity,
             [FromQuery] DateTime? from,
             [FromQuery] DateTime? to,
-            [FromQuery] int limit = 100)
+            [FromQuery, Range(1, 1000)] int limit = 100)
         {
-            if (limit < 1 || limit > 1000) limit = 100;
+            if (from.HasValue || to.HasValue)
+            {
+                to ??= DateTime.UtcNow;
+                from ??= to.Value.AddDays(-31);
+                if (from > to)
+                {
+                    return Problem(
+                        statusCode: StatusCodes.Status400BadRequest,
+                        detail: "from must be before or equal to to.");
+                }
+                if (to.Value - from.Value > TimeSpan.FromDays(31))
+                {
+                    return Problem(
+                        statusCode: StatusCodes.Status400BadRequest,
+                        detail: "The query window cannot exceed 31 days.");
+                }
+            }
+
             var events = await _dbService.QueryEventLogAsync(assetId, eventType, severity, from, to, limit);
             return Ok(events);
         }

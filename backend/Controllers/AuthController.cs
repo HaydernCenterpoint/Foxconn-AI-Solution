@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using backend.Services;
@@ -30,6 +31,8 @@ namespace backend.Controllers
             public string Password { get; set; } = "";
         }
 
+        [AllowAnonymous]
+        [EnableRateLimiting(ApiSecurity.LoginRateLimitPolicy)]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {

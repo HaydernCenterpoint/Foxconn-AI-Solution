@@ -102,6 +102,30 @@ function renderViewerShell() {
   );
 }
 
+function renderAdminShell() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
+  return render(
+    <I18nextProvider i18n={i18n}>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/admin']}>
+          <Routes>
+            <Route path="/admin" element={<ModernShell />}>
+              <Route index element={<p>{i18n.t('dashboard.modern.overview')}</p>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    </I18nextProvider>,
+  );
+}
+
 describe('ModernShell', () => {
   beforeEach(async () => {
     testStorage.clear();
@@ -149,6 +173,19 @@ describe('ModernShell', () => {
 
     const logo = screen.getByRole('img', { name: i18n.t('common.logoAlt') });
     expect(logo.getAttribute('src')).toContain('Foxconn_Industrial_Internet');
+  });
+
+  it('links operations users to the system and connector monitor', () => {
+    useAuthStore.setState({
+      token: 'token',
+      username: 'engineer',
+      role: 'ENGINEER',
+      isAuthenticated: true,
+    });
+
+    const { container } = renderAdminShell();
+
+    expect(container.querySelector('a[href="/admin/system"]')).not.toBeNull();
   });
 
   it('provides a Foxconn AI link to the configured assistant', () => {

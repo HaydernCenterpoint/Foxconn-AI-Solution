@@ -9,7 +9,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 ENV PYTHONPATH=/app
-ENV DATABASE_URL=postgresql+asyncpg://factory_user:factory_secure_password_9988@postgres:5432/factory_db
 
 EXPOSE 8084
 

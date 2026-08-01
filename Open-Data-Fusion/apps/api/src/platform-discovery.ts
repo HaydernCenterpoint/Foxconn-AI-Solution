@@ -9,7 +9,6 @@ import { z } from 'zod';
 
 import { ConflictError, ForbiddenError, NotFoundError } from './database.js';
 import { cursorListQuerySchema, type CursorListQuery } from './platform-schemas.js';
-import type { PlatformCatalog } from './platform.js';
 
 export interface PlatformTenantDiscovery {
   id: string;
@@ -127,7 +126,7 @@ function translateRuntimeError(error: unknown): Error {
 export class SqlitePlatformDiscoveryPersistence implements PlatformDiscoveryPersistence {
   readonly mode = 'sqlite' as const;
 
-  constructor(private readonly catalog: PlatformCatalog) {}
+  constructor(private readonly catalog: import('./platform.js').PlatformCatalog) {}
 
   async listTenants(
     userId: string,

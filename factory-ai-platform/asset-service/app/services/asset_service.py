@@ -7,9 +7,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 
-from sqlalchemy import and_, func, or_, select, text
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.models.asset import Asset, AssetDocument, AssetMetric, AssetRelationship
 from app.schemas.asset import (
@@ -18,11 +17,25 @@ from app.schemas.asset import (
     AssetTreeNode,
     AssetType,
     DocumentLinkRequest,
-    DocumentRelationship,
     HealthScoreResponse,
     RelationshipCreateRequest,
     RelationshipType,
 )
+
+
+class AssetHierarchyError(ValueError):
+    """Raised when an asset would violate the canonical hierarchy."""
+
+
+class ParentAssetNotFoundError(AssetHierarchyError):
+    """Raised when a requested parent asset does not exist."""
+
+
+EXPECTED_PARENT_TYPE = {
+    AssetType.LINE: AssetType.PLANT,
+    AssetType.MACHINE: AssetType.LINE,
+    AssetType.SENSOR: AssetType.MACHINE,
+}
 
 
 class AssetService:
@@ -33,7 +46,13 @@ class AssetService:
     # CRUD
     # =================================================================
 
-    async def create_asset(self, req: AssetCreateRequest, user_id: Optional[uuid.UUID] = None) -> Asset:
+    async def create_asset(
+        self,
+        req: AssetCreateRequest,
+        user_id: Optional[uuid.UUID] = None,
+    ) -> Asset:
+        await self._validate_create_hierarchy(req)
+
         asset = Asset(
             name=req.name,
             type=req.type.value,
@@ -44,7 +63,7 @@ class AssetService:
             serial_number=req.serial_number,
             location_zone=req.location_zone,
             location_area=req.location_area,
-            metadata=req.metadata,
+            metadata_=req.metadata,
             tags=req.tags,
             installed_at=req.installed_at,
             created_by=user_id,
@@ -53,6 +72,28 @@ class AssetService:
         await self.session.flush()
         await self.session.refresh(asset)
         return asset
+
+    async def _validate_create_hierarchy(self, req: AssetCreateRequest) -> None:
+        if req.type == AssetType.PLANT:
+            if req.parent_id is not None:
+                raise AssetHierarchyError("plant assets cannot have a parent")
+            return
+
+        if req.parent_id is None:
+            raise AssetHierarchyError(f"{req.type.value} assets require a parent")
+
+        parent = await self.get_asset(req.parent_id)
+        if parent is None:
+            raise ParentAssetNotFoundError(
+                f"Parent asset {req.parent_id} not found"
+            )
+
+        expected_parent_type = EXPECTED_PARENT_TYPE[req.type]
+        if parent.type != expected_parent_type.value:
+            raise AssetHierarchyError(
+                f"{req.type.value} assets require a "
+                f"{expected_parent_type.value} parent"
+            )
 
     async def get_asset(self, asset_id: uuid.UUID) -> Optional[Asset]:
         result = await self.session.execute(
@@ -67,10 +108,11 @@ class AssetService:
         if not asset:
             return None
         for field, value in req.model_dump(exclude_unset=True).items():
+            orm_field = "metadata_" if field == "metadata" else field
             if field == "parent_id" and value is not None:
-                setattr(asset, field, value)
+                setattr(asset, orm_field, value)
             elif value is not None:
-                setattr(asset, field, value)
+                setattr(asset, orm_field, value)
         asset.updated_by = user_id
         await self.session.flush()
         await self.session.refresh(asset)
@@ -159,7 +201,7 @@ class AssetService:
                 serial_number=asset.serial_number,
                 location_zone=asset.location_zone,
                 location_area=asset.location_area,
-                metadata=asset.metadata,
+                metadata=asset.metadata_,
                 tags=asset.tags or [],
                 installed_at=asset.installed_at,
                 created_at=asset.created_at,
@@ -207,7 +249,7 @@ class AssetService:
             related_asset_id=req.related_asset_id,
             relationship_type=req.relationship_type.value,
             description=req.description,
-            metadata=req.metadata,
+            metadata_=req.metadata,
         )
         self.session.add(rel)
         await self.session.flush()
@@ -361,7 +403,7 @@ class AssetService:
         asset = await self.get_asset(asset_id)
         if not asset:
             return False
-        next_maintenance = asset.metadata.get("next_maintenance_date")
+        next_maintenance = asset.metadata_.get("next_maintenance_date")
         if not next_maintenance:
             return False
         try:

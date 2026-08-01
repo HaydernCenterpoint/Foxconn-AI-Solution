@@ -18,9 +18,12 @@ dist-app-v2/
 .stitch/
 
 # IDE/Tooling
+.claude/worktrees/
+.omc/
 .vs/
 .vscode/
 .idea/
+.serena/
 *.suo
 *.ntvs*
 *.njsproj

@@ -6,6 +6,13 @@ backend dual-writes only after the primary transaction commits.
 
 ## Local target
 
+Set a non-default password before starting the database. The compose file refuses
+startup when `POSTGRES_PASSWORD` is missing:
+
+```powershell
+$env:POSTGRES_PASSWORD = '<strong-local-password>'
+```
+
 ```powershell
 docker compose -p mkz-timescale -f infrastructure/timescaledb/docker-compose.yml up -d
 ```
@@ -22,7 +29,10 @@ environment configuration for the backend process:
 
 ```powershell
 $env:Timescale__Enabled = 'true'
+$env:ConnectionStrings__DefaultConnection = 'Host=<source-host>;Port=<source-port>;Database=<source-database>;Username=<user>;Password=<password>'
 $env:ConnectionStrings__Timescale = 'Host=<host>;Port=<port>;Database=<database>;Username=<user>;Password=<password>'
+$env:Jwt__Key = '<unique-random-secret-at-least-32-bytes>'
+$env:Mqtt__EncryptionKey = '<unique-mqtt-encryption-key>'
 dotnet run --project backend/backend.csproj
 ```
 
@@ -35,6 +45,8 @@ any future read cutover.
 
 ```powershell
 $env:Timescale__Enabled = 'true'
+$env:ConnectionStrings__DefaultConnection = 'Host=<source-host>;Port=<source-port>;Database=<source-database>;Username=<user>;Password=<password>'
+$env:ConnectionStrings__Timescale = 'Host=<host>;Port=<port>;Database=<database>;Username=<user>;Password=<password>'
 dotnet run --project backend/backend.csproj -- --timescale-backfill
 ```
 

@@ -7,7 +7,7 @@ Factory AI Platform — Roadmap
           Kế hoạch 10 tuần ưu tiên các hợp đồng dùng chung, tích hợp end-to-end và các gate vận hành có bằng chứng.
           Đây là baseline lập kế hoạch; production chỉ được chốt sau khi các điều kiện managed-staging được xác minh độc lập.
 
-          Cập nhật 27.07.2026
+          Cập nhật 28.07.2026
           Horizon: 10 tuần
           NOW · Tuần 5–6
           4 luồng song song
@@ -24,7 +24,7 @@ Factory AI Platform — Roadmap
             Hoàn tất
 
               Product intelligence
-              Alert/health/prediction APIs, health scoring job, machine health UI và SSO demo path đã có; connectors, Alert Center đầy đủ và E2E còn dở (~40–45%).
+              4/4 implementation lane đã đạt local gate: Timescale/File Watcher, ERP + DLQ, CEP/prediction/UI và MQTT/TLS/secrets/rollback. Managed staging vẫn là gate riêng.
 
             Đang làm
 
@@ -65,17 +65,17 @@ Factory AI Platform — Roadmap
             NOW · TUẦN 5–6
             Product intelligence
 
-            Health score + alert APIs/UI đã merge (PR #20, #22). Còn connectors, Alert Center đầy đủ, rule migration, latency evidence và Playwright E2E.
+            Local gate đã pass cho ERP, DLQ, 5+ CEP rule, evidence/health UI, batch prediction, latency và Playwright. Còn nguồn ERP thật + managed staging.
 
-            Đang làm · ~45%
+            Local pass · chờ staging
 
           -
             TUẦN 7–8
             Hardening & E2E
 
-            RCA, access control, performance/security testing, full-stack integration và staging rehearsal.
+            Basic RCA, access control và database performance đã pass local; full-stack integration, pentest và staging rehearsal còn mở.
 
-            Kế hoạch
+            Đang làm
 
           -
             TUẦN 9–10
@@ -88,47 +88,47 @@ Factory AI Platform — Roadmap
         Bốn luồng thực thi
 
         Các deliverable được chia theo layer để không chờ nhau ngoài những contract bắt buộc.
-        Status phản ánh code đã merge, không suy diễn production readiness.
+        Status phản ánh code đã triển khai và kiểm chứng trong worktree hiện tại, không suy diễn production readiness.
 
-            A · Data platform · ~55%
+            A · Data platform · ~90% local scope
 
             Telemetry & integration
 
               - Done: Timescale schema, dual-write, continuous aggregates, compression/retention.
 
-              - Open: benchmark p95, cutover read traffic, ERP/file/MES connectors + admin dashboard.
+              - Open: full read-cutover benchmark, nguồn ERP/MES thật và managed rollback rehearsal.
 
-              - Connector schema/DLQ framework đã có; implement concrete còn thiếu.
+              - File Watcher → Timescale smoke, ERP connector, asset mapping và DLQ admin path đã có local evidence.
 
-            B · Event & AI · ~45%
+            B · Event & AI · ~80% local scope
 
             CEP, prediction & RCA
 
-              - Done: CEP ADR, event schema, rule samples, in-process EventRuleEngine, alert/prediction APIs, z-score baseline.
+              - Done: CEP ADR, normalized rules, alert/prediction APIs, latency gate, basic RCA graph/API và regression baseline ML.
 
-              - Open: migrate alarm rules legacy, latency report (<1s p95), ML models thật, RCA API.
+              - Open: EDA 3 tháng, model huấn luyện/đánh giá trên dữ liệu thật và lớp giải thích RCA bằng LLM.
 
-              - Alert lifecycle + dedup/suppression persistence đã ship.
+              - Alert lifecycle + dedup/suppression persistence đã ship; RCA hiện là process-local basic correlation.
 
-            C · Core backend · ~65%
+            C · Core backend · ~100% local scope
 
             Asset modeling & security
 
-              - Done: asset schema/asset_id, CRUD/search/tree, document metadata, health score formula + job + APIs.
+              - Done: asset schema/asset_id, CRUD/search/tree, document metadata, health score, RBAC/rate limit/RFC 7807 và catalog demo 50 asset.
 
-              - Open: seed 50+ assets end-to-end, RBAC scopes, rate limit, RFC 7807 chuẩn hóa.
+              - Open: inventory MKZ thật được data owner xác minh và managed security acceptance.
 
-              - Import template docs đã có; seed production-like còn thiếu.
+              - Catalog production-like gồm 1 plant, 3 line, 20 machine và 26 sensor; không phải inventory nhà máy đã xác nhận.
 
-            D · Frontend & QA · ~50%
+            D · Frontend & QA · ~70% local scope
 
             Product surface & evidence
 
-              - Done: UI shell, Asset Browser, dashboard health/alert slice, machine health UI, shared SSO demo flow.
+              - Done: UI shell, Asset Browser health roll-up, dashboard health/alert slice, Alert Center actions/export, operator-gated RCA và shared SSO demo flow.
 
-              - Open: Alert Center actions, Asset Browser health roll-up, CSV export, Playwright E2E, perf/security audit.
+              - Open: full-stack no-fixture E2E, managed-staging E2E và security acceptance.
 
-              - Sync W5 happy-path component coverage partial; browser E2E chưa chốt.
+              - Structured alert evidence, health history, RCA component coverage và Playwright fixture E2E đã pass local.
 
         Gate & tiêu chí ra quyết định
 
@@ -180,17 +180,17 @@ Factory AI Platform — Roadmap
 
                 Managed staging
 
-          Next · hoàn tất Tuần 5–6
+          Next · managed-staging acceptance
 
-          Focus hiện tại: đóng Sync W5 trước khi nhảy sang hardening.
+          Focus hiện tại: chuyển local evidence thành evidence vận hành được reviewer độc lập xác nhận.
 
-            - Concrete file/ERP connector + DLQ admin path.
+            - Provision HTTPS ingress, MQTT PFX, database TLS và secret-manager delivery.
 
-            - Alert Center UI (ack/resolve) + Asset Browser health roll-up.
+            - Kết nối một ERP/MES thật và nạp canonical asset mappings.
 
-            - Migrate 5–10 alarm rules → CEP; đo event→alert latency.
+            - Rehearse migration → full → rollback → migration với evidence có ID duy nhất.
 
-            - Playwright E2E: Dashboard → alert → health → acknowledge.
+            - Hoàn tất 16 managed checks, independent smoke và approval trong 30 ngày.
 
             - PR #21 (ODF contracts/topology hardening) còn mở — review/merge riêng.
 
@@ -199,11 +199,11 @@ Factory AI Platform — Roadmap
 
           Rủi ro cần theo dõi
 
-            - Docs/status lệch code đã được refresh 27.07; cần giữ evidence link trước mỗi checkpoint.
+            - Docs/status lệch code đã được refresh 28.07; cần giữ evidence link trước mỗi checkpoint.
 
             - Data cutover vẫn cần dual-write validation + rollback đã kiểm thử trước khi deprecate PG cũ.
 
-            - Connectors và E2E browser là bottleneck chính của Sync W5.
+            - ERP/MES live integration và managed infrastructure là bottleneck còn lại; browser E2E local đã pass.
 
             - Không được suy diễn production readiness từ CI hoặc local rehearsal; staging là gate riêng.
 

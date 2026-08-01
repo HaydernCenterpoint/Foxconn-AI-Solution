@@ -19,14 +19,12 @@ import asyncio
 import json
 import logging
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill
-from sqlalchemy import text
 
 from app.db.database import get_db_session
-from app.models.asset import Asset, AssetRelationship
 from app.schemas.asset import AssetCreateRequest, AssetType, RelationshipCreateRequest, RelationshipType
 from app.services.asset_service import AssetService
 

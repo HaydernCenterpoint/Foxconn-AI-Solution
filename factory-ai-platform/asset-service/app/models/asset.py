@@ -2,28 +2,31 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import (
     ARRAY,
-    Boolean,
-    Column,
     DateTime,
-    Enum,
     ForeignKey,
     Index,
+    JSON,
     Numeric,
     String,
     Text,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.database import Base
+
+JSON_OBJECT = JSONB().with_variant(JSON(), "sqlite")
+STRING_ARRAY = ARRAY(Text).with_variant(JSON(), "sqlite")
 
 
-class Base(DeclarativeBase):
-    pass
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class Asset(Base):
@@ -44,12 +47,12 @@ class Asset(Base):
     location_zone: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     location_area: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
-    metadata: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
-    tags: Mapped[List[str]] = mapped_column(ARRAY(Text), nullable=False, default=list)
+    metadata_: Mapped[Dict[str, Any]] = mapped_column("metadata", JSON_OBJECT, nullable=False, default=dict)
+    tags: Mapped[List[str]] = mapped_column(STRING_ARRAY, nullable=False, default=list)
 
     installed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utc_now, onupdate=_utc_now)
 
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
     updated_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
@@ -76,8 +79,8 @@ class AssetRelationship(Base):
     related_asset_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id", ondelete="CASCADE"), nullable=False)
     relationship_type: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    metadata: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    metadata_: Mapped[Dict[str, Any]] = mapped_column("metadata", JSON_OBJECT, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utc_now)
 
     __table_args__ = (
         UniqueConstraint("asset_id", "related_asset_id", "relationship_type", name="uq_asset_relationship"),
@@ -93,7 +96,7 @@ class AssetDocument(Base):
     relationship: Mapped[str] = mapped_column(String(50), nullable=False, default="related")
     title: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     version: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utc_now)
     uploaded_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
 
     __table_args__ = (
@@ -108,7 +111,7 @@ class AssetMetric(Base):
     asset_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id", ondelete="CASCADE"), nullable=False)
     metric_name: Mapped[str] = mapped_column(String(100), nullable=False)
     metric_value: Mapped[float] = mapped_column(Numeric, nullable=True)
-    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utc_now)
 
     __table_args__ = (
         UniqueConstraint("asset_id", "metric_name", "recorded_at", name="uq_asset_metric_time"),

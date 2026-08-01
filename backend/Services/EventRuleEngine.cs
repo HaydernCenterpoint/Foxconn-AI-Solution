@@ -167,10 +167,13 @@ namespace backend.Services
                         fusionEvent.EventId,
                         fusionEvent.AssetId,
                         rule.Id,
-                        fusionEvent.Severity,
+                        MapToTimescaleSeverity(fusionEvent.Severity),
                         rule.Name ?? rule.Id,
                         rule.Description,
-                        evidence: fusionEvent.Payload);
+                        evidence: fusionEvent.Payload,
+                        eventType: fusionEvent.EventType,
+                        source: fusionEvent.Source,
+                        occurredAt: fusionEvent.Timestamp);
                 }
                 catch (Exception ex)
                 {
@@ -212,6 +215,19 @@ namespace backend.Services
                 "==" => Math.Abs(actual - threshold) < 0.0001,
                 "!=" => Math.Abs(actual - threshold) >= 0.0001,
                 _ => false
+            };
+
+        public static string MapToTimescaleSeverity(string? cepSeverity) =>
+            cepSeverity?.Trim().ToUpperInvariant() switch
+            {
+                "EMERGENCY" => "critical",
+                "CRITICAL" => "high",
+                "WARNING" => "medium",
+                "INFO" => "info",
+                "HIGH" => "high",
+                "MEDIUM" => "medium",
+                "LOW" => "low",
+                _ => "low"
             };
 
         /// <summary>
