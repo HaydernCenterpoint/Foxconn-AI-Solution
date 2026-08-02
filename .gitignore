@@ -42,8 +42,8 @@ may_data.rar
 # Python Virtual Environments
 venv*/
 .venv*/
-venv/
-.venv/
+env/
+ENV/
 
 # Python Cache
 **/__pycache__/
@@ -51,6 +51,9 @@ venv/
 *.pyo
 *.pyd
 .pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # Local Environment Secrets
 .env
@@ -60,4 +63,9 @@ venv/
 # Local storage and test sheets
 _local_storage/
 report-test.xlsx
+
+# Generated local verification evidence
+docs/release-evidence/g0/g0-result.json
+factory-ai-platform/data-platform/docs/benchmark_telemetry_local.*
+factory-ai-platform/data-platform/docs/profile_telemetry_queries_local.*
 

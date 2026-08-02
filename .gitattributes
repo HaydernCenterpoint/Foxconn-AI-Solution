@@ -1,0 +1,2 @@
+backend/db/migrations/*.sql text eol=lf
+infrastructure/timescaledb/*.sql text eol=lf
