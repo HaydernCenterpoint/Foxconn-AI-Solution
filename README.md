@@ -1,6 +1,8 @@
 # Foxconn AI Solution
 > [Tiếng Việt](README.md) · [English](README.en.md) · [简体中文](README.zh-CN.md)
 
+> **Trạng thái phát hành:** **NO-GO cho production; chỉ là ứng viên staging.** Mọi quyết định và tuyên bố về phát hành phải dựa trên [tài liệu Go/No-Go hiện hành](docs/release-evidence/2026-07-31-go-nogo-status.md); kết quả build hoặc kiểm thử cục bộ không thay thế quyết định này.
+
 ## Tổng quan
 
 Foxconn AI Solution là nền tảng giám sát công nghiệp triển khai tại chỗ cho máy móc, dây chuyền sản xuất, telemetry và cảnh báo. Hệ thống tiếp nhận telemetry qua PLC/MQTT, lưu dữ liệu vận hành trong PostgreSQL và cung cấp giao diện Operations theo thời gian thực.

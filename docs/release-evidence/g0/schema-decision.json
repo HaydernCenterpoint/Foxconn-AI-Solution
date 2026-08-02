@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 2,
+  "status": "proposed_for_wp2_pending_approval",
+  "adrId": "ADR-002",
+  "adrPath": "docs/release-evidence/g0/adr-002-operations-schema.md",
+  "inventoryPath": "docs/release-evidence/g0/schema-inventory.md",
+  "inventorySha256": "5FEFDB49301E182D7628C3AB142E616BE647021574F26CAD2097428F1D74B8DF",
+  "adrSha256": "087C84D99D74CAA59A491A7DDF1360676FD3EA16927574FE0933F06D304CB669",
+  "decision": "backend/db/migrations",
+  "currentRuntimeAuthority": "backend/Services/DatabaseService.cs",
+  "legacyFixture": "backend/db/init.sql",
+  "startupPolicy": "preflight_only_after_wp2",
+  "baselinePolicy": "exact_known_catalog_fingerprint_only",
+  "driftPolicy": "fail_closed",
+  "rollbackPolicy": "expand_contract_and_forward_recovery",
+  "approvedBy": [],
+  "approvedAtUtc": null,
+  "approvalReference": null,
+  "separateLineages": [
+    "infrastructure/connectors",
+    "infrastructure/timescaledb",
+    "factory-ai-platform/data-platform/migrations"
+  ]
+}

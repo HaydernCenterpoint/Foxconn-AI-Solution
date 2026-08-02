@@ -1,3 +1,5 @@
+> ⚠️ **FILE NÀY ĐÃ BỊ THAY THẾ** — Source of truth mới là [`/PROJECT_PLAN.md`](../PROJECT_PLAN.md). File này chỉ giữ làm tham chiếu chi tiết sprint.
+
 # Kế hoạch Tổng hợp: Xây dựng Industrial IoT Platform (MKZ Factory Monitor)
 ## Chia việc cho 4 Sub-agent làm song song
 

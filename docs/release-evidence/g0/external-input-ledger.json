@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 2,
+  "status": "pending_external_commitments",
+  "inputs": [
+    {
+      "id": "pilot-plc",
+      "requiredByGate": "G2",
+      "status": "missing",
+      "owner": null,
+      "accessOwner": null,
+      "assetIds": [],
+      "protocol": null,
+      "endpointReference": null,
+      "identityReference": null,
+      "committedAvailabilityDate": null,
+      "evidenceReference": null
+    },
+    {
+      "id": "erp-mes",
+      "requiredByGate": "G2",
+      "status": "missing",
+      "owner": null,
+      "dataOwner": null,
+      "sourceSystem": null,
+      "endpointReference": null,
+      "identityReference": null,
+      "committedAvailabilityDate": null,
+      "evidenceReference": null
+    },
+    {
+      "id": "code-signing",
+      "requiredByGate": "G2",
+      "status": "missing",
+      "owner": null,
+      "packagingOwner": null,
+      "certificateIdentity": null,
+      "trustChainReference": null,
+      "keyVaultOrHsmReference": null,
+      "keyAccessOwner": null,
+      "timestampServiceUrl": null,
+      "timestampServiceSla": null,
+      "pilotWindowsImageReference": null,
+      "installPrivilegeModel": null,
+      "committedAvailabilityDate": null,
+      "evidenceReference": null
+    },
+    {
+      "id": "managed-staging",
+      "requiredByGate": "G4",
+      "status": "missing",
+      "owner": null,
+      "platformReference": null,
+      "workloadIdentityReference": null,
+      "secretManagerReference": null,
+      "committedAvailabilityDate": null,
+      "evidenceReference": null
+    },
+    {
+      "id": "independent-reviewer",
+      "requiredByGate": "G4",
+      "status": "missing",
+      "owner": null,
+      "reviewerIdentityReference": null,
+      "conflictCheckOwner": null,
+      "assignedAtUtc": null,
+      "reviewDueDate": null,
+      "evidenceReference": null
+    }
+  ]
+}

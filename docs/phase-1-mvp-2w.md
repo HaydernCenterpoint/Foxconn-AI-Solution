@@ -1,3 +1,5 @@
+> ⚠️ **FILE NÀY ĐÃ BỊ THAY THẾ** — Source of truth mới là [`/PROJECT_PLAN.md`](../PROJECT_PLAN.md). File này chỉ giữ làm tham chiếu lịch sử (Phase 1 đã done).
+
 # Phase 1 MVP — 2 tuần
 
 > Chốt ngày: 2026-07-22
