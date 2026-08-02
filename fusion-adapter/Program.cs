@@ -6,12 +6,15 @@ using Microsoft.Extensions.Options;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Services.Configure<OpenDataFusionOptions>(
-    builder.Configuration.GetSection(OpenDataFusionOptions.SectionName));
+builder.Services.AddOptions<OpenDataFusionOptions>()
+    .Bind(builder.Configuration.GetSection(OpenDataFusionOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<OpenDataFusionOptions>, OpenDataFusionOptionsValidator>();
 builder.Services.AddSingleton(sp => sp.GetRequiredService<IOptions<OpenDataFusionOptions>>().Value);
 builder.Services.AddSingleton<IFusionOutboxRepository>(sp =>
     new FusionOutboxRepository(builder.Configuration.GetConnectionString("MkzOperations") ?? string.Empty));
 builder.Services.AddSingleton<OpenDataFusionBundleMapper>();
+builder.Services.AddSingleton<FusionAdapterMetrics>();
 builder.Services.AddSingleton<FusionOutboxDispatcher>();
 
 builder.Services.AddHttpClient("odf-token");

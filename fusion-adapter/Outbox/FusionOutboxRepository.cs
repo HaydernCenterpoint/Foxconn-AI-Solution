@@ -14,13 +14,28 @@ public sealed class FusionOutboxRepository : IFusionOutboxRepository
         _connectionString = connectionString;
     }
 
+    public async Task<FusionOutboxBacklog> GetBacklogAsync(CancellationToken cancellationToken)
+    {
+        EnsureConfigured();
+        await using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = new NpgsqlCommand(@"
+            SELECT COUNT(*), COALESCE(EXTRACT(EPOCH FROM (NOW() - MIN(created_at))), 0)::double precision
+            FROM fusion_outbox
+            WHERE status IN ('PENDING', 'PROCESSING')", connection);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        await reader.ReadAsync(cancellationToken);
+        return new FusionOutboxBacklog(
+            reader.GetInt64(0),
+            TimeSpan.FromSeconds(Math.Max(0, reader.GetDouble(1))));
+    }
+
     public async Task<IReadOnlyList<FusionOutboxRecord>> ClaimAsync(
         int batchSize,
         TimeSpan lease,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(_connectionString))
-            throw new InvalidOperationException("ConnectionStrings:MkzOperations is required when Fusion Adapter dispatch is enabled.");
+        EnsureConfigured();
 
         var lockId = Guid.NewGuid();
         var leaseSeconds = Math.Max(1, (int)Math.Ceiling(lease.TotalSeconds));
@@ -128,8 +143,7 @@ public sealed class FusionOutboxRepository : IFusionOutboxRepository
         Action<NpgsqlCommand> bind,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(_connectionString))
-            throw new InvalidOperationException("ConnectionStrings:MkzOperations is required when Fusion Adapter dispatch is enabled.");
+        EnsureConfigured();
 
         await using var connection = new NpgsqlConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
@@ -140,4 +154,10 @@ public sealed class FusionOutboxRepository : IFusionOutboxRepository
 
     private static string? Truncate(string? error) =>
         string.IsNullOrWhiteSpace(error) ? null : error[..Math.Min(error.Length, 4096)];
+
+    private void EnsureConfigured()
+    {
+        if (string.IsNullOrWhiteSpace(_connectionString))
+            throw new InvalidOperationException("ConnectionStrings:MkzOperations is required when Fusion Adapter dispatch is enabled.");
+    }
 }

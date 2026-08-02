@@ -13,11 +13,13 @@ public sealed class FusionOutboxDispatcherTests
     {
         var repository = new FakeRepository(FusionOutboxRecord.For(TestEvent));
         var client = new FakeClient(DeliveryResult.Delivered());
+        using var metrics = new FusionAdapterMetrics();
         var dispatcher = new FusionOutboxDispatcher(
             repository,
             new OpenDataFusionBundleMapper(TestOptions),
             client,
-            TestOptions);
+            TestOptions,
+            metrics);
 
         await dispatcher.DispatchOnceAsync(CancellationToken.None);
 
@@ -31,11 +33,13 @@ public sealed class FusionOutboxDispatcherTests
     {
         var repository = new FakeRepository(FusionOutboxRecord.For(TestEvent));
         var client = new FakeClient(DeliveryResult.PermanentFailure("ODF rejected payload"));
+        using var metrics = new FusionAdapterMetrics();
         var dispatcher = new FusionOutboxDispatcher(
             repository,
             new OpenDataFusionBundleMapper(TestOptions),
             client,
-            TestOptions);
+            TestOptions,
+            metrics);
 
         await dispatcher.DispatchOnceAsync(CancellationToken.None);
 
@@ -48,11 +52,13 @@ public sealed class FusionOutboxDispatcherTests
     {
         var repository = new FakeRepository(FusionOutboxRecord.For(TestEvent));
         var client = new FakeClient(DeliveryResult.TransientFailure("ODF unavailable"));
+        using var metrics = new FusionAdapterMetrics();
         var dispatcher = new FusionOutboxDispatcher(
             repository,
             new OpenDataFusionBundleMapper(TestOptions),
             client,
-            TestOptions);
+            TestOptions,
+            metrics);
 
         await dispatcher.DispatchOnceAsync(CancellationToken.None);
 
@@ -92,6 +98,9 @@ public sealed class FusionOutboxDispatcherTests
         public int DeliveredCount { get; private set; }
         public int DeadCount { get; private set; }
         public int RetryCount { get; private set; }
+
+        public Task<FusionOutboxBacklog> GetBacklogAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(new FusionOutboxBacklog(_records.Count, TimeSpan.Zero));
 
         public Task<IReadOnlyList<FusionOutboxRecord>> ClaimAsync(int batchSize, TimeSpan lease, CancellationToken cancellationToken) =>
             Task.FromResult(_records);

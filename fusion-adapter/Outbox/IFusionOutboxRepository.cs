@@ -2,6 +2,8 @@ namespace Fusion.Adapter.Outbox;
 
 public interface IFusionOutboxRepository
 {
+    Task<FusionOutboxBacklog> GetBacklogAsync(CancellationToken cancellationToken);
+
     Task<IReadOnlyList<FusionOutboxRecord>> ClaimAsync(
         int batchSize,
         TimeSpan lease,
@@ -22,3 +24,5 @@ public interface IFusionOutboxRepository
         string? error,
         CancellationToken cancellationToken);
 }
+
+public sealed record FusionOutboxBacklog(long Count, TimeSpan OldestAge);

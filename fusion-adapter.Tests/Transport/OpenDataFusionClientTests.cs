@@ -39,6 +39,59 @@ public sealed class OpenDataFusionClientTests
         Assert.Equal("local-user", handler.Request.Headers.GetValues("x-odf-user").Single());
     }
 
+    [Theory]
+    [InlineData(HttpStatusCode.OK)]
+    [InlineData(HttpStatusCode.Accepted)]
+    [InlineData(HttpStatusCode.NoContent)]
+    public async Task SendAsync_ClassifiesAny2xxAsDelivered(HttpStatusCode statusCode)
+    {
+        var result = await SendWithStatusAsync(statusCode);
+
+        Assert.Equal(DeliveryKind.Delivered, result.Kind);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.BadRequest)]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.Conflict)]
+    [InlineData(HttpStatusCode.UnprocessableEntity)]
+    public async Task SendAsync_ClassifiesNonRetryable4xxAsPermanent(HttpStatusCode statusCode)
+    {
+        var result = await SendWithStatusAsync(statusCode);
+
+        Assert.Equal(DeliveryKind.PermanentFailure, result.Kind);
+        Assert.False(result.IsAuthenticationFailure);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized, true)]
+    [InlineData(HttpStatusCode.Forbidden, true)]
+    [InlineData(HttpStatusCode.RequestTimeout, false)]
+    [InlineData(HttpStatusCode.TooManyRequests, false)]
+    [InlineData(HttpStatusCode.InternalServerError, false)]
+    [InlineData(HttpStatusCode.ServiceUnavailable, false)]
+    public async Task SendAsync_ClassifiesRetryableResponsesAsTransient(
+        HttpStatusCode statusCode,
+        bool authenticationFailure)
+    {
+        var result = await SendWithStatusAsync(statusCode);
+
+        Assert.Equal(DeliveryKind.TransientFailure, result.Kind);
+        Assert.Equal(authenticationFailure, result.IsAuthenticationFailure);
+    }
+
+    [Fact]
+    public async Task SendAsync_ClassifiesTimeoutAsTransient()
+    {
+        using var httpClient = new HttpClient(new TimeoutHandler());
+        var client = CreateClient(httpClient);
+
+        var result = await client.SendAsync(TestBundle, CancellationToken.None);
+
+        Assert.Equal(DeliveryKind.TransientFailure, result.Kind);
+        Assert.False(result.IsAuthenticationFailure);
+    }
+
     [Fact]
     public async Task SendAsync_ReturnsPermanentFailureForValidationError()
     {
@@ -108,6 +161,25 @@ public sealed class OpenDataFusionClientTests
         Array.Empty<object>(),
         Array.Empty<object>());
 
+    private static async Task<DeliveryResult> SendWithStatusAsync(HttpStatusCode statusCode)
+    {
+        using var httpClient = new HttpClient(new CapturingHandler(statusCode));
+        return await CreateClient(httpClient).SendAsync(TestBundle, CancellationToken.None);
+    }
+
+    private static OpenDataFusionClient CreateClient(HttpClient httpClient) =>
+        new(httpClient, new OpenDataFusionOptions
+        {
+            BaseUrl = "https://odf.example.test/",
+            TenantId = "tenant-a",
+            ProjectId = "project-a",
+            Authentication = new OpenDataFusionAuthenticationOptions
+            {
+                Mode = "development",
+                DevelopmentUser = "local-user"
+            }
+        }, new FakeAccessTokenProvider());
+
     private static byte[] DecodeBase64Url(string value)
     {
         var padded = value.Replace('-', '+').Replace('_', '/').PadRight((value.Length + 3) / 4 * 4, '=');
@@ -139,5 +211,13 @@ public sealed class OpenDataFusionClientTests
             Request = request;
             return Task.FromResult(new HttpResponseMessage(_statusCode));
         }
+    }
+
+    private sealed class TimeoutHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken) =>
+            throw new TaskCanceledException("request timed out");
     }
 }
