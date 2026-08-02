@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
+using System.Security.Cryptography;
 using System.Text.Json;
+using System.Threading.Tasks;
 using PLC.Config;
 using PLC.Database;
 using PLC.Model;
@@ -278,6 +281,156 @@ public class CoreLogicTests
         const string original = "factory telemetry";
         Assert.Equal(original, CryptoHelper.Decrypt(CryptoHelper.Encrypt(original)));
     }
+
+    [Fact]
+    public void MqttLastWill_UsesHeartbeatLivenessContractWithoutTelemetrySequence()
+    {
+        const string machineId = "machine-lwt";
+        MethodInfo topicMethod = typeof(MqttTransport).GetMethod(
+            "BuildLastWillTopic",
+            BindingFlags.Static | BindingFlags.NonPublic)!;
+        MethodInfo jsonMethod = typeof(MqttTransport).GetMethod(
+            "BuildLastWillJson",
+            BindingFlags.Static | BindingFlags.NonPublic)!;
+
+        string topic = (string)topicMethod.Invoke(null, new object[] { machineId })!;
+        string json = (string)jsonMethod.Invoke(null, new object[] { machineId })!;
+        using JsonDocument document = JsonDocument.Parse(json);
+        JsonElement root = document.RootElement;
+        JsonElement payload = root.GetProperty("payload");
+
+        Assert.Equal($"client/{machineId}/heartbeat", topic);
+        Assert.Equal("heartbeat", root.GetProperty("messageType").GetString());
+        Assert.Equal("OFFLINE", payload.GetProperty("status").GetString());
+        Assert.False(payload.GetProperty("plcConnected").GetBoolean());
+        Assert.False(payload.TryGetProperty("sequence", out _));
+        Assert.False(root.TryGetProperty("sequence", out _));
+    }
+
+    [Theory]
+    [MemberData(nameof(InvalidEncryptedPayloads))]
+    public void CryptoHelper_RejectsInvalidOrUnauthenticatedPayloads(string payload)
+    {
+        CryptoHelper.Initialize("client-test-mqtt-secret-at-least-32-bytes");
+
+        Assert.Throws<CryptographicException>(() => CryptoHelper.Decrypt(payload));
+    }
+
+    [Fact]
+    public void CryptoHelper_RejectsWrongKey()
+    {
+        CryptoHelper.Initialize("client-test-mqtt-secret-at-least-32-bytes");
+        string encrypted = CryptoHelper.Encrypt("factory telemetry");
+        CryptoHelper.Initialize("different-client-test-secret-at-least-32-bytes");
+
+        Assert.ThrowsAny<CryptographicException>(() => CryptoHelper.Decrypt(encrypted));
+    }
+
+    [Fact]
+    public void CryptoHelper_RejectsCiphertextNonceAndTagTampering()
+    {
+        CryptoHelper.Initialize("client-test-mqtt-secret-at-least-32-bytes");
+        string encrypted = CryptoHelper.Encrypt("factory telemetry");
+
+        Assert.ThrowsAny<CryptographicException>(() => CryptoHelper.Decrypt(TamperEnvelope(encrypted, "CipherText")));
+        Assert.ThrowsAny<CryptographicException>(() => CryptoHelper.Decrypt(TamperEnvelope(encrypted, "Nonce")));
+        Assert.ThrowsAny<CryptographicException>(() => CryptoHelper.Decrypt(TamperEnvelope(encrypted, "Tag")));
+    }
+
+    [Theory]
+    [MemberData(nameof(InvalidEncryptedPayloads))]
+    public async Task MqttTransport_DoesNotInvokeMessageCallbackWhenDecryptionFails(string payload)
+    {
+        CryptoHelper.Initialize("client-test-mqtt-secret-at-least-32-bytes");
+        await AssertTransportRejectsWithoutCallbackAsync(payload);
+    }
+
+    [Fact]
+    public async Task MqttTransport_DoesNotInvokeMessageCallbackForWrongKey()
+    {
+        CryptoHelper.Initialize("client-test-mqtt-secret-at-least-32-bytes");
+        string encrypted = CryptoHelper.Encrypt("factory telemetry");
+        CryptoHelper.Initialize("different-client-test-secret-at-least-32-bytes");
+
+        await AssertTransportRejectsWithoutCallbackAsync(encrypted);
+    }
+
+    [Theory]
+    [InlineData("CipherText")]
+    [InlineData("Nonce")]
+    [InlineData("Tag")]
+    public async Task MqttTransport_DoesNotInvokeMessageCallbackForTampering(string propertyName)
+    {
+        CryptoHelper.Initialize("client-test-mqtt-secret-at-least-32-bytes");
+        string tampered = TamperEnvelope(CryptoHelper.Encrypt("factory telemetry"), propertyName);
+
+        await AssertTransportRejectsWithoutCallbackAsync(tampered);
+    }
+
+    private static async Task AssertTransportRejectsWithoutCallbackAsync(string payload)
+    {
+        var transport = new MqttTransport();
+        bool invoked = false;
+        transport.OnMessageReceived += _ =>
+        {
+            invoked = true;
+            return Task.CompletedTask;
+        };
+
+        var method = typeof(MqttTransport).GetMethod(
+            "ProcessInboundMessageAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var task = (Task)method.Invoke(transport, new object[] { "client/test/command", payload })!;
+
+        await Assert.ThrowsAnyAsync<CryptographicException>(() => task);
+        Assert.False(invoked);
+    }
+
+    public static IEnumerable<object[]> InvalidEncryptedPayloads()
+    {
+        yield return new object[] { "" };
+        yield return new object[] { "   " };
+        yield return new object[] { "plain text" };
+        yield return new object[] { "{" };
+        yield return new object[] { "{}" };
+        yield return new object[] { Envelope("not-base64", new byte[12], new byte[16]) };
+        yield return new object[] { Envelope(new byte[] { 1 }, "not-base64", new byte[16]) };
+        yield return new object[] { Envelope(new byte[] { 1 }, new byte[12], "not-base64") };
+        yield return new object[] { Envelope(new byte[] { 1 }, new byte[11], new byte[16]) };
+        yield return new object[] { Envelope(new byte[] { 1 }, new byte[12], new byte[15]) };
+    }
+
+    private static string TamperEnvelope(string envelopeJson, string propertyName)
+    {
+        var envelope = JsonSerializer.Deserialize<Dictionary<string, string>>(envelopeJson)!;
+        byte[] value = Convert.FromBase64String(envelope[propertyName]);
+        value[0] ^= 0x01;
+        envelope[propertyName] = Convert.ToBase64String(value);
+        return JsonSerializer.Serialize(envelope);
+    }
+
+    private static string Envelope(byte[] cipherText, byte[] nonce, byte[] tag) =>
+        Envelope(
+            Convert.ToBase64String(cipherText),
+            Convert.ToBase64String(nonce),
+            Convert.ToBase64String(tag));
+
+    private static string Envelope(string cipherText, byte[] nonce, byte[] tag) =>
+        Envelope(cipherText, Convert.ToBase64String(nonce), Convert.ToBase64String(tag));
+
+    private static string Envelope(byte[] cipherText, string nonce, byte[] tag) =>
+        Envelope(Convert.ToBase64String(cipherText), nonce, Convert.ToBase64String(tag));
+
+    private static string Envelope(byte[] cipherText, byte[] nonce, string tag) =>
+        Envelope(Convert.ToBase64String(cipherText), Convert.ToBase64String(nonce), tag);
+
+    private static string Envelope(string cipherText, string nonce, string tag) =>
+        JsonSerializer.Serialize(new
+        {
+            CipherText = cipherText,
+            Nonce = nonce,
+            Tag = tag
+        });
 }
 
 public sealed class InMemoryConfigStorage : IConfigStorage

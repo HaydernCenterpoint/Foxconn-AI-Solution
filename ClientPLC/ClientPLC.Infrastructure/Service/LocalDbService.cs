@@ -23,6 +23,8 @@ public class LocalDbService : IConfigStorage
     private readonly ShiftService _shiftService;
     private readonly IDatabaseConnectionFactory _connectionFactory;
 
+    internal IOfflineQueueRepository OfflineQueueRepository => _offlineQueueRepository;
+
     public static LocalDbService Instance
     {
         get
@@ -80,6 +82,167 @@ public class LocalDbService : IConfigStorage
         _offlineQueueRepository.Enqueue(topic, payload);
     }
 
+    public bool EnqueueOfflineMessage(OfflineQueueEnqueueRequest message)
+    {
+        return _offlineQueueRepository.Enqueue(message);
+    }
+
+    public OfflineQueueMessage PrepareOfflineMessageForPublish(
+        OfflineQueueEnqueueRequest message,
+        bool enqueueIfMissing)
+    {
+        if (enqueueIfMissing)
+        {
+            _offlineQueueRepository.Enqueue(message);
+        }
+
+        OfflineQueueMessage existing = _offlineQueueRepository.Find(message.MessageId)
+            ?? throw new InvalidOperationException(
+                $"Offline queue message '{message.MessageId}' was not persisted.");
+        if (!string.Equals(existing.Topic, message.Topic, StringComparison.Ordinal) ||
+            !string.Equals(existing.Payload, message.Payload, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Offline queue message '{message.MessageId}' does not match the publish envelope.");
+        }
+
+        OfflineQueueMessage awaiting = _offlineQueueRepository
+            .MarkAwaitingAcknowledgement(message.MessageId)
+            ?? throw new InvalidOperationException(
+                $"Offline queue message '{message.MessageId}' disappeared before publish.");
+        if (awaiting.Status != OfflineQueueStatus.AwaitingAck ||
+            !string.Equals(awaiting.Topic, message.Topic, StringComparison.Ordinal) ||
+            !string.Equals(awaiting.Payload, message.Payload, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Offline queue message '{message.MessageId}' could not enter AwaitingAck.");
+        }
+
+        return awaiting;
+    }
+
+    public long ReserveTelemetryDeliverySequence()
+    {
+        using var connection = (SqliteConnection)_connectionFactory.CreateConnection();
+        using var transaction = connection.BeginTransaction();
+        const string readSql = "SELECT next_value FROM telemetry_delivery_sequence WHERE singleton = 1;";
+        using var readCommand = new SqliteCommand(readSql, connection, transaction);
+        long sequence = Convert.ToInt64(readCommand.ExecuteScalar());
+        using var updateCommand = new SqliteCommand(
+            "UPDATE telemetry_delivery_sequence SET next_value = next_value + 1 WHERE singleton = 1;",
+            connection,
+            transaction);
+        updateCommand.ExecuteNonQuery();
+        transaction.Commit();
+        return sequence;
+    }
+
+    public long StoreTelemetryForDelivery(
+        OfflineQueueEnqueueRequest message,
+        long deliverySequence,
+        int productionQty,
+        int defectQty,
+        double plcRuntime)
+    {
+        if (deliverySequence <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(deliverySequence));
+        }
+
+        var shift = GetShiftInfo(DateTime.Now);
+        using var connection = (SqliteConnection)_connectionFactory.CreateConnection();
+        using var transaction = connection.BeginTransaction();
+        const string sql = @"
+            INSERT INTO telemetry_records (
+                delivery_sequence, timestamp, raw_json, synced, shift_date, shift_name,
+                production_qty, defect_qty, plc_runtime)
+            VALUES (
+                @delivery_sequence, @timestamp, @raw_json, 0, @shift_date, @shift_name,
+                @production_qty, @defect_qty, @plc_runtime);
+            SELECT last_insert_rowid();";
+        using var command = new SqliteCommand(sql, connection, transaction);
+        command.Parameters.AddWithValue("@delivery_sequence", deliverySequence);
+        command.Parameters.AddWithValue("@timestamp", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"));
+        command.Parameters.AddWithValue("@raw_json", message.Payload);
+        command.Parameters.AddWithValue("@shift_date", shift.ShiftDate);
+        command.Parameters.AddWithValue("@shift_name", shift.ShiftName);
+        command.Parameters.AddWithValue("@production_qty", productionQty);
+        command.Parameters.AddWithValue("@defect_qty", defectQty);
+        command.Parameters.AddWithValue("@plc_runtime", plcRuntime);
+        long rowId = Convert.ToInt64(command.ExecuteScalar());
+
+        if (!_offlineQueueRepository.Enqueue(message, connection, transaction))
+        {
+            throw new InvalidOperationException(
+                $"Offline queue message '{message.MessageId}' already exists.");
+        }
+
+        transaction.Commit();
+        return rowId;
+    }
+
+    public IReadOnlyList<OfflineQueueMessage> GetDueOfflineMessages(int maxCount)
+    {
+        return _offlineQueueRepository.GetDueMessages(maxCount);
+    }
+
+    public IReadOnlyList<OfflineQueueMessage> GetDeadOfflineMessages(int maxCount)
+    {
+        return _offlineQueueRepository.GetDeadMessages(maxCount);
+    }
+
+    public IReadOnlyList<OfflineQueueAuditEvent> GetOfflineQueueAuditEvents(int maxCount)
+    {
+        return _offlineQueueRepository.GetAuditEvents(maxCount);
+    }
+
+    public IReadOnlyList<OfflineQueueAuditSummary> GetOfflineQueueAuditSummaries()
+    {
+        return _offlineQueueRepository.GetAuditSummaries();
+    }
+
+    public bool HasActiveOfflineMessageForTopic(string topic)
+    {
+        return _offlineQueueRepository.HasActiveMessageForTopic(topic);
+    }
+
+    public bool CanCreateSyncBatch(string topic)
+    {
+        return !_offlineQueueRepository.HasActiveMessageForTopic(topic) &&
+            !_offlineQueueRepository.HasDeadMessageForTopic(topic);
+    }
+
+    public OfflineQueueMessage? MarkOfflineMessageAwaitingAcknowledgement(string messageId)
+    {
+        return _offlineQueueRepository.MarkAwaitingAcknowledgement(messageId);
+    }
+
+    public OfflineQueueMessage? RetryDeadOfflineMessage(string messageId)
+    {
+        return _offlineQueueRepository.RetryDead(messageId);
+    }
+
+    public bool ResolveDeadOfflineMessage(string messageId, string detail)
+    {
+        return _offlineQueueRepository.ResolveDead(messageId, detail);
+    }
+
+    public OfflineQueueMessage RecordOfflineMessageFailure(long id, string error)
+    {
+        return _offlineQueueRepository.RecordFailure(id, error);
+    }
+
+    public OfflineQueueMessage? RecordOfflineMessageFailure(string messageId, string error)
+    {
+        OfflineQueueMessage? message = _offlineQueueRepository.Find(messageId);
+        return message is null ? null : _offlineQueueRepository.RecordFailure(message.Id, error);
+    }
+
+    public int RemoveExpiredOfflineMessages()
+    {
+        return _offlineQueueRepository.RemoveExpired();
+    }
+
     public List<(long Id, string Topic, string Payload)> GetOfflineMessages()
     {
         return _offlineQueueRepository.GetMessages();
@@ -96,51 +259,28 @@ public class LocalDbService : IConfigStorage
         _telemetryRepository.Insert(status, plcRuntime, productionQty, defectQty, shift.ShiftDate, shift.ShiftName);
     }
 
-    public long InsertTelemetryRecord(string rawJson, int productionQty, int defectQty, double plcRuntime)
-    {
-        try
-        {
-            var shift = GetShiftInfo(DateTime.Now);
-            using var conn = _connectionFactory.CreateConnection();
-            string sql = @"
-                INSERT INTO telemetry_records (timestamp, raw_json, synced, shift_date, shift_name, production_qty, defect_qty, plc_runtime)
-                VALUES (@timestamp, @raw_json, 0, @shift_date, @shift_name, @production_qty, @defect_qty, @plc_runtime);
-                SELECT last_insert_rowid();";
-            
-            using var cmd = new SqliteCommand(sql, (SqliteConnection)conn);
-            cmd.Parameters.AddWithValue("@timestamp", DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"));
-            cmd.Parameters.AddWithValue("@raw_json", rawJson);
-            cmd.Parameters.AddWithValue("@shift_date", shift.ShiftDate);
-            cmd.Parameters.AddWithValue("@shift_name", shift.ShiftName);
-            cmd.Parameters.AddWithValue("@production_qty", productionQty);
-            cmd.Parameters.AddWithValue("@defect_qty", defectQty);
-            cmd.Parameters.AddWithValue("@plc_runtime", plcRuntime);
-            var id = cmd.ExecuteScalar();
-            return id != null && id != DBNull.Value ? Convert.ToInt64(id) : 0L;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine("[LocalDbService] InsertTelemetryRecord error: " + ex.Message);
-            return 0L;
-        }
-    }
-
     public List<TelemetrySyncRecord> GetUnsyncedTelemetryRecords()
     {
         var list = new List<TelemetrySyncRecord>();
         try
         {
             using var conn = _connectionFactory.CreateConnection();
-            string sql = "SELECT id, timestamp, raw_json FROM telemetry_records WHERE synced = 0 ORDER BY id ASC LIMIT 500;";
+            string sql = @"
+                SELECT id, delivery_sequence, timestamp, raw_json
+                FROM telemetry_records
+                WHERE synced = 0
+                ORDER BY id ASC
+                LIMIT 500;";
             using var cmd = new SqliteCommand(sql, (SqliteConnection)conn);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
                 list.Add(new TelemetrySyncRecord
                 {
-                    Sequence = reader.GetInt64(0),
-                    Timestamp = reader.GetString(1),
-                    RawJson = reader.GetString(2)
+                    Id = reader.GetInt64(0),
+                    Sequence = reader.GetInt64(1),
+                    Timestamp = reader.GetString(2),
+                    RawJson = reader.GetString(3)
                 });
             }
         }
@@ -151,19 +291,37 @@ public class LocalDbService : IConfigStorage
         return list;
     }
 
-    public void MarkTelemetryRecordsAsSynced(List<long> sequences)
+    public void MarkTelemetryRecordsAsSynced(List<long> rowIds)
     {
-        if (sequences == null || sequences.Count == 0) return;
-        try
+        if (rowIds == null || rowIds.Count == 0) return;
+        long[] uniqueRowIds = rowIds.Distinct().ToArray();
+        using var conn = _connectionFactory.CreateConnection();
+        var parameterNames = uniqueRowIds.Select((_, index) => $"@id{index}").ToArray();
+        string sql = $"UPDATE telemetry_records SET synced = 1 WHERE id IN ({string.Join(",", parameterNames)});";
+        using var cmd = new SqliteCommand(sql, (SqliteConnection)conn);
+        for (int index = 0; index < uniqueRowIds.Length; index++)
         {
-            using var conn = _connectionFactory.CreateConnection();
-            string sql = $"UPDATE telemetry_records SET synced = 1 WHERE id IN ({string.Join(",", sequences)});";
-            using var cmd = new SqliteCommand(sql, (SqliteConnection)conn);
-            cmd.ExecuteNonQuery();
+            cmd.Parameters.AddWithValue(parameterNames[index], uniqueRowIds[index]);
         }
-        catch (Exception ex)
+        int affected = cmd.ExecuteNonQuery();
+        if (affected != uniqueRowIds.Length)
         {
-            Debug.WriteLine("[LocalDbService] MarkTelemetryRecordsAsSynced error: " + ex.Message);
+            throw new InvalidOperationException(
+                $"Only {affected} of {uniqueRowIds.Length} telemetry records were marked synchronized.");
+        }
+    }
+
+    public void MarkTelemetryPayloadAsSynced(string rawJson)
+    {
+        if (string.IsNullOrWhiteSpace(rawJson)) return;
+        using var conn = _connectionFactory.CreateConnection();
+        const string sql = "UPDATE telemetry_records SET synced = 1 WHERE raw_json = @raw_json;";
+        using var cmd = new SqliteCommand(sql, (SqliteConnection)conn);
+        cmd.Parameters.AddWithValue("@raw_json", rawJson);
+        if (cmd.ExecuteNonQuery() == 0)
+        {
+            throw new InvalidOperationException(
+                "The acknowledged telemetry payload does not exist in local storage.");
         }
     }
 
@@ -172,7 +330,7 @@ public class LocalDbService : IConfigStorage
         try
         {
             using var conn = _connectionFactory.CreateConnection();
-            string sql = "SELECT COALESCE(MAX(id), 0) FROM telemetry_records WHERE synced = 1;";
+            string sql = "SELECT COALESCE(MAX(delivery_sequence), 0) FROM telemetry_records WHERE synced = 1;";
             using var cmd = new SqliteCommand(sql, (SqliteConnection)conn);
             var val = cmd.ExecuteScalar();
             return val != null && val != DBNull.Value ? Convert.ToInt64(val) : 0L;
@@ -474,6 +632,7 @@ public class LocalDbService : IConfigStorage
 
 public class TelemetrySyncRecord
 {
+    public long Id { get; set; }
     public long Sequence { get; set; }
     public string Timestamp { get; set; } = "";
     public string RawJson { get; set; } = "";

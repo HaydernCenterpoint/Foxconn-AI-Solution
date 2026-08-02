@@ -191,11 +191,11 @@ After:
 
 ---
 
-## 4. Giai đoạn 1 — Critical (Ngay lập tức)
+## 4. Giai đoạn 1 — Critical (Ngay lập tức) ✅ Hoàn thành
 
 > ⚠️ Các vấn đề có thể gây mất dữ liệu hoặc crash production
 
-### 4.1 Bare `catch {}` nuốt exception
+### 4.1 Bare `catch {}` nuốt exception ✅ Hoàn thành
 
 **Vấn đề:** Exception bị nuốt hoàn toàn, không log, không rethrow → lỗi âm thầm mất dữ liệu telemetry.
 
@@ -219,7 +219,7 @@ catch (Exception ex)
 
 **Effort:** ~4 edits, 4 files — **15 phút**
 
-### 4.2 Fix `GetAwaiter().GetResult()` — Deadlock risk
+### 4.2 Fix `GetAwaiter().GetResult()` — Deadlock risk ✅ Hoàn thành
 
 **Vấn đề:** `MqttTransport.DisconnectClient()` dùng `.GetAwaiter().GetResult()` → gây deadlock nếu gọi từ UI thread (WPF synchronization context).
 
@@ -243,7 +243,7 @@ public async Task DisconnectClientAsync()
 
 **Effort:** 1 method + ~3 callers — **30 phút**
 
-### 4.3 Fix race condition `_lastConnectAttempt`
+### 4.3 Fix race condition `_lastConnectAttempt` ✅ Hoàn thành (đã ghi trong lock)
 
 **Vấn đề:** `_lastConnectAttempt` được ghi ngoài `lock` (dòng 94), đọc trong `lock` (dòng 41) → potential torn read.
 
@@ -271,7 +271,7 @@ lock (_lock)
 
 **Effort:** 1 edit — **10 phút**
 
-### 4.4 Xoá fallback plaintext khi encrypt lỗi
+### 4.4 Xoá fallback plaintext khi encrypt lỗi ✅ Hoàn thành (đã `throw`, không còn plaintext fallback)
 
 **Vấn đề:** `CryptoHelper.Encrypt` fallback về plaintext → gửi dữ liệu nhạy cảm dạng rõ.
 

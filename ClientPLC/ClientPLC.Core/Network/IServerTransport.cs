@@ -13,5 +13,6 @@ public interface IServerTransport
 
     void Start();
     void Stop();
+    Task StopAsync();
     Task<bool> SendMessageAsync(string topic, string payload, CancellationToken token);
 }

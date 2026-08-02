@@ -64,8 +64,9 @@ public static class SystemInfoService
 			float x3 = (float)process.WorkingSet64 / 1024f / 1024f;
 			return (usedMb: MathF.Round(x3, 1), totalMb: MathF.Round(totalPhysicalMemoryMb, 1));
 		}
-		catch
+		catch (Exception ex)
 		{
+			Serilog.Log.Warning(ex, "[SystemInfoService] GetRamInfo failed");
 			return (usedMb: 0f, totalMb: 0f);
 		}
 	}
@@ -95,8 +96,9 @@ public static class SystemInfoService
 			}
 			return MathF.Min(MathF.Round(_lastCpuPercent, 1), 100f);
 		}
-		catch
+		catch (Exception ex)
 		{
+			Serilog.Log.Warning(ex, "[SystemInfoService] GetCpuPercent failed");
 			return 0f;
 		}
 	}
@@ -120,8 +122,9 @@ public static class SystemInfoService
 				}
 			}
 		}
-		catch
+		catch (Exception ex)
 		{
+			Serilog.Log.Warning(ex, "[SystemInfoService] GetTotalPhysicalMemoryMb failed");
 		}
 		return 0f;
 	}
@@ -135,8 +138,9 @@ public static class SystemInfoService
 			float num2 = (float)(_rnd.NextDouble() * 1.2 - 0.6);
 			return MathF.Round(num + num2, 1);
 		}
-		catch
+		catch (Exception ex)
 		{
+			Serilog.Log.Warning(ex, "[SystemInfoService] GetCpuTemperature failed");
 			return 45f;
 		}
 	}

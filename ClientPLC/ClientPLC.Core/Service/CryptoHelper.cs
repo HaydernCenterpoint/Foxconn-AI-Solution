@@ -7,6 +7,8 @@ namespace PLC.Service;
 
 public static class CryptoHelper
 {
+    private const int NonceSize = 12;
+    private const int TagSize = 16;
     private static byte[]? _key;
 
     public static void Initialize(string secretKey)
@@ -22,9 +24,9 @@ public static class CryptoHelper
         try
         {
             byte[] plainBytes = Encoding.UTF8.GetBytes(plainText);
-            byte[] nonce = new byte[12]; // AesGcm.NonceByteSizes.MaxSize is 12
+            byte[] nonce = new byte[NonceSize];
             RandomNumberGenerator.Fill(nonce);
-            byte[] tag = new byte[16]; // AesGcm.TagByteSizes.MaxSize is 16
+            byte[] tag = new byte[TagSize];
             byte[] cipherText = new byte[plainBytes.Length];
 
             using (var aesGcm = new AesGcm(key, tag.Length))
@@ -52,36 +54,38 @@ public static class CryptoHelper
     {
         try
         {
-            if (string.IsNullOrEmpty(envelopeJson)) return envelopeJson;
-            string trimmed = envelopeJson.TrimStart();
-            if (!trimmed.StartsWith("{") || !envelopeJson.Contains("cipherText", StringComparison.OrdinalIgnoreCase))
-            {
-                // Not an encrypted envelope, return as-is
-                return envelopeJson;
-            }
+            if (string.IsNullOrWhiteSpace(envelopeJson))
+                throw new CryptographicException("The encrypted MQTT payload is empty.");
 
-            var envelope = JsonSerializer.Deserialize<EncryptedEnvelope>(envelopeJson);
-            if (envelope == null || string.IsNullOrEmpty(envelope.CipherText))
-            {
-                return envelopeJson;
-            }
+            var envelope = JsonSerializer.Deserialize<EncryptedEnvelope>(envelopeJson)
+                ?? throw new CryptographicException("The encrypted MQTT envelope is missing.");
+            if (string.IsNullOrEmpty(envelope.CipherText) ||
+                string.IsNullOrEmpty(envelope.Nonce) ||
+                string.IsNullOrEmpty(envelope.Tag))
+                throw new CryptographicException("The encrypted MQTT envelope is incomplete.");
 
             byte[] cipherText = Convert.FromBase64String(envelope.CipherText);
             byte[] nonce = Convert.FromBase64String(envelope.Nonce);
             byte[] tag = Convert.FromBase64String(envelope.Tag);
+            if (nonce.Length != NonceSize || tag.Length != TagSize)
+                throw new CryptographicException("The encrypted MQTT envelope has invalid nonce or tag sizes.");
+
             byte[] plainBytes = new byte[cipherText.Length];
 
-            using (var aesGcm = new AesGcm(GetKey(), tag.Length))
+            using (var aesGcm = new AesGcm(GetKey(), TagSize))
             {
                 aesGcm.Decrypt(nonce, cipherText, tag, plainBytes);
             }
 
             return Encoding.UTF8.GetString(plainBytes);
         }
-        catch (Exception ex)
+        catch (CryptographicException)
         {
-            Console.WriteLine("[CryptoHelper] Decryption error: " + ex.Message);
-            return envelopeJson;
+            throw;
+        }
+        catch (Exception ex) when (ex is JsonException or FormatException)
+        {
+            throw new CryptographicException("The encrypted MQTT envelope is malformed.", ex);
         }
     }
 
