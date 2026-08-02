@@ -228,6 +228,12 @@ Invoke-FixtureCase -Name "generated schema-v2 evidence-only validation" -Test {
     }
 }
 
+Invoke-FixtureCase -Name "RFC3339 conflict timestamp survives runtime JSON parsing" -Test {
+    param($fixture)
+    $result = & $evidenceVerifier -AttestationPath $fixture.AttestationPath -ArtifactRoot $fixture.ArtifactRoot | ConvertFrom-Json
+    if ($result.passed -ne $true) { throw "Evidence verifier did not accept a valid RFC3339 timestamp." }
+}
+
 Invoke-FixtureCase -Name "tampered raw artifact is rejected" -Test {
     param($fixture)
     Add-Content -LiteralPath (Join-Path $fixture.ArtifactRoot "backend-https-ingress.txt") -Value "tampered"

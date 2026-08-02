@@ -73,6 +73,67 @@ function Read-Rfc3339 {
     return $parsed.ToUniversalTime()
 }
 
+function ConvertFrom-JsonElementPreservingTimestamps {
+    param([Parameter(Mandatory = $true)]$Element)
+
+    switch ([string]$Element.ValueKind) {
+        'Object' {
+            $properties = [ordered]@{}
+            foreach ($property in $Element.EnumerateObject()) {
+                $properties[$property.Name] = ConvertFrom-JsonElementPreservingTimestamps -Element $property.Value
+            }
+            return [pscustomobject]$properties
+        }
+        'Array' {
+            $items = [System.Collections.Generic.List[object]]::new()
+            foreach ($item in $Element.EnumerateArray()) {
+                [void]$items.Add((ConvertFrom-JsonElementPreservingTimestamps -Element $item))
+            }
+            Write-Output -NoEnumerate $items.ToArray()
+            return
+        }
+        'String' { return $Element.GetString() }
+        'Number' {
+            $integer = [long]0
+            if ($Element.TryGetInt64([ref]$integer)) { return $integer }
+            $decimal = [decimal]0
+            if ($Element.TryGetDecimal([ref]$decimal)) { return $decimal }
+            return $Element.GetDouble()
+        }
+        'True' { return $true }
+        'False' { return $false }
+        'Null' { return $null }
+        default { throw "Unsupported JSON value kind '$($Element.ValueKind)'." }
+    }
+}
+
+function ConvertFrom-JsonPreservingTimestamps {
+    param(
+        [Parameter(Mandatory = $true)][string]$Json,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    try {
+        $parameters = (Get-Command ConvertFrom-Json -ErrorAction Stop).Parameters
+        if ($parameters.ContainsKey('DateKind')) {
+            return $Json | ConvertFrom-Json -DateKind String
+        }
+        if ($PSVersionTable.PSEdition -eq 'Core') {
+            $document = [System.Text.Json.JsonDocument]::Parse($Json)
+            try {
+                return ConvertFrom-JsonElementPreservingTimestamps -Element $document.RootElement
+            }
+            finally {
+                $document.Dispose()
+            }
+        }
+        return $Json | ConvertFrom-Json
+    }
+    catch {
+        throw "$Name must be valid JSON."
+    }
+}
+
 function Get-PathComparison {
     if ([Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.InteropServices.OSPlatform]::Windows)) {
         return [StringComparison]::OrdinalIgnoreCase
@@ -270,7 +331,7 @@ function Get-Artifact {
 
 function Read-JsonArtifact {
     param([Parameter(Mandatory = $true)]$Artifact, [Parameter(Mandatory = $true)][string]$Name)
-    try { return ([string]$Artifact.Content).TrimStart([char]0xFEFF) | ConvertFrom-Json } catch { throw "$Name content must be valid JSON." }
+    return ConvertFrom-JsonPreservingTimestamps -Json ([string]$Artifact.Content).TrimStart([char]0xFEFF) -Name "$Name content"
 }
 
 function Resolve-PackageManifestPath {
@@ -290,7 +351,10 @@ if ((Test-UncPath $AttestationPath) -or (Test-NetworkDrivePath $AttestationPath)
 try { $resolvedAttestation = (Resolve-Path -LiteralPath $AttestationPath).Path } catch { throw "Attestation file was not found." }
 if ((Test-UncPath $resolvedAttestation) -or (Test-NetworkDrivePath $resolvedAttestation)) { throw "Attestation path must resolve to local storage." }
 $attestationDirectory = Split-Path -Parent $resolvedAttestation
-try { $attestation = Get-Content -LiteralPath $resolvedAttestation -Raw -Encoding utf8 | ConvertFrom-Json } catch { throw "Attestation must be valid JSON." }
+try {
+    $attestation = ConvertFrom-JsonPreservingTimestamps -Json (Get-Content -LiteralPath $resolvedAttestation -Raw -Encoding utf8) -Name "Attestation"
+}
+catch { throw "Attestation must be valid JSON." }
 if ([int](Get-PropertyValue $attestation "schemaVersion") -ne 2) { throw "Managed attestation schemaVersion must be 2." }
 
 $environment = Get-PropertyValue $attestation "environment"
