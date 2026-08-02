@@ -23,6 +23,8 @@ namespace backend.Services
         private readonly MqttServerOptions _serverOptions;
         private readonly int _listenPort;
         private readonly bool _tlsEnabled;
+        private readonly int _maxEncryptedTelemetryBytes;
+        private readonly int _maxEncryptedSyncBytes;
         private readonly DatabaseService _dbService;
         private readonly TelemetryStore _telemetryStore;
         private readonly TelemetryIngestionService _telemetryIngestionService;
@@ -52,6 +54,12 @@ namespace backend.Services
             _listenPort = _tlsEnabled
                 ? _serverOptions.TlsEndpointOptions.Port
                 : _serverOptions.DefaultEndpointOptions.Port;
+            var ingressOptions = configuration
+                .GetSection(TelemetryIngressOptions.SectionName)
+                .Get<TelemetryIngressOptions>() ?? new TelemetryIngressOptions();
+            _maxEncryptedTelemetryBytes = GetMaxEncryptedPayloadBytes(ingressOptions.MaxPayloadBytes);
+            _maxEncryptedSyncBytes = GetMaxEncryptedPayloadBytes(
+                checked(ingressOptions.MaxSyncBatchBytes + (256 * 1024)));
             _deviceTokenValidator = new MqttDeviceTokenValidator(configuration);
             _dbService = dbService;
             _telemetryStore = telemetryStore;
@@ -141,6 +149,8 @@ namespace backend.Services
 
                 _mqttServer.ValidatingConnectionAsync += e =>
                 {
+                    // MQTTnet 5 exposes MaximumPacketSize here as a read-only value supplied
+                    // by the connecting client, not a configurable server inbound limit.
                     if (_deviceTokenValidator.Validate(e.ClientId, e.UserName, e.Password))
                     {
                         e.ReasonCode = MqttConnectReasonCode.Success;
@@ -185,16 +195,18 @@ namespace backend.Services
                     {
                         try
                         {
-                            const string updateSql = @"
-                                UPDATE machines SET
-                                    status = 'OFFLINE',
-                                    plc_connected = false,
-                                    last_heartbeat = NOW()
-                                WHERE id = @mid";
-                            await _dbService.ExecuteNonQueryAsync(updateSql, p => p.AddWithValue("mid", machineGuid));
-                            
-                            await _dbService.SaveTelemetryHistoryAsync(
-                                machineGuid, "OFFLINE", false, 0, 0.0, 0.0, 0.0, 0L, "{}");
+                            var approval = await _dbService.UpdateClientLivenessAsync(
+                                e.ClientId,
+                                null,
+                                null,
+                                null,
+                                "OFFLINE",
+                                false,
+                                ClientLivenessEvent.Disconnect);
+                            if (approval != TelemetryApproval.Approved)
+                            {
+                                return;
+                            }
 
                             var offlineJson = JsonSerializer.Serialize(new
                             {
@@ -286,6 +298,33 @@ namespace backend.Services
                     return;
                 }
 
+                var parts = topic.Split('/');
+                if (parts.Length < 3 || parts[0] != "client")
+                {
+                    return;
+                }
+
+                string clientId = parts[1];
+                string messageType = parts[2];
+                var encryptedPayloadLimit = messageType == "sync"
+                    ? _maxEncryptedSyncBytes
+                    : _maxEncryptedTelemetryBytes;
+                if (e.ApplicationMessage.Payload.Length > encryptedPayloadLimit)
+                {
+                    e.ProcessPublish = false;
+                    if (messageType is "telemetry" or "sync")
+                    {
+                        await SendDeliveryAckAsync(
+                            clientId,
+                            messageType == "sync" ? "syncAck" : "ack",
+                            string.Empty,
+                            new(
+                                TelemetryDeliveryState.PayloadTooLarge,
+                                $"Encrypted MQTT payload exceeds the {encryptedPayloadLimit}-byte limit."));
+                    }
+                    return;
+                }
+
                 string rawPayload = e.ApplicationMessage.ConvertPayloadToString();
 
                 // Symmetrical payload decryption
@@ -298,15 +337,6 @@ namespace backend.Services
 
                 // Detect topic patterns
                 // Pattern: client/{clientId}/register, client/{clientId}/telemetry, client/{clientId}/heartbeat
-                var parts = topic.Split('/');
-                if (parts.Length < 3 || parts[0] != "client")
-                {
-                    return;
-                }
-
-                string clientId = parts[1];
-                string messageType = parts[2];
-
                 using var doc = JsonDocument.Parse(decryptedPayload);
                 var root = doc.RootElement;
 
@@ -316,7 +346,13 @@ namespace backend.Services
                 }
                 else if (messageType == "telemetry")
                 {
-                    await ProcessTelemetryAsync(clientId, decryptedPayload, root);
+                    var result = await ProcessTelemetryAsync(clientId, decryptedPayload, root);
+                    e.ProcessPublish = result.IsSuccess;
+                    await SendDeliveryAckAsync(
+                        clientId,
+                        "ack",
+                        ReadMessageId(root),
+                        result);
                 }
                 else if (messageType == "heartbeat")
                 {
@@ -324,12 +360,33 @@ namespace backend.Services
                 }
                 else if (messageType == "sync")
                 {
-                    await ProcessSyncMqttAsync(clientId, root);
+                    var result = await ProcessSyncMqttAsync(clientId, root);
+                    e.ProcessPublish = result.IsSuccess;
+                    await SendDeliveryAckAsync(
+                        clientId,
+                        "syncAck",
+                        ReadMessageId(root),
+                        result);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing MQTT message on topic {Topic}", e.ApplicationMessage.Topic);
+                e.ProcessPublish = false;
+                var topicParts = e.ApplicationMessage.Topic?.Split('/') ?? [];
+                if (!string.IsNullOrWhiteSpace(e.ClientId) && topicParts.Length >= 3 &&
+                    topicParts[0] == "client" && topicParts[1] == e.ClientId &&
+                    topicParts[2] is "telemetry" or "sync")
+                {
+                    var state = ex is JsonException or CryptographicException
+                        ? TelemetryDeliveryState.Malformed
+                        : TelemetryDeliveryState.RetryableFailure;
+                    await SendDeliveryAckAsync(
+                        e.ClientId,
+                        topicParts[2] == "sync" ? "syncAck" : "ack",
+                        string.Empty,
+                        new(state, "MQTT delivery could not be processed."));
+                }
             }
         }
 
@@ -358,17 +415,14 @@ namespace backend.Services
             long serverSeq = await _syncService.GetMaxSequenceAsync(clientId);
             string clientIp = _clientIps.TryGetValue(clientId, out var ip) ? ip : "";
             
-            await _dbService.UpsertPlcClientAsync(clientId, clientName, machineCode, clientIp, 0.0, 0.0, 0L);
-
-            if (Guid.TryParse(clientId, out var machineGuid))
-            {
-                const string updateSql = @"
-                    UPDATE machines SET
-                        status = CASE WHEN status = 'OFFLINE' THEN 'STOPPED' ELSE status END,
-                        last_heartbeat = NOW()
-                    WHERE id = @mid";
-                await _dbService.ExecuteNonQueryAsync(updateSql, p => p.AddWithValue("mid", machineGuid));
-            }
+            await _dbService.UpdateClientLivenessAsync(
+                clientId,
+                clientName,
+                machineCode,
+                clientIp,
+                null,
+                null,
+                ClientLivenessEvent.Registration);
 
             // Send RegisterAck with ackSeq
             var registerAck = new
@@ -385,10 +439,13 @@ namespace backend.Services
             await SendCommandToClientAsync(clientId, registerAck);
         }
 
-        private async Task ProcessTelemetryAsync(string clientId, string rawJson, JsonElement root)
+        private async Task<TelemetryDeliveryResult> ProcessTelemetryAsync(
+            string clientId,
+            string rawJson,
+            JsonElement root)
         {
-            bool isApproved = await _dbService.IsClientApprovedAsync(clientId);
-            if (isApproved)
+            var result = await _telemetryIngestionService.EnqueueAsync(clientId, rawJson);
+            if (result.State == TelemetryDeliveryState.Committed)
             {
                 string? machineName = null;
                 if (root.TryGetProperty("payload", out var payload) &&
@@ -403,22 +460,14 @@ namespace backend.Services
                     rawJson,
                     machineName,
                     _clientIps.TryGetValue(clientId, out var clientIp) ? clientIp : null);
-                _telemetryIngestionService.Enqueue(rawJson);
-            }
-            else
-            {
-                _logger.LogWarning("Telemetry from client {ClientId} rejected - not APPROVED", clientId);
             }
 
-            // Send Ack back to client
-            var ack = new
-            {
-                messageType = "ack",
-                messageId = root.TryGetProperty("messageId", out var idProp) ? idProp.GetString() ?? "" : "",
-                payload = new { success = true, approved = isApproved }
-            };
-
-            await SendCommandToClientAsync(clientId, ack);
+            _logger.LogInformation(
+                "MQTT telemetry delivery completed for device {DeviceId}, message {MessageId}, state {DeliveryState}",
+                clientId,
+                ReadMessageId(root),
+                result.State);
+            return result;
         }
 
         private async Task ProcessHeartbeatAsync(string clientId, JsonElement root)
@@ -456,26 +505,14 @@ namespace backend.Services
             }
 
             string clientIp = _clientIps.TryGetValue(clientId, out var ip) ? ip : "";
-            await _dbService.UpsertPlcClientAsync(clientId, clientName, machineCode, clientIp, 0.0, 0.0, 0L);
-
-            if (Guid.TryParse(clientId, out var machineGuid))
-            {
-                if (!string.IsNullOrEmpty(status))
-                {
-                    const string updateSql = @"
-                        UPDATE machines SET
-                            status = @status,
-                            plc_connected = COALESCE(@plcConnected, plc_connected),
-                            last_heartbeat = NOW()
-                        WHERE id = @mid";
-                    await _dbService.ExecuteNonQueryAsync(updateSql, p =>
-                    {
-                        p.AddWithValue("status", status);
-                        p.AddWithValue("plcConnected", plcConnected.HasValue ? (object)plcConnected.Value : DBNull.Value);
-                        p.AddWithValue("mid", machineGuid);
-                    });
-                }
-            }
+            await _dbService.UpdateClientLivenessAsync(
+                clientId,
+                clientName,
+                machineCode,
+                clientIp,
+                status,
+                plcConnected,
+                ClientLivenessEvent.Heartbeat);
 
             // Send HeartbeatAck
             var hbAck = new
@@ -488,36 +525,69 @@ namespace backend.Services
             await SendCommandToClientAsync(clientId, hbAck);
         }
 
-        private async Task ProcessSyncMqttAsync(string clientId, JsonElement root)
+        private async Task<TelemetryDeliveryResult> ProcessSyncMqttAsync(
+            string clientId,
+            JsonElement root)
         {
             try
             {
-                if (root.TryGetProperty("payload", out var payload) && payload.TryGetProperty("records", out var recordsProp))
+                if (!root.TryGetProperty("payload", out var payload) ||
+                    payload.ValueKind != JsonValueKind.Object ||
+                    !payload.TryGetProperty("records", out var recordsProperty) ||
+                    recordsProperty.ValueKind != JsonValueKind.Array)
                 {
-                    var records = JsonSerializer.Deserialize<List<TelemetryRecordDto>>(recordsProp.GetRawText(), new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                    });
-                    if (records != null)
-                    {
-                        await _syncService.ProcessBatchUploadAsync(clientId, records);
-                    }
+                    return new(TelemetryDeliveryState.Malformed, "payload.records must be an array.");
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing sync batch via MQTT for client {ClientId}", clientId);
-            }
 
-            // Send SyncAck
-            var syncAck = new
-            {
-                messageType = "syncAck",
-                messageId = root.TryGetProperty("messageId", out var idProp) ? idProp.GetString() ?? "" : "",
-                payload = new { success = true }
-            };
+                var records = JsonSerializer.Deserialize<List<TelemetryRecordDto>>(
+                    recordsProperty.GetRawText(),
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (records is null)
+                {
+                    return new(TelemetryDeliveryState.Malformed, "payload.records is invalid.");
+                }
 
-            await SendCommandToClientAsync(clientId, syncAck);
+                return await _syncService.ProcessBatchUploadAsync(clientId, records);
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Malformed MQTT sync batch for device {DeviceId}",
+                    clientId);
+                return new(TelemetryDeliveryState.Malformed, "Sync batch is not valid JSON.");
+            }
+        }
+
+        private Task SendDeliveryAckAsync(
+            string clientId,
+            string messageType,
+            string messageId,
+            TelemetryDeliveryResult result) =>
+            SendCommandToClientAsync(clientId, new
+            {
+                messageType,
+                messageId,
+                payload = new
+                {
+                    success = result.IsSuccess,
+                    approval = result.Approval.ToString(),
+                    approved = result.Approved,
+                    state = result.State.ToString(),
+                    detail = result.Detail,
+                },
+            });
+
+        private static string ReadMessageId(JsonElement root) =>
+            root.TryGetProperty("messageId", out var messageId) &&
+            messageId.ValueKind == JsonValueKind.String
+                ? messageId.GetString() ?? string.Empty
+                : string.Empty;
+
+        public static int GetMaxEncryptedPayloadBytes(int maxPlaintextBytes)
+        {
+            var boundedPlaintext = Math.Clamp(maxPlaintextBytes, 1, 256 * 1024 * 1024);
+            return checked(((boundedPlaintext + 2) / 3 * 4) + 512);
         }
 
         public async Task SendCommandToClientAsync(string clientId, object commandObj)

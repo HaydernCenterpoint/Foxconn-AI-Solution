@@ -19,6 +19,18 @@ public static class ApiSecurity
             .RequireAuthenticatedUser()
             .Build();
 
+    /// <summary>
+    /// Authenticated-user policy that accepts BOTH the service-account API-key
+    /// scheme and the default JWT/cookie Bearer scheme. Used by the real
+    /// <c>Program</c> pipeline so service accounts (X-API-Key) and interactive
+    /// users (JWT/cookie) are both accepted. Test apps that only register
+    /// JwtBearer should keep using <see cref="AuthenticatedFallbackPolicy"/>.
+    /// </summary>
+    public static AuthorizationPolicy AuthenticatedPolicyWithApiKey { get; } =
+        new AuthorizationPolicyBuilder(ApiKeySecret.Scheme, JwtBearerDefaults.AuthenticationScheme)
+            .RequireAuthenticatedUser()
+            .Build();
+
     public static JwtBearerEvents CreateJwtBearerEvents() => new()
     {
         OnMessageReceived = context =>

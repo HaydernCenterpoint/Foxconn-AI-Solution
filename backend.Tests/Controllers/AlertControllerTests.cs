@@ -52,6 +52,14 @@ public class AlertControllerTests
     }
 
     [Fact]
+    public void ResolveRequest_AllowsOmittedNotes()
+    {
+        var request = new ResolveRequest();
+
+        Assert.Null(request.Notes);
+    }
+
+    [Fact]
     public void AcknowledgeRequest_CanBeInstantiated()
     {
         var request = new AcknowledgeRequest();

@@ -143,5 +143,111 @@ namespace backend.Controllers
             await _auditService.LogAuditAsync(currentAdmin, "DELETE_USER", $"Deleted user ID: {id}");
             return Ok(new { success = true, message = "User deleted successfully" });
         }
+
+        public class ServiceAccountRequest
+        {
+            public string Username { get; set; } = "";
+            public string Role { get; set; } = "ENGINEER"; // ADMIN, ENGINEER, GUEST
+        }
+
+        /// <summary>
+        /// Create or rotate a service account and return a one-time API key.
+        /// Service accounts authenticate via the X-API-Key header (see ApiKeyAuthHandler)
+        /// instead of password login. The raw key is returned only here and cannot be retrieved again.
+        /// </summary>
+        [HttpPost("service-account")]
+        public async Task<IActionResult> CreateOrRotateServiceAccount([FromBody] ServiceAccountRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.Username))
+            {
+                return BadRequest(new { error = "Username is required" });
+            }
+
+            string roleUpper = request.Role.Trim().ToUpperInvariant();
+            if (roleUpper != "ADMIN" && roleUpper != "ENGINEER" && roleUpper != "GUEST")
+            {
+                return BadRequest(new { error = "Invalid role. Must be ADMIN, ENGINEER, or GUEST" });
+            }
+
+            var username = request.Username.Trim();
+            if (username.Length > 50)
+            {
+                return BadRequest(new { error = "Username too long (max 50 characters)" });
+            }
+
+            // Non-loginable password so the NOT NULL constraint is satisfied without
+            // enabling password login for the service account.
+            var passwordHash = PasswordHasher.HashPassword(ApiKeySecret.Generate());
+            var apiKey = ApiKeySecret.Generate();
+            var apiKeyHash = ApiKeySecret.Hash(apiKey);
+
+            try
+            {
+                const string upsertSql = @"
+                    INSERT INTO users (username, password, role, api_key_hash)
+                    VALUES (@username, @password, @role, @apiKeyHash)
+                    ON CONFLICT (username) DO UPDATE
+                    SET role = EXCLUDED.role,
+                        password = EXCLUDED.password,
+                        api_key_hash = EXCLUDED.api_key_hash";
+                await _dbService.ExecuteNonQueryAsync(upsertSql, p =>
+                {
+                    p.AddWithValue("username", username);
+                    p.AddWithValue("password", passwordHash);
+                    p.AddWithValue("role", roleUpper);
+                    p.AddWithValue("apiKeyHash", apiKeyHash);
+                });
+
+                var currentAdmin = User.FindFirst(ClaimTypes.Name)?.Value ?? "admin";
+                await _auditService.LogAuditAsync(
+                    currentAdmin,
+                    "ROTATE_SERVICE_ACCOUNT",
+                    $"Rotated API key for service account: {username} ({roleUpper})");
+
+                return Ok(new
+                {
+                    username,
+                    role = roleUpper,
+                    apiKey,
+                    authHeader = ApiKeySecret.HeaderName,
+                    note = "Store this API key securely. It cannot be retrieved again; call this endpoint again to rotate."
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Revoke a service account's API key (clears api_key_hash; keeps the user row).
+        /// </summary>
+        [HttpDelete("service-account/{username}")]
+        public async Task<IActionResult> RevokeServiceAccount(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                return BadRequest(new { error = "Username is required" });
+            }
+
+            try
+            {
+                const string sql = "UPDATE users SET api_key_hash = NULL WHERE username = @username";
+                await _dbService.ExecuteNonQueryAsync(sql, p =>
+                    p.AddWithValue("username", username.Trim()));
+
+                var currentAdmin = User.FindFirst(ClaimTypes.Name)?.Value ?? "admin";
+                await _auditService.LogAuditAsync(
+                    currentAdmin,
+                    "REVOKE_SERVICE_ACCOUNT",
+                    $"Revoked API key for service account: {username.Trim()}");
+
+                return Ok(new { success = true, message = "API key revoked" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
     }
 }

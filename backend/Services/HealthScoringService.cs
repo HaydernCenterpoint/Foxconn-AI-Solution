@@ -50,7 +50,7 @@ namespace backend.Services
             }
         }
 
-        public async Task<bool> StoreMetricAsync(Guid assetId, string metricType, double value, object metadata = null)
+        public async Task<bool> StoreMetricAsync(Guid assetId, string metricType, double value, object? metadata = null)
         {
             try
             {
@@ -229,13 +229,13 @@ namespace backend.Services
         public int AlarmCount { get; set; }
         public double PerformanceRatio { get; set; }
         public double MaintenanceOverdueDays { get; set; }
-        public string ColorCode { get; set; }
+        public string ColorCode { get; set; } = "gray";
     }
 
     public class HealthScoreHistory
     {
         public DateTime Timestamp { get; set; }
         public double Score { get; set; }
-        public string Metadata { get; set; }
+        public string? Metadata { get; set; }
     }
 }

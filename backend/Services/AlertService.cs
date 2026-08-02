@@ -152,7 +152,7 @@ namespace backend.Services
             }
         }
 
-        public async Task<bool> ResolveAlertAsync(Guid alertId, string resolvedBy, string resolutionNotes)
+        public async Task<bool> ResolveAlertAsync(Guid alertId, string resolvedBy, string? resolutionNotes)
         {
             try
             {
@@ -272,7 +272,7 @@ namespace backend.Services
             }
         }
 
-        private async Task RecordHistoryAsync(NpgsqlConnection conn, Guid alertId, string oldStatus, string newStatus, string changedBy, string notes)
+        private async Task RecordHistoryAsync(NpgsqlConnection conn, Guid alertId, string? oldStatus, string newStatus, string changedBy, string? notes)
         {
             try
             {

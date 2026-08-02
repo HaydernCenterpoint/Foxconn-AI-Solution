@@ -4,32 +4,40 @@ using backend.Controllers;
 using backend.Middleware;
 using backend.Services;
 using backend.Security;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var operationalConnectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required.");
+var approvedLegacyCatalogFingerprints = builder.Configuration
+    .GetSection("OperationalDatabase:ApprovedLegacyCatalogFingerprints")
+    .Get<string[]>() ?? [];
+var operationalDatabase = new OperationalDatabaseMigrationService(
+    operationalConnectionString,
+    approvedLegacyCatalogFingerprints: approvedLegacyCatalogFingerprints);
+
+if (args.Contains("--database-migrate", StringComparer.OrdinalIgnoreCase))
+{
+    var result = await operationalDatabase.MigrateAsync();
+    Console.WriteLine(
+        $"Operational database migrated to {result.HeadVersion}; applied {result.AppliedCount} migration(s).");
+    return;
+}
+
+var preflight = await operationalDatabase.PreflightAsync();
+
 if (args.Contains("--database-preflight", StringComparer.OrdinalIgnoreCase))
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required.");
-    await using var connection = new NpgsqlConnection(connectionString);
-    await connection.OpenAsync();
-    await using var command = new NpgsqlCommand(
-        "SELECT to_regclass('public.users') IS NOT NULL AND to_regclass('public.machines') IS NOT NULL",
-        connection);
-    if (await command.ExecuteScalarAsync() is not true)
-    {
-        throw new InvalidOperationException("Required operational database tables are missing.");
-    }
-
-    Console.WriteLine("Operational database preflight passed.");
+    Console.WriteLine($"Operational database preflight passed at migration {preflight.HeadVersion}.");
     return;
 }
 
@@ -58,6 +66,8 @@ builder.Services.AddControllers(options =>
 });
 builder.Services.Configure<OpenDataFusionCaptureOptions>(
     builder.Configuration.GetSection(OpenDataFusionCaptureOptions.SectionName));
+builder.Services.Configure<TelemetryIngressOptions>(
+    builder.Configuration.GetSection(TelemetryIngressOptions.SectionName));
 builder.Services.Configure<TimescaleOptions>(
     builder.Configuration.GetSection(TimescaleOptions.SectionName));
 builder.Services.Configure<CepStagingOptions>(
@@ -75,6 +85,13 @@ builder.Services.AddSwaggerGen(c =>
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
+    });
+    c.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
+    {
+        Description = "Service-account API key for service-to-service access (e.g. Odysseus MCP bridge). Example: \"X-API-Key: fii_sk_...\"",
+        Name = ApiKeySecret.HeaderName,
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
     });
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
@@ -157,10 +174,12 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = signingKey,
         ClockSkew = TimeSpan.Zero,
     };
-});
+})
+.AddScheme<AuthenticationSchemeOptions, ApiKeyAuthHandler>(ApiKeySecret.Scheme, _ => { });
 
 builder.Services.AddAuthorizationBuilder()
-    .SetFallbackPolicy(ApiSecurity.AuthenticatedFallbackPolicy);
+    .SetDefaultPolicy(ApiSecurity.AuthenticatedPolicyWithApiKey)
+    .SetFallbackPolicy(ApiSecurity.AuthenticatedPolicyWithApiKey);
 
 // Configure CORS Whitelist
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()

@@ -30,7 +30,7 @@ namespace backend.Controllers
         {
             try
             {
-                if (request?.AssetId == Guid.Empty)
+                if (request is null || request.AssetId == Guid.Empty)
                     return BadRequest(new { error = "Valid assetId is required" });
 
                 var startTime = DateTime.UtcNow;
@@ -90,6 +90,6 @@ namespace backend.Controllers
     public class AnomalyRequest
     {
         public Guid AssetId { get; set; }
-        public string MetricType { get; set; }
+        public string? MetricType { get; set; }
     }
 }

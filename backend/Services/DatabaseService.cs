@@ -3,659 +3,44 @@ using System.Data;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Mkz.Fusion.Contracts;
 using Npgsql;
 using NpgsqlTypes;
 
 namespace backend.Services
 {
+    public enum ClientLivenessEvent
+    {
+        Registration,
+        Heartbeat,
+        Disconnect,
+    }
+
     public class DatabaseService
     {
         private readonly string _connectionString;
         private readonly TimescaleTelemetryService _timescaleTelemetry;
         private readonly CepStagingPublisher _cepStagingPublisher;
+        private readonly ILogger<DatabaseService> _logger;
         private static readonly JsonSerializerOptions FusionJsonSerializerOptions = new(JsonSerializerDefaults.Web);
 
         public DatabaseService(
             IConfiguration configuration,
             TimescaleTelemetryService timescaleTelemetry,
-            CepStagingPublisher cepStagingPublisher)
+            CepStagingPublisher cepStagingPublisher,
+            ILogger<DatabaseService> logger)
         {
             _connectionString = configuration.GetConnectionString("DefaultConnection")
                 ?? throw new ArgumentNullException("ConnectionStrings:DefaultConnection is missing in configuration.");
             _timescaleTelemetry = timescaleTelemetry;
             _cepStagingPublisher = cepStagingPublisher;
-
-            // Initialize database schema and seed data synchronously during startup
-            InitializeDatabase();
+            _logger = logger;
         }
 
         public NpgsqlConnection CreateConnection()
         {
             return new NpgsqlConnection(_connectionString);
-        }
-
-        private void InitializeDatabase()
-        {
-            try
-            {
-                using var conn = CreateConnection();
-                conn.Open();
-
-                // ─── 1. production_lines ────────────────────────────────────────────────
-                ExecuteSync(conn, @"
-                    CREATE TABLE IF NOT EXISTS production_lines (
-                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                        name VARCHAR(100) NOT NULL,
-                        description TEXT,
-                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                    );");
-
-                // ─── 2. machines ────────────────────────────────────────────────────────
-                ExecuteSync(conn, @"
-                    CREATE TABLE IF NOT EXISTS machines (
-                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                        name VARCHAR(100) NOT NULL,
-                        ip VARCHAR(50),
-                        status VARCHAR(50) DEFAULT 'offline',
-                        plc_connected BOOLEAN DEFAULT FALSE,
-                        last_plc_data TEXT,
-                        client_id VARCHAR(100) UNIQUE,
-                        approval_status VARCHAR(20) NOT NULL DEFAULT 'APPROVED',
-                        cpu_percent DOUBLE PRECISION DEFAULT 0,
-                        ram_percent DOUBLE PRECISION DEFAULT 0,
-                        uptime_seconds BIGINT DEFAULT 0,
-                        last_heartbeat TIMESTAMP WITH TIME ZONE,
-                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                    );");
-
-                // Add missing columns to machines (migration for existing tables)
-                ExecuteSync(conn, @"
-                    DO $$
-                    BEGIN
-                        IF NOT EXISTS (
-                            SELECT 1 FROM information_schema.columns
-                            WHERE table_name='machines' AND column_name='client_id'
-                        ) THEN
-                            ALTER TABLE machines ADD COLUMN client_id VARCHAR(100);
-                        END IF;
-                        IF NOT EXISTS (
-                            SELECT 1 FROM pg_constraint WHERE conname = 'unique_client_id'
-                        ) THEN
-                            ALTER TABLE machines ADD CONSTRAINT unique_client_id UNIQUE (client_id);
-                        END IF;
-                        IF NOT EXISTS (
-                            SELECT 1 FROM information_schema.columns
-                            WHERE table_name='machines' AND column_name='plc_connected'
-                        ) THEN
-                            ALTER TABLE machines ADD COLUMN plc_connected BOOLEAN DEFAULT FALSE;
-                        END IF;
-                        IF NOT EXISTS (
-                            SELECT 1 FROM information_schema.columns
-                            WHERE table_name='machines' AND column_name='machine_code'
-                        ) THEN
-                            ALTER TABLE machines ADD COLUMN machine_code VARCHAR(50);
-                        END IF;
-                        IF NOT EXISTS (
-                            SELECT 1 FROM information_schema.columns
-                            WHERE table_name='machines' AND column_name='approval_status'
-                        ) THEN
-                            ALTER TABLE machines ADD COLUMN approval_status VARCHAR(20) NOT NULL DEFAULT 'APPROVED';
-                        END IF;
-                        IF NOT EXISTS (
-                            SELECT 1 FROM information_schema.columns
-                            WHERE table_name='machines' AND column_name='cpu_percent'
-                        ) THEN
-                            ALTER TABLE machines ADD COLUMN cpu_percent DOUBLE PRECISION DEFAULT 0;
-                        END IF;
-                        IF NOT EXISTS (
-                            SELECT 1 FROM information_schema.columns
-                            WHERE table_name='machines' AND column_name='ram_percent'
-                        ) THEN
-                            ALTER TABLE machines ADD COLUMN ram_percent DOUBLE PRECISION DEFAULT 0;
-                        END IF;
-                        IF NOT EXISTS (
-                            SELECT 1 FROM information_schema.columns
-                            WHERE table_name='machines' AND column_name='uptime_seconds'
-                        ) THEN
-                            ALTER TABLE machines ADD COLUMN uptime_seconds BIGINT DEFAULT 0;
-                        END IF;
-                        IF NOT EXISTS (
-                            SELECT 1 FROM information_schema.columns
-                            WHERE table_name='machines' AND column_name='last_heartbeat'
-                        ) THEN
-                            ALTER TABLE machines ADD COLUMN last_heartbeat TIMESTAMP WITH TIME ZONE;
-                        END IF;
-                    END
-                    $$;");
-
-                // ─── 3. line_machines ───────────────────────────────────────────────────
-                ExecuteSync(conn, @"
-                    CREATE TABLE IF NOT EXISTS line_machines (
-                        line_id UUID REFERENCES production_lines(id) ON DELETE CASCADE,
-                        machine_id UUID REFERENCES machines(id) ON DELETE CASCADE,
-                        sequence_order INT NOT NULL,
-                        PRIMARY KEY (line_id, machine_id)
-                    );");
-
-                // Asset catalog mirrors legacy operational identifiers without replacing them.
-                ExecuteSync(conn, $@"
-                    CREATE TABLE IF NOT EXISTS assets (
-                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                        type VARCHAR(32) NOT NULL CHECK (type IN ('plant', 'area', 'line', 'machine', 'sensor')),
-                        name VARCHAR(255) NOT NULL,
-                        code VARCHAR(255) NOT NULL UNIQUE,
-                        parent_id UUID REFERENCES assets(id) ON DELETE SET NULL,
-                        metadata JSONB NOT NULL DEFAULT '{{}}'::jsonb,
-                        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    );
-                    CREATE TABLE IF NOT EXISTS asset_relationships (
-                        parent_asset_id UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
-                        child_asset_id UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
-                        asset_id UUID REFERENCES assets(id) ON DELETE CASCADE,
-                        related_asset_id UUID REFERENCES assets(id) ON DELETE CASCADE,
-                        relationship_type VARCHAR(32) NOT NULL DEFAULT 'CONTAINS',
-                        PRIMARY KEY (parent_asset_id, child_asset_id, relationship_type),
-                        CHECK (parent_asset_id <> child_asset_id)
-                    );");
-
-                ExecuteSync(conn, $@"
-                    DO $$
-                    BEGIN
-                        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'asset_type') THEN
-                            EXECUTE 'ALTER TYPE asset_type ADD VALUE IF NOT EXISTS ''area''';
-                        END IF;
-                    END;
-                    $$;
-                    ALTER TABLE assets ADD COLUMN IF NOT EXISTS code VARCHAR(255);
-                    WITH root_plant AS (
-                        SELECT id
-                        FROM assets
-                        WHERE type::text = 'plant'
-                        ORDER BY created_at, id
-                        LIMIT 1
-                    )
-                    UPDATE assets asset
-                    SET code = CASE asset.type::text
-                        WHEN 'plant' THEN CASE WHEN asset.id = (SELECT id FROM root_plant)
-                            THEN '{AssetCatalogContract.PlantCode}' ELSE 'plant:' || asset.id::text END
-                        WHEN 'line' THEN 'line:' || asset.id::text
-                        WHEN 'machine' THEN 'machine:' || asset.id::text
-                        WHEN 'sensor' THEN 'sensor:' || asset.id::text
-                        WHEN 'station' THEN 'station:' || asset.id::text
-                        WHEN 'plc_tag' THEN 'plc-tag:' || asset.id::text
-                        ELSE 'asset:' || asset.id::text
-                    END
-                    WHERE asset.code IS NULL OR btrim(asset.code) = '';
-                    ALTER TABLE assets ALTER COLUMN code SET NOT NULL;
-                    CREATE UNIQUE INDEX IF NOT EXISTS assets_code_key ON assets(code);
-                ");
-
-                ExecuteSync(conn, @"
-                    ALTER TABLE asset_relationships ADD COLUMN IF NOT EXISTS parent_asset_id UUID;
-                    ALTER TABLE asset_relationships ADD COLUMN IF NOT EXISTS child_asset_id UUID;
-                    ALTER TABLE asset_relationships ADD COLUMN IF NOT EXISTS asset_id UUID;
-                    ALTER TABLE asset_relationships ADD COLUMN IF NOT EXISTS related_asset_id UUID;
-                    DO $$
-                    BEGIN
-                        IF EXISTS (
-                            SELECT 1 FROM information_schema.columns
-                            WHERE table_schema = 'public'
-                              AND table_name = 'asset_relationships'
-                              AND column_name = 'asset_id'
-                        ) THEN
-                            EXECUTE 'UPDATE asset_relationships
-                                     SET parent_asset_id = asset_id,
-                                         child_asset_id = related_asset_id
-                                     WHERE parent_asset_id IS NULL OR child_asset_id IS NULL';
-                        END IF;
-                    END;
-                    $$;
-                    UPDATE asset_relationships
-                    SET asset_id = parent_asset_id,
-                        related_asset_id = child_asset_id
-                    WHERE asset_id IS NULL OR related_asset_id IS NULL;
-                    ALTER TABLE asset_relationships ALTER COLUMN parent_asset_id SET NOT NULL;
-                    ALTER TABLE asset_relationships ALTER COLUMN child_asset_id SET NOT NULL;
-                    DO $$
-                    BEGIN
-                        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'asset_relationships_parent_asset_id_fkey') THEN
-                            ALTER TABLE asset_relationships
-                                ADD CONSTRAINT asset_relationships_parent_asset_id_fkey
-                                FOREIGN KEY (parent_asset_id) REFERENCES assets(id) ON DELETE CASCADE;
-                        END IF;
-                        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'asset_relationships_child_asset_id_fkey') THEN
-                            ALTER TABLE asset_relationships
-                                ADD CONSTRAINT asset_relationships_child_asset_id_fkey
-                                FOREIGN KEY (child_asset_id) REFERENCES assets(id) ON DELETE CASCADE;
-                        END IF;
-                        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'asset_relationships_parent_child_not_same') THEN
-                            ALTER TABLE asset_relationships
-                                ADD CONSTRAINT asset_relationships_parent_child_not_same
-                                CHECK (parent_asset_id <> child_asset_id);
-                        END IF;
-                    END;
-                    $$;
-                    CREATE UNIQUE INDEX IF NOT EXISTS asset_relationships_parent_child_type_key
-                        ON asset_relationships(parent_asset_id, child_asset_id, relationship_type);
-                ");
-
-                // Document storage remains owned by its document system; the catalog stores only durable links.
-                ExecuteSync(conn, @"
-                    CREATE TABLE IF NOT EXISTS asset_documents (
-                        asset_id UUID NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
-                        document_id VARCHAR(255) NOT NULL,
-                        relationship VARCHAR(32) NOT NULL CHECK (relationship IN ('manual', 'drawing', 'warranty')),
-                        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        PRIMARY KEY (asset_id, document_id, relationship)
-                    );
-                    ALTER TABLE asset_documents ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ;
-                    UPDATE asset_documents SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL;
-                    ALTER TABLE asset_documents ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;
-                    ALTER TABLE asset_documents ALTER COLUMN created_at SET NOT NULL;
-                    CREATE INDEX IF NOT EXISTS idx_asset_documents_asset_id ON asset_documents(asset_id);
-                ");
-
-                ExecuteSync(conn, $@"
-                    INSERT INTO assets (id, type, name, code)
-                    VALUES (gen_random_uuid(), 'plant', 'MKZ Factory', '{AssetCatalogContract.PlantCode}')
-                    ON CONFLICT (code) DO NOTHING;
-                    INSERT INTO assets (id, type, name, code, parent_id, metadata)
-                    SELECT pl.id, 'line', pl.name, 'line:' || pl.id::text, plant.id,
-                           jsonb_strip_nulls(jsonb_build_object('description', pl.description))
-                    FROM production_lines pl
-                    CROSS JOIN LATERAL (
-                        SELECT id FROM assets WHERE code = '{AssetCatalogContract.PlantCode}'
-                    ) plant
-                    ON CONFLICT (id) DO UPDATE SET
-                        type = EXCLUDED.type,
-                        name = EXCLUDED.name,
-                        code = EXCLUDED.code,
-                        parent_id = EXCLUDED.parent_id,
-                        metadata = EXCLUDED.metadata,
-                        updated_at = CURRENT_TIMESTAMP;
-                    INSERT INTO assets (id, type, name, code, parent_id, metadata)
-                    SELECT m.id, 'machine', m.name, 'machine:' || m.id::text,
-                           COALESCE(
-                               (SELECT line_id FROM line_machines WHERE machine_id = m.id ORDER BY line_id LIMIT 1),
-                               plant.id),
-                           jsonb_strip_nulls(jsonb_build_object('machineCode', m.machine_code, 'clientId', m.client_id))
-                    FROM machines m
-                    CROSS JOIN LATERAL (
-                        SELECT id FROM assets WHERE code = '{AssetCatalogContract.PlantCode}'
-                    ) plant
-                    ON CONFLICT (id) DO UPDATE SET
-                        type = EXCLUDED.type,
-                        name = EXCLUDED.name,
-                        code = EXCLUDED.code,
-                        parent_id = EXCLUDED.parent_id,
-                        metadata = EXCLUDED.metadata,
-                        updated_at = CURRENT_TIMESTAMP;
-                    INSERT INTO asset_relationships (parent_asset_id, child_asset_id, asset_id, related_asset_id, relationship_type)
-                    SELECT plant.id, line.id, plant.id, line.id, 'CONTAINS'
-                    FROM assets plant CROSS JOIN production_lines line
-                    WHERE plant.code = '{AssetCatalogContract.PlantCode}'
-                    ON CONFLICT DO NOTHING;
-                    INSERT INTO asset_relationships (parent_asset_id, child_asset_id, asset_id, related_asset_id, relationship_type)
-                    SELECT line_id, machine_id, line_id, machine_id, 'CONTAINS' FROM line_machines
-                    ON CONFLICT DO NOTHING;
-                ");
-
-                ExecuteSync(conn, $@"
-                    CREATE OR REPLACE FUNCTION sync_line_asset() RETURNS trigger AS $$
-                    DECLARE plant_id UUID;
-                    BEGIN
-                        IF TG_OP = 'DELETE' THEN
-                            DELETE FROM assets WHERE id = OLD.id;
-                            RETURN OLD;
-                        END IF;
-
-                        SELECT id INTO plant_id FROM assets WHERE code = '{AssetCatalogContract.PlantCode}';
-                        INSERT INTO assets (id, type, name, code, parent_id, metadata)
-                        VALUES (NEW.id, 'line', NEW.name, 'line:' || NEW.id::text, plant_id,
-                                jsonb_strip_nulls(jsonb_build_object('description', NEW.description)))
-                        ON CONFLICT (id) DO UPDATE SET
-                            type = EXCLUDED.type,
-                            name = EXCLUDED.name,
-                            code = EXCLUDED.code,
-                            parent_id = EXCLUDED.parent_id,
-                            metadata = EXCLUDED.metadata,
-                            updated_at = CURRENT_TIMESTAMP;
-
-                        IF plant_id IS NOT NULL THEN
-                            INSERT INTO asset_relationships (parent_asset_id, child_asset_id, asset_id, related_asset_id, relationship_type)
-                            VALUES (plant_id, NEW.id, plant_id, NEW.id, 'CONTAINS') ON CONFLICT DO NOTHING;
-                        END IF;
-                        RETURN NEW;
-                    END;
-                    $$ LANGUAGE plpgsql;
-
-                    CREATE OR REPLACE FUNCTION sync_machine_asset() RETURNS trigger AS $$
-                    DECLARE parent_id UUID;
-                    BEGIN
-                        IF TG_OP = 'DELETE' THEN
-                            DELETE FROM assets WHERE id = OLD.id;
-                            RETURN OLD;
-                        END IF;
-
-                        SELECT line_id INTO parent_id
-                        FROM line_machines
-                        WHERE machine_id = NEW.id
-                        ORDER BY line_id
-                        LIMIT 1;
-                        IF parent_id IS NULL THEN
-                            SELECT id INTO parent_id FROM assets WHERE code = '{AssetCatalogContract.PlantCode}';
-                        END IF;
-
-                        INSERT INTO assets (id, type, name, code, parent_id, metadata)
-                        VALUES (NEW.id, 'machine', NEW.name, 'machine:' || NEW.id::text, parent_id,
-                                jsonb_strip_nulls(jsonb_build_object('machineCode', NEW.machine_code, 'clientId', NEW.client_id)))
-                        ON CONFLICT (id) DO UPDATE SET
-                            type = EXCLUDED.type,
-                            name = EXCLUDED.name,
-                            code = EXCLUDED.code,
-                            parent_id = EXCLUDED.parent_id,
-                            metadata = EXCLUDED.metadata,
-                            updated_at = CURRENT_TIMESTAMP;
-                        RETURN NEW;
-                    END;
-                    $$ LANGUAGE plpgsql;
-
-                    CREATE OR REPLACE FUNCTION sync_line_machine_asset_relationship() RETURNS trigger AS $$
-                    BEGIN
-                        IF TG_OP = 'DELETE' THEN
-                            DELETE FROM asset_relationships
-                            WHERE parent_asset_id = OLD.line_id
-                              AND child_asset_id = OLD.machine_id
-                              AND relationship_type = 'CONTAINS';
-                            RETURN OLD;
-                        END IF;
-
-                        INSERT INTO asset_relationships (parent_asset_id, child_asset_id, asset_id, related_asset_id, relationship_type)
-                        VALUES (NEW.line_id, NEW.machine_id, NEW.line_id, NEW.machine_id, 'CONTAINS') ON CONFLICT DO NOTHING;
-                        RETURN NEW;
-                    END;
-                    $$ LANGUAGE plpgsql;
-
-                    DROP TRIGGER IF EXISTS production_lines_asset_sync ON production_lines;
-                    CREATE TRIGGER production_lines_asset_sync
-                    AFTER INSERT OR UPDATE OR DELETE ON production_lines
-                    FOR EACH ROW EXECUTE FUNCTION sync_line_asset();
-                    DROP TRIGGER IF EXISTS machines_asset_sync ON machines;
-                    CREATE TRIGGER machines_asset_sync
-                    AFTER INSERT OR UPDATE OR DELETE ON machines
-                    FOR EACH ROW EXECUTE FUNCTION sync_machine_asset();
-                    DROP TRIGGER IF EXISTS line_machines_asset_sync ON line_machines;
-                    CREATE TRIGGER line_machines_asset_sync
-                    AFTER INSERT OR DELETE ON line_machines
-                    FOR EACH ROW EXECUTE FUNCTION sync_line_machine_asset_relationship();
-                ");
-
-                // ─── 4. machine_hourly_production ───────────────────────────────────────
-                ExecuteSync(conn, @"
-                    CREATE TABLE IF NOT EXISTS machine_hourly_production (
-                        id BIGSERIAL PRIMARY KEY,
-                        machine_id UUID REFERENCES machines(id) ON DELETE CASCADE,
-                        prod_date DATE NOT NULL,
-                        prod_hour INT NOT NULL,
-                        produced_qty_start INT NOT NULL DEFAULT 0,
-                        produced_qty_end INT NOT NULL DEFAULT 0,
-                        hourly_qty INT NOT NULL DEFAULT 0,
-                        plc_run_time_start INT NOT NULL DEFAULT 0,
-                        plc_run_time_end INT NOT NULL DEFAULT 0,
-                        avg_cpu REAL,
-                        avg_ram REAL,
-                        last_raw_qty INT NOT NULL DEFAULT 0,
-                        oee_availability REAL DEFAULT 0,
-                        received_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                        CONSTRAINT unique_machine_hour UNIQUE (machine_id, prod_date, prod_hour)
-                    );");
-
-                // Migration: add new columns if not present (idempotent)
-                ExecuteSync(conn, @"
-                    DO $$
-                    BEGIN
-                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
-                                       WHERE table_name='machine_hourly_production' AND column_name='last_raw_qty') THEN
-                            ALTER TABLE machine_hourly_production ADD COLUMN last_raw_qty INT NOT NULL DEFAULT 0;
-                        END IF;
-                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
-                                       WHERE table_name='machine_hourly_production' AND column_name='oee_availability') THEN
-                            ALTER TABLE machine_hourly_production ADD COLUMN oee_availability REAL DEFAULT 0;
-                        END IF;
-                    END
-                    $$;");;
-
-                // ─── 5. users ───────────────────────────────────────────────────────────
-                ExecuteSync(conn, @"
-                    CREATE TABLE IF NOT EXISTS users (
-                        id SERIAL PRIMARY KEY,
-                        username VARCHAR(50) UNIQUE NOT NULL,
-                        password VARCHAR(100) NOT NULL,
-                        role VARCHAR(20) NOT NULL DEFAULT 'GUEST'
-                    );");
-
-                // ─── 6. audit_logs ──────────────────────────────────────────────────────
-                ExecuteSync(conn, @"
-                    CREATE TABLE IF NOT EXISTS audit_logs (
-                        id SERIAL PRIMARY KEY,
-                        username VARCHAR(100) NOT NULL,
-                        action VARCHAR(100) NOT NULL,
-                        details TEXT,
-                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                    );");
-
-                // ─── 7. plc_clients ─────────────────────────────────────────────────────
-                ExecuteSync(conn, @"
-                    CREATE TABLE IF NOT EXISTS plc_clients (
-                        id BIGSERIAL PRIMARY KEY,
-                        client_id VARCHAR(100) UNIQUE NOT NULL,
-                        name VARCHAR(200),
-                        ip_address VARCHAR(50),
-                        status VARCHAR(20) NOT NULL DEFAULT 'OFFLINE',
-                        approval_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-                        machine_id UUID REFERENCES machines(id) ON DELETE SET NULL,
-                        cpu_percent DOUBLE PRECISION DEFAULT 0,
-                        ram_percent DOUBLE PRECISION DEFAULT 0,
-                        uptime_seconds BIGINT DEFAULT 0,
-                        last_heartbeat TIMESTAMP WITH TIME ZONE,
-                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                    );");
-
-                // Migrate existing plc_clients rows (add approval_status, machine_id if missing)
-                ExecuteSync(conn, @"
-                    DO $$
-                    BEGIN
-                        IF NOT EXISTS (
-                            SELECT 1 FROM information_schema.columns
-                            WHERE table_name='plc_clients' AND column_name='approval_status'
-                        ) THEN
-                            ALTER TABLE plc_clients ADD COLUMN approval_status VARCHAR(20) NOT NULL DEFAULT 'PENDING';
-                        END IF;
-                        IF NOT EXISTS (
-                            SELECT 1 FROM information_schema.columns
-                            WHERE table_name='plc_clients' AND column_name='machine_id'
-                        ) THEN
-                            ALTER TABLE plc_clients ADD COLUMN machine_id UUID REFERENCES machines(id) ON DELETE SET NULL;
-                        END IF;
-                    END
-                    $$;");
-
-                // ─── 8. alarms ──────────────────────────────────────────────────────────
-                ExecuteSync(conn, @"
-                    CREATE TABLE IF NOT EXISTS alarms (
-                        id BIGSERIAL PRIMARY KEY,
-                        machine_id UUID REFERENCES machines(id) ON DELETE CASCADE,
-                        severity VARCHAR(20) NOT NULL DEFAULT 'LOW',
-                        message TEXT NOT NULL,
-                        status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-                        acknowledged_by VARCHAR(100),
-                        acknowledged_at TIMESTAMP WITH TIME ZONE,
-                        resolved_at TIMESTAMP WITH TIME ZONE,
-                        notes TEXT,
-                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                    );");
-
-                // ─── 9. simulation_configs ───────────────────────────────────────────────
-                ExecuteSync(conn, @"
-                    CREATE TABLE IF NOT EXISTS simulation_configs (
-                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                        machine_id UUID UNIQUE NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
-                        enabled BOOLEAN NOT NULL DEFAULT false,
-                        temperature_min DECIMAL(5,2) DEFAULT 20.0,
-                        temperature_max DECIMAL(5,2) DEFAULT 80.0,
-                        pressure_min DECIMAL(6,2) DEFAULT 1.0,
-                        pressure_max DECIMAL(6,2) DEFAULT 10.0,
-                        speed_min DECIMAL(6,2) DEFAULT 0.0,
-                        speed_max DECIMAL(6,2) DEFAULT 100.0,
-                        production_rate DECIMAL(8,2) DEFAULT 10.0,
-                        error_probability DECIMAL(3,2) DEFAULT 0.02,
-                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                    );");
-
-                // ─── 10. machine_telemetry_history ──────────────────────────────────────
-                ExecuteSync(conn, @"
-                    CREATE TABLE IF NOT EXISTS machine_telemetry_history (
-                        id BIGSERIAL PRIMARY KEY,
-                        machine_id UUID NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
-                        status VARCHAR(50),
-                        plc_connected BOOLEAN,
-                        production_count INT,
-                        cycle_time REAL,
-                        cpu_percent REAL,
-                        ram_percent REAL,
-                        uptime_seconds BIGINT,
-                        tags JSONB,
-                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                    );");
-
-                ExecuteSync(conn, @"
-                    CREATE INDEX IF NOT EXISTS idx_telemetry_hist_machine_time 
-                    ON machine_telemetry_history(machine_id, created_at DESC);");
-
-                // ─── 11. machine_telemetry ───────────────────────────────────────────────
-                ExecuteSync(conn, @"
-                    CREATE TABLE IF NOT EXISTS machine_telemetry (
-                        id BIGSERIAL PRIMARY KEY,
-                        machine_id UUID NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
-                        raw_json JSONB NOT NULL,
-                        sequence BIGINT NOT NULL DEFAULT 0,
-                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                    );");
-
-                ExecuteSync(conn, @"
-                    CREATE INDEX IF NOT EXISTS idx_machine_telemetry_machine_seq
-                    ON machine_telemetry(machine_id, sequence DESC);");
-
-                // ─── 12. normalized telemetry and CEP event log ──────────────────────────
-                // Kept in the operational PostgreSQL database; TimescaleDB is the staged
-                // analytical target and receives the append-only raw stream separately.
-                ExecuteSync(conn, @"
-                    CREATE TABLE IF NOT EXISTS telemetry_data (
-                        time TIMESTAMPTZ NOT NULL,
-                        asset_id UUID NOT NULL,
-                        metric VARCHAR(64) NOT NULL,
-                        value DOUBLE PRECISION NOT NULL,
-                        unit VARCHAR(16),
-                        source VARCHAR(256)
-                    );
-                    CREATE INDEX IF NOT EXISTS idx_telemetry_data_asset_metric_time
-                        ON telemetry_data (asset_id, metric, time DESC);
-                    CREATE INDEX IF NOT EXISTS idx_telemetry_data_time_brin
-                        ON telemetry_data USING BRIN (time) WITH (pages_per_range = 32);
-
-                    CREATE TABLE IF NOT EXISTS event_log (
-                        event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                        schema_version INTEGER NOT NULL DEFAULT 1,
-                        timestamp TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        asset_id UUID NOT NULL,
-                        event_type VARCHAR(64) NOT NULL,
-                        severity VARCHAR(16) NOT NULL,
-                        source VARCHAR(256),
-                        payload JSONB,
-                        correlation_id VARCHAR(256),
-                        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    );
-                    CREATE INDEX IF NOT EXISTS idx_event_log_asset_time
-                        ON event_log (asset_id, timestamp DESC);
-                    CREATE INDEX IF NOT EXISTS idx_event_log_type_severity
-                        ON event_log (event_type, severity);");
-
-                ExecuteSync(conn, @"
-                    CREATE TABLE IF NOT EXISTS fusion_outbox (
-                        id UUID PRIMARY KEY,
-                        schema_version INTEGER NOT NULL,
-                        event_type VARCHAR(100) NOT NULL,
-                        event_key VARCHAR(512) NOT NULL UNIQUE,
-                        payload JSONB NOT NULL,
-                        occurred_at TIMESTAMP WITH TIME ZONE NOT NULL,
-                        status VARCHAR(16) NOT NULL,
-                        attempts INTEGER NOT NULL DEFAULT 0,
-                        available_at TIMESTAMP WITH TIME ZONE NOT NULL,
-                        locked_at TIMESTAMP WITH TIME ZONE NULL,
-                        lock_id UUID NULL,
-                        delivered_at TIMESTAMP WITH TIME ZONE NULL,
-                        last_error TEXT NULL,
-                        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    );");
-
-                ExecuteSync(conn, @"
-                    CREATE INDEX IF NOT EXISTS idx_fusion_outbox_dispatch
-                    ON fusion_outbox (status, available_at, created_at);");
-
-                ExecuteSync(conn, @"
-                    CREATE TABLE IF NOT EXISTS telemetry_data (
-                        time TIMESTAMP WITH TIME ZONE NOT NULL,
-                        asset_id UUID NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
-                        metric VARCHAR(100) NOT NULL,
-                        value DOUBLE PRECISION NOT NULL,
-                        unit VARCHAR(32),
-                        source VARCHAR(255),
-                        PRIMARY KEY (time, asset_id, metric)
-                    );
-
-                    CREATE INDEX IF NOT EXISTS idx_telemetry_data_query
-                    ON telemetry_data (asset_id, metric, time DESC);
-
-                    CREATE TABLE IF NOT EXISTS event_log (
-                        event_id UUID PRIMARY KEY,
-                        schema_version INTEGER NOT NULL,
-                        timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
-                        asset_id UUID NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
-                        event_type VARCHAR(100) NOT NULL,
-                        severity VARCHAR(20) NOT NULL,
-                        source VARCHAR(255),
-                        payload JSONB,
-                        correlation_id VARCHAR(255)
-                    );
-
-                    CREATE INDEX IF NOT EXISTS idx_event_log_query
-                    ON event_log (asset_id, timestamp DESC);");
-
-                // Accounts are provisioned explicitly; startup must never create or change credentials.
-
-                // Auto-create simulation configs for machines and enable them by default
-                string seedSimConfigsSql = @"
-                    INSERT INTO simulation_configs (machine_id, enabled, temperature_min, temperature_max, pressure_min, pressure_max, speed_min, speed_max, production_rate, error_probability)
-                    SELECT id, true, 20.0, 80.0, 1.0, 10.0, 0.0, 100.0, 15.0, 0.02
-                    FROM machines
-                    ON CONFLICT (machine_id) DO NOTHING;";
-                ExecuteSync(conn, seedSimConfigsSql);
-
-                Console.WriteLine("[DB] Database initialized successfully.");
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Database initialization failed.", ex);
-            }
-        }
-
-        private static void ExecuteSync(NpgsqlConnection conn, string sql)
-        {
-            using var cmd = new NpgsqlCommand(sql, conn);
-            cmd.ExecuteNonQuery();
         }
 
         public async Task ExecuteNonQueryAsync(string sql, Action<NpgsqlParameterCollection>? parameterBinder = null)
@@ -678,52 +63,130 @@ namespace backend.Services
             return (T)result;
         }
 
-        /// <summary>
-        /// Upsert a PLC client record directly as a machine based on the clientId reported from the TCP socket.
-        /// </summary>
-        public async Task UpsertPlcClientAsync(string clientId, string? name, string? machineCode, string? ipAddress, double cpu, double ram, long uptimeSeconds)
+        public async Task<TelemetryApproval> UpdateClientLivenessAsync(
+            string clientId,
+            string? name,
+            string? machineCode,
+            string? ipAddress,
+            string? machineStatus,
+            bool? plcConnected,
+            ClientLivenessEvent livenessEvent,
+            CancellationToken cancellationToken = default)
         {
+            if (!Guid.TryParse(clientId, out var machineId))
+            {
+                return TelemetryApproval.Unavailable;
+            }
+
+            await using var connection = CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+            await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
             try
             {
-                Guid machineId = Guid.TryParse(clientId, out var parsedGuid) ? parsedGuid : Guid.NewGuid();
-
-                // On first insert: approval_status = 'PENDING' (admin must approve)
-                // On conflict: do NOT overwrite approval_status - keep whatever admin set.
-                // Overwrite name/machine_code if they are null, empty, or currently equal to the client_id (raw GUID).
-                string sql = @"
-                    INSERT INTO machines (id, client_id, name, machine_code, ip, status, approval_status, cpu_percent, ram_percent, uptime_seconds, last_heartbeat)
-                    VALUES (@id, @clientId, @name, @machineCode, @ip, 'offline', 'PENDING', @cpu, @ram, @uptime, NOW())
+                var stableName = name ?? (clientId.Length >= 8 ? $"Machine {clientId[..8]}" : "Machine");
+                const string catalogSql = """
+                    INSERT INTO machines (id, client_id, name, machine_code, ip, approval_status)
+                    VALUES (@machineId, @clientId, @name, @machineCode, @ip, 'PENDING')
                     ON CONFLICT (client_id) DO UPDATE SET
-                        name = CASE 
-                            WHEN machines.name IS NULL OR machines.name = '' OR machines.name = machines.client_id THEN EXCLUDED.name 
-                            ELSE machines.name 
+                        name = CASE
+                            WHEN machines.name IS NULL OR machines.name = '' OR machines.name = machines.client_id
+                                THEN EXCLUDED.name
+                            ELSE machines.name
                         END,
-                        machine_code = CASE 
-                            WHEN machines.machine_code IS NULL OR machines.machine_code = '' OR machines.machine_code = machines.client_id THEN EXCLUDED.machine_code 
-                            ELSE machines.machine_code 
-                        END,
-                        ip = EXCLUDED.ip,
-                        status = machines.status,
-                        cpu_percent = CASE WHEN EXCLUDED.cpu_percent > 0 THEN EXCLUDED.cpu_percent ELSE machines.cpu_percent END,
-                        ram_percent = CASE WHEN EXCLUDED.ram_percent > 0 THEN EXCLUDED.ram_percent ELSE machines.ram_percent END,
-                        uptime_seconds = CASE WHEN EXCLUDED.uptime_seconds > 0 THEN EXCLUDED.uptime_seconds ELSE machines.uptime_seconds END,
-                        last_heartbeat = NOW()";
-
-                await ExecuteNonQueryAsync(sql, p =>
+                        machine_code = COALESCE(machines.machine_code, EXCLUDED.machine_code),
+                        ip = EXCLUDED.ip
+                    """;
+                await using (var catalog = new NpgsqlCommand(catalogSql, connection, transaction))
                 {
-                    p.AddWithValue("id", machineId);
-                    p.AddWithValue("clientId", clientId);
-                    p.AddWithValue("name", (object?)(name) ?? (clientId.Length >= 8 ? $"Machine {clientId[..8]}" : "Machine"));
-                    p.AddWithValue("machineCode", (object?)(machineCode) ?? DBNull.Value);
-                    p.AddWithValue("ip", (object?)(ipAddress) ?? DBNull.Value);
-                    p.AddWithValue("cpu", cpu);
-                    p.AddWithValue("ram", ram);
-                    p.AddWithValue("uptime", uptimeSeconds);
-                });
+                    catalog.Parameters.AddWithValue("machineId", machineId);
+                    catalog.Parameters.AddWithValue("clientId", clientId);
+                    catalog.Parameters.AddWithValue("name", stableName);
+                    catalog.Parameters.AddWithValue("machineCode", (object?)machineCode ?? DBNull.Value);
+                    catalog.Parameters.AddWithValue("ip", (object?)ipAddress ?? DBNull.Value);
+                    await catalog.ExecuteNonQueryAsync(cancellationToken);
+                }
+
+                const string livenessSql = """
+                    INSERT INTO plc_clients
+                        (client_id, name, ip_address, status, approval_status, machine_id, last_heartbeat)
+                    VALUES
+                        (@clientId, @name, @ip, @status, 'PENDING', @machineId, CURRENT_TIMESTAMP)
+                    ON CONFLICT (client_id) DO UPDATE SET
+                        name = COALESCE(EXCLUDED.name, plc_clients.name),
+                        ip_address = EXCLUDED.ip_address,
+                        status = EXCLUDED.status,
+                        machine_id = EXCLUDED.machine_id,
+                        last_heartbeat = CURRENT_TIMESTAMP
+                    """;
+                await using (var liveness = new NpgsqlCommand(livenessSql, connection, transaction))
+                {
+                    liveness.Parameters.AddWithValue("clientId", clientId);
+                    liveness.Parameters.AddWithValue("name", (object?)name ?? DBNull.Value);
+                    liveness.Parameters.AddWithValue("ip", (object?)ipAddress ?? DBNull.Value);
+                    liveness.Parameters.AddWithValue(
+                        "status",
+                        livenessEvent == ClientLivenessEvent.Disconnect ? "OFFLINE" : "ONLINE");
+                    liveness.Parameters.AddWithValue("machineId", machineId);
+                    await liveness.ExecuteNonQueryAsync(cancellationToken);
+                }
+
+                var approval = await ReadMachineContextForUpdateAsync(
+                    connection,
+                    transaction,
+                    machineId,
+                    cancellationToken);
+                if (approval.State != MachineApprovalState.Approved)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                    return approval.State == MachineApprovalState.Unapproved
+                        ? TelemetryApproval.Unapproved
+                        : TelemetryApproval.Unavailable;
+                }
+
+                const string stateSql = """
+                    UPDATE machines SET
+                        status = CASE
+                            WHEN @event = 'Registration' AND status = 'OFFLINE' THEN 'STOPPED'
+                            WHEN @event = 'Disconnect' THEN 'OFFLINE'
+                            WHEN @event = 'Heartbeat' AND @status IS NOT NULL THEN @status
+                            ELSE status
+                        END,
+                        plc_connected = CASE
+                            WHEN @event = 'Disconnect' THEN false
+                            ELSE COALESCE(@plcConnected, plc_connected)
+                        END,
+                        last_heartbeat = CURRENT_TIMESTAMP
+                    WHERE id = @machineId
+                    """;
+                await using (var state = new NpgsqlCommand(stateSql, connection, transaction))
+                {
+                    state.Parameters.AddWithValue("event", livenessEvent.ToString());
+                    state.Parameters.AddWithValue("status", (object?)machineStatus ?? DBNull.Value);
+                    state.Parameters.AddWithValue("plcConnected", (object?)plcConnected ?? DBNull.Value);
+                    state.Parameters.AddWithValue("machineId", machineId);
+                    await state.ExecuteNonQueryAsync(cancellationToken);
+                }
+
+                if (livenessEvent == ClientLivenessEvent.Disconnect)
+                {
+                    const string historySql = """
+                        INSERT INTO machine_telemetry_history
+                            (machine_id, status, plc_connected, production_count, cycle_time,
+                             cpu_percent, ram_percent, uptime_seconds, tags, created_at)
+                        VALUES (@machineId, 'OFFLINE', false, 0, 0, 0, 0, 0, '{}'::jsonb, CURRENT_TIMESTAMP)
+                        """;
+                    await using var history = new NpgsqlCommand(historySql, connection, transaction);
+                    history.Parameters.AddWithValue("machineId", machineId);
+                    await history.ExecuteNonQueryAsync(cancellationToken);
+                }
+
+                await transaction.CommitAsync(cancellationToken);
+                return TelemetryApproval.Approved;
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"[DB] UpsertPlcClientAsync failed: {ex.Message}");
+                await transaction.RollbackAsync(CancellationToken.None);
+                throw;
             }
         }
         /// <summary>
@@ -809,96 +272,171 @@ namespace backend.Services
             }
         }
 
-        public async Task<bool> PersistTelemetryAndFusionOutboxAsync(
-            TelemetryCaptureInput input,
-            bool captureEnabled)
+        public Task<TelemetryDeliveryResult> PersistTelemetryAndFusionOutboxAsync(
+            TelemetryDeliveryItem item,
+            CancellationToken cancellationToken = default) =>
+            PersistTelemetryBatchAndFusionOutboxAsync([item], cancellationToken);
+
+        public async Task<TelemetryDeliveryResult> PersistTelemetryBatchAndFusionOutboxAsync(
+            IReadOnlyList<TelemetryDeliveryItem> items,
+            CancellationToken cancellationToken = default)
         {
+            if (items.Count == 0)
+            {
+                return new(TelemetryDeliveryState.Malformed, "Telemetry batch is empty.");
+            }
+
+            var committed = new List<(long SourceId, DateTimeOffset OccurredAt, TelemetryCaptureInput Input)>();
             try
             {
                 await using var connection = CreateConnection();
-                await connection.OpenAsync();
-                await using var transaction = await connection.BeginTransactionAsync();
+                await connection.OpenAsync(cancellationToken);
+                await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
                 try
                 {
-                    long sourceId;
-                    DateTimeOffset persistedOccurredAt;
-                    const string rawTelemetrySql = @"
-                        INSERT INTO machine_telemetry (machine_id, raw_json, sequence, created_at)
-                        VALUES (@machineId, CAST(@rawJson AS jsonb), @sequence, @occurredAt)
-                        RETURNING id, created_at";
-
-                    await using (var rawTelemetryCommand = new NpgsqlCommand(rawTelemetrySql, connection, transaction))
+                    foreach (var item in items)
                     {
-                        rawTelemetryCommand.Parameters.AddWithValue("machineId", input.MachineId);
-                        rawTelemetryCommand.Parameters.AddWithValue("rawJson", input.RawTelemetryJson);
-                        rawTelemetryCommand.Parameters.AddWithValue("sequence", input.Sequence);
-                        rawTelemetryCommand.Parameters.AddWithValue("occurredAt", input.OccurredAt.UtcDateTime);
-                        await using var reader = await rawTelemetryCommand.ExecuteReaderAsync();
-                        if (!await reader.ReadAsync())
+                        var approval = await ReadMachineContextForUpdateAsync(
+                            connection,
+                            transaction,
+                            item.Input.MachineId,
+                            cancellationToken);
+                        if (approval.State == MachineApprovalState.Missing)
                         {
-                            throw new InvalidOperationException("Primary telemetry insert did not return a row.");
+                            await transaction.RollbackAsync(cancellationToken);
+                            _logger.LogWarning(
+                                "Telemetry delivery rejected because machine {MachineId} was not found",
+                                item.Input.MachineId);
+                            return new TelemetryDeliveryResult(
+                                TelemetryDeliveryState.PermanentFailure,
+                                "The device is not registered.")
+                            {
+                                Approval = TelemetryApproval.Unavailable,
+                            };
+                        }
+                        if (approval.State == MachineApprovalState.Unapproved)
+                        {
+                            await transaction.RollbackAsync(cancellationToken);
+                            _logger.LogWarning(
+                                "Telemetry delivery rejected because machine {MachineId} is not approved",
+                                item.Input.MachineId);
+                            return new TelemetryDeliveryResult(
+                                TelemetryDeliveryState.PermanentFailure,
+                                "Device is not approved.")
+                            {
+                                Approval = TelemetryApproval.Unapproved,
+                            };
                         }
 
-                        sourceId = reader.GetInt64(0);
-                        persistedOccurredAt = reader.GetFieldValue<DateTimeOffset>(1);
-                    }
-
-                    if (captureEnabled)
-                    {
-                        var context = await ReadMachineContextAsync(connection, transaction, input.MachineId);
-                        if (context is null)
+                        var receipt = await TryInsertReceiptAsync(
+                            connection,
+                            transaction,
+                            item,
+                            cancellationToken);
+                        if (receipt.State == ReceiptInsertState.Duplicate)
                         {
-                            await transaction.RollbackAsync();
-                            Console.WriteLine($"[DB] Fusion capture skipped because machine {input.MachineId} was not found.");
-                            return false;
+                            continue;
+                        }
+                        if (receipt.State == ReceiptInsertState.Conflict)
+                        {
+                            await transaction.RollbackAsync(cancellationToken);
+                            _logger.LogWarning(
+                                "Telemetry receipt conflict for device {DeviceId} and message {MessageId}",
+                                item.DeviceId,
+                                item.MessageId);
+                            return new(
+                                TelemetryDeliveryState.Conflict,
+                                "The device/sequence or device/message receipt already exists with a different payload.")
+                            {
+                                Approval = TelemetryApproval.Approved,
+                            };
                         }
 
-                        var fusionEvent = TelemetryFusionEventFactory.Create(input, context.Machine, context.Line);
-                        await InsertFusionOutboxAsync(connection, transaction, fusionEvent);
+                        var (sourceId, persistedOccurredAt) = await InsertRawTelemetryAsync(
+                            connection,
+                            transaction,
+                            item.Input,
+                            cancellationToken);
+                        await AttachReceiptToTelemetryAsync(
+                            connection,
+                            transaction,
+                            receipt.ReceiptId,
+                            sourceId,
+                            cancellationToken);
+
+                        await ProjectOperationalTelemetryAsync(
+                            connection,
+                            transaction,
+                            sourceId,
+                            persistedOccurredAt,
+                            item.Input,
+                            cancellationToken);
+
+                        var fusionEvent = TelemetryFusionEventFactory.Create(
+                            item.Input,
+                            approval.Context!.Machine,
+                            approval.Context.Line);
+                        await InsertFusionOutboxAsync(
+                            connection,
+                            transaction,
+                            fusionEvent,
+                            cancellationToken);
+                        await InsertSecondaryDeliveriesAsync(
+                            connection,
+                            transaction,
+                            receipt.ReceiptId!.Value,
+                            cancellationToken);
+                        committed.Add((sourceId, persistedOccurredAt, item.Input));
                     }
 
-                    await transaction.CommitAsync();
-                    _cepStagingPublisher.TryPublish(sourceId, input);
-                    await _timescaleTelemetry.TryWriteAsync(new TimescaleTelemetryPoint(
-                        sourceId,
-                        input.MachineId,
-                        input.Sequence,
-                        persistedOccurredAt,
-                        input.RawTelemetryJson));
-                    return true;
+                    await transaction.CommitAsync(cancellationToken);
                 }
                 catch
                 {
-                    await transaction.RollbackAsync();
+                    await transaction.RollbackAsync(CancellationToken.None);
                     throw;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DB] PersistTelemetryAndFusionOutboxAsync failed: {ex.Message}");
-                return false;
+                var result = ClassifyDatabaseFailure(ex);
+                _logger.LogError(
+                    ex,
+                    "Operations telemetry transaction failed with delivery state {DeliveryState} for {ItemCount} item(s)",
+                    result.State,
+                    items.Count);
+                return result;
             }
+
+            _logger.LogInformation(
+                "Operations telemetry transaction committed {CommittedCount} new item(s) and observed {DuplicateCount} duplicate(s)",
+                committed.Count,
+                items.Count - committed.Count);
+            return committed.Count == 0
+                ? TelemetryDeliveryResult.Duplicate(TelemetryApproval.Approved)
+                : TelemetryDeliveryResult.Committed(TelemetryApproval.Approved);
         }
 
-        private static async Task<MachineContext?> ReadMachineContextAsync(
+        private static async Task<MachineApprovalResult> ReadMachineContextForUpdateAsync(
             NpgsqlConnection connection,
             NpgsqlTransaction transaction,
-            Guid machineId)
+            Guid machineId,
+            CancellationToken cancellationToken = default)
         {
             const string sql = @"
-                SELECT m.id, m.client_id, m.machine_code, m.name, l.id, l.name
+                SELECT m.id, m.client_id, m.machine_code, m.name, m.approval_status
                 FROM machines m
-                LEFT JOIN line_machines lm ON lm.machine_id = m.id
-                LEFT JOIN production_lines l ON l.id = lm.line_id
                 WHERE m.id = @machineId
-                ORDER BY lm.sequence_order NULLS LAST
-                LIMIT 1";
+                FOR UPDATE";
 
             await using var command = new NpgsqlCommand(sql, connection, transaction);
             command.Parameters.AddWithValue("machineId", machineId);
-            await using var reader = await command.ExecuteReaderAsync();
-            if (!await reader.ReadAsync()) return null;
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                return new(MachineApprovalState.Missing, null);
+            }
 
             var machine = new MachineSnapshot(
                 reader.GetGuid(0),
@@ -906,20 +444,58 @@ namespace backend.Services
                 reader.IsDBNull(2) ? null : reader.GetString(2),
                 reader.IsDBNull(3) ? machineId.ToString() : reader.GetString(3));
 
-            LineSnapshot? line = null;
-            if (!reader.IsDBNull(4))
+            var isApproved = string.Equals(reader.GetString(4), "APPROVED", StringComparison.Ordinal);
+            await reader.DisposeAsync();
+            if (!isApproved)
             {
-                var lineId = reader.GetGuid(4);
-                line = new LineSnapshot(lineId, reader.IsDBNull(5) ? lineId.ToString() : reader.GetString(5));
+                return new(MachineApprovalState.Unapproved, null);
             }
 
-            return new MachineContext(machine, line);
+            const string lineSql = """
+                SELECT l.id, l.name
+                FROM line_machines lm
+                JOIN production_lines l ON l.id = lm.line_id
+                WHERE lm.machine_id = @machineId
+                ORDER BY lm.sequence_order NULLS LAST
+                LIMIT 1
+                """;
+            await using var lineCommand = new NpgsqlCommand(lineSql, connection, transaction);
+            lineCommand.Parameters.AddWithValue("machineId", machineId);
+            await using var lineReader = await lineCommand.ExecuteReaderAsync(cancellationToken);
+            LineSnapshot? line = null;
+            if (await lineReader.ReadAsync(cancellationToken))
+            {
+                var lineId = lineReader.GetGuid(0);
+                line = new LineSnapshot(lineId, lineReader.IsDBNull(1) ? lineId.ToString() : lineReader.GetString(1));
+            }
+
+            return new(MachineApprovalState.Approved, new MachineContext(machine, line));
+        }
+
+        private static async Task InsertSecondaryDeliveriesAsync(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            long receiptId,
+            CancellationToken cancellationToken)
+        {
+            const string sql = """
+                INSERT INTO telemetry_secondary_deliveries
+                    (receipt_id, target, idempotency_key)
+                VALUES
+                    (@receiptId, 'CEP', 'telemetry:' || @receiptId::text || ':cep'),
+                    (@receiptId, 'TIMESCALE', 'telemetry:' || @receiptId::text || ':timescale')
+                ON CONFLICT (receipt_id, target) DO NOTHING
+                """;
+            await using var command = new NpgsqlCommand(sql, connection, transaction);
+            command.Parameters.AddWithValue("receiptId", receiptId);
+            await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
         private static async Task InsertFusionOutboxAsync(
             NpgsqlConnection connection,
             NpgsqlTransaction transaction,
-            TelemetryFusionEvent fusionEvent)
+            TelemetryFusionEvent fusionEvent,
+            CancellationToken cancellationToken = default)
         {
             const string sql = @"
                 INSERT INTO fusion_outbox
@@ -939,8 +515,491 @@ namespace backend.Services
                 JsonSerializer.Serialize(fusionEvent, FusionJsonSerializerOptions));
             command.Parameters.AddWithValue("occurredAt", fusionEvent.OccurredAt.UtcDateTime);
             command.Parameters.AddWithValue("availableAt", DateTime.UtcNow);
-            await command.ExecuteNonQueryAsync();
+            var rows = await command.ExecuteNonQueryAsync(cancellationToken);
+            if (rows != 1)
+            {
+                throw new InvalidOperationException(
+                    $"Fusion outbox event key conflict for {fusionEvent.EventKey}.");
+            }
         }
+
+        private static async Task<ReceiptInsertResult> TryInsertReceiptAsync(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            TelemetryDeliveryItem item,
+            CancellationToken cancellationToken)
+        {
+            const string insertSql = """
+                INSERT INTO telemetry_receipts (device_id, message_id, delivery_sequence, payload_hash)
+                VALUES (@deviceId, @messageId, @deliverySequence, @payloadHash)
+                ON CONFLICT DO NOTHING
+                RETURNING id
+                """;
+            await using (var insert = new NpgsqlCommand(insertSql, connection, transaction))
+            {
+                insert.Parameters.AddWithValue("deviceId", item.DeviceId);
+                insert.Parameters.AddWithValue("messageId", item.MessageId);
+                insert.Parameters.AddWithValue("deliverySequence", item.Input.Sequence);
+                insert.Parameters.AddWithValue("payloadHash", item.PayloadHash);
+                var receiptId = await insert.ExecuteScalarAsync(cancellationToken);
+                if (receiptId is not null && receiptId != DBNull.Value)
+                {
+                    return new(ReceiptInsertState.Inserted, Convert.ToInt64(receiptId));
+                }
+            }
+
+            const string existingSql = """
+                SELECT receipt.id, receipt.payload_hash
+                FROM telemetry_receipts receipt
+                WHERE receipt.device_id = @deviceId
+                  AND (receipt.delivery_sequence = @deliverySequence OR receipt.message_id = @messageId)
+                ORDER BY (receipt.delivery_sequence = @deliverySequence) DESC
+                LIMIT 1
+                FOR UPDATE
+                """;
+            await using var existing = new NpgsqlCommand(existingSql, connection, transaction);
+            existing.Parameters.AddWithValue("deviceId", item.DeviceId);
+            existing.Parameters.AddWithValue("messageId", item.MessageId);
+            existing.Parameters.AddWithValue("deliverySequence", item.Input.Sequence);
+            await using var reader = await existing.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                throw new InvalidOperationException("Conflicting telemetry receipt disappeared during the transaction.");
+            }
+
+            var payloadHash = reader.GetString(1).Trim();
+            return string.Equals(payloadHash, item.PayloadHash, StringComparison.Ordinal)
+                ? new(ReceiptInsertState.Duplicate, reader.GetInt64(0))
+                : new(ReceiptInsertState.Conflict, null);
+        }
+
+        private static async Task ProjectOperationalTelemetryAsync(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            long sourceId,
+            DateTimeOffset occurredAt,
+            TelemetryCaptureInput input,
+            CancellationToken cancellationToken)
+        {
+            const string machineSql = """
+                UPDATE machines SET
+                    status = @status,
+                    plc_connected = @plcConnected,
+                    last_plc_data = @raw
+                WHERE id = @machineId
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM machine_telemetry newer
+                      WHERE newer.machine_id = @machineId
+                        AND newer.sequence > @sequence)
+                """;
+            await using (var machine = new NpgsqlCommand(machineSql, connection, transaction))
+            {
+                machine.Parameters.AddWithValue("status", input.Status);
+                machine.Parameters.AddWithValue("plcConnected", input.PlcConnected);
+                machine.Parameters.AddWithValue("raw", input.RawTelemetryJson);
+                machine.Parameters.AddWithValue("machineId", input.MachineId);
+                machine.Parameters.AddWithValue("sequence", input.Sequence);
+                await machine.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            const string historySql = """
+                INSERT INTO machine_telemetry_history
+                    (machine_id, source_telemetry_id, status, plc_connected, production_count,
+                     cycle_time, cpu_percent, ram_percent, uptime_seconds, tags, created_at)
+                VALUES
+                    (@machineId, @sourceId, @status, @plcConnected, @productionCount,
+                     @cycleTime, 0, 0, 0, CAST(@tags AS jsonb), @occurredAt)
+                ON CONFLICT (source_telemetry_id) WHERE source_telemetry_id IS NOT NULL DO NOTHING
+                """;
+            await using (var history = new NpgsqlCommand(historySql, connection, transaction))
+            {
+                history.Parameters.AddWithValue("machineId", input.MachineId);
+                history.Parameters.AddWithValue("sourceId", sourceId);
+                history.Parameters.AddWithValue("status", input.Status);
+                history.Parameters.AddWithValue("plcConnected", input.PlcConnected);
+                history.Parameters.AddWithValue("productionCount", checked((int)(input.ProductionQuantity ?? 0)));
+                history.Parameters.AddWithValue("cycleTime", input.ProductionTime ?? 0);
+                history.Parameters.AddWithValue("tags", ExtractPayloadJson(input.RawTelemetryJson));
+                history.Parameters.AddWithValue("occurredAt", occurredAt.UtcDateTime);
+                await history.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            const string hourlySql = """
+                INSERT INTO machine_hourly_production
+                    (machine_id, prod_date, prod_hour, produced_qty_start, produced_qty_end,
+                     hourly_qty, plc_run_time_start, plc_run_time_end, avg_cpu, avg_ram)
+                VALUES
+                    (@machineId, @prodDate, @prodHour, @quantity, @quantity, 0, 0, 0, 0, 0)
+                ON CONFLICT (machine_id, prod_date, prod_hour) DO UPDATE SET
+                    produced_qty_end = EXCLUDED.produced_qty_end,
+                    hourly_qty = GREATEST(0, EXCLUDED.produced_qty_end - machine_hourly_production.produced_qty_start),
+                    plc_run_time_end = EXCLUDED.plc_run_time_end,
+                    avg_cpu = EXCLUDED.avg_cpu,
+                    avg_ram = EXCLUDED.avg_ram
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM machine_telemetry newer
+                    WHERE newer.machine_id = @machineId
+                      AND date_trunc('hour', newer.created_at) = date_trunc('hour', @occurredAt::timestamptz)
+                      AND newer.sequence > @sequence)
+                """;
+            await using (var hourly = new NpgsqlCommand(hourlySql, connection, transaction))
+            {
+                hourly.Parameters.AddWithValue("machineId", input.MachineId);
+                hourly.Parameters.AddWithValue("prodDate", occurredAt.UtcDateTime.Date);
+                hourly.Parameters.AddWithValue("prodHour", occurredAt.UtcDateTime.Hour);
+                hourly.Parameters.AddWithValue("quantity", checked((int)(input.ProductionQuantity ?? 0)));
+                hourly.Parameters.AddWithValue("occurredAt", occurredAt.UtcDateTime);
+                hourly.Parameters.AddWithValue("sequence", input.Sequence);
+                await hourly.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            const string normalizedSql = """
+                INSERT INTO telemetry_data (time, asset_id, metric, value, unit, source)
+                VALUES (@time, @assetId, @metric, @value, @unit, @source)
+                ON CONFLICT (time, asset_id, metric) DO UPDATE SET
+                    value = EXCLUDED.value,
+                    unit = EXCLUDED.unit,
+                    source = EXCLUDED.source
+                """;
+            foreach (var point in TelemetrySchemaContract.Normalize(input))
+            {
+                await using var normalized = new NpgsqlCommand(normalizedSql, connection, transaction);
+                normalized.Parameters.AddWithValue("time", point.Time.UtcDateTime);
+                normalized.Parameters.AddWithValue("assetId", point.AssetId);
+                normalized.Parameters.AddWithValue("metric", point.Metric);
+                normalized.Parameters.AddWithValue("value", point.Value);
+                normalized.Parameters.AddWithValue("unit", (object?)point.Unit ?? DBNull.Value);
+                normalized.Parameters.AddWithValue("source", (object?)point.Source ?? DBNull.Value);
+                await normalized.ExecuteNonQueryAsync(cancellationToken);
+            }
+        }
+
+        private static async Task<(long SourceId, DateTimeOffset OccurredAt)> InsertRawTelemetryAsync(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            TelemetryCaptureInput input,
+            CancellationToken cancellationToken)
+        {
+            const string sql = """
+                INSERT INTO machine_telemetry (machine_id, raw_json, sequence, created_at)
+                VALUES (@machineId, CAST(@rawJson AS jsonb), @sequence, @occurredAt)
+                RETURNING id, created_at
+                """;
+            await using var command = new NpgsqlCommand(sql, connection, transaction);
+            command.Parameters.AddWithValue("machineId", input.MachineId);
+            command.Parameters.AddWithValue("rawJson", input.RawTelemetryJson);
+            command.Parameters.AddWithValue("sequence", input.Sequence);
+            command.Parameters.AddWithValue("occurredAt", input.OccurredAt.UtcDateTime);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                throw new InvalidOperationException("Primary telemetry insert did not return a row.");
+            }
+
+            return (reader.GetInt64(0), reader.GetFieldValue<DateTimeOffset>(1));
+        }
+
+        private static async Task AttachReceiptToTelemetryAsync(
+            NpgsqlConnection connection,
+            NpgsqlTransaction transaction,
+            long? receiptId,
+            long sourceId,
+            CancellationToken cancellationToken)
+        {
+            const string sql = """
+                UPDATE telemetry_receipts
+                SET machine_telemetry_id = @sourceId, committed_at = CURRENT_TIMESTAMP
+                WHERE id = @receiptId AND machine_telemetry_id IS NULL
+                """;
+            await using var command = new NpgsqlCommand(sql, connection, transaction);
+            command.Parameters.AddWithValue("sourceId", sourceId);
+            command.Parameters.AddWithValue("receiptId", receiptId ?? throw new InvalidOperationException("Receipt id is missing."));
+            if (await command.ExecuteNonQueryAsync(cancellationToken) != 1)
+            {
+                throw new InvalidOperationException("Telemetry receipt could not be attached to its raw row.");
+            }
+        }
+
+        public async Task RetryPendingSecondaryDeliveriesAsync(
+            int limit = 32,
+            CancellationToken cancellationToken = default)
+        {
+            var leaseId = Guid.NewGuid();
+            var claimed = new List<SecondaryDeliveryClaim>();
+            await using (var connection = CreateConnection())
+            {
+                await connection.OpenAsync(cancellationToken);
+                await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+                const string sql = """
+                    WITH candidates AS (
+                        SELECT delivery.receipt_id, delivery.target
+                        FROM telemetry_secondary_deliveries delivery
+                        WHERE (delivery.status = 'PENDING' AND delivery.available_at <= CURRENT_TIMESTAMP)
+                           OR (delivery.status = 'LEASED' AND delivery.lease_expires_at <= CURRENT_TIMESTAMP)
+                        ORDER BY delivery.available_at, delivery.receipt_id, delivery.target
+                        FOR UPDATE SKIP LOCKED
+                        LIMIT @limit
+                    ), claimed AS (
+                        UPDATE telemetry_secondary_deliveries delivery
+                        SET status = 'LEASED',
+                            lease_id = @leaseId,
+                            lease_expires_at = CURRENT_TIMESTAMP + INTERVAL '2 minutes',
+                            attempts = delivery.attempts + 1,
+                            updated_at = CURRENT_TIMESTAMP
+                        FROM candidates
+                        WHERE delivery.receipt_id = candidates.receipt_id
+                          AND delivery.target = candidates.target
+                        RETURNING delivery.receipt_id, delivery.target,
+                                  delivery.idempotency_key, delivery.attempts
+                    )
+                    SELECT claimed.receipt_id, claimed.target, claimed.idempotency_key,
+                           claimed.attempts, telemetry.id, telemetry.created_at,
+                           receipt.device_id, telemetry.raw_json::text
+                    FROM claimed
+                    JOIN telemetry_receipts receipt ON receipt.id = claimed.receipt_id
+                    JOIN machine_telemetry telemetry ON telemetry.id = receipt.machine_telemetry_id
+                    ORDER BY claimed.receipt_id, claimed.target
+                    """;
+                await using var command = new NpgsqlCommand(sql, connection, transaction);
+                command.Parameters.AddWithValue("limit", Math.Clamp(limit, 1, 256));
+                command.Parameters.AddWithValue("leaseId", leaseId);
+                await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    claimed.Add(new SecondaryDeliveryClaim(
+                        reader.GetInt64(0),
+                        reader.GetString(1),
+                        reader.GetString(2),
+                        reader.GetInt32(3),
+                        reader.GetInt64(4),
+                        reader.GetFieldValue<DateTimeOffset>(5),
+                        reader.GetString(6),
+                        reader.GetString(7)));
+                }
+                await reader.DisposeAsync();
+                await transaction.CommitAsync(cancellationToken);
+            }
+
+            foreach (var entry in claimed)
+            {
+                var targetEnabled = entry.Target switch
+                {
+                    "CEP" => _cepStagingPublisher.IsEnabled,
+                    "TIMESCALE" => _timescaleTelemetry.IsEnabled,
+                    _ => false,
+                };
+                if (!targetEnabled)
+                {
+                    await DisableSecondaryDeliveryAsync(entry, leaseId, cancellationToken);
+                    continue;
+                }
+
+                if (!TelemetryIngestionService.TryParseDeliveryItem(
+                    entry.DeviceId,
+                    entry.RawJson,
+                    out var item,
+                    out var parseError))
+                {
+                    await ReleaseSecondaryDeliveryAsync(
+                        entry,
+                        leaseId,
+                        parseError?.Detail ?? "Stored telemetry could not be parsed.",
+                        cancellationToken);
+                    continue;
+                }
+
+                try
+                {
+                    var completed = entry.Target switch
+                    {
+                        "CEP" => await _cepStagingPublisher.PublishAsync(
+                            entry.SourceId,
+                            entry.IdempotencyKey,
+                            item!.Input,
+                            cancellationToken),
+                        "TIMESCALE" => await _timescaleTelemetry.TryWriteAsync(
+                            new TimescaleTelemetryPoint(
+                                entry.SourceId,
+                                item!.Input.MachineId,
+                                item.Input.Sequence,
+                                entry.OccurredAt,
+                                item.Input.RawTelemetryJson),
+                            cancellationToken),
+                        _ => false,
+                    };
+                    if (completed)
+                    {
+                        await CompleteSecondaryDeliveryAsync(entry, leaseId, cancellationToken);
+                    }
+                    else
+                    {
+                        await ReleaseSecondaryDeliveryAsync(
+                            entry,
+                            leaseId,
+                            $"{entry.Target} delivery was not confirmed.",
+                            cancellationToken);
+                    }
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogError(
+                        ex,
+                        "Secondary telemetry delivery failed for receipt {ReceiptId} target {Target}",
+                        entry.ReceiptId,
+                        entry.Target);
+                    await ReleaseSecondaryDeliveryAsync(entry, leaseId, ex.Message, cancellationToken);
+                }
+            }
+        }
+
+        private async Task CompleteSecondaryDeliveryAsync(
+            SecondaryDeliveryClaim claim,
+            Guid leaseId,
+            CancellationToken cancellationToken)
+        {
+            await using var connection = CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+            const string sql = """
+                UPDATE telemetry_secondary_deliveries
+                SET status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP,
+                    lease_id = NULL, lease_expires_at = NULL,
+                    last_error = NULL, updated_at = CURRENT_TIMESTAMP
+                WHERE receipt_id = @receiptId AND target = @target
+                  AND status = 'LEASED' AND lease_id = @leaseId
+                """;
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("receiptId", claim.ReceiptId);
+            command.Parameters.AddWithValue("target", claim.Target);
+            command.Parameters.AddWithValue("leaseId", leaseId);
+            if (await command.ExecuteNonQueryAsync(cancellationToken) != 1)
+            {
+                _logger.LogWarning(
+                    "Secondary telemetry completion lost lease for receipt {ReceiptId} target {Target}",
+                    claim.ReceiptId,
+                    claim.Target);
+            }
+        }
+
+        private async Task ReleaseSecondaryDeliveryAsync(
+            SecondaryDeliveryClaim claim,
+            Guid leaseId,
+            string error,
+            CancellationToken cancellationToken)
+        {
+            await using var connection = CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+            const string sql = """
+                UPDATE telemetry_secondary_deliveries
+                SET status = 'PENDING',
+                    available_at = CURRENT_TIMESTAMP +
+                        make_interval(secs => LEAST(300, (1 << LEAST(attempts, 8)))),
+                    lease_id = NULL, lease_expires_at = NULL,
+                    last_error = left(@error, 2000), updated_at = CURRENT_TIMESTAMP
+                WHERE receipt_id = @receiptId AND target = @target
+                  AND status = 'LEASED' AND lease_id = @leaseId
+                """;
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("receiptId", claim.ReceiptId);
+            command.Parameters.AddWithValue("target", claim.Target);
+            command.Parameters.AddWithValue("leaseId", leaseId);
+            command.Parameters.AddWithValue("error", error);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        private async Task DisableSecondaryDeliveryAsync(
+            SecondaryDeliveryClaim claim,
+            Guid leaseId,
+            CancellationToken cancellationToken)
+        {
+            await using var connection = CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+            const string sql = """
+                UPDATE telemetry_secondary_deliveries
+                SET status = 'DISABLED', completed_at = NULL,
+                    lease_id = NULL, lease_expires_at = NULL,
+                    last_error = 'Target is disabled; no durable delivery acknowledgement exists.',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE receipt_id = @receiptId AND target = @target
+                  AND status = 'LEASED' AND lease_id = @leaseId
+                """;
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("receiptId", claim.ReceiptId);
+            command.Parameters.AddWithValue("target", claim.Target);
+            command.Parameters.AddWithValue("leaseId", leaseId);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        private static string ExtractPayloadJson(string rawJson)
+        {
+            using var document = JsonDocument.Parse(rawJson);
+            return document.RootElement.GetProperty("payload").GetRawText();
+        }
+
+        public static TelemetryDeliveryResult ClassifyDatabaseFailure(Exception exception)
+        {
+            if (exception is TimeoutException)
+            {
+                return new(TelemetryDeliveryState.Busy, "Operations database timed out.");
+            }
+            if (exception is OperationCanceledException)
+            {
+                return new(TelemetryDeliveryState.RetryableFailure, "Operations commit was interrupted.");
+            }
+            if (exception is PostgresException postgres)
+            {
+                if (postgres.SqlState is "53300" or "57P03" or "55P03")
+                    return new(TelemetryDeliveryState.Busy, "Operations database is busy.");
+                if (postgres.SqlState.StartsWith("08", StringComparison.Ordinal) ||
+                    postgres.SqlState is "40001" or "40P01" or "57014" or "57P01" or "57P02")
+                    return new(TelemetryDeliveryState.RetryableFailure, "Operations transaction can be retried.");
+                if (postgres.SqlState == PostgresErrorCodes.UniqueViolation)
+                    return new(TelemetryDeliveryState.Conflict, "A stable receipt key conflicts with existing data.");
+                if (postgres.SqlState.StartsWith("22", StringComparison.Ordinal))
+                    return new(TelemetryDeliveryState.Malformed, "Telemetry data is not valid for storage.");
+
+                return new(TelemetryDeliveryState.PermanentFailure, "Operations transaction was rejected.");
+            }
+            if (exception is NpgsqlException)
+            {
+                return new(TelemetryDeliveryState.RetryableFailure, "Operations database is unavailable.");
+            }
+
+            return new(TelemetryDeliveryState.PermanentFailure, "Operations transaction failed.");
+        }
+
+        private enum ReceiptInsertState
+        {
+            Inserted,
+            Duplicate,
+            Conflict,
+        }
+
+        private sealed record ReceiptInsertResult(
+            ReceiptInsertState State,
+            long? ReceiptId);
+
+        private enum MachineApprovalState
+        {
+            Approved,
+            Unapproved,
+            Missing,
+        }
+
+        private sealed record MachineApprovalResult(
+            MachineApprovalState State,
+            MachineContext? Context);
+
+        private sealed record SecondaryDeliveryClaim(
+            long ReceiptId,
+            string Target,
+            string IdempotencyKey,
+            int Attempts,
+            long SourceId,
+            DateTimeOffset OccurredAt,
+            string DeviceId,
+            string RawJson);
 
         public async Task InsertTelemetryDataPointsAsync(IEnumerable<TelemetryDataPoint> dataPoints)
         {
@@ -1091,8 +1150,13 @@ namespace backend.Services
             return rows;
         }
 
-        public async Task InsertRawTelemetryAsync(string machineId, string rawJson, long sequence = 0, DateTime? createdAt = null)
+        public async Task InsertRawTelemetryAsync(string machineId, string rawJson, long sequence, DateTime? createdAt = null)
         {
+            if (sequence <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(sequence), "Telemetry delivery sequence must be positive.");
+            }
+
             if (!Guid.TryParse(machineId, out var machineGuid)) return;
             try
             {
@@ -1124,21 +1188,6 @@ namespace backend.Services
                 }
 
                 await transaction.CommitAsync();
-                _cepStagingPublisher.TryPublish(sourceId, new TelemetryCaptureInput(
-                    machineGuid,
-                    rawJson,
-                    sequence,
-                    persistedOccurredAt,
-                    null,
-                    null,
-                    "OFFLINE",
-                    false,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null));
                 await _timescaleTelemetry.TryWriteAsync(new TimescaleTelemetryPoint(
                     sourceId,
                     machineGuid,

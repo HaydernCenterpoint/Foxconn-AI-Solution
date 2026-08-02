@@ -1,5 +1,4 @@
 using System.Net.Http.Json;
-using System.Threading.Channels;
 using Microsoft.Extensions.Options;
 using Mkz.Fusion.Contracts;
 
@@ -14,13 +13,10 @@ public sealed class CepStagingOptions
     public int QueueCapacity { get; set; } = 1000;
 }
 
-public sealed record CepTelemetryDispatch(long SourceId, TelemetryCaptureInput Input);
-
 public sealed class CepStagingPublisher : BackgroundService
 {
     public const string HttpClientName = "cep-staging";
 
-    private readonly Channel<CepTelemetryDispatch> _queue;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly CepStagingOptions _options;
     private readonly ILogger<CepStagingPublisher> _logger;
@@ -33,64 +29,47 @@ public sealed class CepStagingPublisher : BackgroundService
         _httpClientFactory = httpClientFactory;
         _options = options.Value;
         _logger = logger;
-        _queue = Channel.CreateBounded<CepTelemetryDispatch>(new BoundedChannelOptions(
-            Math.Clamp(_options.QueueCapacity, 1, 10_000))
-        {
-            FullMode = BoundedChannelFullMode.Wait,
-            SingleReader = true,
-            SingleWriter = false,
-        });
     }
 
-    public bool TryPublish(long sourceId, TelemetryCaptureInput input)
+    public bool IsEnabled => _options.Enabled;
+
+    protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
+        Task.Delay(Timeout.Infinite, stoppingToken);
+
+    public async Task<bool> PublishAsync(
+        long sourceId,
+        string idempotencyKey,
+        TelemetryCaptureInput input,
+        CancellationToken cancellationToken = default)
     {
         if (!_options.Enabled)
         {
-            return true;
+            return false;
         }
 
-        if (_queue.Writer.TryWrite(new CepTelemetryDispatch(sourceId, input)))
-        {
-            return true;
-        }
-
-        _logger.LogWarning("CEP staging queue is full; dropping source telemetry {SourceId}", sourceId);
-        return false;
-    }
-
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        await foreach (var dispatch in _queue.Reader.ReadAllAsync(stoppingToken))
-        {
-            await PublishAsync(dispatch, stoppingToken);
-        }
-    }
-
-    private async Task PublishAsync(CepTelemetryDispatch dispatch, CancellationToken cancellationToken)
-    {
         try
         {
             var client = _httpClientFactory.CreateClient(HttpClientName);
-            var (eventType, severity) = Classify(dispatch.Input);
-            var numericValue = dispatch.Input.Oee
-                ?? dispatch.Input.Uph
-                ?? dispatch.Input.ProductionQuantity;
-            var metric = dispatch.Input.Oee.HasValue
+            var (eventType, severity) = Classify(input);
+            var numericValue = input.Oee
+                ?? input.Uph
+                ?? input.ProductionQuantity;
+            var metric = input.Oee.HasValue
                 ? "oee"
-                : dispatch.Input.Uph.HasValue
+                : input.Uph.HasValue
                     ? "uph"
                     : "output_count";
-            var unit = dispatch.Input.Oee.HasValue
+            var unit = input.Oee.HasValue
                 ? "percent"
-                : dispatch.Input.Uph.HasValue
+                : input.Uph.HasValue
                     ? "units_per_hour"
                     : "count";
             var eventPayload = new
             {
-                event_id = Guid.NewGuid().ToString(),
-                timestamp = dispatch.Input.OccurredAt,
-                asset_id = dispatch.Input.MachineId.ToString(),
-                asset_name = dispatch.Input.ReportedMachineName,
+                event_id = idempotencyKey,
+                timestamp = input.OccurredAt,
+                asset_id = input.MachineId.ToString(),
+                asset_name = input.ReportedMachineName,
                 type = eventType,
                 severity,
                 payload = new
@@ -98,21 +77,21 @@ public sealed class CepStagingPublisher : BackgroundService
                     metric,
                     value = numericValue,
                     unit,
-                    machine_code = dispatch.Input.MachineId.ToString(),
+                    machine_code = input.MachineId.ToString(),
                     extra = new
                     {
-                        source_telemetry_id = dispatch.SourceId,
-                        sequence = dispatch.Input.Sequence,
-                        status = dispatch.Input.Status,
-                        plc_connected = dispatch.Input.PlcConnected,
-                        alarm_active = dispatch.Input.AlarmActive,
-                        production_quantity = dispatch.Input.ProductionQuantity,
-                        production_time = dispatch.Input.ProductionTime,
-                        yield_rate = dispatch.Input.YieldRate,
+                        source_telemetry_id = sourceId,
+                        sequence = input.Sequence,
+                        status = input.Status,
+                        plc_connected = input.PlcConnected,
+                        alarm_active = input.AlarmActive,
+                        production_quantity = input.ProductionQuantity,
+                        production_time = input.ProductionTime,
+                        yield_rate = input.YieldRate,
                     },
                 },
                 source = "backend_telemetry",
-                correlation_id = dispatch.Input.MessageId,
+                correlation_id = input.MessageId,
                 metadata = new
                 {
                     schema_version = ContractV1.SchemaVersion,
@@ -120,22 +99,34 @@ public sealed class CepStagingPublisher : BackgroundService
                 },
             };
 
-            using var response = await client.PostAsJsonAsync("api/v1/events", new { @event = eventPayload }, cancellationToken);
+            using var request = new HttpRequestMessage(HttpMethod.Post, "api/v1/events")
+            {
+                Content = JsonContent.Create(new { @event = eventPayload }),
+            };
+            request.Headers.TryAddWithoutValidation("Idempotency-Key", idempotencyKey);
+            using var response = await client.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning(
                     "CEP staging rejected source telemetry {SourceId} with HTTP {StatusCode}",
-                    dispatch.SourceId,
+                    sourceId,
                     (int)response.StatusCode);
+                return false;
             }
+
+            _logger.LogWarning(
+                "CEP staging accepted source telemetry {SourceId} but supplied no durable idempotent acknowledgement; delivery remains pending",
+                sourceId);
+            return false;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            // Normal shutdown: do not turn draining cancellation into an application error.
+            throw;
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(exception, "CEP staging publish failed for source telemetry {SourceId}", dispatch.SourceId);
+            _logger.LogWarning(exception, "CEP staging publish failed for source telemetry {SourceId}", sourceId);
+            return false;
         }
     }
 

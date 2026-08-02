@@ -29,12 +29,14 @@ public static class FiiSso
         if (subject.Length == 0) throw new ArgumentException("Username is required", nameof(username));
         if (!Roles.Contains(normalizedRole))
             throw new ArgumentOutOfRangeException(nameof(role), "Unsupported FII role");
+        var tenantId = TenantId(configuration);
 
         var now = issuedAt ?? DateTimeOffset.UtcNow;
         var expiresAt = now.AddHours(2);
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, subject),
+            new Claim("tenant_id", tenantId),
             new Claim("role", normalizedRole),
             new Claim(ClaimTypes.Name, subject),
             new Claim(ClaimTypes.Role, normalizedRole),
@@ -55,6 +57,23 @@ public static class FiiSso
         if (string.IsNullOrEmpty(secret) || Encoding.UTF8.GetByteCount(secret) < 32)
             throw new InvalidOperationException("Jwt:Key must be configured with at least 32 bytes");
         return new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+    }
+
+    public static string TenantId(IConfiguration configuration)
+    {
+        var configured = configuration["Jwt:TenantId"];
+        if (string.IsNullOrWhiteSpace(configured))
+        {
+            configured = configuration["FII_TENANT_ID"];
+        }
+
+        if (string.IsNullOrWhiteSpace(configured))
+        {
+            throw new InvalidOperationException(
+                "Jwt:TenantId or FII_TENANT_ID must be configured before issuing FII SSO tokens");
+        }
+
+        return configured.Trim();
     }
 
     public static void WriteCookie(HttpResponse response, FiiSsoToken token, IConfiguration configuration) =>
