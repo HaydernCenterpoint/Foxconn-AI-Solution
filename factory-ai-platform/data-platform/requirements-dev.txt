@@ -1,0 +1,4 @@
+# pytest-asyncio 0.23.0 (currently pinned by the runtime requirements) crashes
+# during package collection under pytest 8.0.0. Install this dev overlay after
+# requirements.txt so clean test environments use the compatible patch release.
+pytest-asyncio==0.23.8

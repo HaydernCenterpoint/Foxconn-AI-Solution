@@ -5,7 +5,7 @@ Schema-driven toolset that proxies user requests to the .NET backend.
 Replaces the previous hardcoded MOCK_PRODUCTION_DATA / MOCK_ALARMS — now
 all real data comes from backend_client (HTTP → ASP.NET Core REST API).
 """
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 from app.services import backend_client
 
 DATA_TOOLS_SCHEMA = [

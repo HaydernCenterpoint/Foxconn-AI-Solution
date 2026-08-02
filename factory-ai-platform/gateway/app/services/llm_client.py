@@ -133,7 +133,7 @@ def _format_production_digest(user_message: str, data: Dict) -> str:
     summary = data.get("summary") or {}
     chart = data.get("chartData") or []
     lines: List[str] = [
-        f"### Sản lượng & vận hành (LLM chưa cấu hình)",
+        "### Sản lượng & vận hành (LLM chưa cấu hình)",
         f"- **Tổng sản lượng**: {summary.get('totalProduction', 'N/A')}",
         f"- **Sản phẩm đạt**: {summary.get('totalGood', 'N/A')}",
         f"- **Phế phẩm**: {summary.get('totalScrap', 'N/A')}",
@@ -153,7 +153,7 @@ def _format_production_digest(user_message: str, data: Dict) -> str:
 def _format_alarm_digest(user_message: str, data: Dict) -> str:
     alarms = data.get("alarms") or []
     lines: List[str] = [
-        f"### Cảnh báo đang hoạt động (LLM chưa cấu hình)",
+        "### Cảnh báo đang hoạt động (LLM chưa cấu hình)",
         f"- **Số alarm ACTIVE**: {data.get('activeCount', len(alarms))}",
     ]
     for a in alarms[:5]:
@@ -167,7 +167,7 @@ def _format_alarm_digest(user_message: str, data: Dict) -> str:
 
 def _format_chunk_digest(user_message: str, chunks: List[Dict]) -> str:
     lines: List[str] = [
-        f"### Tài liệu kỹ thuật liên quan (LLM chưa cấu hình)",
+        "### Tài liệu kỹ thuật liên quan (LLM chưa cấu hình)",
     ]
     for c in chunks[:5]:
         snippet = (c.get("text") or c.get("content") or "")[:300]
