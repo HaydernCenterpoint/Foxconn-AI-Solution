@@ -1,0 +1,19 @@
+{
+  "contract": "fii.clientplc.telemetry-evidence/v1",
+  "source": "ClientPLC",
+  "notice": "Synthetic schema example only. Supply this file's trusted SHA-256 separately; this field set does not prove provenance or hardware origin.",
+  "telemetryEnvelope": {
+    "protocolVersion": 1,
+    "messageId": "replace-with-the-exact-clientplc-message-id",
+    "messageType": "telemetry",
+    "clientId": "replace-with-the-approved-mqtt-client-id",
+    "sentAt": "2026-08-02T00:00:00.0000000Z",
+    "payload": {
+      "machineId": "replace-with-the-clientplc-machine-identifier",
+      "sequence": 0,
+      "production": {
+        "oee": 0.0
+      }
+    }
+  }
+}

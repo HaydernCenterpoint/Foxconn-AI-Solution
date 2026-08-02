@@ -1,23 +1,49 @@
 {
-  "environment": "replace-with-managed-staging-name",
-  "reviewer": "replace-with-independent-reviewer",
-  "approvedAtUtc": "2026-07-28T00:00:00Z",
+  "schemaVersion": 2,
+  "environment": {
+    "id": "replace-with-managed-environment-id",
+    "name": "replace-with-managed-staging-name"
+  },
+  "release": {
+    "sourceCommit": "replace-with-40-character-git-commit",
+    "manifestUri": "https://approved-artifacts.managed-domain/releases/replace-with-release-manifest-id.json",
+    "manifestSha256": "replace-with-release-manifest-sha256"
+  },
+  "reviewer": {
+    "id": "replace-with-independent-reviewer-id",
+    "organization": "replace-with-reviewer-organization",
+    "conflictCheck": {
+      "status": "pending",
+      "reference": "https://approved-artifacts.managed-domain/reviewer/replace-with-conflict-check-id.json",
+      "sha256": "replace-with-conflict-artifact-sha256",
+      "checkedBy": "replace-with-security-or-release-owner",
+      "checkedAtUtc": null
+    }
+  },
+  "contributors": [
+    {
+      "id": "replace-with-primary-evidence-producer",
+      "organization": "replace-with-producer-organization",
+      "role": "evidence-producer"
+    }
+  ],
+  "approvedAtUtc": null,
   "checks": [
-    { "id": "backend-https-ingress", "status": "pending", "evidence": "" },
-    { "id": "frontend-https-ingress", "status": "pending", "evidence": "" },
-    { "id": "certificate-lifetime", "status": "pending", "evidence": "" },
-    { "id": "mqtt-tls", "status": "pending", "evidence": "" },
-    { "id": "mqtt-device-auth", "status": "pending", "evidence": "" },
-    { "id": "mqtt-topic-isolation", "status": "pending", "evidence": "" },
-    { "id": "secret-manager-delivery", "status": "pending", "evidence": "" },
-    { "id": "operations-db-tls", "status": "pending", "evidence": "" },
-    { "id": "timescale-db-tls", "status": "pending", "evidence": "" },
-    { "id": "managed-backup", "status": "pending", "evidence": "" },
-    { "id": "restore-drill", "status": "pending", "evidence": "" },
-    { "id": "retention-policies", "status": "pending", "evidence": "" },
-    { "id": "dual-write-validation", "status": "pending", "evidence": "" },
-    { "id": "dual-write-rollback", "status": "pending", "evidence": "" },
-    { "id": "live-erp-mes-connector", "status": "pending", "evidence": "" },
-    { "id": "independent-full-stack-smoke", "status": "pending", "evidence": "" }
+    { "id": "backend-https-ingress", "status": "pending", "evidenceManifest": "evidence/backend-https-ingress.json", "evidenceManifestSha256": null },
+    { "id": "frontend-https-ingress", "status": "pending", "evidenceManifest": "evidence/frontend-https-ingress.json", "evidenceManifestSha256": null },
+    { "id": "certificate-lifetime", "status": "pending", "evidenceManifest": "evidence/certificate-lifetime.json", "evidenceManifestSha256": null },
+    { "id": "mqtt-tls", "status": "pending", "evidenceManifest": "evidence/mqtt-tls.json", "evidenceManifestSha256": null },
+    { "id": "mqtt-device-auth", "status": "pending", "evidenceManifest": "evidence/mqtt-device-auth.json", "evidenceManifestSha256": null },
+    { "id": "mqtt-topic-isolation", "status": "pending", "evidenceManifest": "evidence/mqtt-topic-isolation.json", "evidenceManifestSha256": null },
+    { "id": "secret-manager-delivery", "status": "pending", "evidenceManifest": "evidence/secret-manager-delivery.json", "evidenceManifestSha256": null },
+    { "id": "operations-db-tls", "status": "pending", "evidenceManifest": "evidence/operations-db-tls.json", "evidenceManifestSha256": null },
+    { "id": "timescale-db-tls", "status": "pending", "evidenceManifest": "evidence/timescale-db-tls.json", "evidenceManifestSha256": null },
+    { "id": "managed-backup", "status": "pending", "evidenceManifest": "evidence/managed-backup.json", "evidenceManifestSha256": null },
+    { "id": "restore-drill", "status": "pending", "evidenceManifest": "evidence/restore-drill.json", "evidenceManifestSha256": null },
+    { "id": "retention-policies", "status": "pending", "evidenceManifest": "evidence/retention-policies.json", "evidenceManifestSha256": null },
+    { "id": "dual-write-validation", "status": "pending", "evidenceManifest": "evidence/dual-write-validation.json", "evidenceManifestSha256": null },
+    { "id": "dual-write-rollback", "status": "pending", "evidenceManifest": "evidence/dual-write-rollback.json", "evidenceManifestSha256": null },
+    { "id": "live-erp-mes-connector", "status": "pending", "evidenceManifest": "evidence/live-erp-mes-connector.json", "evidenceManifestSha256": null },
+    { "id": "independent-full-stack-smoke", "status": "pending", "evidenceManifest": "evidence/independent-full-stack-smoke.json", "evidenceManifestSha256": null }
   ]
 }

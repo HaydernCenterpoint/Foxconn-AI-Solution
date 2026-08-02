@@ -22,6 +22,23 @@ idempotently on its first write. `001_create_telemetry_points.sql` creates the
 raw hypertable, and `002_a2_rollups_and_lifecycle.sql` is the immutable A2
 operator migration for rollups and lifecycle policies.
 
+## Schema authority and lineage
+
+The Operations and Timescale schemas have separate migration authorities:
+
+- `backend/db/migrations/*.sql` is the Operations authority. The backend
+  migration runner applies and verifies only objects in the Operations
+  database and records only that lineage in `public.schema_migrations`.
+- `infrastructure/timescaledb/001_*.sql` through `004_*.sql` is the Timescale
+  authority. In particular, `003_phase2_cep_alerts.sql` and
+  `004_phase2_health_predictions.sql` are not Operations migrations and are
+  not applied or verified by the backend Operations migration runner.
+
+Managed Timescale operators must apply `003` and `004` directly to the managed
+Timescale database, in order, and capture the verification queries from
+`CUTOVER_CHECKLIST.md`. A successful Operations migration or local Compose run
+is not evidence that these managed Timescale migrations were applied.
+
 ## Enable dual-write
 
 Keep `Timescale:Enabled` false until the target is healthy. Enable it through

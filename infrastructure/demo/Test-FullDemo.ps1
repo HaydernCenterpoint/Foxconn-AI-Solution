@@ -39,6 +39,17 @@ param(
 
     [switch]$MqttUseTls,
 
+    [switch]$WithClientPlc,
+
+    [string]$ClientPlcEvidencePath = '',
+
+    [string]$ClientPlcEvidenceSha256 = '',
+
+    [ValidateRange(1, 1440)]
+    [int]$ClientPlcEvidenceMaxAgeMinutes = 15,
+
+    [string]$ClientPlcMessageId = '',
+
     [switch]$SkipOpenDataFusion,
     [switch]$SkipOdysseus,
     [switch]$SkipTimescale,
@@ -63,6 +74,9 @@ if ([string]::IsNullOrWhiteSpace($MachineClientId)) { $MachineClientId = $env:FI
 if ([string]::IsNullOrWhiteSpace($OperationsConnectionString)) { $OperationsConnectionString = $env:FII_OPERATIONS_CONNECTION_STRING }
 if ([string]::IsNullOrWhiteSpace($TimescaleConnectionString)) { $TimescaleConnectionString = $env:FII_TIMESCALE_CONNECTION_STRING }
 if ([string]::IsNullOrWhiteSpace($MqttDeviceToken)) { $MqttDeviceToken = $env:FII_MQTT_DEVICE_TOKEN }
+if ([string]::IsNullOrWhiteSpace($ClientPlcEvidencePath)) { $ClientPlcEvidencePath = $env:FII_CLIENTPLC_EVIDENCE_PATH }
+if ([string]::IsNullOrWhiteSpace($ClientPlcEvidenceSha256)) { $ClientPlcEvidenceSha256 = $env:FII_CLIENTPLC_EVIDENCE_SHA256 }
+if ([string]::IsNullOrWhiteSpace($ClientPlcMessageId)) { $ClientPlcMessageId = $env:FII_CLIENTPLC_MESSAGE_ID }
 if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($Password)) {
     throw 'Supply real credentials with -Username/-Password or FII_DEMO_USERNAME/FII_DEMO_PASSWORD.'
 }
@@ -75,8 +89,14 @@ if ([string]::IsNullOrWhiteSpace($OperationsConnectionString)) {
 if (-not $SkipTimescale -and [string]::IsNullOrWhiteSpace($TimescaleConnectionString)) {
     throw 'Supply FII_TIMESCALE_CONNECTION_STRING for source-ID uniqueness verification.'
 }
-if ([string]::IsNullOrWhiteSpace($MqttDeviceToken)) {
+if (-not $WithClientPlc -and [string]::IsNullOrWhiteSpace($MqttDeviceToken)) {
     throw 'Supply FII_MQTT_DEVICE_TOKEN for the selected MQTT client.'
+}
+if ($WithClientPlc -and [string]::IsNullOrWhiteSpace($ClientPlcEvidencePath)) {
+    throw 'ClientPLC validation is fail-closed. Supply -ClientPlcEvidencePath or FII_CLIENTPLC_EVIDENCE_PATH with an explicit fii.clientplc.telemetry-evidence/v1 JSON evidence file.'
+}
+if ($WithClientPlc -and $ClientPlcEvidenceSha256 -notmatch '^[A-Fa-f0-9]{64}$') {
+    throw 'ClientPLC validation is fail-closed. Supply the trusted artifact digest separately with -ClientPlcEvidenceSha256 or FII_CLIENTPLC_EVIDENCE_SHA256.'
 }
 
 function Get-Psql {
@@ -128,6 +148,21 @@ function Invoke-PsqlScalar {
             [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, 'Process')
         }
     }
+}
+
+function Get-RequiredEvidenceProperty {
+    param(
+        [Parameter(Mandatory)][object]$InputObject,
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][string]$Context
+    )
+
+    $property = $InputObject.PSObject.Properties[$Name]
+    if ($null -eq $property -or $null -eq $property.Value -or
+        ($property.Value -is [string] -and [string]::IsNullOrWhiteSpace([string]$property.Value))) {
+        throw "ClientPLC evidence is missing required property '$Context.$Name'."
+    }
+    return $property.Value
 }
 
 function Get-Json {
@@ -427,29 +462,102 @@ if ($null -eq (Find-AssetInTree -Nodes @($assetTree) -AssetId $machineId)) {
     throw 'The asset tree does not contain the selected machine.'
 }
 
-$telemetrySequence = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
-$messageId = [guid]::NewGuid().ToString('D')
-$sentAt = [DateTimeOffset]::UtcNow.ToString('O')
-$telemetryObject = @{
-    protocolVersion = 1
-    messageId = $messageId
-    messageType = 'telemetry'
-    clientId = $smokeClientId
-    sentAt = $sentAt
-    payload = @{
-        machineId = $machineId
-        machineName = [string]$smokeMachine.name
-        sequence = $telemetrySequence
-        status = 'RUNNING'
-        plcConnected = $true
-        production = @{ qty = 1; time = 1.0; uph = 60; oee = 92.0; yieldRate = 99.0 }
-        alarm = @{ active = $false }
-    }
-}
-$telemetry = $telemetryObject | ConvertTo-Json -Depth 6 -Compress
-Send-MqttMessage -ClientId $smokeClientId -Topic "client/$smokeClientId/telemetry" -Payload $telemetry
+$telemetrySequence = $null
+$messageId = $null
+$sentAt = $null
+$expectedOee = $null
 
-$liveTelemetry = Wait-ForValue -Name 'Live telemetry snapshot' -Probe {
+if ($WithClientPlc) {
+    if (-not (Test-Path -LiteralPath $ClientPlcEvidencePath -PathType Leaf)) {
+        throw "ClientPLC evidence file '$ClientPlcEvidencePath' does not exist. No telemetry will be injected by this validator."
+    }
+
+    $actualClientPlcEvidenceSha256 = (Get-FileHash -LiteralPath $ClientPlcEvidencePath -Algorithm SHA256).Hash
+    if ($actualClientPlcEvidenceSha256 -ne $ClientPlcEvidenceSha256) {
+        throw "ClientPLC evidence artifact SHA-256 mismatch for '$ClientPlcEvidencePath'."
+    }
+
+    try {
+        $clientPlcEvidence = Get-Content -LiteralPath $ClientPlcEvidencePath -Raw -Encoding utf8 | ConvertFrom-Json
+    }
+    catch {
+        throw "ClientPLC evidence file '$ClientPlcEvidencePath' is not valid JSON: $($_.Exception.Message)"
+    }
+
+    $evidenceContract = [string](Get-RequiredEvidenceProperty -InputObject $clientPlcEvidence -Name 'contract' -Context 'evidence')
+    $evidenceSource = [string](Get-RequiredEvidenceProperty -InputObject $clientPlcEvidence -Name 'source' -Context 'evidence')
+    if ($evidenceContract -ne 'fii.clientplc.telemetry-evidence/v1' -or $evidenceSource -ne 'ClientPLC') {
+        throw "ClientPLC evidence must declare contract 'fii.clientplc.telemetry-evidence/v1' and source 'ClientPLC'."
+    }
+
+    $telemetryObject = Get-RequiredEvidenceProperty -InputObject $clientPlcEvidence -Name 'telemetryEnvelope' -Context 'evidence'
+    $protocolVersion = [int](Get-RequiredEvidenceProperty -InputObject $telemetryObject -Name 'protocolVersion' -Context 'evidence.telemetryEnvelope')
+    $messageId = [string](Get-RequiredEvidenceProperty -InputObject $telemetryObject -Name 'messageId' -Context 'evidence.telemetryEnvelope')
+    $messageType = [string](Get-RequiredEvidenceProperty -InputObject $telemetryObject -Name 'messageType' -Context 'evidence.telemetryEnvelope')
+    $evidenceClientId = [string](Get-RequiredEvidenceProperty -InputObject $telemetryObject -Name 'clientId' -Context 'evidence.telemetryEnvelope')
+    $sentAt = [string](Get-RequiredEvidenceProperty -InputObject $telemetryObject -Name 'sentAt' -Context 'evidence.telemetryEnvelope')
+    $evidencePayload = Get-RequiredEvidenceProperty -InputObject $telemetryObject -Name 'payload' -Context 'evidence.telemetryEnvelope'
+    $evidenceMachineId = [string](Get-RequiredEvidenceProperty -InputObject $evidencePayload -Name 'machineId' -Context 'evidence.telemetryEnvelope.payload')
+    $telemetrySequence = [Int64](Get-RequiredEvidenceProperty -InputObject $evidencePayload -Name 'sequence' -Context 'evidence.telemetryEnvelope.payload')
+    $evidenceProduction = Get-RequiredEvidenceProperty -InputObject $evidencePayload -Name 'production' -Context 'evidence.telemetryEnvelope.payload'
+    $expectedOee = [double](Get-RequiredEvidenceProperty -InputObject $evidenceProduction -Name 'oee' -Context 'evidence.telemetryEnvelope.payload.production')
+
+    if ($protocolVersion -ne 1) { throw "ClientPLC evidence protocolVersion is '$protocolVersion', expected 1." }
+    if ($messageType -ne 'telemetry') { throw "ClientPLC evidence messageType is '$messageType', expected 'telemetry'." }
+    if ($evidenceClientId -ne $smokeClientId) { throw "ClientPLC evidence clientId '$evidenceClientId' does not match selected client '$smokeClientId'." }
+    if ($evidenceMachineId -notin @($machineId, $smokeClientId)) {
+        throw "ClientPLC evidence machineId '$evidenceMachineId' does not identify selected machine '$machineId' / '$smokeClientId'."
+    }
+    if ($sentAt -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$') {
+        throw "ClientPLC evidence sentAt '$sentAt' must be an RFC3339 timestamp with an explicit offset."
+    }
+    $sentAtTimestamp = [DateTimeOffset]::MinValue
+    if (-not [DateTimeOffset]::TryParse(
+        $sentAt,
+        [System.Globalization.CultureInfo]::InvariantCulture,
+        [System.Globalization.DateTimeStyles]::RoundtripKind,
+        [ref]$sentAtTimestamp)) {
+        throw "ClientPLC evidence sentAt '$sentAt' is not a valid timestamp."
+    }
+    $evidenceNow = [DateTimeOffset]::UtcNow
+    if ($sentAtTimestamp -gt $evidenceNow.AddMinutes(2)) {
+        throw "ClientPLC evidence sentAt '$sentAt' is in the future."
+    }
+    if ($sentAtTimestamp -lt $evidenceNow.AddMinutes(-$ClientPlcEvidenceMaxAgeMinutes)) {
+        throw "ClientPLC evidence sentAt '$sentAt' is older than the allowed $ClientPlcEvidenceMaxAgeMinutes minutes."
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ClientPlcMessageId) -and $ClientPlcMessageId -ne $messageId) {
+        throw "ClientPLC evidence messageId '$messageId' does not match supplied correlation ID '$ClientPlcMessageId'."
+    }
+
+    Write-Host "[evidence] Hash-verified ClientPLC telemetry $messageId from $ClientPlcEvidencePath" -ForegroundColor Cyan
+}
+else {
+    $telemetrySequence = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+    $messageId = [guid]::NewGuid().ToString('D')
+    $sentAt = [DateTimeOffset]::UtcNow.ToString('O')
+    $expectedOee = 92.0
+    $telemetryObject = @{
+        protocolVersion = 1
+        messageId = $messageId
+        messageType = 'telemetry'
+        clientId = $smokeClientId
+        sentAt = $sentAt
+        payload = @{
+            machineId = $machineId
+            machineName = [string]$smokeMachine.name
+            sequence = $telemetrySequence
+            status = 'RUNNING'
+            plcConnected = $true
+            production = @{ qty = 1; time = 1.0; uph = 60; oee = $expectedOee; yieldRate = 99.0 }
+            alarm = @{ active = $false }
+        }
+    }
+    $telemetry = $telemetryObject | ConvertTo-Json -Depth 6 -Compress
+    Send-MqttMessage -ClientId $smokeClientId -Topic "client/$smokeClientId/telemetry" -Payload $telemetry
+}
+
+$liveTelemetry = Wait-ForValue -Name 'Operations UI live telemetry data' -Probe {
     $snapshots = @(Invoke-RestMethod -Uri "$backendUrl/api/telemetry/live" -WebSession $browser -TimeoutSec 10 | ForEach-Object { $_ })
     $snapshot = $snapshots | Where-Object {
         [string]$_.clientId -eq $smokeClientId -and [string]$_.payload.messageId -eq $messageId
@@ -461,21 +569,27 @@ $liveTelemetry = Wait-ForValue -Name 'Live telemetry snapshot' -Probe {
 $escapedMessageId = $messageId.Replace("'", "''")
 $expectedEventKey = "telemetry:$machineId`:$messageId"
 $escapedEventKey = $expectedEventKey.Replace("'", "''")
-$rawAndOutbox = Wait-ForValue -Name 'PostgreSQL raw telemetry and outbox' -Probe {
+$escapedClientId = $smokeClientId.Replace("'", "''")
+$rawAndOutbox = Wait-ForValue -Name 'PostgreSQL receipt, raw telemetry, and outbox' -Probe {
     $row = Invoke-PsqlScalar -ConnectionString $OperationsConnectionString -Sql @"
-SELECT mt.id || '|' || fo.id || '|' || fo.status
+SELECT tr.id || '|' || mt.id || '|' || fo.id || '|' || fo.status
 FROM machine_telemetry mt
+JOIN telemetry_receipts tr ON tr.machine_telemetry_id = mt.id
 JOIN fusion_outbox fo ON fo.event_key = '$escapedEventKey'
 WHERE mt.raw_json->>'messageId' = '$escapedMessageId'
-  AND mt.machine_id = '$machineId'::uuid;
+  AND mt.machine_id = '$machineId'::uuid
+  AND tr.device_id = '$escapedClientId'
+  AND tr.message_id = '$escapedMessageId'
+  AND tr.committed_at IS NOT NULL;
 "@
     if (-not [string]::IsNullOrWhiteSpace($row)) { return $row }
     return $null
 }
 $rawParts = $rawAndOutbox.Split('|')
-if ($rawParts.Count -ne 3) { throw 'Raw telemetry/outbox correlation returned an invalid result.' }
-$sourceId = [Int64]$rawParts[0]
-$outboxId = [string]$rawParts[1]
+if ($rawParts.Count -ne 4) { throw 'Receipt/raw telemetry/outbox correlation returned an invalid result.' }
+$receiptId = [Int64]$rawParts[0]
+$sourceId = [Int64]$rawParts[1]
+$outboxId = [string]$rawParts[2]
 
 $outboxStatus = Wait-ForValue -Name 'Delivered fusion outbox event' -TimeoutSeconds 60 -Probe {
     $status = Invoke-PsqlScalar -ConnectionString $OperationsConnectionString -Sql @"
@@ -516,7 +630,11 @@ $cepEvent = $null
 if (-not $SkipCepStaging) {
     $cepEvent = Wait-ForValue -Name 'CEP staging telemetry event' -Probe {
         $events = @(Invoke-RestMethod -Uri "$cepStagingUrl/api/v1/events?asset_id=$machineId" -TimeoutSec 10 | ForEach-Object { $_ })
-        $event = $events | Where-Object { [string]$_.source -eq 'backend_telemetry' } | Select-Object -First 1
+        $event = $events | Where-Object {
+            [string]$_.source -eq 'backend_telemetry' -and
+            [string]$_.correlation_id -eq $messageId -and
+            [Int64]$_.payload.extra.source_telemetry_id -eq $sourceId
+        } | Select-Object -First 1
         if ($null -ne $event) { return $event }
         return $null
     }
@@ -555,7 +673,7 @@ if (-not $SkipOpenDataFusion) {
     $fusionTelemetry = Wait-ForValue -Name 'Correlated Open Data Fusion telemetry' -TimeoutSeconds 60 -Probe {
         $candidate = Invoke-RestMethod -Uri $telemetryUri -Headers $odfScopeHeaders -TimeoutSec 10
         $points = @($candidate.series | ForEach-Object { @($_.points) })
-        if (@($points | Where-Object { [double]$_.value -eq 92.0 }).Count -eq 1) { return $candidate }
+        if (@($points | Where-Object { [Math]::Abs([double]$_.value - $expectedOee) -lt 0.000001 }).Count -eq 1) { return $candidate }
         return $null
     }
 
@@ -621,8 +739,11 @@ if (-not $SkipOpenDataFusion -and (Get-HttpStatus -Uri "$odfWebUrl/api/v1/auth/s
     OpenDataFusion = $(if ($SkipOpenDataFusion) { 'Skipped' } else { $odfReady.readiness })
     SharedSso = 'Passed'
     ExistingApprovedMachine = $machineId
+    TelemetrySource = $(if ($WithClientPlc) { 'ClientPLC artifact (hash-verified)' } else { 'Direct MQTT fixture' })
+    CorrelationMessageId = $messageId
     LiveTelemetry = 'Passed'
     PostgreSqlRawAndOutbox = $outboxStatus
+    PostgreSqlReceiptId = $receiptId
     TimescaleRawAndRollup = $(if ($SkipTimescale) { 'Skipped' } else { 'Passed' })
     CepStaging = $(if ($SkipCepStaging) { 'Skipped' } else { 'Passed' })
     Phase2AlertList = $(if ($SkipTimescale) { 'Skipped' } else { "Passed ($phase2AlertCount)" })
