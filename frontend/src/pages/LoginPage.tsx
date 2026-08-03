@@ -94,6 +94,23 @@ export default function LoginPage() {
           scrub: 0.7,
         },
       });
+
+      gsap.fromTo('.login-hero__word',
+        { opacity: 0.18, y: 10 },
+        {
+          opacity: 1,
+          y: 0,
+          ease: 'none',
+          stagger: 0.04,
+          scrollTrigger: {
+            trigger: '.login-hero__lede',
+            scroller,
+            start: 'top 86%',
+            end: 'bottom 56%',
+            scrub: 0.65,
+          },
+        },
+      );
     }
   }, { scope: pageRef });
 
@@ -115,7 +132,9 @@ export default function LoginPage() {
   const errorMessage = serverError || (sessionMessage ? t(sessionMessage, { defaultValue: sessionMessage }) : '');
   const isBusy = mutation.isPending;
   const platformModules = [t('navigation.overview'), t('navigation.fiiAssistant'), t('navigation.fiiDataFusion')];
-  const proofLines = [t('common.systemDescription'), t('auth.subtitle'), t('common.systemName')];
+  const heroDescription = t('common.systemDescription');
+  const heroWords = heroDescription.split(/\s+/);
+  const proofLines = [heroDescription, t('auth.subtitle'), t('common.systemName')];
 
   return (
     <AuthScreen showLanguageControl fullBleed>
@@ -129,9 +148,16 @@ export default function LoginPage() {
               <img src={logoUrl} alt={t('common.logoAlt')} className="login-hero__logo" />
             </div>
             <h1 id="login-heading" className="login-hero__title max-w-6xl">
-              {t('common.appName')}
+              <span>{t('common.appName')}</span>
+              <span className="login-hero__title-mark" aria-hidden="true" />
             </h1>
-            <p className="login-hero__lede">{t('common.systemDescription')}</p>
+            <p className="login-hero__lede" aria-label={heroDescription}>
+              {heroWords.map((word, index) => (
+                <span className="login-hero__word" key={`${word}-${index}`}>
+                  {word}{index < heroWords.length - 1 ? ' ' : ''}
+                </span>
+              ))}
+            </p>
 
             <div className="login-hero__actions">
               <Button size="lg" className="login-hero__primary" onClick={() => setFocus('username')}>

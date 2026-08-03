@@ -6,7 +6,7 @@ services:
       CEP_MODE: staging
       CEP_PORT: 8084
     ports:
-      - "58085:8084"
+      - "${FII_CEP_STAGING_PORT:-58085}:8084"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8084/health')"]
       interval: 10s
