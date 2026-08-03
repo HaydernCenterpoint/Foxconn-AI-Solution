@@ -21,6 +21,7 @@ import {
   isAssetId,
   mapAlertResponse,
   mapHealthResponse,
+  mapHealthHistory,
   rollUpHealthScores,
 } from './predictiveAlerts.api';
 
@@ -71,6 +72,20 @@ describe('predictiveAlerts API contract mapping', () => {
       performance_pct: 91,
       maintenance_overdue: true,
     });
+  });
+
+  it('maps camelCase health history responses while retaining legacy fields', () => {
+    expect(mapHealthHistory({
+      history: [
+        { timestamp: '2026-07-28T08:00:00Z', score: 84, metadata: { source: 'health-service' } },
+        { recordedAt: '2026-07-27T08:00:00Z', overallScore: 80 },
+        { recordedAt: '2026-07-26T08:00:00Z', healthScore: 76 },
+      ],
+    })).toEqual([
+      { recorded_at: '2026-07-28T08:00:00Z', health_score: 84 },
+      { recorded_at: '2026-07-27T08:00:00Z', health_score: 80 },
+      { recorded_at: '2026-07-26T08:00:00Z', health_score: 76 },
+    ]);
   });
 
   it('accepts the deterministic GUIDs used by the Asset Browser demo', () => {

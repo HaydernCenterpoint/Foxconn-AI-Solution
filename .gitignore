@@ -69,3 +69,9 @@ docs/release-evidence/g0/g0-result.json
 factory-ai-platform/data-platform/docs/benchmark_telemetry_local.*
 factory-ai-platform/data-platform/docs/profile_telemetry_queries_local.*
 
+
+# Local runtime logs
+.runtime-logs/
+
+# Local repository-analysis output
+graphify-out/

@@ -113,7 +113,14 @@ interface HealthApiResponse {
 
 interface HealthHistoryApiResponse {
   assetId?: string;
-  history?: Array<{ recordedAt?: string; overallScore?: number; healthScore?: number }>;
+  history?: Array<{
+    timestamp?: string;
+    score?: number;
+    metadata?: unknown;
+    recordedAt?: string;
+    overallScore?: number;
+    healthScore?: number;
+  }>;
 }
 
 const DEMO_MODE = import.meta.env.MODE === 'demo';
@@ -244,10 +251,10 @@ export function buildRcaRequest(alert: PredictiveAlert): RcaRequest {
   return { alertId: alert.alert_id };
 }
 
-function mapHealthHistory(response: HealthHistoryApiResponse): AssetHealthHistoryPoint[] {
+export function mapHealthHistory(response: HealthHistoryApiResponse): AssetHealthHistoryPoint[] {
   return (response.history ?? []).map((point) => ({
-    recorded_at: point.recordedAt ?? '',
-    health_score: point.overallScore ?? point.healthScore ?? 0,
+    recorded_at: point.timestamp ?? point.recordedAt ?? '',
+    health_score: point.score ?? point.overallScore ?? point.healthScore ?? 0,
   }));
 }
 

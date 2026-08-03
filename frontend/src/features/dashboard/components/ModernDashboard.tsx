@@ -1,4 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -39,6 +41,8 @@ import type {
 import type { AssetHealth, PredictiveAlert } from '../services/predictiveAlerts.api';
 import { PredictiveAlertPanel } from './PredictiveAlertPanel';
 import './modern-dashboard.css';
+
+gsap.registerPlugin(useGSAP);
 
 interface ModernDashboardProps {
   viewModel: DashboardViewModel;
@@ -143,6 +147,7 @@ export function ModernDashboard({
   isPredictiveAlertsError = false,
 }: ModernDashboardProps) {
   const { i18n, t } = useTranslation();
+  const dashboardRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState('');
   const [onlyActiveAlerts, setOnlyActiveAlerts] = useState(false);
   const locale = resolveLocale(i18n.resolvedLanguage ?? i18n.language);
@@ -181,8 +186,26 @@ export function ModernDashboard({
     { name: t('dashboardPage.modern.defectEstimate'), value: viewModel.defects.total, color: '#ef4444' },
   ];
 
+  useGSAP(() => {
+    if (typeof window === 'undefined'
+      || typeof window.matchMedia !== 'function'
+      || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const cards = gsap.utils.toArray<HTMLElement>('.modern-dashboard__kpi, .modern-dashboard__panel');
+    gsap.from(cards, {
+      opacity: 0,
+      y: 26,
+      rotateX: 2,
+      scale: 0.985,
+      duration: 0.7,
+      stagger: 0.045,
+      ease: 'power3.out',
+      clearProps: 'transform',
+    });
+  }, { scope: dashboardRef });
+
   return (
-    <div className="modern-dashboard">
+    <div ref={dashboardRef} className="modern-dashboard">
       <header className="modern-dashboard__intro">
         <div>
           <p>{t('dashboardPage.modern.welcome')}</p>

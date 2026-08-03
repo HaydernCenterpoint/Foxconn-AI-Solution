@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${FII_TIMESCALE_PASSWORD:?Set FII_TIMESCALE_PASSWORD}
     ports:
-      - "127.0.0.1:55433:5432"
+      - "${FII_TIMESCALE_PORT:-55433}:5432"
     volumes:
       - timescale-data:/var/lib/postgresql/data
 
