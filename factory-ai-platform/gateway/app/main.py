@@ -32,10 +32,10 @@ def _load_local_env():
 
 _load_local_env()
 
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from app.api.routes import router as api_router
+from fastapi import FastAPI, Request  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.responses import JSONResponse  # noqa: E402
+from app.api.routes import router as api_router  # noqa: E402
 
 app = FastAPI(title="Factory AI Gateway", version="1.0.0")
 

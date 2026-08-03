@@ -25,6 +25,7 @@ server = Server("mkz-factory")
 
 BACKEND_URL = os.getenv("MKZ_BACKEND_URL") or "http://127.0.0.1:5165"
 BACKEND_TOKEN = os.getenv("MKZ_BACKEND_TOKEN", "")
+BACKEND_API_KEY = os.getenv("MKZ_BACKEND_API_KEY", "")
 LIMIT_MINIMUM = 1
 LIMIT_MAXIMUM = 200
 REPORT_TIME_RANGES = ("today", "last_7_days", "month")
@@ -52,19 +53,24 @@ def _is_loopback_host(host: str) -> bool:
 
 
 def _validate_token_transport() -> None:
-    """Permit a backend bearer token only over TLS or direct loopback HTTP."""
+    """Permit a backend bearer token / API key only over TLS or direct loopback HTTP."""
     parsed = urlparse(BACKEND_URL)
     if (
-        BACKEND_TOKEN
+        (BACKEND_TOKEN or BACKEND_API_KEY)
         and parsed.scheme.lower() == "http"
         and not _is_loopback_host(parsed.hostname or "")
     ):
-        raise ValueError("MKZ_BACKEND_TOKEN requires HTTPS for a non-loopback backend")
+        raise ValueError("MKZ_BACKEND_TOKEN / MKZ_BACKEND_API_KEY requires HTTPS for a non-loopback backend")
 
 
 def _headers() -> Dict[str, str]:
     _validate_token_transport()
-    return {"Authorization": f"Bearer {BACKEND_TOKEN}"} if BACKEND_TOKEN else {}
+    headers: Dict[str, str] = {}
+    if BACKEND_TOKEN:
+        headers["Authorization"] = f"Bearer {BACKEND_TOKEN}"
+    if BACKEND_API_KEY:
+        headers["X-API-Key"] = BACKEND_API_KEY
+    return headers
 
 
 def _bounded_limit(value: Any, default: int) -> int:

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 2,
+  "status": "pending_ratification",
+  "ratifiedAtUtc": null,
+  "businessImpact": null,
+  "workloadJustification": null,
+  "owners": {
+    "release": null,
+    "sre": null,
+    "controls": null,
+    "data": null,
+    "rollback": null
+  },
+  "workload": {
+    "pilotSite": null,
+    "pilotLine": null,
+    "machineCount": null,
+    "metricsPerMachine": null,
+    "samplesPerMetricPerMinute": null,
+    "payloadBytes": {
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null
+    }
+  },
+  "resourceLimits": {
+    "backendMemoryBytes": null,
+    "backendCpuCores": null,
+    "operationsDatabaseStorageBytes": null,
+    "edgeDiskBytes": null
+  },
+  "targets": {
+    "maxPayloadBytes": { "value": null, "unit": "bytes", "owner": null, "justification": null, "measurementCommand": null },
+    "ingressBudgetBytes": { "value": null, "unit": "bytes", "owner": null, "justification": null, "measurementCommand": null },
+    "enqueueWaitTimeoutMs": { "value": null, "unit": "milliseconds", "owner": null, "justification": null, "measurementCommand": null },
+    "alertApiP95Ms": { "value": null, "unit": "milliseconds", "owner": null, "justification": null, "measurementCommand": null },
+    "predictionApiP95Ms": { "value": null, "unit": "milliseconds", "owner": null, "justification": null, "measurementCommand": null },
+    "timescaleQueryP95Ms": { "value": null, "unit": "milliseconds", "owner": null, "justification": null, "measurementCommand": null },
+    "uiFreshnessSeconds": { "value": null, "unit": "seconds", "owner": null, "justification": null, "measurementCommand": null },
+    "offlineSpoolMaxBytes": { "value": null, "unit": "bytes", "owner": null, "justification": null, "measurementCommand": null },
+    "offlineSpoolMaxDays": { "value": null, "unit": "days", "owner": null, "justification": null, "measurementCommand": null },
+    "rpoMinutes": { "value": null, "unit": "minutes", "owner": null, "justification": null, "measurementCommand": null },
+    "rtoMinutes": { "value": null, "unit": "minutes", "owner": null, "justification": null, "measurementCommand": null },
+    "stagingSoakHours": { "value": null, "unit": "hours", "owner": null, "justification": null, "measurementCommand": null },
+    "canaryDays": { "value": null, "unit": "days", "owner": null, "justification": null, "measurementCommand": null }
+  }
+}

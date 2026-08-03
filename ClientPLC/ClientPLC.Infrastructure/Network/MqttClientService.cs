@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HslCommunication;
 using PLC.Config;
+using PLC.Database;
 using PLC.Service;
 using Serilog;
 
@@ -38,10 +39,21 @@ public class MqttClientService
 
     private readonly IServerTransport _transport;
     private readonly IPLCPollingService _plcPolling;
+    private readonly LocalDbService _localDb;
+    private readonly ApplicationAcknowledgementHandler _acknowledgementHandler;
     private readonly TelemetryPayloadBuilder _payloadBuilder = new TelemetryPayloadBuilder();
+    private readonly SemaphoreSlim _deliveryPumpLock = new SemaphoreSlim(1, 1);
+    private readonly SemaphoreSlim _publishLock = new SemaphoreSlim(1, 1);
     
     private CancellationTokenSource _cts;
     private bool _isRunning;
+    private readonly object _lifecycleLock = new object();
+    private readonly HashSet<Task> _backgroundOperations = new HashSet<Task>();
+    private Task? _telemetryLoopTask;
+    private Task? _deliveryPumpTask;
+    private Task _stopTask = Task.CompletedTask;
+    private bool _acceptingProducers = true;
+    private bool _stopInitiated;
 
     // Delta telemetry state variables
     private string? _lastSentStatus;
@@ -78,7 +90,7 @@ public class MqttClientService
     public void LoadActiveAddressItems()
     {
         ActiveAddressItems.Clear();
-        var items = LocalDbService.Instance.LoadAddressesFromDb();
+        var items = _localDb.LoadAddressesFromDb();
         foreach (var item in items)
         {
             ActiveAddressItems.Add(item);
@@ -139,14 +151,26 @@ public class MqttClientService
     public static event Action<string> OnLogReceived;
     public static event Action<Dictionary<string, object>> OnPlcDataRead;
 
-    public MqttClientService(IServerTransport transport, IPLCPollingService plcPolling)
+    public MqttClientService(
+        IServerTransport transport,
+        IPLCPollingService plcPolling,
+        LocalDbService localDb)
     {
         _transport = transport;
         _plcPolling = plcPolling;
+        _localDb = localDb;
+        _acknowledgementHandler = new ApplicationAcknowledgementHandler(
+            _localDb.OfflineQueueRepository,
+            HandleCompletedDelivery);
         InitializeService();
     }
 
-    public MqttClientService() : this(new MqttTransport(), new PLCPollingService())
+    public MqttClientService(IServerTransport transport, IPLCPollingService plcPolling)
+        : this(transport, plcPolling, LocalDbService.Instance)
+    {
+    }
+
+    public MqttClientService() : this(new MqttTransport(), new PLCPollingService(), new LocalDbService())
     {
     }
 
@@ -164,67 +188,56 @@ public class MqttClientService
             UpdateActiveAddressValues(data);
             OnPlcDataRead?.Invoke(data);
 
-            if (_isRunning && _serverCommEnabled)
+            if (_isRunning && _acceptingProducers && _serverCommEnabled)
             {
-                _ = Task.Run(async () =>
+                _ = TrackOperation(() => RunProducerAsync(async token =>
                 {
-                    try
-                    {
-                        await SendTelemetryInternalAsync(
-                            _plcPolling.LatestStatus,
-                            _plcPolling.IsPlcConnected,
-                            _plcPolling.LatestCycleTimeSec,
-                            _plcPolling.LatestRunCount,
-                            data,
-                            CancellationToken.None
-                        );
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "[MqttClientService] Immediate telemetry send failed");
-                    }
-                });
+                    await SendTelemetryInternalAsync(
+                        _plcPolling.LatestStatus,
+                        _plcPolling.IsPlcConnected,
+                        _plcPolling.LatestCycleTimeSec,
+                        _plcPolling.LatestRunCount,
+                        data,
+                        token);
+                }));
             }
         };
 
-        _transport.OnConnected += HandleConnectedAsync;
+        _transport.OnConnected += () =>
+            _acceptingProducers
+                ? TrackOperation(HandleConnectedAsync)
+                : Task.CompletedTask;
     }
 
     private async Task HandleConnectedAsync()
     {
-        await SendRegisterAsync(CancellationToken.None);
-        _ = Task.Run(async () =>
+        if (!_acceptingProducers)
         {
-            try
-            {
-                await ProcessSyncAsync();
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "[MqttClientService] ProcessSyncAsync failed");
-            }
-        });
-        _ = Task.Run(async () =>
+            return;
+        }
+        CancellationToken token = _cts?.Token ?? CancellationToken.None;
+        try
         {
-            try
-            {
-                await ProcessOfflineQueueAsync(CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "[MqttClientService] ProcessOfflineQueueAsync failed");
-            }
-        });
+            await SendRegisterAsync(token);
+            await PumpDeliveryAsync(token);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[MqttClientService] Connected delivery processing failed");
+        }
     }
 
     private async Task SendRegisterAsync(CancellationToken token)
     {
         AppConfig config = AppConfig.Current;
         string topic = $"client/{config.MachineId}/register";
-        long lastSyncSeq = LocalDbService.Instance.GetLastSyncSequence();
+        long lastSyncSeq = _localDb.GetLastSyncSequence();
         string json = _payloadBuilder.BuildRegisterJson(lastSyncSeq);
 
-        if (await _transport.SendMessageAsync(topic, json, token))
+        if (await SendSerializedAsync(topic, json, token))
         {
             OnLogReceived?.Invoke($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Server: Đã gửi bản tin register (clientId={config.MachineId}, lastSyncSeq={lastSyncSeq}).");
         }
@@ -253,9 +266,14 @@ public class MqttClientService
 
     public void Start()
     {
-        if (!_isRunning)
+        lock (_lifecycleLock)
         {
+            if (_isRunning || _stopInitiated)
+            {
+                return;
+            }
             _isRunning = true;
+            _acceptingProducers = true;
             _cts = new CancellationTokenSource();
             if (_serverCommEnabled)
             {
@@ -263,7 +281,7 @@ public class MqttClientService
             }
             _plcPolling.Start();
 
-            Task.Run(async () =>
+            _telemetryLoopTask = Task.Run(async () =>
             {
                 try
                 {
@@ -274,66 +292,222 @@ public class MqttClientService
                     Log.Error(ex, "[MqttClientService] TelemetryLoopAsync failed");
                 }
             });
+            _deliveryPumpTask = Task.Run(async () =>
+            {
+                try
+                {
+                    await DeliveryPumpLoopAsync(_cts.Token);
+                }
+                catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+                {
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "[MqttClientService] DeliveryPumpLoopAsync failed");
+                }
+            });
         }
     }
 
     public void Stop()
     {
-        _isRunning = false;
-        _cts?.Cancel();
+        StopAsync().GetAwaiter().GetResult();
+    }
 
-        // Publish final offline message before disconnecting!
-        if (_serverCommEnabled && IsConnectedToServer)
+    public Task StopAsync()
+    {
+        lock (_lifecycleLock)
         {
+            if (_stopInitiated)
+            {
+                return _stopTask;
+            }
+            _stopInitiated = true;
+            _acceptingProducers = false;
+            _isRunning = false;
+            _cts?.Cancel();
+            _stopTask = StopCoreAsync();
+            return _stopTask;
+        }
+    }
+
+    private async Task StopCoreAsync()
+    {
+        _plcPolling.Stop();
+        await AwaitBackgroundWorkAsync().ConfigureAwait(false);
+
+        StoredOfflineTelemetry? finalOffline = null;
+        try
+        {
+            finalOffline = StoreFinalOfflineTelemetry();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to durably store final offline telemetry; publish suppressed");
+        }
+
+        if (finalOffline is not null && _serverCommEnabled && IsConnectedToServer)
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             try
             {
-                AppConfig config = AppConfig.Current;
-                string topic = $"client/{config.MachineId}/telemetry";
-                var offlineEnvelope = new
+                _localDb.PrepareOfflineMessageForPublish(
+                    new OfflineQueueEnqueueRequest(
+                        finalOffline.MessageId,
+                        finalOffline.Topic,
+                        finalOffline.Json),
+                    enqueueIfMissing: false);
+                if (!await SendSerializedAsync(
+                        finalOffline.Topic,
+                        finalOffline.Json,
+                        timeout.Token).ConfigureAwait(false))
                 {
-                    protocolVersion = 1,
-                    messageId = Guid.NewGuid().ToString(),
-                    messageType = "telemetry",
-                    clientId = config.MachineId,
-                    sentAt = DateTime.UtcNow,
-                    payload = new
-                    {
-                        machineId = config.MachineId,
-                        status = "OFFLINE",
-                        plcConnected = false
-                    }
-                };
-                string json = System.Text.Json.JsonSerializer.Serialize(offlineEnvelope);
-                
-                // Run in a background thread to prevent UI thread deadlock
-                Task.Run(async () =>
-                {
-                    try
-                    {
-                        await _transport.SendMessageAsync(topic, json, CancellationToken.None);
-                    }
-                    catch (Exception ex)
-                    {
-                        Serilog.Log.Warning(ex, "Failed to send final offline message in background Task");
-                    }
-                    finally
-                    {
-                        _transport.Stop();
-                    }
-                });
+                    _localDb.RecordOfflineMessageFailure(
+                        finalOffline.MessageId,
+                        "Final offline telemetry publish failed.");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                _localDb.RecordOfflineMessageFailure(
+                    finalOffline.MessageId,
+                    "Final offline telemetry publish timed out.");
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "Failed to send final offline telemetry message on Stop");
-                _transport.Stop();
+                Log.Warning(ex, "Failed to send final offline telemetry");
+                _localDb.RecordOfflineMessageFailure(
+                    finalOffline.MessageId,
+                    "Final offline telemetry publish failed.");
             }
         }
-        else
+
+        await _transport.StopAsync().ConfigureAwait(false);
+    }
+
+    private StoredOfflineTelemetry StoreFinalOfflineTelemetry()
+    {
+        AppConfig config = AppConfig.Current;
+        string topic = $"client/{config.MachineId}/telemetry";
+        long deliverySequence = _localDb.ReserveTelemetryDeliverySequence();
+        string messageId = Guid.NewGuid().ToString();
+        string json = _payloadBuilder.BuildTelemetryJson(
+            "OFFLINE",
+            isPlcConnected: false,
+            cycleTimeSec: 0,
+            runCount: 0,
+            plcRuntimeSeconds: 0,
+            plcData: new Dictionary<string, object>(),
+            deliverySequence,
+            messageId);
+        _localDb.StoreTelemetryForDelivery(
+            new OfflineQueueEnqueueRequest(messageId, topic, json),
+            deliverySequence,
+            0,
+            0,
+            0);
+        return new StoredOfflineTelemetry(topic, json, messageId);
+    }
+
+    private sealed record StoredOfflineTelemetry(string Topic, string Json, string MessageId);
+
+    private async Task AwaitBackgroundWorkAsync()
+    {
+        Task[] tracked;
+        lock (_lifecycleLock)
         {
-            _transport.Stop();
+            tracked = _backgroundOperations.ToArray();
+        }
+        Task[] tasks = new[] { _telemetryLoopTask, _deliveryPumpTask }
+            .Where(task => task is not null)
+            .Cast<Task>()
+            .Concat(tracked)
+            .Distinct()
+            .ToArray();
+        if (tasks.Length == 0)
+        {
+            return;
         }
 
-        _plcPolling.Stop();
+        try
+        {
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task RunProducerAsync(Func<CancellationToken, Task> producer)
+    {
+        CancellationToken token = _cts?.Token ?? CancellationToken.None;
+        if (!_acceptingProducers || token.IsCancellationRequested)
+        {
+            return;
+        }
+        try
+        {
+            await producer(token);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[MqttClientService] Producer failed");
+        }
+    }
+
+    private Task TrackOperation(Func<Task> operationFactory)
+    {
+        ArgumentNullException.ThrowIfNull(operationFactory);
+        Task operation;
+        lock (_lifecycleLock)
+        {
+            if (_stopInitiated)
+            {
+                return Task.CompletedTask;
+            }
+            operation = operationFactory();
+            if (!operation.IsCompleted)
+            {
+                _backgroundOperations.Add(operation);
+            }
+        }
+
+        if (operation.IsCompleted)
+        {
+            return operation;
+        }
+
+        _ = operation.ContinueWith(
+            completed =>
+            {
+                lock (_lifecycleLock)
+                {
+                    _backgroundOperations.Remove(completed);
+                }
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+        return operation;
+    }
+
+    private async Task<bool> SendSerializedAsync(
+        string topic,
+        string payload,
+        CancellationToken token)
+    {
+        await _publishLock.WaitAsync(token).ConfigureAwait(false);
+        try
+        {
+            return await _transport.SendMessageAsync(topic, payload, token).ConfigureAwait(false);
+        }
+        finally
+        {
+            _publishLock.Release();
+        }
     }
 
     public void ReconnectDefaultPlc()
@@ -354,7 +528,8 @@ public class MqttClientService
             try
             {
                 int configInterval = AppConfig.Current.ReadIntervalMs;
-                if (_serverCommEnabled && (DateTime.UtcNow - lastTelemetrySent).TotalMilliseconds >= (double)configInterval)
+                if (_acceptingProducers && _serverCommEnabled &&
+                    (DateTime.UtcNow - lastTelemetrySent).TotalMilliseconds >= (double)configInterval)
                 {
                     await SendTelemetryInternalAsync(
                         _plcPolling.LatestStatus,
@@ -366,6 +541,10 @@ public class MqttClientService
                     );
                     lastTelemetrySent = DateTime.UtcNow;
                 }
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                break;
             }
             catch (Exception ex)
             {
@@ -390,21 +569,35 @@ public class MqttClientService
 
             AppConfig config = AppConfig.Current;
             string topic = $"client/{config.MachineId}/telemetry";
-            string json = GenerateTelemetryJson(status, isPlcConnected, cycleTimeSec, runCount, _plcPolling.LatestPlcRuntimeSeconds, plcData);
-
-            long localId = LocalDbService.Instance.InsertTelemetryRecord(json, runCount, 0, cycleTimeSec);
+            long deliverySequence = _localDb.ReserveTelemetryDeliverySequence();
+            string messageId = Guid.NewGuid().ToString();
+            string json = _payloadBuilder.BuildTelemetryJson(
+                status,
+                isPlcConnected,
+                cycleTimeSec,
+                runCount,
+                _plcPolling.LatestPlcRuntimeSeconds,
+                plcData,
+                deliverySequence,
+                messageId);
+            var queueMessage = new OfflineQueueEnqueueRequest(messageId, topic, json);
+            _localDb.StoreTelemetryForDelivery(
+                queueMessage,
+                deliverySequence,
+                runCount,
+                0,
+                cycleTimeSec);
 
             if (!IsConnectedToServer)
             {
-                LocalDbService.Instance.EnqueueOfflineMessage(topic, json);
                 OnLogReceived?.Invoke($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Telemetry: Mất kết nối, đã lưu vào hàng đợi ngoại tuyến SQLite.");
                 return;
             }
 
-            if (await _transport.SendMessageAsync(topic, json, token))
+            _localDb.PrepareOfflineMessageForPublish(queueMessage, enqueueIfMissing: false);
+            if (await SendSerializedAsync(topic, json, token))
             {
-                LocalDbService.Instance.MarkTelemetryRecordsAsSynced(new List<long> { localId });
-                OnLogReceived?.Invoke($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Telemetry: Đã gửi qua server (Status={status}, PLC={isPlcConnected}, Tags={plcData.Count})");
+                OnLogReceived?.Invoke($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Telemetry: Đã gửi qua server, đang chờ application ACK (Status={status}, PLC={isPlcConnected}, Tags={plcData.Count})");
                 
                 _lastSentStatus = status;
                 _lastSentPlcConnected = isPlcConnected;
@@ -415,9 +608,13 @@ public class MqttClientService
             }
             else
             {
-                LocalDbService.Instance.EnqueueOfflineMessage(topic, json);
+                _localDb.RecordOfflineMessageFailure(messageId, "MQTT publish failed.");
                 OnLogReceived?.Invoke($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Telemetry Error: Gửi thất bại, đã lưu vào hàng đợi ngoại tuyến SQLite.");
             }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -452,7 +649,11 @@ public class MqttClientService
             AppConfig config = AppConfig.Current;
             string topic = $"client/{config.MachineId}/heartbeat";
             string json = _payloadBuilder.BuildHeartbeatJson(status, isPlcConnected);
-            await _transport.SendMessageAsync(topic, json, token);
+            await SendSerializedAsync(topic, json, token);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -464,7 +665,7 @@ public class MqttClientService
     {
         try
         {
-            var messages = LocalDbService.Instance.GetOfflineMessages();
+            var messages = _localDb.GetDueOfflineMessages(100);
             if (messages.Count == 0) return;
 
             OnLogReceived?.Invoke($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Offline Queue: Phát hiện {messages.Count} bản tin ngoại tuyến trong SQLite. Đang gửi lại...");
@@ -472,18 +673,25 @@ public class MqttClientService
             {
                 if (token.IsCancellationRequested || !IsConnectedToServer) break;
 
-                if (await _transport.SendMessageAsync(msg.Topic, msg.Payload, token))
+                _localDb.PrepareOfflineMessageForPublish(
+                    new OfflineQueueEnqueueRequest(msg.MessageId, msg.Topic, msg.Payload),
+                    enqueueIfMissing: false);
+                if (await SendSerializedAsync(msg.Topic, msg.Payload, token))
                 {
-                    LocalDbService.Instance.DeleteOfflineMessage(msg.Id);
                     await Task.Delay(100, token);
                 }
                 else
                 {
+                    _localDb.RecordOfflineMessageFailure(msg.MessageId, "MQTT publish failed.");
                     OnLogReceived?.Invoke($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Offline Queue: Gửi lại thất bại, tạm ngưng xử lý hàng đợi.");
                     break;
                 }
             }
             OnLogReceived?.Invoke($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Offline Queue: Hoàn tất gửi lại dữ liệu ngoại tuyến.");
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -491,33 +699,69 @@ public class MqttClientService
         }
     }
 
-    private async Task ProcessSyncAsync()
+    private async Task DeliveryPumpLoopAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        while (await timer.WaitForNextTickAsync(token))
+        {
+            if (_serverCommEnabled && IsConnectedToServer)
+            {
+                await PumpDeliveryAsync(token);
+            }
+        }
+    }
+
+    private async Task PumpDeliveryAsync(CancellationToken token)
+    {
+        if (!await _deliveryPumpLock.WaitAsync(0, token))
+        {
+            return;
+        }
+
+        try
+        {
+            await ProcessOfflineQueueAsync(token);
+            await ProcessSyncAsync(token);
+        }
+        finally
+        {
+            _deliveryPumpLock.Release();
+        }
+    }
+
+    private async Task ProcessSyncAsync(CancellationToken token)
     {
         try
         {
-            var unsynced = LocalDbService.Instance.GetUnsyncedTelemetryRecords();
+            var unsynced = _localDb.GetUnsyncedTelemetryRecords();
             if (unsynced == null || unsynced.Count == 0) return;
 
             OnLogReceived?.Invoke($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Sync: Phát hiện {unsynced.Count} bản ghi chưa đồng bộ. Đang đồng bộ hóa...");
             
             AppConfig config = AppConfig.Current;
             string topic = $"client/{config.MachineId}/sync";
+            if (!_localDb.CanCreateSyncBatch(topic))
+            {
+                return;
+            }
             
             var payload = new
             {
                 machineId = config.MachineId,
                 records = unsynced.Select(r => new
                 {
+                    localRowId = r.Id,
                     sequence = r.Sequence,
                     timestamp = r.Timestamp,
                     rawJson = r.RawJson
                 }).ToList()
             };
 
+            string messageId = Guid.NewGuid().ToString();
             var syncMessage = new
             {
                 protocolVersion = 1,
-                messageId = Guid.NewGuid().ToString(),
+                messageId,
                 messageType = "sync",
                 clientId = config.MachineId,
                 sentAt = DateTime.UtcNow,
@@ -529,21 +773,84 @@ public class MqttClientService
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             });
 
-            if (await _transport.SendMessageAsync(topic, json, CancellationToken.None))
+            var queueMessage = new OfflineQueueEnqueueRequest(messageId, topic, json);
+            _localDb.PrepareOfflineMessageForPublish(queueMessage, enqueueIfMissing: true);
+            if (await SendSerializedAsync(topic, json, token))
             {
                 var ids = unsynced.Select(r => r.Sequence).ToList();
-                LocalDbService.Instance.MarkTelemetryRecordsAsSynced(ids);
-                OnLogReceived?.Invoke($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Sync: Đồng bộ thành công {ids.Count} bản ghi.");
+                OnLogReceived?.Invoke($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Sync: Đã gửi {ids.Count} bản ghi, đang chờ application ACK.");
             }
             else
             {
+                _localDb.RecordOfflineMessageFailure(messageId, "MQTT sync publish failed.");
                 OnLogReceived?.Invoke($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Sync: Đồng bộ thất bại, sẽ thử lại sau.");
             }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
             OnLogReceived?.Invoke($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Sync Error: {ex.Message}");
         }
+    }
+
+    public Task HandleApplicationAcknowledgementAsync(string json)
+    {
+        ApplicationAcknowledgementDisposition disposition = _acknowledgementHandler.Handle(json);
+        OnLogReceived?.Invoke(
+            $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Delivery ACK: {disposition}.");
+        return Task.CompletedTask;
+    }
+
+    private void HandleCompletedDelivery(
+        OfflineQueueMessage message,
+        ApplicationAcknowledgement acknowledgement)
+    {
+        if (acknowledgement.MessageType == "syncAck")
+        {
+            List<long> rowIds = ReadSyncRowIds(message.Payload);
+            if (rowIds.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "Acknowledged sync envelope does not contain local telemetry row IDs.");
+            }
+            _localDb.MarkTelemetryRecordsAsSynced(rowIds);
+        }
+        else
+        {
+            _localDb.MarkTelemetryPayloadAsSynced(message.Payload);
+        }
+    }
+
+    private static List<long> ReadSyncRowIds(string json)
+    {
+        using JsonDocument document = JsonDocument.Parse(json);
+        if (!document.RootElement.TryGetProperty("payload", out JsonElement payload) ||
+            !payload.TryGetProperty("records", out JsonElement records) ||
+            records.ValueKind != JsonValueKind.Array)
+        {
+            return new List<long>();
+        }
+
+        return records.EnumerateArray()
+            .Where(record => record.TryGetProperty("localRowId", out JsonElement rowId) && rowId.TryGetInt64(out _))
+            .Select(record => record.GetProperty("localRowId").GetInt64())
+            .ToList();
+    }
+
+    private static string ReadMessageId(string json)
+    {
+        using JsonDocument document = JsonDocument.Parse(json);
+        if (!document.RootElement.TryGetProperty("messageId", out JsonElement messageId) ||
+            messageId.ValueKind != JsonValueKind.String ||
+            string.IsNullOrWhiteSpace(messageId.GetString()))
+        {
+            throw new InvalidOperationException("Telemetry payload does not contain a stable messageId.");
+        }
+
+        return messageId.GetString()!.Trim();
     }
 
     public string GenerateTelemetryJson(string status, bool isPlcConnected, double cycleTimeSec, int runCount, int plcRuntimeSeconds, Dictionary<string, object> plcData)
@@ -565,14 +872,17 @@ public class MqttClientService
 
     public async Task SendTelemetryManualAsync()
     {
-        await SendTelemetryInternalAsync(
+        if (!_acceptingProducers)
+        {
+            return;
+        }
+        await TrackOperation(() => RunProducerAsync(token => SendTelemetryInternalAsync(
             _plcPolling.LatestStatus ?? "OFFLINE",
             _plcPolling.IsPlcConnected,
             _plcPolling.LatestCycleTimeSec,
             _plcPolling.LatestRunCount,
             _plcPolling.LatestPlcData ?? new Dictionary<string, object>(),
-            CancellationToken.None
-        );
+            token)));
     }
 
     // Public API for command handlers

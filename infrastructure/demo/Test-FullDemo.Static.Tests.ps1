@@ -1,0 +1,70 @@
+[CmdletBinding()]
+param()
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+$scriptPath = Join-Path $PSScriptRoot 'Test-FullDemo.ps1'
+$tokens = $null
+$parseErrors = $null
+$ast = [System.Management.Automation.Language.Parser]::ParseFile($scriptPath, [ref]$tokens, [ref]$parseErrors)
+if (@($parseErrors).Count -ne 0) {
+    throw "Test-FullDemo.ps1 has parser errors: $(@($parseErrors).Message -join '; ')"
+}
+
+$withClientPlc = $ast.ParamBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'WithClientPlc' }
+if ($null -eq $withClientPlc -or $withClientPlc.StaticType -ne [System.Management.Automation.SwitchParameter]) {
+    throw 'Test-FullDemo.ps1 must expose [switch]$WithClientPlc.'
+}
+
+foreach ($parameterName in @('ClientPlcEvidencePath', 'ClientPlcEvidenceSha256', 'ClientPlcEvidenceMaxAgeMinutes')) {
+    if ($null -eq ($ast.ParamBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq $parameterName })) {
+        throw "Test-FullDemo.ps1 must expose `$${parameterName}."
+    }
+}
+
+$mqttCalls = @($ast.FindAll({
+    param($node)
+    $node -is [System.Management.Automation.Language.CommandAst] -and
+        $node.GetCommandName() -eq 'Send-MqttMessage'
+}, $true))
+if ($mqttCalls.Count -ne 1) {
+    throw "Expected exactly one direct Send-MqttMessage call, found $($mqttCalls.Count)."
+}
+
+$text = Get-Content -LiteralPath $scriptPath -Raw -Encoding utf8
+foreach ($required in @(
+    'if ($WithClientPlc)',
+    "'fii.clientplc.telemetry-evidence/v1'",
+    "'ClientPLC'",
+    'FII_CLIENTPLC_EVIDENCE_SHA256',
+    'Get-FileHash -LiteralPath $ClientPlcEvidencePath -Algorithm SHA256',
+    "'ClientPLC artifact (hash-verified)'",
+    '$sentAtTimestamp -gt $evidenceNow.AddMinutes(2)',
+    '$sentAtTimestamp -lt $evidenceNow.AddMinutes(-$ClientPlcEvidenceMaxAgeMinutes)',
+    'correlation_id -eq $messageId',
+    'JOIN telemetry_receipts tr'
+)) {
+    if (-not $text.Contains($required)) { throw "Missing ClientPLC validation assertion: $required" }
+}
+
+
+foreach ($forbidden in @(
+    "TelemetrySource = `$(if (`$WithClientPlc) { 'ClientPLC evidence' }",
+    "TelemetrySource = `$(if (`$WithClientPlc) { 'ClientPLC' }"
+)) {
+    if ($text.Contains($forbidden)) { throw "ClientPLC provenance must not self-prove through source label: $forbidden" }
+}
+
+if ($mqttCalls[0].Extent.StartOffset -lt $text.IndexOf('else {', $text.IndexOf('if ($WithClientPlc)'))) {
+    throw 'Direct Send-MqttMessage must remain exclusively in the non-ClientPLC branch.'
+}
+
+[pscustomobject]@{
+    Parsed = $true
+    WithClientPlcSwitch = $true
+    DirectMqttCallCount = $mqttCalls.Count
+    ClientPlcEvidenceContract = $true
+    ExternalArtifactHashRequired = $true
+    FreshnessBoundsRequired = $true
+}

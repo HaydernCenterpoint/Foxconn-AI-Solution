@@ -20,4 +20,8 @@
     <ProjectReference Include="../fusion-contracts/Fusion.Contracts.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="db/migrations/*.sql" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

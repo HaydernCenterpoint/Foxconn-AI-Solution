@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using backend.Controllers;
+using backend.Services;
 
 namespace backend.Tests.Controllers;
 
@@ -49,5 +51,28 @@ public class PredictionControllerTests
             method!.GetCustomAttributes(typeof(HttpGetAttribute), false)));
 
         Assert.Equal("risk/{assetId}", httpGet.Template);
+    }
+
+    [Fact]
+    public async Task DetectAnomaly_RejectsNullRequest()
+    {
+        var controller = new PredictionController(null!, NullLogger<PredictionController>.Instance);
+
+        var result = await controller.DetectAnomaly(null!);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public void PredictionModels_InitializeRequiredResponseValues()
+    {
+        var anomaly = new AnomalyPrediction();
+        var risk = new FailureRiskPrediction();
+
+        Assert.NotNull(anomaly.Reason);
+        Assert.Empty(anomaly.ContributingFactors);
+        Assert.NotNull(risk.RiskLevel);
+        Assert.NotNull(risk.TimeWindow);
+        Assert.Empty(risk.ContributingFactors);
     }
 }

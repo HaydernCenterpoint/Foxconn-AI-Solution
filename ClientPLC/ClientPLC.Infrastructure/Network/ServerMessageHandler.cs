@@ -44,7 +44,9 @@ public class ServerMessageHandler
                     Log("Server: HeartbeatAck nhận được.");
                     break;
                 case "ack":
-                    Log("Server: ACK nhận được cho message " + messageId);
+                case "syncAck":
+                    await _mqttClientService.HandleApplicationAcknowledgementAsync(json);
+                    Log($"Server: {messageType} received for message {messageId}");
                     break;
                 case "command":
                     if (root.TryGetProperty("payload", out var cmdPayload))

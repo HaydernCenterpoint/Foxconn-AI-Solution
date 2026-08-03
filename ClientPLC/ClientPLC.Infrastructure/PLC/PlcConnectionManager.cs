@@ -156,7 +156,11 @@ public class PlcConnectionManager
         {
             if (_plc != null)
             {
-                try { _plc.Disconnect(); } catch { }
+                try { _plc.Disconnect(); }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Warning(ex, "[PlcConnectionManager] Failed to disconnect PLC during reconnect");
+                }
                 _plc = null;
             }
             _lastConnectAttempt = DateTime.MinValue;
@@ -176,7 +180,11 @@ public class PlcConnectionManager
                 {
                     if (_plc != null)
                     {
-                        try { _plc.Disconnect(); } catch { }
+                        try { _plc.Disconnect(); }
+                        catch (Exception ex)
+                        {
+                            Serilog.Log.Warning(ex, "[PlcConnectionManager] Failed to disconnect previous PLC before replacing connection");
+                        }
                     }
                     _plc = newPlc;
                     ConnectionState = PlcConnectionState.Connected;
@@ -220,7 +228,11 @@ public class PlcConnectionManager
         {
             if (_plc != null)
             {
-                try { _plc.Disconnect(); } catch { }
+                try { _plc.Disconnect(); }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Warning(ex, "[PlcConnectionManager] Failed to disconnect PLC");
+                }
                 _plc = null;
             }
             ConnectionState = PlcConnectionState.Disconnected;

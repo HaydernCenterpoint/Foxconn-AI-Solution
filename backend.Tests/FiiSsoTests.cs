@@ -17,6 +17,7 @@ public class FiiSsoTests
             ["Jwt:Key"] = Secret,
             ["Jwt:Issuer"] = "MKZ_PLC_Server",
             ["Jwt:Audience"] = "MKZ_PLC_Client",
+            ["Jwt:TenantId"] = "factory-vn-01",
             ["FiiSso:SecureCookie"] = secure.ToString(),
         }).Build();
 
@@ -42,6 +43,7 @@ public class FiiSsoTests
 
         var jwt = handler.ReadJwtToken(issued.Value);
         Assert.Equal("admin", jwt.Subject);
+        Assert.Equal("factory-vn-01", jwt.Claims.Single(claim => claim.Type == "tenant_id").Value);
         Assert.Equal("ADMIN", jwt.Claims.Single(claim => claim.Type == "role").Value);
         Assert.Equal(now.AddHours(2), issued.ExpiresAt);
         Assert.Equal(
@@ -66,6 +68,67 @@ public class FiiSsoTests
     }
 
     [Fact]
+    public void Issue_FailsClosedWithoutConfiguredTenant()
+    {
+        var missingTenant = new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["Jwt:Key"] = Secret,
+                ["Jwt:Issuer"] = "MKZ_PLC_Server",
+                ["Jwt:Audience"] = "MKZ_PLC_Client",
+            }).Build();
+
+        var error = Assert.Throws<InvalidOperationException>(
+            () => FiiSso.Issue("operator", "ENGINEER", missingTenant));
+        Assert.Contains("Jwt:TenantId or FII_TENANT_ID", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Issue_AcceptsExplicitDeploymentEnvironmentTenantKey()
+    {
+        var environmentTenant = new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["Jwt:Key"] = Secret,
+                ["FII_TENANT_ID"] = " configured-factory ",
+            }).Build();
+
+        var token = new JwtSecurityTokenHandler().ReadJwtToken(
+            FiiSso.Issue("operator", "ENGINEER", environmentTenant).Value);
+        Assert.Equal("configured-factory", token.Claims.Single(claim => claim.Type == "tenant_id").Value);
+    }
+
+    [Fact]
+    public void ActualIssuedToken_SatisfiesGatewayCanonicalIdentityContract()
+    {
+        var issued = FiiSso.Issue("report-operator", "ENGINEER", Configuration());
+        var principal = new JwtSecurityTokenHandler().ValidateToken(
+            issued.Value,
+            new TokenValidationParameters
+            {
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Secret)),
+                ClockSkew = TimeSpan.Zero,
+            },
+            out var validatedToken);
+
+        var gatewayJwt = (JwtSecurityToken)validatedToken;
+        Assert.Equal(SecurityAlgorithms.HmacSha256, gatewayJwt.Header.Alg);
+        Assert.False(string.IsNullOrWhiteSpace(
+            gatewayJwt.Claims.Single(claim => claim.Type == JwtRegisteredClaimNames.Sub).Value));
+        Assert.False(string.IsNullOrWhiteSpace(
+            gatewayJwt.Claims.Single(claim => claim.Type == "tenant_id").Value));
+
+        var gatewaySource = File.ReadAllText(RepositoryPath(
+            "factory-ai-platform", "gateway", "app", "auth", "jwt_handler.py"));
+        Assert.Contains("TENANT_CLAIM = \"tenant_id\"", gatewaySource, StringComparison.Ordinal);
+        Assert.Contains("payload.get(TENANT_CLAIM)", gatewaySource, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CookieToken_DoesNotOverrideBearerAndLogoutExpiresCookie()
     {
         var requestContext = new DefaultHttpContext();
@@ -80,5 +143,11 @@ public class FiiSsoTests
         var cookie = responseContext.Response.Headers.SetCookie.ToString().ToLowerInvariant();
         Assert.Contains("fii_sso=", cookie);
         Assert.Contains("expires=thu, 01 jan 1970", cookie);
+    }
+
+    private static string RepositoryPath(params string[] segments)
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+        return Path.Combine(new[] { root }.Concat(segments).ToArray());
     }
 }

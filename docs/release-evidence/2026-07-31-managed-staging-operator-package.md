@@ -15,7 +15,9 @@ environment, ERP endpoint, certificates, or reviewer approval.
 | Secrets | `docs/security-secrets.md` |
 | Dual-write rollback | `factory-ai-platform/data-platform/docs/rollback_plan.md` |
 | Gate verifier | `infrastructure/staging/Test-ManagedStagingGate.ps1` |
+| Evidence-only verifier | `infrastructure/staging/Test-ManagedStagingEvidence.ps1` |
 | Gate template | `infrastructure/staging/managed-gate.example.json` |
+| Per-check evidence template | `infrastructure/staging/managed-evidence.example.json` |
 | Gate policy | `infrastructure/staging/README.md` |
 | Local no-fixture residual | `docs/release-evidence/2026-07-31-local-nofixture-blocker.md` |
 | Live alert residual | `docs/release-evidence/2026-07-31-live-alert-residual-gap.md` |
@@ -132,12 +134,15 @@ Operator steps:
 
 No real ERP endpoint is configured in this workspace, so this check stays pending until a data owner supplies the endpoint and mappings.
 
-## 8. 16-check attestation package
+## 8. Schema-v2 16-check attestation package
 
-Copy the template outside git if needed, then fill evidence references:
+Copy the templates outside git if needed. Create one evidence manifest per
+check and record the SHA-256 hash of the exact manifest file in the schema-v2
+attestation:
 
 ```powershell
 Copy-Item .\infrastructure\staging\managed-gate.example.json .\managed-staging-attestation.json
+Copy-Item .\infrastructure\staging\managed-evidence.example.json .\evidence\backend-https-ingress.json
 ```
 
 Required checks (exactly these 16):
@@ -159,22 +164,49 @@ Required checks (exactly these 16):
 15. `live-erp-mes-connector`
 16. `independent-full-stack-smoke`
 
-Rules enforced by `Test-ManagedStagingGate.ps1`:
-- Backend/frontend URLs must be HTTPS and non-loopback
-- Reviewer name required
-- `approvedAtUtc` required and not older than 30 days
-- Every check must be `passed` with non-empty evidence
-- Live probes hit backend `/api/health` and frontend root
+Rules enforced by `Test-ManagedStagingEvidence.ps1`:
+
+- Attestation `schemaVersion` is `2` and contains exactly the canonical 16 checks.
+- Environment ID and release manifest SHA-256 bind every per-check manifest to
+  the same managed environment and release.
+- Each check is `passed`, references a per-check manifest, and records the exact
+  manifest SHA-256.
+- Check IDs and evidence IDs are unique.
+- Evidence is no older than 30 days relative to approval and does not post-date
+  approval beyond the allowed five-minute clock skew.
+- Reviewer conflict-check evidence is immutable, and the reviewer is not a
+  release/evidence contributor or a producer except for reviewer-executed
+  independent smoke evidence.
+- Artifact references use an approved immutable URI scheme and include SHA-256
+  digests.
+
+Validate evidence without probing staging:
+
+```powershell
+./infrastructure/staging/Test-ManagedStagingEvidence.ps1 `
+  -AttestationPath ./managed-staging-attestation.json
+```
+
+`Test-ManagedStagingGate.ps1` first rejects non-HTTPS, loopback, and reserved
+example URLs; it then validates evidence before live probes hit backend
+`/api/health` and the frontend root.
 
 Run only after independent reviewer approval:
 
 ```powershell
+$backendUrl = "https://api.staging.<managed-domain>/"
+$frontendUrl = "https://staging.<managed-domain>/"
 ./infrastructure/staging/Test-ManagedStagingGate.ps1 `
-  -BackendUrl https://api.staging.example.com/ `
-  -FrontendUrl https://staging.example.com/ `
+  -BackendUrl $backendUrl `
+  -FrontendUrl $frontendUrl `
   -AttestationPath ./managed-staging-attestation.json `
   -OutputPath ./managed-staging-result.json
 ```
+
+The regression suite
+`infrastructure/staging/Test-ManagedStagingEvidence.Tests.ps1` generates and
+deletes temporary synthetic manifests. Those fixtures test the validator only;
+they are not release evidence and do not alter the package status below.
 
 ## 9. Independent full-stack smoke
 

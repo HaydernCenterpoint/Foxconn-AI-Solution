@@ -4,6 +4,7 @@ public sealed class OpenDataFusionOptions
 {
     public const string SectionName = "OpenDataFusion";
 
+    public bool CaptureEnabled { get; init; }
     public bool DispatchEnabled { get; init; }
     public string BaseUrl { get; init; } = "http://127.0.0.1:54310/";
     public string TenantId { get; init; } = string.Empty;
@@ -21,6 +22,7 @@ public sealed class OpenDataFusionOptions
 public sealed class OpenDataFusionAuthenticationOptions
 {
     public string Mode { get; init; } = "development";
+    public string MaterialReference { get; init; } = string.Empty;
     public string DevelopmentUser { get; init; } = "local-user";
     public string FactorySecret { get; init; } = string.Empty;
     public string FactoryIssuer { get; init; } = "MKZ_PLC_Server";

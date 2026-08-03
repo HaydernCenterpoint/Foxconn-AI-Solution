@@ -45,8 +45,9 @@
   ],
   "setup_instructions": [
     "1. Start the FII .NET backend at http://127.0.0.1:5165.",
-    "2. This template omits MKZ_BACKEND_TOKEN so the subprocess inherits a configured read-only token from its parent environment.",
-    "3. Add this command and environment configuration in Odysseus Settings > MCP Servers.",
-    "4. Save and reconnect the MCP server."
+    "2. Create a service account + long-lived API key (ADMIN only): POST http://127.0.0.1:5165/api/users/service-account with JSON body {\"username\":\"odysseus-service\",\"role\":\"ENGINEER\"} and an admin JWT. The response returns apiKey (fii_sk_...) once.",
+    "3. Export the key in the Odysseus process environment: MKZ_BACKEND_API_KEY=fii_sk_... (preferred, long-lived). For loopback-only JWT access set MKZ_BACKEND_TOKEN instead. This template inherits these from the parent environment.",
+    "4. Add this command and environment configuration in Odysseus Settings > MCP Servers.",
+    "5. Save and reconnect the MCP server."
   ]
 }

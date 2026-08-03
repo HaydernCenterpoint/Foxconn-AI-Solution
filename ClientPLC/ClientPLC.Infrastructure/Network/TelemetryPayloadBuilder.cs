@@ -14,7 +14,15 @@ public class TelemetryPayloadBuilder
         WriteIndented = true
     };
 
-    public string BuildTelemetryJson(string status, bool isPlcConnected, double cycleTimeSec, int runCount, int plcRuntimeSeconds, Dictionary<string, object> plcData)
+    public string BuildTelemetryJson(
+        string status,
+        bool isPlcConnected,
+        double cycleTimeSec,
+        int runCount,
+        int plcRuntimeSeconds,
+        Dictionary<string, object> plcData,
+        long? deliverySequence = null,
+        string? messageId = null)
     {
         AppConfig config = AppConfig.Current;
         var (ramUsed, ramTotal) = SystemInfoService.GetRamInfo();
@@ -88,7 +96,7 @@ public class TelemetryPayloadBuilder
         var envelope = new
         {
             protocolVersion = 1,
-            messageId = Guid.NewGuid().ToString(),
+            messageId = messageId ?? Guid.NewGuid().ToString(),
             messageType = "telemetry",
             clientId = config.MachineId,
             sentAt = DateTime.UtcNow,
@@ -97,7 +105,7 @@ public class TelemetryPayloadBuilder
                 machineId = config.MachineId,
                 machineName = config.MachineName,
                 lineId = config.LineId,
-                sequence = config.LineOrder,
+                sequence = deliverySequence ?? config.LineOrder,
                 status = status,
                 plcConnected = isPlcConnected,
                 production = new

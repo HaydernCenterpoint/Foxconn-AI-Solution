@@ -1,6 +1,8 @@
 # Foxconn AI Solution
 > [Tiếng Việt](README.md) · [English](README.en.md) · [简体中文](README.zh-CN.md)
 
+> **发布状态：** **生产环境 NO-GO；仅为预发布环境候选版本。** 所有发布声明和决策均以[当前 Go/No-Go 决策](docs/release-evidence/2026-07-31-go-nogo-status.md)为准；本地构建或测试结果不能取代该决策。
+
 ## 概述
 
 Foxconn AI Solution 是一个面向设备、生产线、遥测数据和告警的本地部署工业监控平台。系统通过 PLC/MQTT 接收遥测数据，将运营数据存储在 PostgreSQL 中，并提供实时 Operations UI。

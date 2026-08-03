@@ -1,5 +1,7 @@
 # Phase 2 implementation progress
 
+> **Scope:** This document is the local implementation baseline, not production acceptance or release authorization. The authoritative release decision remains [NO-GO for production / staging candidate](release-evidence/2026-07-31-go-nogo-status.md).
+
 **Updated:** 2026-07-28
 **Current state:** the requested P0–P3 implementation slices have local
 component evidence. The wider master plan remains partial, and production

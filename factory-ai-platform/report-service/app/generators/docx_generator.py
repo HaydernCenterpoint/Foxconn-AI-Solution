@@ -2,7 +2,7 @@ import io
 from datetime import datetime
 from typing import Any, Dict, List
 from docx import Document
-from docx.shared import Pt, RGBColor, Inches
+from docx.shared import RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 

@@ -11,10 +11,17 @@
 - [ ] Benchmark operator has an isolated staging database; `benchmark.sql` intentionally seeds tagged fixtures
 
 ### Schema Migrations
+- [ ] Confirm the target is the managed Timescale database, not the Operations database
 - [ ] `001_create_telemetry_points.sql` applied — hypertable `telemetry_points` exists
 - [ ] `002_a2_rollups_and_lifecycle.sql` applied — continuous aggregates + compression + retention
 - [ ] `003_phase2_cep_alerts.sql` applied — `events`, `alerts`, `alert_history` tables
 - [ ] `004_phase2_health_predictions.sql` applied — `asset_metrics`, `asset_predictions`, `ml_models`
+- [ ] Capture managed Timescale evidence for `003` and `004`; an Operations `public.schema_migrations` head or local Compose result does not verify them
+
+`backend/db/migrations/*.sql` owns only Operations objects. The backend
+Operations migration runner must not apply or record Timescale `003`/`004`;
+those files are a separate authority applied and verified directly on managed
+Timescale.
 
 ### Verify Hypertables
 ```sql

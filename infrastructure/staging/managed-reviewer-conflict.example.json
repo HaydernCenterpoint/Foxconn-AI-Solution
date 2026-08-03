@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "status": "pending",
+  "reviewerId": "replace-with-independent-reviewer-id",
+  "reviewerOrganization": "replace-with-reviewer-organization",
+  "environmentId": "replace-with-managed-environment-id",
+  "sourceCommit": "replace-with-40-character-git-commit",
+  "checkedBy": "replace-with-security-or-release-owner",
+  "checkedAtUtc": null
+}

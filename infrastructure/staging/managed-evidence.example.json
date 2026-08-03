@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "evidenceId": "replace-with-immutable-evidence-id",
+  "checkId": "replace-with-managed-check-id",
+  "environmentId": "replace-with-managed-environment-id",
+  "sourceCommit": "replace-with-40-character-git-commit",
+  "releaseManifestSha256": "replace-with-release-manifest-sha256",
+  "capturedAtUtc": null,
+  "producer": {
+    "id": "replace-with-evidence-producer-id",
+    "organization": "replace-with-producer-organization"
+  },
+  "reviewerDisposition": {
+    "reviewerId": "replace-with-independent-reviewer-id",
+    "status": "pending",
+    "reviewedAtUtc": null
+  },
+  "artifact": {
+    "immutableUri": "https://approved-artifacts.managed-domain/artifacts/replace-with-artifact-id",
+    "sha256": "replace-with-raw-artifact-sha256"
+  },
+  "witnessMode": null,
+  "rawArtifactSha256": null
+}

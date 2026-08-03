@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from app.schemas.openai import ChatCompletionRequest, ChatCompletionResponse, ChatCompletionChoice, ChatMessage
 from app.auth.jwt_handler import decode_token

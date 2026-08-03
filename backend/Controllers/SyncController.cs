@@ -40,7 +40,9 @@ namespace backend.Controllers
         }
 
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadBatch([FromBody] BatchUploadRequest req)
+        public async Task<IActionResult> UploadBatch(
+            [FromBody] BatchUploadRequest req,
+            CancellationToken cancellationToken = default)
         {
             var machineId = req?.MachineId?.Trim();
             var validationError = SyncService.ValidateBatch(machineId, req?.Records);
@@ -51,8 +53,32 @@ namespace backend.Controllers
                     detail: validationError);
             }
 
-            await _syncService.ProcessBatchUploadAsync(machineId!, req!.Records);
-            return Ok(new { success = true });
+            var result = await _syncService.ProcessBatchUploadAsync(
+                machineId!,
+                req!.Records,
+                cancellationToken);
+            if (result.IsSuccess)
+            {
+                return Ok(new
+                {
+                    success = true,
+                    state = result.State.ToString(),
+                });
+            }
+
+            var statusCode = result.State switch
+            {
+                TelemetryDeliveryState.Malformed => StatusCodes.Status400BadRequest,
+                TelemetryDeliveryState.PayloadTooLarge => StatusCodes.Status413PayloadTooLarge,
+                TelemetryDeliveryState.Conflict => StatusCodes.Status409Conflict,
+                TelemetryDeliveryState.Busy or TelemetryDeliveryState.RetryableFailure =>
+                    StatusCodes.Status503ServiceUnavailable,
+                _ => StatusCodes.Status422UnprocessableEntity,
+            };
+            return Problem(
+                statusCode: statusCode,
+                title: result.State.ToString(),
+                detail: result.Detail ?? "Sync delivery failed.");
         }
     }
 

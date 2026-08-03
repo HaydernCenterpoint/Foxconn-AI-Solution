@@ -50,7 +50,11 @@ public sealed class OpenDataFusionClient : IOpenDataFusionClient
             }
             catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException)
             {
-                return DeliveryResult.TransientFailure(ex.Message);
+                return DeliveryResult.TransientFailure(ex.Message, isAuthenticationFailure: true);
+            }
+            catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                return DeliveryResult.TransientFailure(ex.Message, isAuthenticationFailure: true);
             }
         }
 
@@ -63,9 +67,16 @@ public sealed class OpenDataFusionClient : IOpenDataFusionClient
             var message = string.IsNullOrWhiteSpace(error)
                 ? $"ODF returned {(int)response.StatusCode} ({response.StatusCode})."
                 : error;
-            return response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.UnprocessableEntity
-                ? DeliveryResult.PermanentFailure(message)
-                : DeliveryResult.TransientFailure(message);
+            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+                return DeliveryResult.TransientFailure(message, isAuthenticationFailure: true);
+
+            if (response.StatusCode is HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests ||
+                (int)response.StatusCode >= 500)
+            {
+                return DeliveryResult.TransientFailure(message);
+            }
+
+            return DeliveryResult.PermanentFailure(message);
         }
         catch (HttpRequestException ex)
         {

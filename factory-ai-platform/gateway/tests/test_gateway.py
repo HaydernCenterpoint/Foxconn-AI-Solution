@@ -1,10 +1,15 @@
-import pytest
-import jwt
+import os
 import time
+from unittest.mock import patch
+
+import jwt
+import pytest
 from fastapi.testclient import TestClient
-from app.main import app as web_app
+
+import app.auth.jwt_handler
 from app.agents.router import classify_intent
-from app.auth.jwt_handler import verify_scope
+from app.auth.jwt_handler import TENANT_CLAIM, verify_scope
+from app.main import app as web_app
 
 client = TestClient(web_app)
 # Use a secret that meets the minimum length requirement to suppress warnings
@@ -12,12 +17,12 @@ JWT_SECRET = "factory-jwt-secret-key-1234-long-enough-32bytes"
 JWT_ALGORITHM = "HS256"
 
 # Monkeypatch the secret key in jwt_handler to match
-import app.auth.jwt_handler
 app.auth.jwt_handler.JWT_SECRET = JWT_SECRET
 
 def get_test_token(role="Engineer", site_scopes=None, line_scopes=None):
     payload = {
         "sub": "test-engineer",
+        TENANT_CLAIM: "factory-vn-01",
         "role": role,
         "siteScopes": site_scopes or ["factory-vn-01"],
         "lineScopes": line_scopes or ["LS18"],
@@ -25,6 +30,54 @@ def get_test_token(role="Engineer", site_scopes=None, line_scopes=None):
         "exp": int(time.time()) + 3600
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def test_canonical_tenant_claim_reaches_report_agent():
+    captured_scopes = None
+
+    class CapturingReportAgent:
+        def __init__(self, scopes):
+            nonlocal captured_scopes
+            captured_scopes = scopes
+
+        async def execute(self, message, conversation_id):
+            return "REPORT"
+
+    with patch("app.api.routes.ReportAgent", CapturingReportAgent):
+        response = client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "factory-report-agent",
+                "messages": [{"role": "user", "content": "export report"}],
+            },
+            headers={"Authorization": f"Bearer {get_test_token()}"},
+        )
+
+    assert response.status_code == 200
+    assert captured_scopes is not None
+    assert captured_scopes[TENANT_CLAIM] == "factory-vn-01"
+    assert captured_scopes["sub"] == "test-engineer"
+
+
+@pytest.mark.parametrize(
+    "claims",
+    [
+        {"sub": "test-engineer"},
+        {"sub": "test-engineer", "tenantId": "factory-vn-01"},
+        {"sub": "test-engineer", TENANT_CLAIM: " "},
+    ],
+)
+def test_gateway_rejects_tokens_without_canonical_tenant_claim(claims):
+    claims["exp"] = int(time.time()) + 3600
+    token = jwt.encode(claims, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+    response = client.post(
+        "/v1/chat/completions",
+        json={"model": "factory-report-agent", "messages": []},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 401
 
 # 1. Router Test
 def test_intent_router():
@@ -55,7 +108,11 @@ def test_jwt_authentication():
     assert response.status_code in (401, 403)
     
     # Attempt with invalid signature
-    bad_token = jwt.encode({"sub": "malicious"}, "wrong-secret", algorithm=JWT_ALGORITHM)
+    bad_token = jwt.encode(
+        {"sub": "malicious"},
+        "wrong-secret-key-that-is-at-least-32-bytes",
+        algorithm=JWT_ALGORITHM,
+    )
     response = client.post(
         "/v1/chat/completions", 
         json={"model": "factory-auto", "messages": [{"role": "user", "content": "hello"}]},
@@ -92,6 +149,10 @@ def test_tool_permission_scopes():
     assert verify_scope(payload_admin, line="LS19") is True
 
 # 4. OpenAI API Compatibility Test (Non-streaming & Streaming)
+@pytest.mark.skipif(
+    os.getenv("RUN_LIVE_BACKEND_COMPAT") != "1",
+    reason="requires the externally managed live backend compatibility gate",
+)
 def test_openai_api_compatibility():
     token = get_test_token()
     

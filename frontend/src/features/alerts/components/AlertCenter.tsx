@@ -87,9 +87,8 @@ export function AlertCenter() {
   });
 
   // ── Derived data ─────────────────────────────────────────
-  const alerts = alertsData?.alerts ?? [];
-
   const filteredAlerts = useMemo(() => {
+    const alerts = alertsData?.alerts ?? [];
     if (!searchQuery.trim()) return alerts;
     const q = searchQuery.toLowerCase();
     return alerts.filter(
@@ -99,7 +98,7 @@ export function AlertCenter() {
         a.assetId.toLowerCase().includes(q) ||
         a.description?.toLowerCase().includes(q),
     );
-  }, [alerts, searchQuery]);
+  }, [alertsData, searchQuery]);
 
   const openCounts = stats?.openCounts ?? {};
 

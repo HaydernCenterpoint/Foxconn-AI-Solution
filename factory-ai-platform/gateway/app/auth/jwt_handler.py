@@ -1,12 +1,13 @@
 import jwt
-from fastapi import Request, HTTPException, Depends
+from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 import os
 
 JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_ALGORITHM = "HS256"
+TENANT_CLAIM = "tenant_id"
 
 security = HTTPBearer()
 
@@ -17,6 +18,12 @@ def decode_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
     token = credentials.credentials
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        subject = payload.get("sub")
+        tenant_id = payload.get(TENANT_CLAIM)
+        if not isinstance(subject, str) or not subject.strip():
+            raise jwt.InvalidTokenError("missing subject claim")
+        if not isinstance(tenant_id, str) or not tenant_id.strip():
+            raise jwt.InvalidTokenError("missing canonical tenant claim")
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")

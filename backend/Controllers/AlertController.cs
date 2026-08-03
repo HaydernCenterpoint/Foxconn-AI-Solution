@@ -290,6 +290,6 @@ namespace backend.Controllers
 
     public class ResolveRequest
     {
-        public string Notes { get; set; }
+        public string? Notes { get; set; }
     }
 }

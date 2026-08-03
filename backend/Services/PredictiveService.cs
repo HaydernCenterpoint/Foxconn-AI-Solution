@@ -228,7 +228,7 @@ namespace backend.Services
             double score,
             double confidence,
             Dictionary<string, object> factors,
-            string window = null)
+            string? window = null)
         {
             try
             {
@@ -268,8 +268,8 @@ namespace backend.Services
         public bool IsAnomaly { get; set; }
         public double Score { get; set; }
         public double Confidence { get; set; }
-        public string Reason { get; set; }
-        public Dictionary<string, object> ContributingFactors { get; set; }
+        public string Reason { get; set; } = string.Empty;
+        public Dictionary<string, object> ContributingFactors { get; set; } = new();
     }
 
     public class FailureRiskPrediction
@@ -277,8 +277,8 @@ namespace backend.Services
         public Guid AssetId { get; set; }
         public double RiskScore { get; set; }
         public double Confidence { get; set; }
-        public string RiskLevel { get; set; }
-        public string TimeWindow { get; set; }
-        public Dictionary<string, object> ContributingFactors { get; set; }
+        public string RiskLevel { get; set; } = string.Empty;
+        public string TimeWindow { get; set; } = string.Empty;
+        public Dictionary<string, object> ContributingFactors { get; set; } = new();
     }
 }

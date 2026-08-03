@@ -14,7 +14,10 @@ public class MqttTransport : IServerTransport
     private readonly MqttClientFactory _factory = new MqttClientFactory();
     private IMqttClient? _mqttClient;
     private CancellationTokenSource? _cts;
+    private Task _loopTask = Task.CompletedTask;
+    private Task _stopTask = Task.CompletedTask;
     private bool _isRunning;
+    private readonly object _lifecycleLock = new object();
     private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
 
     public bool IsConnected => _mqttClient != null && _mqttClient.IsConnected;
@@ -30,15 +33,24 @@ public class MqttTransport : IServerTransport
 
     public void Start()
     {
-        if (!_isRunning)
+        lock (_lifecycleLock)
         {
+            if (_isRunning)
+            {
+                return;
+            }
+
             _isRunning = true;
             _cts = new CancellationTokenSource();
-            Task.Run(async () =>
+            CancellationToken token = _cts.Token;
+            _loopTask = Task.Run(async () =>
             {
                 try
                 {
-                    await ConnectAndLoopAsync(_cts.Token);
+                    await ConnectAndLoopAsync(token);
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested)
+                {
                 }
                 catch (Exception ex)
                 {
@@ -50,40 +62,60 @@ public class MqttTransport : IServerTransport
 
     public void Stop()
     {
-        _isRunning = false;
-        _cts?.Cancel();
-        DisconnectClient();
+        StopAsync().GetAwaiter().GetResult();
     }
 
-    private void DisconnectClient()
+    public Task StopAsync()
     {
+        lock (_lifecycleLock)
+        {
+            if (!_isRunning)
+            {
+                return _stopTask;
+            }
+
+            _isRunning = false;
+            _cts?.Cancel();
+            _stopTask = StopCoreAsync(_loopTask, _cts);
+            _cts = null;
+            return _stopTask;
+        }
+    }
+
+    private async Task StopCoreAsync(Task loopTask, CancellationTokenSource? cts)
+    {
+        try
+        {
+            await loopTask.ConfigureAwait(false);
+        }
+        finally
+        {
+            await DisconnectClientAsync().ConfigureAwait(false);
+            cts?.Dispose();
+        }
+    }
+
+
+    private async Task DisconnectClientAsync()
+    {
+        IMqttClient? client = null;
         try
         {
             if (_mqttClient != null)
             {
                 _mqttClient.ApplicationMessageReceivedAsync -= HandleMessageReceivedAsync;
-                var client = _mqttClient;
+                client = _mqttClient;
+                _mqttClient = null;
                 if (client.IsConnected)
                 {
-                    Task.Run(async () =>
+                    try
                     {
-                        try
-                        {
-                            await client.DisconnectAsync();
-                        }
-                        catch (Exception ex)
-                        {
-                            Serilog.Log.Error(ex, "MQTT client DisconnectAsync failed");
-                        }
-                        finally
-                        {
-                            try { client.Dispose(); } catch { }
-                        }
-                    });
-                }
-                else
-                {
-                    try { client.Dispose(); } catch { }
+                        await client.DisconnectAsync().ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        Serilog.Log.Error(ex, "MQTT client DisconnectAsync failed");
+                    }
                 }
             }
         }
@@ -93,7 +125,11 @@ public class MqttTransport : IServerTransport
         }
         finally
         {
-            _mqttClient = null;
+            try { client?.Dispose(); }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "[MqttTransport] Failed to dispose MQTT client");
+            }
         }
     }
 
@@ -111,7 +147,7 @@ public class MqttTransport : IServerTransport
                     continue;
                 }
 
-                DisconnectClient();
+                await DisconnectClientAsync().ConfigureAwait(false);
                 AppConfig config = AppConfig.Current;
                 if (string.IsNullOrWhiteSpace(config.ServerHost) || config.ServerPort <= 0 || string.IsNullOrWhiteSpace(config.MachineId) || config.MachineId == Guid.Empty.ToString())
                 {
@@ -130,21 +166,7 @@ public class MqttTransport : IServerTransport
                     continue;
                 }
                 
-                var lwtEnvelope = new
-                {
-                    protocolVersion = 1,
-                    messageId = Guid.NewGuid().ToString(),
-                    messageType = "telemetry",
-                    clientId = config.MachineId,
-                    sentAt = DateTime.UtcNow,
-                    payload = new
-                    {
-                        machineId = config.MachineId,
-                        status = "OFFLINE",
-                        plcConnected = false
-                    }
-                };
-                string lwtJson = System.Text.Json.JsonSerializer.Serialize(lwtEnvelope);
+                string lwtJson = BuildLastWillJson(config.MachineId);
                 string encryptedLwtPayload = CryptoHelper.Encrypt(lwtJson);
 
                 var optionsBuilder = _factory.CreateClientOptionsBuilder()
@@ -153,7 +175,7 @@ public class MqttTransport : IServerTransport
                     .WithCredentials(config.MachineId, config.ServerToken)
                     .WithCleanSession(true)
                     .WithKeepAlivePeriod(TimeSpan.FromSeconds(15))
-                    .WithWillTopic($"client/{config.MachineId}/telemetry")
+                    .WithWillTopic(BuildLastWillTopic(config.MachineId))
                     .WithWillPayload(encryptedLwtPayload)
                     .WithWillQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce);
 
@@ -199,7 +221,7 @@ public class MqttTransport : IServerTransport
                 reconnectAttempts++;
                 int delaySeconds = (int)Math.Min(Math.Pow(2, reconnectAttempts), 60);
                 Log($"MQTT: Lỗi kết nối: {ex.Message}. Thử lại sau {delaySeconds} giây...");
-                DisconnectClient();
+                await DisconnectClientAsync().ConfigureAwait(false);
                 await Task.Delay(delaySeconds * 1000, token);
             }
         }
@@ -211,20 +233,45 @@ public class MqttTransport : IServerTransport
         {
             string topic = e.ApplicationMessage.Topic;
             string payloadString = e.ApplicationMessage.ConvertPayloadToString();
-
-            // Decrypt payload from server (e.g. commands)
-            string json = CryptoHelper.Decrypt(payloadString);
-            
-            Log($"MQTT: Nhận bản tin trên topic {topic}");
-            
-            if (OnMessageReceived != null)
-            {
-                await OnMessageReceived.Invoke(json);
-            }
+            await ProcessInboundMessageAsync(topic, payloadString);
         }
         catch (Exception ex)
         {
             Log($"MQTT: Lỗi xử lý bản tin nhận được: {ex.Message}");
+        }
+    }
+
+    private static string BuildLastWillJson(string machineId)
+    {
+        var lwtEnvelope = new
+        {
+            protocolVersion = 1,
+            messageId = Guid.NewGuid().ToString(),
+            messageType = "heartbeat",
+            clientId = machineId,
+            sentAt = DateTime.UtcNow,
+            payload = new
+            {
+                machineId,
+                status = "OFFLINE",
+                plcConnected = false
+            }
+        };
+        return System.Text.Json.JsonSerializer.Serialize(lwtEnvelope);
+    }
+
+    private static string BuildLastWillTopic(string machineId) =>
+        $"client/{machineId}/heartbeat";
+
+    internal async Task ProcessInboundMessageAsync(string topic, string encryptedPayload)
+    {
+        string json = CryptoHelper.Decrypt(encryptedPayload);
+
+        Log($"MQTT: Nhận bản tin trên topic {topic}");
+
+        if (OnMessageReceived != null)
+        {
+            await OnMessageReceived.Invoke(json);
         }
     }
 
@@ -257,10 +304,14 @@ public class MqttTransport : IServerTransport
                 _sendLock.Release();
             }
         }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             Log($"MQTT Publish Error on {topic}: {ex.Message}");
-            DisconnectClient();
+            await DisconnectClientAsync().ConfigureAwait(false);
             return false;
         }
     }

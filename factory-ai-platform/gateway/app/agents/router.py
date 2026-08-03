@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List
 
 class IntentClassification(BaseModel):
     intent: str

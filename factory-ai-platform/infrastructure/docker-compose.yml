@@ -9,6 +9,7 @@ networks:
 volumes:
   postgres_data:
   minio_data:
+  report_service_data:
 
 services:
   postgres:
@@ -24,7 +25,7 @@ services:
     networks:
       - db-net
     ports:
-      - "5432:5432"  # Local debugging, can be closed for production security
+      - "${POSTGRES_BIND_ADDRESS:-127.0.0.1}:5432:5432"  # Local debugging only; override deliberately if remote access is required
     deploy:
       resources:
         limits:
@@ -63,14 +64,14 @@ services:
     container_name: factory-minio
     restart: always
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio_admin}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER via the deployment secret manager}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD via the deployment secret manager}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_BIND_ADDRESS:-127.0.0.1}:9000:9000"
+      - "${MINIO_BIND_ADDRESS:-127.0.0.1}:9001:9001"
     networks:
       - factory-net
     healthcheck:
@@ -93,11 +94,12 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - ANTIGRAVITY_BRIDGE_URL=http://host.docker.internal:8081
+      - ANTIGRAVITY_BRIDGE_URL=${ANTIGRAVITY_BRIDGE_URL:?Set ANTIGRAVITY_BRIDGE_URL to the production bridge endpoint}
       - DOCUMENT_SERVICE_URL=http://document-service:8082
       - REPORT_SERVICE_URL=http://report-service:8083
-      - BACKEND_URL=http://host.docker.internal:5000
-      - LLM_API_URL=http://host.docker.internal:7000/v1
+      - REPORT_SERVICE_API_KEY=${REPORT_SERVICE_API_KEY:?Set REPORT_SERVICE_API_KEY via the deployment secret manager}
+      - BACKEND_URL=${BACKEND_URL:?Set BACKEND_URL to the production backend endpoint}
+      - LLM_API_URL=${LLM_API_URL:?Set LLM_API_URL to the production LLM endpoint}
       - LLM_API_KEY=${LLM_API_KEY:?Set LLM_API_KEY via the deployment secret manager}
       - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
       - AI_SERVICE_USER=${AI_SERVICE_USER:-ai_service}
@@ -111,6 +113,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      report-service:
+        condition: service_healthy
+        required: false
     deploy:
       resources:
         limits:
@@ -129,10 +134,27 @@ services:
     container_name: antigravity-bridge
     restart: always
     environment:
-      - MOCK_ANTIGRAVITY=true  # Set to false to run actual agy CLI
+      - DEPLOYMENT_MODE=${DEPLOYMENT_MODE:-production}
+      - MOCK_ANTIGRAVITY=${MOCK_ANTIGRAVITY:?Set MOCK_ANTIGRAVITY=false for production or use DEPLOYMENT_MODE=local-demo explicitly}
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        if [ "$${DEPLOYMENT_MODE}" = "production" ]; then
+          [ "$${MOCK_ANTIGRAVITY}" = "false" ] || {
+            echo "MOCK_ANTIGRAVITY must be false in production" >&2
+            exit 64
+          }
+        elif [ "$${DEPLOYMENT_MODE}" != "local-demo" ]; then
+          echo "DEPLOYMENT_MODE must be production or local-demo" >&2
+          exit 64
+        fi
+        exec uvicorn app.main:app --host 0.0.0.0 --port 8081
     volumes:
-      # Mount the codebase to analyze/work on in a sandboxed, restricted manner
-      - d:/nhnhnhnhnh:/workspace
+      # Mount only the explicitly selected workspace; never default to a host drive or home directory.
+      - type: bind
+        source: ${ANTIGRAVITY_WORKSPACE_HOST_PATH:?Set ANTIGRAVITY_WORKSPACE_HOST_PATH to the single host workspace directory}
+        target: /workspace
     networks:
       - factory-net
     deploy:
@@ -177,18 +199,22 @@ services:
       dockerfile: Dockerfile
     container_name: report-service
     restart: always
+    deploy:
+      replicas: 1
     environment:
-      - MINIO_ENDPOINT=minio:9000
-      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minio_admin}
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD via the deployment secret manager}
-      - MINIO_SECURE=false
+      - REPORT_SERVICE_API_KEY=${REPORT_SERVICE_API_KEY:?Set REPORT_SERVICE_API_KEY via the deployment secret manager}
+      - REPORT_DOWNLOAD_SIGNING_KEY=${REPORT_DOWNLOAD_SIGNING_KEY:?Set REPORT_DOWNLOAD_SIGNING_KEY to an independent secret of at least 32 bytes}
+      - REPORT_SERVICE_MODE=production
+      - REPORT_SERVICE_REPLICA_COUNT=1
+      - LOCAL_REPORTS_DIR=/var/lib/report-service
+      - LOCAL_REPORTS_BASE_URL=${REPORT_PUBLIC_BASE_URL:?Set REPORT_PUBLIC_BASE_URL to the externally reachable HTTPS report-service URL}/local-files
+      - REPORT_PUBLIC_HOST_ALLOWLIST=${REPORT_PUBLIC_HOST_ALLOWLIST:?Set REPORT_PUBLIC_HOST_ALLOWLIST to the exact public report host}
+    volumes:
+      - report_service_data:/var/lib/report-service
     networks:
       - factory-net
-    depends_on:
-      minio:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8083/health', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -258,9 +284,24 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - POSTGRES_URL=${CEP_POSTGRES_URL:?Set CEP_POSTGRES_URL via the deployment secret manager}
-      - BACKEND_URL=http://host.docker.internal:5000
+      - BACKEND_URL=${BACKEND_URL:?Set BACKEND_URL to the production backend endpoint}
       - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET via the deployment secret manager}
-      - CEP_MODE=${CEP_MODE:-mock}
+      - DEPLOYMENT_MODE=${DEPLOYMENT_MODE:-production}
+      - CEP_MODE=${CEP_MODE:?Set CEP_MODE=live for production or use DEPLOYMENT_MODE=local-demo explicitly}
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        if [ "$${DEPLOYMENT_MODE}" = "production" ]; then
+          [ "$${CEP_MODE}" = "live" ] || {
+            echo "CEP_MODE must be live in production" >&2
+            exit 64
+          }
+        elif [ "$${DEPLOYMENT_MODE}" != "local-demo" ]; then
+          echo "DEPLOYMENT_MODE must be production or local-demo" >&2
+          exit 64
+        fi
+        exec uvicorn app.main:app --host 0.0.0.0 --port 8084
     networks:
       - factory-net
       - db-net

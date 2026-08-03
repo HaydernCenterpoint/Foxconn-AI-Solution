@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 2,
+  "capturedAtUtc": "2026-08-02T04:26:05.4521428Z",
+  "releaseState": "staging_candidate",
+  "productionDecision": "no_go",
+  "baseline": {
+    "branch": "agent/release-evidence-and-ui-direction",
+    "commit": "79e2fc7e72c02904599478c207f5c7b36ec54965",
+    "tree": "792a69887fd66bf55d05a1b79c991376e2483b59"
+  },
+  "release": {
+    "commit": null,
+    "tree": null,
+    "evidenceCommit": null
+  },
+  "openDataFusion": {
+    "authorityPath": "third_party/open-data-fusion",
+    "commit": "29dc16acb464529c35ac2a5627a095b4b940bd79",
+    "tree": "5c68155d5337e7719ec6ddb8045d352c3d91b95c",
+    "embeddedTree": "e29c34a3605d5eab1a2dd079768e47f7aa5aaf4c",
+    "uniquePatchInventory": "docs/release-evidence/g0/odf-authority.md",
+    "inventory": {
+      "embeddedFiles": 392,
+      "authorityFilesAtPinnedCommit": 380,
+      "identical": 343,
+      "changedSamePath": 34,
+      "embeddedOnlyAtPinnedCommit": 15,
+      "authorityOnlyAtPinnedCommit": 3
+    },
+    "workingTreeCandidate": {
+      "embeddedOnlyAfterReconciliation": 0,
+      "featureTestsPassed": 39,
+      "workspaceTestsPassed": 492,
+      "infrastructureTestsPassed": 82
+    },
+    "disposition": "patches_reconciled_in_dirty_candidate_pending_reviewed_pin",
+    "embeddedTreeDisposition": "tracked_divergent_snapshot_not_deployable",
+    "reviewedBy": null,
+    "reviewedAtUtc": null,
+    "reviewReference": null,
+    "inventorySha256": "D3B597F3B82AAC1317EFAFCD0B600E69A7EA7FD277AB35206AE72E20E5D0F036"
+  },
+  "operationsSchema": {
+    "decision": "backend/db/migrations",
+    "currentRuntimeAuthority": "backend/Services/DatabaseService.cs",
+    "legacyFixture": "backend/db/init.sql",
+    "runtimeAuthoritySha256": "92330BD2638E51ADD057ACA05DCA9B1BBE6182B18750B911370B1BD6E274C070",
+    "legacyFixtureSha256": "705A1BC7A9C26A6426E47D196E6737E776B6ADD81114BFABBD2521663CA7E497",
+    "migrationHead": null,
+    "ledgerSha256": null,
+    "catalogFingerprint": null
+  },
+  "components": [
+    { "id": "operations-backend", "path": "backend", "owner": null, "version": null, "deploymentMode": "aspnet-service", "artifactDigest": null, "evidencePath": null },
+    { "id": "operations-frontend", "path": "frontend", "owner": null, "version": null, "deploymentMode": "static-web", "artifactDigest": null, "evidencePath": null },
+    { "id": "client-plc", "path": "ClientPLC", "owner": null, "version": null, "deploymentMode": "windows-edge-agent", "artifactDigest": null, "evidencePath": null },
+    { "id": "fusion-adapter", "path": "fusion-adapter", "owner": null, "version": null, "deploymentMode": "dotnet-worker", "artifactDigest": null, "evidencePath": null },
+    { "id": "open-data-fusion", "path": "third_party/open-data-fusion", "owner": null, "version": null, "deploymentMode": "managed-data-platform", "artifactDigest": null, "evidencePath": null },
+    { "id": "data-platform", "path": "factory-ai-platform/data-platform", "owner": null, "version": null, "deploymentMode": "python-service", "artifactDigest": null, "evidencePath": null },
+    { "id": "asset-service", "path": "factory-ai-platform/asset-service", "owner": null, "version": null, "deploymentMode": "python-service", "artifactDigest": null, "evidencePath": null },
+    { "id": "cep-service", "path": "factory-ai-platform/cep-service", "owner": null, "version": null, "deploymentMode": "python-service", "artifactDigest": null, "evidencePath": null },
+    { "id": "factory-ai-gateway", "path": "factory-ai-platform/gateway", "owner": null, "version": null, "deploymentMode": "python-service", "artifactDigest": null, "evidencePath": null },
+    { "id": "document-service", "path": "factory-ai-platform/document-service", "owner": null, "version": null, "deploymentMode": "python-service", "artifactDigest": null, "evidencePath": null },
+    { "id": "report-service", "path": "factory-ai-platform/report-service", "owner": null, "version": null, "deploymentMode": "python-service", "artifactDigest": null, "evidencePath": null },
+    { "id": "antigravity-bridge", "path": "factory-ai-platform/antigravity-bridge", "owner": null, "version": null, "deploymentMode": "python-service", "artifactDigest": null, "evidencePath": null },
+    { "id": "odysseus", "path": "Odysseus", "owner": null, "version": null, "deploymentMode": "read-only-assistant", "artifactDigest": null, "evidencePath": null }
+  ],
+  "toolchain": {
+    "dotnetSdk": "9.0.316",
+    "node": "24.18.0",
+    "npm": "11.16.0",
+    "pythonLocal": "3.13.14",
+    "pythonCi": "3.11",
+    "dockerClient": "29.6.2",
+    "dockerDaemonAvailable": false
+  },
+  "authorities": {
+    "localImplementation": "docs/phase2-progress.md",
+    "releaseDecision": "docs/release-evidence/2026-07-31-go-nogo-status.md",
+    "managedGate": "infrastructure/staging/Test-ManagedStagingGate.ps1",
+    "historicalReport": "docs/phase2-final-report.md"
+  }
+}

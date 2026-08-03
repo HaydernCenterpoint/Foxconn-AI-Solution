@@ -1,6 +1,8 @@
 # Foxconn AI Solution
 > [Tiếng Việt](README.md) · [English](README.en.md) · [简体中文](README.zh-CN.md)
 
+> **Release status:** **NO-GO for production; staging candidate only.** Use the [current Go/No-Go decision](docs/release-evidence/2026-07-31-go-nogo-status.md) as the authority for all release claims and decisions; local build or test results do not supersede it.
+
 ## Overview
 
 Foxconn AI Solution is an on-premises industrial monitoring platform for machinery, production lines, telemetry, and alarms. The system ingests telemetry through PLC/MQTT, stores operational data in PostgreSQL, and provides a real-time Operations UI.

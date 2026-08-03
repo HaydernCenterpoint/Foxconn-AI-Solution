@@ -51,13 +51,31 @@ public sealed class TimescaleTelemetryService
 
     public async Task<bool> TryWriteAsync(TimescaleTelemetryPoint point, CancellationToken cancellationToken = default)
     {
-        if (!IsEnabled) return true;
+        if (!IsEnabled) return false;
 
         try
         {
             await EnsureSchemaAsync(cancellationToken);
             await WriteBatchAsync([point], cancellationToken);
-            return true;
+            await using var connection = CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+            const string acknowledgementSql = """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM telemetry_points
+                    WHERE occurred_at = @occurredAt
+                      AND source_id = @sourceId
+                      AND machine_id = @machineId
+                      AND sequence = @sequence
+                      AND raw_json = CAST(@rawJson AS jsonb))
+                """;
+            await using var acknowledgement = new NpgsqlCommand(acknowledgementSql, connection);
+            acknowledgement.Parameters.Add("occurredAt", NpgsqlDbType.TimestampTz).Value = point.OccurredAt;
+            acknowledgement.Parameters.Add("sourceId", NpgsqlDbType.Bigint).Value = point.SourceId;
+            acknowledgement.Parameters.Add("machineId", NpgsqlDbType.Uuid).Value = point.MachineId;
+            acknowledgement.Parameters.Add("sequence", NpgsqlDbType.Bigint).Value = point.Sequence;
+            acknowledgement.Parameters.Add("rawJson", NpgsqlDbType.Jsonb).Value = point.RawJson;
+            return await acknowledgement.ExecuteScalarAsync(cancellationToken) is true;
         }
         catch (Exception exception)
         {

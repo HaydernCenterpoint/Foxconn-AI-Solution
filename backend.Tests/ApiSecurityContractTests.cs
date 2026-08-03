@@ -439,6 +439,7 @@ public sealed class ApiSecurityContractTests
                 ["Jwt:Key"] = Secret,
                 ["Jwt:Issuer"] = "MKZ_PLC_Server",
                 ["Jwt:Audience"] = "MKZ_PLC_Client",
+                ["Jwt:TenantId"] = "factory-vn-01",
                 ["ConnectionStrings:Timescale"] = "Host=localhost",
                 ["RateLimiting:GlobalPermitLimit"] = "100",
                 ["RateLimiting:LoginPermitLimit"] = "2",
