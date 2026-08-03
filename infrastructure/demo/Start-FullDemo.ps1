@@ -7,6 +7,17 @@ param(
     [int]$FrontendPort = 3001,
 
     [ValidateRange(1, 65535)]
+    [int]$MqttPort = 1883,
+
+    [ValidateRange(1, 65535)]
+    [int]$TimescalePort = 55433,
+
+    [string]$TimescaleProjectName = 'mkz-timescale',
+
+    [ValidateRange(1, 65535)]
+    [int]$CepStagingPort = 58085,
+
+    [ValidateRange(1, 65535)]
     [int]$OdysseusPort = 7000,
 
     [ValidateRange(1, 65535)]
@@ -49,7 +60,7 @@ $odfWebUrl = "http://localhost:$OdfWebPort"
 $timescaleComposeFile = Join-Path $repositoryRoot 'infrastructure/timescaledb/docker-compose.yml'
 $cepComposeFile = Join-Path $repositoryRoot 'infrastructure/cep-staging/docker-compose.yml'
 $odysseusComposeFile = Join-Path $repositoryRoot 'Odysseus/docker-compose.yml'
-$cepStagingUrl = 'http://localhost:58085'
+$cepStagingUrl = "http://localhost:$CepStagingPort"
 
 New-Item -ItemType Directory -Path $runtimeLogs -Force | Out-Null
 $mkzOperationsConnectionString = [Environment]::GetEnvironmentVariable('FII_OPERATIONS_CONNECTION_STRING', 'Process')
@@ -60,7 +71,7 @@ $timescalePassword = [Environment]::GetEnvironmentVariable('FII_TIMESCALE_PASSWO
 if (-not $SkipTimescale -and [string]::IsNullOrWhiteSpace($timescalePassword)) {
     throw 'Set FII_TIMESCALE_PASSWORD before starting TimescaleDB.'
 }
-$timescaleConnectionString = "Host=localhost;Port=55433;Database=plc_timescale;Username=postgres;Password=$timescalePassword"
+$timescaleConnectionString = "Host=localhost;Port=$TimescalePort;Database=plc_timescale;Username=postgres;Password=$timescalePassword"
 
 function Resolve-FiiJwtSecret {
     $secret = [Environment]::GetEnvironmentVariable('FII_JWT_SECRET', 'Process')
@@ -234,8 +245,17 @@ function Start-DockerCompose {
         throw "$Name compose file is missing: $ComposeFile"
     }
 
-    & docker compose -p $ProjectName -f $ComposeFile up -d
-    if ($LASTEXITCODE -ne 0) {
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $composeOutput = & docker compose -p $ProjectName -f $ComposeFile up -d 2>&1
+        $composeExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    $composeOutput | Out-Host
+    if ($composeExitCode -ne 0) {
         throw "$Name failed to start through Docker Compose."
     }
 }
@@ -243,16 +263,41 @@ function Start-DockerCompose {
 function Wait-TimescaleReady {
     $deadline = [DateTime]::UtcNow.AddSeconds($WaitTimeoutSeconds)
     while ([DateTime]::UtcNow -lt $deadline) {
-        & docker compose -p mkz-timescale -f $timescaleComposeFile exec -T timescaledb pg_isready -U postgres -d plc_timescale *> $null
+        & docker compose -p $TimescaleProjectName -f $timescaleComposeFile exec -T timescaledb pg_isready -U postgres -d plc_timescale *> $null
         if ($LASTEXITCODE -eq 0) {
-            Write-Host '[ready] TimescaleDB -> localhost:55433' -ForegroundColor Green
+            Write-Host "[ready] TimescaleDB -> localhost:$TimescalePort" -ForegroundColor Green
             return
         }
 
         Start-Sleep -Seconds 1
     }
 
-    throw 'TimescaleDB did not become ready. Check Docker Compose logs for mkz-timescale.'
+    throw "TimescaleDB did not become ready. Check Docker Compose logs for $TimescaleProjectName."
+}
+
+function Wait-TimescaleExtensionReady {
+    $deadline = [DateTime]::UtcNow.AddSeconds($WaitTimeoutSeconds)
+    while ([DateTime]::UtcNow -lt $deadline) {
+        $previousErrorActionPreference = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            $extensionReady = @(& docker compose -p $TimescaleProjectName -f $timescaleComposeFile exec -T timescaledb `
+                psql --username postgres --dbname plc_timescale --tuples-only --no-align `
+                --command "SELECT to_regclass('timescaledb_information.hypertables') IS NOT NULL;" 2>&1)
+            $extensionExitCode = $LASTEXITCODE
+        }
+        finally {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
+        if ($extensionExitCode -eq 0 -and ($extensionReady -join '').Trim() -eq 't') {
+            Write-Host "[ready] TimescaleDB extension -> localhost:$TimescalePort" -ForegroundColor Green
+            return
+        }
+
+        Start-Sleep -Seconds 1
+    }
+
+    throw "TimescaleDB extension did not become ready. Check Docker Compose logs for $TimescaleProjectName."
 }
 
 function Install-TimescaleMigrations {
@@ -274,7 +319,7 @@ BEGIN
     END LOOP;
 END $$;
 '@
-    $stateCheck | & docker compose -p mkz-timescale -f $timescaleComposeFile exec -T timescaledb `
+    $stateCheck | & docker compose -p $TimescaleProjectName -f $timescaleComposeFile exec -T timescaledb `
         psql --username postgres --dbname plc_timescale --set ON_ERROR_STOP=1
     if ($LASTEXITCODE -ne 0) {
         throw 'Timescale contains a partial migration. The volume was preserved for explicit operator repair.'
@@ -289,7 +334,7 @@ END $$;
     )) {
         $migrationPath = Join-Path $migrationRoot $migrationName
         Get-Content -LiteralPath $migrationPath -Raw |
-            & docker compose -p mkz-timescale -f $timescaleComposeFile exec -T timescaledb `
+            & docker compose -p $TimescaleProjectName -f $timescaleComposeFile exec -T timescaledb `
                 psql --username postgres --dbname plc_timescale --set ON_ERROR_STOP=1 --single-transaction
         if ($LASTEXITCODE -ne 0) {
             throw "Timescale migration '$migrationName' failed. The volume was preserved; inspect the schema before retrying."
@@ -394,16 +439,22 @@ if ($dockerRequired) {
 }
 
 if (-not $SkipTimescale) {
-    Invoke-WithEnvironment -Environment @{ FII_TIMESCALE_PASSWORD = $timescalePassword } -Action {
-        Start-DockerCompose -ProjectName 'mkz-timescale' -ComposeFile $timescaleComposeFile -Name 'TimescaleDB'
+    Invoke-WithEnvironment -Environment @{
+        FII_TIMESCALE_PASSWORD = $timescalePassword
+        FII_TIMESCALE_PORT = $TimescalePort
+    } -Action {
+        Start-DockerCompose -ProjectName $TimescaleProjectName -ComposeFile $timescaleComposeFile -Name 'TimescaleDB'
         Wait-TimescaleReady
+        Wait-TimescaleExtensionReady
         Install-TimescaleMigrations
         Invoke-TimescaleBackfill -Dotnet $dotnet -BackendProject $backendProject
     }
 }
 
 if (-not $SkipCepStaging) {
-    Start-DockerCompose -ProjectName 'mkz-cep-staging' -ComposeFile $cepComposeFile -Name 'CEP staging'
+    Invoke-WithEnvironment -Environment @{ FII_CEP_STAGING_PORT = $CepStagingPort } -Action {
+        Start-DockerCompose -ProjectName "${TimescaleProjectName}-cep" -ComposeFile $cepComposeFile -Name 'CEP staging'
+    }
     Wait-HttpReady -Name 'CEP staging' -Uri "$cepStagingUrl/health"
 }
 
@@ -423,9 +474,11 @@ $backendProcess = @{
         ASPNETCORE_URLS = $backendBindUrl
         ConnectionStrings__DefaultConnection = $mkzOperationsConnectionString
         Jwt__Key = $fiiJwtSecret
-        Jwt__Issuer = $fiiJwtIssuer
-        Jwt__Audience = $fiiJwtAudience
-        Mqtt__EncryptionKey = $mqttEncryptionKey
+                Jwt__Issuer = $fiiJwtIssuer
+                Jwt__Audience = $fiiJwtAudience
+                Jwt__TenantId = $(if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable('FII_TENANT_ID', 'Process'))) { 'local-demo' } else { [Environment]::GetEnvironmentVariable('FII_TENANT_ID', 'Process').Trim() })
+                Mqtt__EncryptionKey = $mqttEncryptionKey
+        MqttServer__Port = $MqttPort
         FiiSso__SecureCookie = 'false'
         OpenDataFusion__CaptureEnabled = 'true'
         Timescale__Enabled = (-not $SkipTimescale).ToString().ToLowerInvariant()

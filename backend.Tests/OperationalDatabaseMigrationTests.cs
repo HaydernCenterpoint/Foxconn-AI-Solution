@@ -187,6 +187,18 @@ public sealed class OperationalDatabaseMigrationTests
     }
 
     [Fact]
+    public void SourceControlledHeadCatalogContractIncludesCurrentMigrationHead()
+    {
+        var source = File.ReadAllText(RepositoryPath(
+            "backend", "Services", "OperationalDatabaseMigrationService.cs"));
+        var migrations = OperationalDatabaseMigrationService.LoadMigrations(RepositoryPath(
+            "backend", "db", "migrations"));
+        var head = migrations[^1].Version;
+
+        Assert.Contains($"[\"{head}\"]", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CatalogContractCoversGovernedNonTableObjectsAndMigrationTimeouts()
     {
         var source = File.ReadAllText(RepositoryPath(

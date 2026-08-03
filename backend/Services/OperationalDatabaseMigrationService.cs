@@ -36,6 +36,7 @@ public sealed class OperationalDatabaseMigrationService
             ["0003"] = "e7bb8a8c7a964b2dcb54b11191133419f87bd3c6150b4860b10bf11b6a509f35",
             ["0004"] = "e48038560ba139c0572ffbf94101adc0597434471c4d4154b4376b6f2ff672e4",
             ["0005"] = "e411e294f7c8d95595b527ad9ae47303cd6c6c0a99ae9fd2f7081f46a42ed5d0",
+            ["0006"] = "57a6421a97708a09ab7d4e3ebef4fb5e57bf00aa4053ea3866c1a77bf3cd02cd",
         };
 
     private readonly string _connectionString;

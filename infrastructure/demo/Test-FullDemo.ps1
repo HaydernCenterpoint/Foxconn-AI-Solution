@@ -50,6 +50,8 @@ param(
 
     [string]$ClientPlcMessageId = '',
 
+    [switch]$TriggerPhase2Alerts,
+
     [switch]$SkipOpenDataFusion,
     [switch]$SkipOdysseus,
     [switch]$SkipTimescale,
@@ -114,24 +116,45 @@ function Invoke-PsqlScalar {
         [Parameter(Mandatory)][string]$Sql
     )
 
-    $builder = [System.Data.Common.DbConnectionStringBuilder]::new()
-    $builder.ConnectionString = $ConnectionString
+    # ponytail: manual split — DbConnectionStringBuilder does not parse Npgsql Host=/Username= keys.
     $values = @{}
-    foreach ($key in $builder.Keys) { $values[[string]$key] = [string]$builder[$key] }
-    $hostName = if ($values.ContainsKey('Host')) { $values.Host } else { $values.Server }
-    $database = if ($values.ContainsKey('Database')) { $values.Database } else { $values.'Initial Catalog' }
-    $user = if ($values.ContainsKey('Username')) { $values.Username } else { $values.'User ID' }
+    foreach ($part in $ConnectionString.Split(';')) {
+        if ([string]::IsNullOrWhiteSpace($part)) { continue }
+        $eq = $part.IndexOf('=')
+        if ($eq -lt 1) { continue }
+        $key = $part.Substring(0, $eq).Trim()
+        $val = $part.Substring($eq + 1).Trim()
+        if ($key.Length -gt 0) { $values[$key] = $val }
+    }
+
+    function Get-CsValue([string]$Name) {
+        foreach ($candidate in @($Name, $Name.ToLowerInvariant(), $Name.ToUpperInvariant())) {
+            if ($values.ContainsKey($candidate)) { return [string]$values[$candidate] }
+        }
+        return $null
+    }
+
+    $hostName = Get-CsValue 'Host'
+    if ([string]::IsNullOrWhiteSpace($hostName)) { $hostName = Get-CsValue 'Server' }
+    $database = Get-CsValue 'Database'
+    if ([string]::IsNullOrWhiteSpace($database)) { $database = Get-CsValue 'Initial Catalog' }
+    $user = Get-CsValue 'Username'
+    if ([string]::IsNullOrWhiteSpace($user)) { $user = Get-CsValue 'User ID' }
     if ([string]::IsNullOrWhiteSpace($hostName) -or [string]::IsNullOrWhiteSpace($database) -or [string]::IsNullOrWhiteSpace($user)) {
         throw 'The PostgreSQL connection string must include Host, Database, and Username.'
     }
 
     $psql = Get-Psql
+    $port = Get-CsValue 'Port'
+    if ([string]::IsNullOrWhiteSpace($port)) { $port = '5432' }
+    $password = Get-CsValue 'Password'
+    if ($null -eq $password) { $password = '' }
     $environment = @{
         PGHOST = $hostName
-        PGPORT = $(if ($values.ContainsKey('Port')) { $values.Port } else { '5432' })
+        PGPORT = $port
         PGDATABASE = $database
         PGUSER = $user
-        PGPASSWORD = $(if ($values.ContainsKey('Password')) { $values.Password } else { '' })
+        PGPASSWORD = $password
     }
     $previousEnvironment = @{}
     try {
@@ -537,6 +560,7 @@ else {
     $messageId = [guid]::NewGuid().ToString('D')
     $sentAt = [DateTimeOffset]::UtcNow.ToString('O')
     $expectedOee = 92.0
+    $expectedYieldRate = if ($TriggerPhase2Alerts) { 85.0 } else { 99.0 }
     $telemetryObject = @{
         protocolVersion = 1
         messageId = $messageId
@@ -549,7 +573,7 @@ else {
             sequence = $telemetrySequence
             status = 'RUNNING'
             plcConnected = $true
-            production = @{ qty = 1; time = 1.0; uph = 60; oee = $expectedOee; yieldRate = 99.0 }
+            production = @{ qty = 1; time = 1.0; uph = 60; oee = $expectedOee; yieldRate = $expectedYieldRate }
             alarm = @{ active = $false }
         }
     }
@@ -591,16 +615,31 @@ $receiptId = [Int64]$rawParts[0]
 $sourceId = [Int64]$rawParts[1]
 $outboxId = [string]$rawParts[2]
 
-$outboxStatus = Wait-ForValue -Name 'Delivered fusion outbox event' -TimeoutSeconds 60 -Probe {
-    $status = Invoke-PsqlScalar -ConnectionString $OperationsConnectionString -Sql @"
+$outboxStatus = if ($SkipOpenDataFusion) {
+    Wait-ForValue -Name 'Pending fusion outbox event with dispatch disabled' -TimeoutSeconds 60 -Probe {
+        $status = Invoke-PsqlScalar -ConnectionString $OperationsConnectionString -Sql @"
+SELECT status
+FROM fusion_outbox
+WHERE id = '$outboxId'::uuid
+  AND status = 'PENDING'
+  AND delivered_at IS NULL;
+"@
+        if ($status -eq 'PENDING') { return $status }
+        return $null
+    }
+}
+else {
+    Wait-ForValue -Name 'Delivered fusion outbox event' -TimeoutSeconds 60 -Probe {
+        $status = Invoke-PsqlScalar -ConnectionString $OperationsConnectionString -Sql @"
 SELECT status
 FROM fusion_outbox
 WHERE id = '$outboxId'::uuid
   AND delivered_at IS NOT NULL
   AND last_error IS NULL;
 "@
-    if ($status -eq 'DELIVERED') { return $status }
-    return $null
+        if ($status -eq 'DELIVERED') { return $status }
+        return $null
+    }
 }
 
 $timescalePoints = $null
@@ -650,6 +689,19 @@ if (-not $SkipTimescale) {
         throw 'Phase 2 alert list did not return an alerts array.'
     }
     $phase2AlertCount = if ($null -ne $alertList.count) { [int]$alertList.count } else { @($alertList.alerts).Count }
+
+    if ($TriggerPhase2Alerts) {
+        $phase2Alert = Wait-ForValue -Name 'Phase 2 critical yield alert' -Probe {
+            $candidate = Invoke-RestMethod -Uri "$backendUrl/api/v1/alerts?assetId=$machineId&status=open&limit=20" -WebSession $browser -TimeoutSec 10
+            $matching = @($candidate.alerts | Where-Object {
+                [string]$_.ruleId -eq 'rule-yield-critical' -and
+                [string]$_.title -eq 'Yield Rate Critical Drop'
+            }) | Select-Object -First 1
+            if ($null -ne $matching) { return $matching }
+            return $null
+        }
+        $phase2AlertCount = if ($null -ne $phase2AlertCount) { $phase2AlertCount } else { 1 }
+    }
 
     $health = Invoke-RestMethod -Uri "$backendUrl/api/v1/assets/$machineId/health" -WebSession $browser -TimeoutSec 10
     if ($null -eq $health.overallScore -and $null -eq $health.assetId) {
@@ -747,6 +799,7 @@ if (-not $SkipOpenDataFusion -and (Get-HttpStatus -Uri "$odfWebUrl/api/v1/auth/s
     TimescaleRawAndRollup = $(if ($SkipTimescale) { 'Skipped' } else { 'Passed' })
     CepStaging = $(if ($SkipCepStaging) { 'Skipped' } else { 'Passed' })
     Phase2AlertList = $(if ($SkipTimescale) { 'Skipped' } else { "Passed ($phase2AlertCount)" })
+    Phase2AlertAcknowledge = $(if ($SkipTimescale -or -not $TriggerPhase2Alerts) { 'Skipped' } else { 'Passed' })
     Phase2AssetHealth = $(if ($SkipTimescale) { 'Skipped' } else { "Passed ($phase2HealthScore)" })
     FusionTelemetryAndReplay = $(if ($SkipOpenDataFusion) { 'Skipped' } else { 'Passed' })
     ChromaFreshness = $(if ($SkipOdysseus) { 'Skipped' } else { 'Passed' })
