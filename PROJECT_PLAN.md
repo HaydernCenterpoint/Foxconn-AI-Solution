@@ -1,7 +1,7 @@
 # FII AI — Kế hoạch Dự án Thống nhất (Unified Project Plan)
 
 > **Phiên bản:** 2.0 — Unified  
-> **Cập nhật:** 2026-08-02  
+> **Cập nhật:** 2026-08-03
 > **Trạng thái:** Phase 2 local complete · Staging candidate (NO-GO for production)  
 > **Tiến độ tổng:** ~84% (54/64 checklist) — local evidence done, managed staging pending
 
@@ -117,7 +117,7 @@ Frontend (React SPA)
 | **A · Data Platform** (Timescale, File Watcher, ERP/MES, DLQ) | ✅ ~90% | ⬜ ERP thật, read-cutover, managed rollback |
 | **B · Event & AI** (CEP, prediction, RCA) | ✅ ~80% | ⬜ EDA 3 tháng, ML model thật, LLM RCA |
 | **C · Core Backend** (Asset, Health, RBAC, Security) | ✅ ~100% | ⬜ MKZ inventory thật, managed security |
-| **D · Frontend & QA** (UI, E2E, Performance, Security) | ✅ ~70% | ⬜ No-fixture E2E, managed-staging, pentest |
+| **D · Frontend & QA** (UI, E2E, Performance, Security) | ✅ ~70% | ⬜ Managed-staging, pentest |
 
 **Local evidence:**
 - Backend: 122 tests pass
@@ -131,6 +131,8 @@ Frontend (React SPA)
 - Timescale workload: 1,008,500 điểm, p95 292.50 ms, 247.42 q/s
 
 **Release decision:** **NO-GO / staging candidate** — local evidence proves implementation behavior, not production readiness.
+
+**Integration W8:** ✅ local no-fixture closed at `046d98e` — disposable Docker stack passed migrations through `0006`, direct MQTT telemetry, PostgreSQL/Timescale/CEP checks, live alert acknowledgement, and Playwright 1/1. Evidence: `docs/release-evidence/2026-08-01-integration-w8-local.md`.
 
 ### ClientPLC — WPF Desktop App
 
@@ -163,7 +165,7 @@ Checkpoint:  ▲Kickoff        ▲Sync W2        ▲Sync W5        ▲Integratio
 | Shared Contracts | Tuần 1–2 | Schema asset/telemetry/event, API convention versioned | ✅ Hoàn tất |
 | ODF Gate 2 | Trước Tuần 1 | Production-like rehearsal, rollback config, review artifact | ✅ Hoàn tất |
 | Sync W5 | Tuần 5–6 (hiện tại) | Event/alert + Asset CRUD + health trên integration path; UI dùng API thật; E2E happy-path pass | 🟡 Local pass — staging còn mở |
-| Integration W8 | Tuần 8 | PLC mock → data → event/AI → backend → UI end-to-end | ⬜ Planned |
+| Integration W8 | Tuần 8 | PLC mock → data → event/AI → backend → UI end-to-end | ✅ Local pass — `046d98e`, managed staging remains separate |
 | Go-live W10 | Tuần 9–10 | Managed backup/restore, ingress, TLS/mTLS, secret delivery, retention, connector thật, reviewer độc lập | ⬜ Managed staging |
 
 ---
@@ -172,9 +174,8 @@ Checkpoint:  ▲Kickoff        ▲Sync W2        ▲Sync W5        ▲Integratio
 
 ### 5.1. Ngay bây giờ (Now)
 
-1. **Unblock Docker + secrets** — cần Docker daemon, retained DB, JWT/MQTT secrets, demo credentials, approved machine identity
-2. **Local no-fixture full-stack** — chạy `Start-FullDemo.ps1` + `Test-FullDemo.ps1` + `frontend e2e:live` không dùng API fixtures
-3. **Live open-alert acknowledge path** — verify alert ack/resolve trên live stack
+1. **Publish W8 review unit** — push `046d98e`, mở PR riêng và chờ CI/review; không gộp 42 staged WIP không liên quan
+2. **Handoff managed staging** — cấp hostname HTTPS, ingress CIDR, artifact root/hosts và deployment owner
 
 ### 5.2. Managed staging (Then)
 
@@ -294,6 +295,6 @@ File này thay thế các file plan/roadmap/progress sau làm **source of truth*
 
 ---
 
-**Owner:** Project Team  
-**Last refresh:** 2026-08-02  
-**Next checkpoint:** Integration W8 — cần managed staging provisioned
+**Owner:** Project Team
+**Last refresh:** 2026-08-03
+**Next checkpoint:** Go-live W10 — cần managed staging provisioned
