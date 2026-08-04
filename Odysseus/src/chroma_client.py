@@ -33,10 +33,19 @@ def get_chroma_client():
 
     Raises RuntimeError with a clear install hint if the `chromadb` package
     is not installed — it's an optional dependency (RAG + memory vectors).
+
+    Set ``CHROMADB_DISABLED=true`` to skip vector features without probing a
+    dead host (native Windows / FII chat-only profiles).
     """
     global _client
     if _client is not None:
         return _client
+
+    if os.getenv("CHROMADB_DISABLED", "").strip().lower() in ("1", "true", "yes", "on"):
+        raise RuntimeError(
+            "ChromaDB disabled via CHROMADB_DISABLED "
+            "(vector RAG/memory off; keyword/chat still work)"
+        )
 
     try:
         import chromadb
@@ -53,7 +62,8 @@ def get_chroma_client():
         raise RuntimeError(
             f"ChromaDB is not reachable at {host}:{port}. Start the ChromaDB "
             f"service (e.g. `docker compose up chromadb`) or set CHROMADB_HOST / "
-            f"CHROMADB_PORT to point at a running instance."
+            f"CHROMADB_PORT to point at a running instance. "
+            f"For chat-only without vectors set CHROMADB_DISABLED=true."
         )
 
     client = chromadb.HttpClient(host=host, port=port)

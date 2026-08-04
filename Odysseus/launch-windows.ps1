@@ -174,7 +174,47 @@ if (Test-Path $cudaBase) {
     }
 }
 
-# 7. Start the server (use `python -m uvicorn` - bare `uvicorn` may not be on PATH)
+# 7. Optional ChromaDB (vector RAG). Skip when CHROMADB_DISABLED=true in .env.
+$chromaDisabled = $false
+if (Test-Path ".env") {
+    foreach ($line in Get-Content ".env") {
+        if ($line -match "^\s*CHROMADB_DISABLED\s*=\s*(true|1|yes|on)\s*$") {
+            $chromaDisabled = $true
+            break
+        }
+    }
+}
+if (-not $chromaDisabled) {
+    $docker = Get-Command docker -ErrorAction SilentlyContinue
+    if ($docker) {
+        $chromaUp = $false
+        try {
+            $running = & docker ps --format "{{.Names}}" 2>$null
+            if ($running -match "chromadb") { $chromaUp = $true }
+        } catch { }
+        if (-not $chromaUp) {
+            Write-Step "ChromaDB not running — trying: docker compose up -d chromadb"
+            try {
+                & docker compose up -d chromadb 2>$null
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "ChromaDB started (host port 8100)." -ForegroundColor Green
+                } else {
+                    Write-Host "Could not start ChromaDB. Set CHROMADB_DISABLED=true in .env for chat-only." -ForegroundColor Yellow
+                }
+            } catch {
+                Write-Host "Docker compose failed. Set CHROMADB_DISABLED=true in .env for chat-only." -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "ChromaDB container already running."
+        }
+    } else {
+        Write-Host "Docker not found; vector RAG needs Chroma or CHROMADB_DISABLED=true." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "CHROMADB_DISABLED=true — vector RAG/memory off; chat still works."
+}
+
+# 8. Start the server (use `python -m uvicorn` - bare `uvicorn` may not be on PATH)
 Write-Step ("Starting Odysseus at http://{0}:{1}" -f $BindHost, $Port)
 Write-Host "Press Ctrl+C to stop."
 Write-Host ""

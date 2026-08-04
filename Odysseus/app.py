@@ -624,11 +624,8 @@ chat_handler      = components["chat_handler"]
 model_discovery   = components["model_discovery"]
 skills_manager    = components["skills_manager"]
 
-# TTS
-from services.tts import get_tts_service
-
-tts_service = get_tts_service()
-logger.info("TTS service initialized (provider managed via admin settings)")
+# TTS (skipped under ODYSSEUS_PROFILE=fii-chat — profile flag resolved below)
+tts_service = None
 
 # ========= EXCEPTION HANDLERS =========
 @app.exception_handler(SessionNotFoundError)
@@ -651,6 +648,30 @@ async def web_search_error_handler(request: Request, exc: WebSearchError):
 from src.webhook_manager import WebhookManager
 
 webhook_manager = WebhookManager(api_key_manager=api_key_manager)
+
+# Optional surface profile. Default "full" keeps upstream behavior.
+# FII monorepo chat+factory bridge: ODYSSEUS_PROFILE=fii-chat skips heavy
+# personal-productivity routes (email, cookbook, gallery, calendar, …).
+_ODYSSEUS_PROFILE = os.getenv("ODYSSEUS_PROFILE", "full").strip().lower()
+_FII_CHAT = _ODYSSEUS_PROFILE in {"fii-chat", "fii", "chat"}
+_FII_SKIP = frozenset({
+    "research", "copilot", "chatgpt", "tts", "stt",
+    "gallery", "editor_draft", "signature", "calendar",
+    "shell", "cookbook", "workspace", "hwfit", "compare",
+    "email", "codex", "claude", "vault", "contacts", "companion",
+    "notes", "assistant",
+})
+
+
+def _feat(name: str) -> bool:
+    """Whether an optional feature pack should load under the active profile."""
+    if not _FII_CHAT:
+        return True
+    return name not in _FII_SKIP
+
+
+if _FII_CHAT:
+    logger.info("ODYSSEUS_PROFILE=%s — FII chat-only surface (heavy packs skipped)", _ODYSSEUS_PROFILE)
 
 # ========= INCLUDE ROUTERS =========
 
@@ -710,8 +731,9 @@ app.include_router(setup_chat_routes(
 ))
 
 # Research (background deep-research tasks)
-from routes.research.research_routes import setup_research_routes
-app.include_router(setup_research_routes(research_handler, session_manager=session_manager))
+if _feat("research"):
+    from routes.research.research_routes import setup_research_routes
+    app.include_router(setup_research_routes(research_handler, session_manager=session_manager))
 
 # History
 from routes.history.history_routes import setup_history_routes
@@ -746,23 +768,30 @@ from routes.model_routes import setup_model_routes
 app.include_router(setup_model_routes(model_discovery))
 
 # GitHub Copilot device-flow login
-from routes.copilot_routes import setup_copilot_routes
-app.include_router(setup_copilot_routes())
+if _feat("copilot"):
+    from routes.copilot_routes import setup_copilot_routes
+    app.include_router(setup_copilot_routes())
 
 # ChatGPT Subscription device-flow login
-from routes.chatgpt_subscription_routes import setup_chatgpt_subscription_routes
-app.include_router(setup_chatgpt_subscription_routes())
+if _feat("chatgpt"):
+    from routes.chatgpt_subscription_routes import setup_chatgpt_subscription_routes
+    app.include_router(setup_chatgpt_subscription_routes())
 
 # TTS
-from routes.tts_routes import setup_tts_routes
-app.include_router(setup_tts_routes(tts_service))
+if _feat("tts"):
+    from services.tts import get_tts_service
+    tts_service = get_tts_service()
+    from routes.tts_routes import setup_tts_routes
+    app.include_router(setup_tts_routes(tts_service))
+    logger.info("TTS service initialized (provider managed via admin settings)")
 
 # STT
-from services.stt import get_stt_service
-stt_service = get_stt_service()
-from routes.stt_routes import setup_stt_routes
-app.include_router(setup_stt_routes(stt_service))
-logger.info("STT service initialized (provider managed via settings)")
+if _feat("stt"):
+    from services.stt import get_stt_service
+    stt_service = get_stt_service()
+    from routes.stt_routes import setup_stt_routes
+    app.include_router(setup_stt_routes(stt_service))
+    logger.info("STT service initialized (provider managed via settings)")
 
 # Documents (artifacts/canvas)
 from routes.document_routes import setup_document_routes
@@ -770,16 +799,19 @@ document_router = setup_document_routes(session_manager, upload_handler)
 app.include_router(document_router)
 
 # Signatures (reusable image stamps)
-from routes.signature_routes import setup_signature_routes
-app.include_router(setup_signature_routes())
+if _feat("signature"):
+    from routes.signature_routes import setup_signature_routes
+    app.include_router(setup_signature_routes())
 
 # Gallery (image library)
-from routes.gallery.gallery_routes import setup_gallery_routes
-app.include_router(setup_gallery_routes())
+if _feat("gallery"):
+    from routes.gallery.gallery_routes import setup_gallery_routes
+    app.include_router(setup_gallery_routes())
 
 # Persisted image-editor drafts (server-backed projects)
-from routes.editor_draft_routes import setup_editor_draft_routes
-app.include_router(setup_editor_draft_routes())
+if _feat("editor_draft"):
+    from routes.editor_draft_routes import setup_editor_draft_routes
+    app.include_router(setup_editor_draft_routes())
 
 # Scheduled tasks + event bus
 from src.task_scheduler import TaskScheduler
@@ -789,32 +821,40 @@ set_task_scheduler(task_scheduler)
 from routes.task_routes import setup_task_routes
 app.include_router(setup_task_routes(task_scheduler))
 
-from routes.assistant_routes import setup_assistant_routes
-app.include_router(setup_assistant_routes(task_scheduler))
+if _feat("assistant"):
+    from routes.assistant_routes import setup_assistant_routes
+    app.include_router(setup_assistant_routes(task_scheduler))
 
 # Calendar (CalDAV)
-from routes.calendar_routes import setup_calendar_routes
-calendar_router = setup_calendar_routes()
-app.include_router(calendar_router)
+calendar_router = None
+if _feat("calendar"):
+    from routes.calendar_routes import setup_calendar_routes
+    calendar_router = setup_calendar_routes()
+    app.include_router(calendar_router)
 
 # Shell (user-facing command execution)
-from routes.shell_routes import setup_shell_routes
-app.include_router(setup_shell_routes())
+if _feat("shell"):
+    from routes.shell_routes import setup_shell_routes
+    app.include_router(setup_shell_routes())
 
 # Cookbook (model download/serve/cache, cookbook state sync)
-from routes.cookbook_routes import setup_cookbook_routes
-app.include_router(setup_cookbook_routes())
+if _feat("cookbook"):
+    from routes.cookbook_routes import setup_cookbook_routes
+    app.include_router(setup_cookbook_routes())
 
-from routes.workspace_routes import setup_workspace_routes
-app.include_router(setup_workspace_routes())
+if _feat("workspace"):
+    from routes.workspace_routes import setup_workspace_routes
+    app.include_router(setup_workspace_routes())
 
 # Hardware model fitting (cookbook "What Fits?" tab)
-from routes.hwfit_routes import setup_hwfit_routes
-app.include_router(setup_hwfit_routes())
+if _feat("hwfit"):
+    from routes.hwfit_routes import setup_hwfit_routes
+    app.include_router(setup_hwfit_routes())
 
 # Model A/B Comparison
-from routes.compare_routes import setup_compare_routes
-app.include_router(setup_compare_routes(session_manager))
+if _feat("compare"):
+    from routes.compare_routes import setup_compare_routes
+    app.include_router(setup_compare_routes(session_manager))
 
 # User Preferences
 from routes.prefs_routes import setup_prefs_routes
@@ -856,39 +896,47 @@ app.include_router(setup_api_token_routes())
 logger.info("Webhook & API token routes initialized")
 
 # Notes (Google Keep-style notes/todos)
-from routes.note_routes import setup_note_routes
-app.include_router(setup_note_routes(task_scheduler))
+if _feat("notes"):
+    from routes.note_routes import setup_note_routes
+    app.include_router(setup_note_routes(task_scheduler))
 
 # Email
-from routes.email_routes import setup_email_routes
-email_router = setup_email_routes()
-app.include_router(email_router)
+email_router = None
+if _feat("email"):
+    from routes.email_routes import setup_email_routes
+    email_router = setup_email_routes()
+    app.include_router(email_router)
 
 # Codex integration — HTTP surface for the Codex plugin/MCP bridge. Reuses
 # api_token scopes (todos:read|write, email:read|draft|send) so external
 # Codex sessions can only touch the data the user explicitly allowed. Mounted
 # AFTER email so the codex_routes can borrow the email router for shared
 # search/threading helpers.
-from routes.codex_routes import setup_codex_routes, setup_claude_routes
-app.include_router(setup_codex_routes(
-    email_router=email_router,
-    memory_router=memory_router,
-    calendar_router=calendar_router,
-    document_router=document_router,
-))
-app.include_router(setup_claude_routes())
+if _feat("codex") and email_router is not None and calendar_router is not None:
+    from routes.codex_routes import setup_codex_routes, setup_claude_routes
+    app.include_router(setup_codex_routes(
+        email_router=email_router,
+        memory_router=memory_router,
+        calendar_router=calendar_router,
+        document_router=document_router,
+    ))
+    if _feat("claude"):
+        app.include_router(setup_claude_routes())
 
-from routes.vault_routes import setup_vault_routes
-app.include_router(setup_vault_routes())
+if _feat("vault"):
+    from routes.vault_routes import setup_vault_routes
+    app.include_router(setup_vault_routes())
 
 # Contacts (CardDAV)
-from routes.contacts.contacts_routes import setup_contacts_routes
-app.include_router(setup_contacts_routes())
+if _feat("contacts"):
+    from routes.contacts.contacts_routes import setup_contacts_routes
+    app.include_router(setup_contacts_routes())
 
-from companion import setup_companion_routes
-app.include_router(setup_companion_routes())
+if _feat("companion"):
+    from companion import setup_companion_routes
+    app.include_router(setup_companion_routes())
 
-# MKZ Factory Integration
+# MKZ Factory Integration (always on — FII bridge)
 from routes.mkz_routes import setup_mkz_routes
 app.include_router(setup_mkz_routes())
 
