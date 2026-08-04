@@ -292,6 +292,11 @@ export const en = {
     welcome: 'Welcome, {{name}}',
     forgotPassword: 'Forgot password?',
     contactAdminInfo: 'Please contact the system administrator to reset your password.',
+    capabilities: {
+      liveVisibility: 'Live production visibility',
+      equipmentHealth: 'Equipment health monitoring',
+      traceableOperations: 'Traceable operations',
+    },
     validation: {
       usernameRequired: 'Please enter your account.',
       passwordRequired: 'Please enter your password.',

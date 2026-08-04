@@ -292,6 +292,11 @@ export const zhCN = {
     welcome: '欢迎，{{name}}',
     forgotPassword: '忘记密码？',
     contactAdminInfo: '请联系系统管理员重置密码。',
+    capabilities: {
+      liveVisibility: '生产状态实时可见',
+      equipmentHealth: '设备健康监控',
+      traceableOperations: '运营过程可追溯',
+    },
     validation: {
       usernameRequired: '请输入账号。',
       passwordRequired: '请输入密码。',
