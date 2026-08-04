@@ -32,7 +32,7 @@ Nguồn CDF: các nhóm API/năng lực công khai tại `docs.cognite.com`. Đ�
 | Files / Object storage (governed objects) | ✅ AVAILABLE | Upload/download phiên bản, SHA‑256, ETag, SSE; S3‑compatible trên PG |
 | Relationships & Provenance | 🟡 OPTIONAL | Quan hệ + provenance có; query chuyên sâu còn gated |
 | Labels / classification | 🧱 FOUNDATION | Có khái niệm nhưng chưa phải taxonomy mở như CDF |
-| Data Models / Views (containers, views, data models, spaces) | 🧱 FOUNDATION | Có model version + quan hệ, **chưa có Data Models service mở** |
+| Data Models / Views (containers, views, data models, spaces) | ✅ AVAILABLE | ADR `0007`: model version (immutable), views, instances, filter/query/traversal/aggregate REST module, SQLite + PostgreSQL (RLS/outbox). Chưa schema canvas/GraphQL |
 
 ### Nhóm Tích hợp & Biến đổi (Ingestion / Pipelines)
 
@@ -133,9 +133,9 @@ Nguồn CDF: các nhóm API/năng lực công khai tại `docs.cognite.com`. Đ�
 
 **Ưu tiên cao (đóng góp nhiều giá trị nhất cho "open equivalent"):**
 
-1. 🟥 **Data Models service mở** — space/container/view/data model + query. Hiện ODF ở `🧱 FOUNDATION`. Đây là "trái tim" của CDF và là nơi mã nguồn mở có thể vượt trội về tính mở.
-2. 🟥 **Connector framework plugin** — hiện chỉ 3 edge adapter. Cần framework 'connector SDK' để cộng đồng đóng góp adapter.
-3. 🟧 **Transformations / Data Workflows** — pipeline đang `🚧 GATED`; cần orchestrator + retry + run history hoàn chỉnh để sánh luồng "data op" của CDF.
+1. 🟥 **Connector framework plugin** — hiện chỉ 3 edge adapter cứng (CSV/PostgreSQL/OPC UA); cần SDK plugin + registry để cộng đồng đóng góp adapter. Đây là gap code-level lớn nhất còn trống.
+2. 🟧 **Transformations / Data Workflows** — pipeline đang `🚧 GATED`; cần orchestrator + retry + run history hoàn chỉnh để sánh luồng "data op" của CDF.
+3. 🟨 **Schema canvas / GraphQL facade cho Data Models** — core Data Models đã có (ADR 0007, `✅`); phần còn thiếu là UI trực quan hoá schema & query GraphQL.
 
 **Ưu tiên trung bình:**
 
@@ -160,9 +160,9 @@ Nguồn CDF: các nhóm API/năng lực công khai tại `docs.cognite.com`. Đ�
 - Ổn định PostgreSQL + RLS + outbox cho toàn bộ surface hiện tại.
 
 **Giai đoạn B — Nền tảng mở (đầu ra chiến lược):**
-1. **Data Models service**: SDK/CLI định nghĩa container/view/data model + GraphQL/query facade.
-2. **Connector framework**: plugin SDK + registry connector; giữ checkpoint/idempotency/audit.
-3. **Transformations/Workflows**: orchestrate SQL/dbt-style job, retry, deterministic run history.
+1. **Connector framework**: plugin SDK + registry connector; giữ checkpoint/idempotency/audit. *(Data Models core đã xong — ADR 0007.)*
+2. **Transformations/Workflows**: orchestrate SQL/dbt-style job, retry, deterministic run history.
+3. **Data Models bổ sung**: schema canvas UI + GraphQL facade (tuỳ nhu cầu).
 
 **Giai đoạn C — Mở rộng có điều kiện (có pilot mới làm):**
 - Matching/contextualization nâng cao (ML), Events/Sequences, Labels taxonomy.
