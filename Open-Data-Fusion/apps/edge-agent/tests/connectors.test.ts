@@ -8,6 +8,8 @@ import { connectorConfigSchema } from "../src/config.js";
 import { CsvConnector } from "../src/connectors/csv.js";
 import { OpcUaConnector, type OpcUaReadValue, type OpcUaValueReader } from "../src/connectors/opcua.js";
 import { PostgresConnector, type PostgresQuerySource } from "../src/connectors/postgres.js";
+import { buildConnector, createConnectorContext } from "../src/connectors/registry.js";
+import type { ConnectorConfig } from "../src/config.js";
 
 const temporaryDirectories: string[] = [];
 
@@ -195,5 +197,10 @@ describe("source connectors", () => {
     expect(incremental?.dataPoints[0]?.value).toBe(23);
     await connector.close();
     expect(closed).toBe(true);
+  });
+
+  it("buildConnector fails closed for an unregistered connector type", async () => {
+    const context = await createConnectorContext({});
+    await expect(buildConnector({ type: "mystery" } as unknown as ConnectorConfig, context)).rejects.toThrow(/unregistered connector type/);
   });
 });
