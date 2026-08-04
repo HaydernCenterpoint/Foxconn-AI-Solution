@@ -1,4 +1,10 @@
-"""URL validation helpers for server-side outbound requests."""
+"""URL validation helpers for untrusted public outbound endpoints.
+
+Uses ``url_safety.check_outbound_url(block_private=True)`` as the single SSRF
+IP policy, plus a hostname denylist for cloud metadata / internal suffixes.
+
+``_resolve_hostname_ips`` remains a patch point for unit tests.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +12,7 @@ import ipaddress
 import socket
 from urllib.parse import urlparse
 
+from src.url_safety import check_outbound_url
 
 _INTERNAL_HOSTNAMES = {
     "localhost",
@@ -21,22 +28,9 @@ _INTERNAL_SUFFIXES = (
     ".intranet",
 )
 
-_BLOCKED_NETWORKS = (
-    ipaddress.ip_network("0.0.0.0/8"),
-    ipaddress.ip_network("10.0.0.0/8"),
-    ipaddress.ip_network("100.64.0.0/10"),
-    ipaddress.ip_network("127.0.0.0/8"),
-    ipaddress.ip_network("169.254.0.0/16"),
-    ipaddress.ip_network("172.16.0.0/12"),
-    ipaddress.ip_network("192.168.0.0/16"),
-    ipaddress.ip_network("::/128"),
-    ipaddress.ip_network("::1/128"),
-    ipaddress.ip_network("fc00::/7"),
-    ipaddress.ip_network("fe80::/10"),
-)
-
 
 def _resolve_hostname_ips(hostname: str) -> list[ipaddress._BaseAddress]:
+    """Resolve hostname → IPs. Tests monkeypatch this name."""
     ips: list[ipaddress._BaseAddress] = []
     for family, _, _, _, sockaddr in socket.getaddrinfo(hostname, None):
         if family in (socket.AF_INET, socket.AF_INET6):
@@ -44,38 +38,25 @@ def _resolve_hostname_ips(hostname: str) -> list[ipaddress._BaseAddress]:
     return ips
 
 
-def _blocked_ip(addr: ipaddress._BaseAddress) -> bool:
-    return (
-        any(addr in net for net in _BLOCKED_NETWORKS)
-        or addr.is_private
-        or addr.is_loopback
-        or addr.is_link_local
-        or addr.is_multicast
-        or addr.is_unspecified
-        or addr.is_reserved
-    )
-
-
-def _host_resolves_publicly(hostname: str) -> bool:
-    host = hostname.strip().lower()
-    if host in _INTERNAL_HOSTNAMES or host.endswith(_INTERNAL_SUFFIXES):
-        return False
-    try:
-        return not _blocked_ip(ipaddress.ip_address(host))
-    except ValueError:
-        pass
-    try:
-        addrs = _resolve_hostname_ips(host)
-    except OSError:
-        return False
-    return bool(addrs) and all(not _blocked_ip(addr) for addr in addrs)
+def _resolver_for_safety(host: str) -> list[str]:
+    """Adapter: url_safety expects string IPs; we expose IP objects for tests."""
+    return [str(ip) for ip in _resolve_hostname_ips(host)]
 
 
 def is_public_http_url(url: str) -> bool:
-    parsed = urlparse((url or "").strip())
+    cleaned = (url or "").strip()
+    parsed = urlparse(cleaned)
     if parsed.scheme not in ("http", "https") or not parsed.hostname:
         return False
-    return _host_resolves_publicly(parsed.hostname)
+    host = parsed.hostname.strip().lower()
+    if host in _INTERNAL_HOSTNAMES or host.endswith(_INTERNAL_SUFFIXES):
+        return False
+    ok, _ = check_outbound_url(
+        cleaned,
+        block_private=True,
+        resolver=_resolver_for_safety,
+    )
+    return ok
 
 
 def validate_public_http_url(url: str, *, max_length: int = 2048) -> str:

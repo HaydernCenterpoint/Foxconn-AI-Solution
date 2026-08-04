@@ -104,7 +104,8 @@ class VectorRAG:
             return True
 
         except Exception as e:
-            logger.error(f"VectorRAG init failed: {e}")
+            # Expected when Chroma is down or CHROMADB_DISABLED=true — chat still works.
+            logger.warning("VectorRAG DEGRADED (vector index off): %s", e)
             self._healthy = False
             return False
 

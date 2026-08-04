@@ -54,7 +54,8 @@ class MemoryVectorStore:
             )
 
         except Exception as e:
-            logger.error(f"MemoryVectorStore init failed: {e}")
+            # Expected when Chroma is down or CHROMADB_DISABLED=true — chat still works.
+            logger.warning("MemoryVectorStore DEGRADED (vector memory off): %s", e)
 
     @property
     def healthy(self) -> bool:

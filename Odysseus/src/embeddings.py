@@ -265,7 +265,12 @@ def get_embedding_client():
             return client
         except Exception as e:
             _http_embed_down = True
-            logger.warning(f"HTTP embedding API unavailable ({e}); using local FastEmbed for the rest of this process")
+            # One-shot per process; default EMBEDDING_URL points at Ollama :11434
+            # which is often not running — FastEmbed is the normal local path.
+            logger.info(
+                "HTTP embedding API unavailable (%s); using local FastEmbed for this process",
+                e,
+            )
 
     # Fall back to local fastembed
     try:

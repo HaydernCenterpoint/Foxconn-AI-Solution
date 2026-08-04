@@ -20,10 +20,26 @@ used to configure a model.
 
 1. Copy `.env.integration.example` to `.env` and edit it locally.
 2. Set `OPENAI_API_KEY` only if Odysseus will call a hosted AI provider.
-3. Start the FII backend on `http://127.0.0.1:5165`.
-4. Start Odysseus from its project directory:
+3. For the FII monorepo chat+factory path, prefer:
+
+```env
+ODYSSEUS_PROFILE=fii-chat
+CHROMADB_DISABLED=true
+HF_HUB_DISABLE_XET=1
+MKZ_BACKEND_URL=http://localhost:5166
+FII_SSO_ENABLED=true
+```
+
+- `ODYSSEUS_PROFILE=fii-chat` skips email/cookbook/gallery/calendar and other personal-AI packs; keeps chat, models, memory, MCP, and MKZ routes.
+- `CHROMADB_DISABLED=true` avoids ERROR spam when no Chroma container is on `:8100`. Chat works without vectors. To enable RAG: start `docker compose up -d chromadb` and set `CHROMADB_DISABLED=false`.
+- Do not set `EMBEDDING_URL` unless Ollama/vLLM embeddings are actually running; otherwise the app uses local FastEmbed once and continues.
+
+4. Start the FII backend on `http://127.0.0.1:5165` (or `5166` for the full-demo stack).
+5. Start Odysseus from its project directory:
 
 ```powershell
+.\launch-windows.ps1
+# or:
 .\venv\Scripts\python.exe -m uvicorn app:app --host 127.0.0.1 --port 7000
 ```
 
