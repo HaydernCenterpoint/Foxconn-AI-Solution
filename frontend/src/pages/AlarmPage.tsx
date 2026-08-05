@@ -1,33 +1,32 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { alarmsApi, type Alarm } from '../features/alarms/services/alarms.api';
-import {
-  CheckCircle,
-  User,
-  Clock,
-  AlertOctagon,
-  ShieldAlert,
-  AlertTriangle,
-  Info,
-  BellOff,
-} from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CheckCircle, Clock, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { alarmsApi, type Alarm, type AlarmSeverity } from '../features/alarms/services/alarms.api';
 import { useDynamicTranslation } from '../shared/lib/translator';
-import { Modal } from '../shared/components/ui/Modal';
 import { Badge } from '../shared/components/ui/Badge';
-import { StatusBadge } from '../shared/components/ui/StatusBadge';
+import { Button } from '../shared/components/ui/Button';
+import { DataState } from '../shared/components/ui/DataState';
 import { Dropdown } from '../shared/components/ui/Dropdown';
+import { Modal } from '../shared/components/ui/Modal';
+import { PageHeader } from '../shared/components/ui/PageHeader';
 import { StatCard } from '../shared/components/ui/StatCard';
-import { TechPanel } from '../shared/components/ui/TechPanel';
+import { StatusBadge } from '../shared/components/ui/StatusBadge';
+import { Surface } from '../shared/components/ui/Surface';
 import { usePermissions } from '../shared/hooks/usePermissions';
-import './modern-alarms.css';
 
 function getActionErrorMessage(error: unknown, fallback: string): string {
   if (typeof error !== 'object' || error === null) return fallback;
-
   const response = (error as { response?: { data?: { error?: unknown } } }).response;
   return typeof response?.data?.error === 'string' ? response.data.error : fallback;
 }
+
+const SEVERITY_VARIANT: Record<AlarmSeverity, 'error' | 'warning' | 'info' | 'neutral'> = {
+  CRITICAL: 'error',
+  HIGH: 'warning',
+  MEDIUM: 'info',
+  LOW: 'neutral',
+};
 
 export const AlarmPage = () => {
   const { t, i18n } = useTranslation();
@@ -44,7 +43,7 @@ export const AlarmPage = () => {
   const [notes, setNotes] = useState('');
   const [actionError, setActionError] = useState('');
 
-  const { data: alarms = [], isLoading } = useQuery({
+  const { data: alarms = [], isLoading, isError } = useQuery({
     queryKey: ['alarms-list-shared', statusFilter, severityFilter],
     queryFn: () => alarmsApi.getAll({
       status: statusFilter || undefined,
@@ -62,23 +61,15 @@ export const AlarmPage = () => {
   };
 
   const ackMutation = useMutation({
-    mutationFn: ({ id, notes }: { id: number; notes: string }) =>
-      alarmsApi.acknowledge(id, notes),
-    onSuccess: () => {
-      invalidateAllAlarmsData();
-      closeAction();
-    },
-    onError: (error) => setActionError(getActionErrorMessage(error, 'Lỗi xác nhận')),
+    mutationFn: ({ id, notes }: { id: number; notes: string }) => alarmsApi.acknowledge(id, notes),
+    onSuccess: () => { invalidateAllAlarmsData(); closeAction(); },
+    onError: (error) => getActionErrorMessage(error, t('alarms.ackError')),
   });
 
   const resolveMutation = useMutation({
-    mutationFn: ({ id, notes }: { id: number; notes: string }) =>
-      alarmsApi.resolve(id, notes),
-    onSuccess: () => {
-      invalidateAllAlarmsData();
-      closeAction();
-    },
-    onError: (error) => setActionError(getActionErrorMessage(error, 'Lỗi đóng sự cố')),
+    mutationFn: ({ id, notes }: { id: number; notes: string }) => alarmsApi.resolve(id, notes),
+    onSuccess: () => { invalidateAllAlarmsData(); closeAction(); },
+    onError: (error) => getActionErrorMessage(error, t('alarms.resolveError')),
   });
 
   const closeAction = () => {
@@ -95,14 +86,8 @@ export const AlarmPage = () => {
     else resolveMutation.mutate({ id: actionAlarm.id, notes });
   };
 
-  const severityConfig: Record<string, { label: string; icon: React.ReactNode; variant: 'primary' | 'success' | 'warning' | 'error' | 'info' | 'neutral' }> = {
-    CRITICAL: { label: 'Nghiêm trọng', icon: <ShieldAlert className="h-3.5 w-3.5" />, variant: 'error' },
-    HIGH: { label: 'Cao', icon: <AlertTriangle className="h-3.5 w-3.5" />, variant: 'warning' },
-    MEDIUM: { label: 'Trung bình', icon: <AlertOctagon className="h-3.5 w-3.5" />, variant: 'info' },
-    LOW: { label: 'Thấp', icon: <Info className="h-3.5 w-3.5" />, variant: 'neutral' },
-  };
-
-  const getSev = (s: string) => severityConfig[s.toUpperCase()] ?? severityConfig.LOW;
+  const severityLabel = (s: AlarmSeverity) =>
+    t(`alarms.severity${s.charAt(0)}${s.slice(1).toLowerCase()}`);
 
   const active = alarms.filter(a => a.status === 'ACTIVE').length;
   const acknowledged = alarms.filter(a => a.status === 'ACKNOWLEDGED').length;
@@ -110,104 +95,198 @@ export const AlarmPage = () => {
   const critical = alarms.filter(a => a.severity === 'CRITICAL').length;
 
   return (
-    <div className="modern-alarms space-y-6">
-      {/* Title */}
-      <header className="modern-alarms__header">
-        <div>
-          <p className="modern-alarms__eyebrow">{t('common.mode.readOnly')}</p>
-          <h1 className="modern-alarms__title">
-            <span className="modern-alarms__title-mark" aria-hidden="true" />
-            {t('alarms.title', 'Cảnh báo hệ thống')}
-          </h1>
-          <p className="modern-alarms__subtitle">{t('alarms.subtitle', 'Giám sát sự cố kỹ thuật từ PLC — xác nhận và khắc phục bởi kỹ sư')}</p>
-        </div>
-        {critical > 0 && (
-          <Badge variant="error" dot className="modern-alarms__critical px-3.5 py-2 text-xs font-bold">
-            {critical} {t('alarms.criticalLabel', 'CRITICAL')}
-          </Badge>
-        )}
-      </header>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow={t('alarms.eyebrow')}
+        title={t('alarms.title')}
+        description={t('alarms.subtitle')}
+        actions={critical > 0 ? (
+          <Badge variant="error" dot>{t('alarms.criticalCount', { count: critical })}</Badge>
+        ) : undefined}
+      />
 
-      {/* Overview Stat Cards Grid */}
-      <div className="modern-alarms__stat-grid">
-        <StatCard label={t('alarms.total', 'Tổng cảnh báo')} value={alarms.length} accent="neutral" />
-        <StatCard label={t('alarms.active', 'Đang active')} value={active} accent="error" />
-        <StatCard label={t('alarms.acknowledged', 'Đang xử lý')} value={acknowledged} accent="warning" />
-        <StatCard label={t('alarms.resolved', 'Đã khắc phục')} value={resolved} accent="success" />
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <StatCard label={t('alarms.total')} value={alarms.length} accent="neutral" />
+        <StatCard label={t('alarms.active')} value={active} accent="error" />
+        <StatCard label={t('alarms.acknowledged')} value={acknowledged} accent="warning" />
+        <StatCard label={t('alarms.resolved')} value={resolved} accent="success" />
       </div>
 
-      {/* Filters Box */}
-      <TechPanel
-        title={t('alarms.filtersTitle', 'Bộ lọc sự cố')}
-        extraHeader={
-          <span className="modern-alarms__result-count">
-            {alarms.length} {t('alarms.resultsLabel', 'kết quả')} · {t('alarms.refreshLabel', 'tự động cập nhật')}
-          </span>
-        }
-      >
-        <div className="modern-alarms__filter-row">
-          <span className="modern-alarms__filter-label">{t('alarms.filterLabel', 'Trạng thái:')}</span>
+      <Surface variant="raised" padding="none" className="overflow-hidden">
+        <div className="panel-header">
+          <div>
+            <h2 className="title-small text-text-primary">{t('alarms.filtersTitle')}</h2>
+            <p className="mt-1 text-xs text-text-muted">{t('alarms.refreshLabel')}</p>
+          </div>
+          <Badge variant="info" size="sm">{t('alarms.resultsCount', { count: alarms.length })}</Badge>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 px-5 py-4">
+          <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">{t('alarms.filterLabel')}</span>
           <Dropdown
             value={statusFilter}
             onChange={setStatusFilter}
             options={[
-              { value: '', label: t('alarms.filterAllStatus', 'Tất cả trạng thái') },
-              { value: 'ACTIVE', label: t('alarms.statusActive', 'Mới phát sinh') },
-              { value: 'ACKNOWLEDGED', label: t('alarms.statusAck', 'Đang xử lý') },
-              { value: 'RESOLVED', label: t('alarms.statusResolved', 'Đã khắc phục') },
+              { value: '', label: t('alarms.filterAllStatus') },
+              { value: 'ACTIVE', label: t('alarms.statusActive') },
+              { value: 'ACKNOWLEDGED', label: t('alarms.statusAck') },
+              { value: 'RESOLVED', label: t('alarms.statusResolved') },
             ]}
           />
           <Dropdown
             value={severityFilter}
             onChange={setSeverityFilter}
             options={[
-              { value: '', label: t('alarms.filterAllSeverity', 'Tất cả mức độ') },
-              { value: 'CRITICAL', label: t('alarms.severityCritical', 'Nghiêm trọng') },
-              { value: 'HIGH', label: t('alarms.severityHigh', 'Cao') },
-              { value: 'MEDIUM', label: t('alarms.severityMedium', 'Trung bình') },
-              { value: 'LOW', label: t('alarms.severityLow', 'Thấp') },
+              { value: '', label: t('alarms.filterAllSeverity') },
+              { value: 'CRITICAL', label: t('alarms.severityCritical') },
+              { value: 'HIGH', label: t('alarms.severityHigh') },
+              { value: 'MEDIUM', label: t('alarms.severityMedium') },
+              { value: 'LOW', label: t('alarms.severityLow') },
             ]}
           />
         </div>
-      </TechPanel>
+      </Surface>
 
-      {/* Alarms Dialog/Modal Action */}
-      {canAcknowledge && (
+      <Surface variant="raised" padding="none" className="overflow-hidden">
+        <div className="panel-header">
+          <div>
+            <h2 className="title-small text-text-primary">{t('alarms.title')}</h2>
+            <p className="mt-1 text-xs text-text-muted">{t('alarms.viewerSubtitle')}</p>
+          </div>
+        </div>
+        {isLoading ? (
+          <DataState kind="loading" title={t('alarms.loading')} description={t('alarms.loadingDescription')} />
+        ) : isError ? (
+          <DataState kind="error" title={t('alarms.queryErrorTitle')} description={t('alarms.queryErrorDescription')} />
+        ) : alarms.length === 0 ? (
+          <DataState kind="empty" title={t('alarms.emptyTitle')} />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="data-table min-w-176">
+              <thead>
+                <tr>
+                  <th>{t('alarms.table.device')}</th>
+                  <th>{t('alarms.table.severity')}</th>
+                  <th>{t('alarms.table.message')}</th>
+                  <th>{t('alarms.table.status')}</th>
+                  <th>{t('alarms.table.time')}</th>
+                  <th>{t('alarms.table.handler')}</th>
+                  {canAcknowledge && <th className="text-center">{t('alarms.table.actions')}</th>}
+                </tr>
+              </thead>
+              <tbody>
+
+                {alarms.map(alarm => (
+                  <tr key={alarm.id}>
+                    <td className="font-medium text-text-primary">{tDynamic(alarm.machineName)}</td>
+                    <td><Badge variant={SEVERITY_VARIANT[alarm.severity]} size="sm">{severityLabel(alarm.severity)}</Badge></td>
+                    <td className="text-text-secondary">{tDynamic(alarm.message)}</td>
+                    <td><StatusBadge status={alarm.status.toLowerCase()} size="sm" /></td>
+                    <td className="whitespace-nowrap text-text-secondary">
+                      <div className="flex flex-col">
+                        <span className="flex items-center gap-1 text-text-primary">
+                          <Clock size={12} aria-hidden="true" />
+                          {new Date(alarm.createdAt).toLocaleTimeString(locale)}
+                        </span>
+                        <span className="text-xs text-text-muted">{new Date(alarm.createdAt).toLocaleDateString(locale)}</span>
+                      </div>
+                    </td>
+                    <td className="text-xs">
+                      {alarm.acknowledgedBy ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="flex items-center gap-1 text-text-primary">
+                            <User size={12} aria-hidden="true" />
+                            {alarm.acknowledgedBy}
+                          </span>
+                          {alarm.notes && <span className="text-text-muted">{tDynamic(alarm.notes)}</span>}
+                        </div>
+                      ) : (
+                        <span className="italic text-text-muted">{t('alarms.unhandled')}</span>
+                      )}
+                    </td>
+                    {canAcknowledge && (
+                      <td className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          {alarm.status === 'ACTIVE' && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => { setActionAlarm(alarm); setActionType('ack'); }}
+                            >
+                              {t('alarms.ackButton')}
+                            </Button>
+                          )}
+                          {alarm.status !== 'RESOLVED' && (
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => { setActionAlarm(alarm); setActionType('resolve'); }}
+                            >
+                              {t('alarms.resolveButton')}
+                            </Button>
+                          )}
+                          {alarm.status === 'RESOLVED' && (
+                            <Badge variant="success" size="sm">
+                              <span className="flex items-center gap-1">
+                                <CheckCircle size={12} aria-hidden="true" />
+                                {t('alarms.closed')}
+                              </span>
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Surface>
+
+      {actionAlarm && actionType && (
         <Modal
-          open={!!actionAlarm && !!actionType}
+          open
           onClose={closeAction}
-          title={actionType === 'ack' ? t('alarms.actionAckTitle', '⚙️ Xác nhận xử lý') : t('alarms.actionResolveTitle', '✅ Đóng sự cố')}
+          title={actionType === 'ack' ? t('alarms.modal.ackTitle') : t('alarms.modal.resolveTitle')}
+          subtitle={t('alarms.actionSubtitle')}
           size="md"
           footer={
             <>
-              <button type="button" onClick={closeAction} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-text-secondary transition-colors hover:bg-surface-3">
+              <Button variant="ghost" size="md" type="button" onClick={closeAction}>
                 {t('common.actions.cancel')}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant={actionType === 'ack' ? 'secondary' : 'danger'}
+                size="md"
                 type="submit"
                 form="alarm-action-form"
-                disabled={ackMutation.isPending || resolveMutation.isPending}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
+                loading={ackMutation.isPending || resolveMutation.isPending}
               >
-                {actionType === 'ack' ? t('alarms.ackButton', 'Xác nhận') : t('alarms.resolveButton', 'Đóng sự cố')}
-              </button>
+                {actionType === 'ack' ? t('alarms.ackButton') : t('alarms.resolveButton')}
+              </Button>
             </>
           }
         >
           <form id="alarm-action-form" onSubmit={handleSubmit} className="space-y-3">
             <div className="rounded-lg border border-border bg-surface-2 px-3 py-2.5 text-xs">
-              <p className="font-semibold text-text-primary">{t('alarms.actionDevice', 'Thiết bị')}: <span className="text-text-primary">{actionAlarm ? tDynamic(actionAlarm.machineName) : ''}</span></p>
-              <p className="text-text-muted">{t('alarms.actionIssue', 'Sự cố')}: {actionAlarm ? tDynamic(actionAlarm.message) : ''}</p>
+              <p className="font-semibold text-text-primary">
+                {t('alarms.actionDevice')}: <span className="text-text-primary">{tDynamic(actionAlarm.machineName)}</span>
+              </p>
+              <p className="text-text-muted">
+                {t('alarms.modal.message')}: <span className="text-text-primary">{tDynamic(actionAlarm.message)}</span>
+              </p>
             </div>
             {actionError && (
               <div className="rounded-lg border border-error bg-error-container px-3 py-2 text-xs text-error">{actionError}</div>
             )}
             <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-text-muted">{t('alarms.actionNotes', 'Ghi chú kỹ thuật')}</label>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-text-muted">
+                {t('alarms.modal.notes')}
+              </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder={t('alarms.actionNotesPlaceholder', 'Nhập phương án xử lý, nguyên nhân lỗi...')}
+                placeholder={t('alarms.modal.notesPlaceholder')}
                 rows={3}
                 required
                 className="w-full rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm text-text-primary outline-none focus:border-primary resize-none"
@@ -216,119 +295,9 @@ export const AlarmPage = () => {
           </form>
         </Modal>
       )}
-
-      <section className="modern-alarms__table-panel">
-        {isLoading ? (
-          <div className="modern-alarms__loading">
-            <div className="modern-alarms__loading-spinner" aria-hidden="true" />
-            <span>{t('alarms.loading', 'Đang tải danh sách cảnh báo...')}</span>
-          </div>
-        ) : (
-          <div className="modern-alarms__table-wrap">
-            <table className="modern-alarms__table">
-              <thead>
-                <tr>
-                  <th className="px-6 py-4">{t('alarms.table.device', 'Thiết bị')}</th>
-                  <th className="px-6 py-4">{t('alarms.table.severity', 'Mức độ')}</th>
-                  <th className="px-6 py-4">{t('alarms.table.message', 'Nội dung sự cố')}</th>
-                  <th className="px-6 py-4">{t('alarms.table.status', 'Trạng thái')}</th>
-                  <th className="px-6 py-4">{t('alarms.table.time', 'Thời gian')}</th>
-                  <th className="px-6 py-4">{t('alarms.table.handler', 'Xử lý bởi')}</th>
-                  {canAcknowledge && <th className="px-6 py-4 text-center">{t('alarms.table.actions', 'Thao tác')}</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {alarms.length > 0 ? alarms.map(alarm => {
-                  const sev = getSev(alarm.severity);
-                  // WCAG accessibility overrides: Critical alerts retain standard bright warnings
-                  const isCritical = alarm.severity.toUpperCase() === 'CRITICAL';
-                  const isHigh = alarm.severity.toUpperCase() === 'HIGH';
-                  const rowStyle = isCritical ? 'is-critical' : (isHigh ? 'is-high' : '');
-
-                  return (
-                    <tr key={alarm.id} className={`modern-alarms__row ${rowStyle}`}>
-                      <td className="px-6 py-4">
-                        <div className="modern-alarms__machine">
-                          <span className={`modern-alarms__machine-dot${isCritical ? ' is-critical' : isHigh ? ' is-high' : ''}`} />
-                          <span>{tDynamic(alarm.machineName)}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge variant={sev.variant}>{sev.label}</Badge>
-                      </td>
-                      <td className={`modern-alarms__message${isCritical ? ' is-critical' : isHigh ? ' is-high' : ''}`}>{tDynamic(alarm.message)}</td>
-                      <td className="px-6 py-4">
-                        <StatusBadge status={alarm.status.toLowerCase()} size="sm" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="modern-alarms__timestamp">
-                          <strong>
-                            <Clock className="h-3 w-3" />
-                            {new Date(alarm.createdAt).toLocaleTimeString(locale)}
-                          </strong>
-                          <span>{new Date(alarm.createdAt).toLocaleDateString(locale)}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-xs">
-                        {alarm.acknowledgedBy ? (
-                          <div className="modern-alarms__handler">
-                            <strong>
-                              <User className="h-3.5 w-3.5" />
-                              {alarm.acknowledgedBy}
-                            </strong>
-                            {alarm.notes && (
-                              <p className="modern-alarms__note">{tDynamic(alarm.notes)}</p>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="italic text-text-muted">{t('alarms.unhandled', 'Chưa xác nhận')}</span>
-                        )}
-                      </td>
-                      {canAcknowledge && (
-                        <td className="px-6 py-4 text-center">
-                          <div className="modern-alarms__actions">
-                            {alarm.status === 'ACTIVE' && (
-                              <button
-                                onClick={() => { setActionAlarm(alarm); setActionType('ack'); }}
-                                className="modern-alarms__button modern-alarms__button--ack"
-                              >
-                                {t('alarms.ackButton', 'Xử lý')}
-                              </button>
-                            )}
-                            {alarm.status !== 'RESOLVED' && (
-                              <button
-                                onClick={() => { setActionAlarm(alarm); setActionType('resolve'); }}
-                                className="modern-alarms__button modern-alarms__button--resolve"
-                              >
-                                {t('alarms.resolveButton', 'Đóng lỗi')}
-                              </button>
-                            )}
-                            {alarm.status === 'RESOLVED' && (
-                              <span className="modern-alarms__closed">
-                                <CheckCircle className="h-4 w-4" /> {t('alarms.closed', 'Đã đóng')}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                }) : (
-                  <tr>
-                    <td colSpan={canAcknowledge ? 7 : 6}>
-                      <div className="modern-alarms__empty">
-                        <BellOff className="h-12 w-12" />
-                        <p>{t('alarms.empty', 'Không có cảnh báo phù hợp với bộ lọc')}</p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
     </div>
   );
 };
+
 export default AlarmPage;
+
