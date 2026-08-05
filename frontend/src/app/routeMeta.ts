@@ -12,26 +12,19 @@ export const routeMetaByPath: Record<string, RouteMeta> = {
   '/lines': { titleKey: 'titles.lines', refreshScope: 'monitoring' },
   '/machines': { titleKey: 'titles.machines', refreshScope: 'monitoring' },
   '/alarms': { titleKey: 'titles.alarms', refreshScope: 'monitoring' },
-  '/alerts': { titleKey: 'titles.alerts', refreshScope: 'monitoring' },
   '/settings': { titleKey: 'titles.settings', refreshScope: 'all' },
   '/production-analysis': { titleKey: 'navigation.productionAnalysis', refreshScope: 'monitoring' },
-  '/system': { titleKey: 'titles.system', refreshScope: 'monitoring' },
 
   // Authenticated admin routes
   '/admin': { titleKey: 'titles.overview', refreshScope: 'monitoring', requiresAuth: true },
   '/admin/lines': { titleKey: 'titles.lines', refreshScope: 'monitoring', requiresAuth: true },
   '/admin/machines': { titleKey: 'titles.machines', refreshScope: 'monitoring', requiresAuth: true },
   '/admin/alarms': { titleKey: 'titles.alarms', refreshScope: 'monitoring', requiresAuth: true },
-  '/admin/alerts': { titleKey: 'titles.alerts', refreshScope: 'monitoring', requiresAuth: true },
   '/admin/users': { titleKey: 'titles.users', refreshScope: 'all', requiresAuth: true },
   '/admin/audit-logs': { titleKey: 'titles.auditLogs', refreshScope: 'all', requiresAuth: true },
   '/admin/settings': { titleKey: 'titles.settings', refreshScope: 'all', requiresAuth: true },
   '/admin/reports': { titleKey: 'navigation.reports', refreshScope: 'monitoring', requiresAuth: true },
   '/admin/simulation': { titleKey: 'titles.simulation', refreshScope: 'monitoring', requiresAuth: true },
-  '/admin/system': { titleKey: 'titles.system', refreshScope: 'monitoring', requiresAuth: true },
-  '/admin/assets': { titleKey: 'assetBrowser.title', refreshScope: 'all', requiresAuth: true },
-
-  '/assets': { titleKey: 'assetBrowser.title', refreshScope: 'all' },
 
   '/login': { titleKey: 'titles.login', refreshScope: 'all' },
   '/403': { titleKey: 'titles.forbidden', refreshScope: 'all' },
