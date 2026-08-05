@@ -43,54 +43,23 @@
 .modern-dashboard__kpi strong { margin-top: .35rem; font-size: 1.5rem; font-variant-numeric: tabular-nums; }
 .modern-dashboard__kpi-unit { position: absolute; right: .9rem; bottom: .85rem; padding: .2rem .42rem; border-radius: .7rem; background: #173229; color: var(--md-green); font-size: .68rem; white-space: nowrap; }
 
-.modern-dashboard__layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(16rem, 1fr); gap: .9rem; }
-.modern-dashboard__primary-grid { display: grid; grid-template-columns: minmax(0, 2.05fr) minmax(14rem, 1fr); grid-template-areas: "production defect" "trend alarms"; gap: .9rem; }
+.modern-dashboard__layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(16rem, 1fr); gap: .9rem; align-items: start; }
 .modern-dashboard__panel { min-width: 0; min-height: 0; overflow: hidden; padding: 1rem; border-radius: 1rem; }
 .modern-dashboard__panel-head { display: flex; align-items: center; justify-content: space-between; min-height: 1.85rem; gap: .75rem; }
 .modern-dashboard__panel-head h2 { margin: 0; font-size: 1rem; font-weight: 650; }
-.modern-dashboard__panel-head a, .modern-dashboard__panel-head button, .modern-dashboard__panel-head select { min-height: 1.8rem; border: 0; border-radius: .8rem; background: #303030; color: var(--md-text); padding: 0 .65rem; font-size: .75rem; cursor: pointer; }
-.modern-dashboard__panel-head a { display: grid; place-items: center; padding: 0 .3rem; }
-.modern-dashboard__panel-head button { display: inline-flex; align-items: center; gap: .35rem; }
-.modern-dashboard__panel-head button.is-active { background: #583131; color: #ffd5d5; }
-.modern-dashboard__production-panel { grid-area: production; min-height: 18.2rem; }
-.modern-dashboard__defect-panel { grid-area: defect; min-height: 18.2rem; }
-.modern-dashboard__trend-panel { grid-area: trend; min-height: 14.25rem; }
-.modern-dashboard__alarms-panel { grid-area: alarms; min-height: 14.25rem; }
+.modern-dashboard__production-panel { min-height: 16.5rem; }
+.modern-dashboard--compact .modern-dashboard__intro { min-height: 0; }
+.modern-dashboard--compact .modern-dashboard__kpi { min-height: 4.6rem; }
+.modern-dashboard--compact .modern-dashboard__lines-panel { min-height: 0; }
 .modern-dashboard__mini-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; margin: .8rem 0 .5rem; }
 .modern-dashboard__mini-stats > div { min-width: 0; min-height: 3.7rem; display: grid; grid-template-columns: 1.75rem 1fr; grid-template-rows: 1fr 1fr; align-items: center; gap: 0 .45rem; padding: .55rem; border: 1px solid #464646; border-radius: .75rem; background: radial-gradient(circle at 12% 50%, #ef444417, transparent 48%); }
 .modern-dashboard__mini-stats svg { grid-row: span 2; color: #ef4444; }
 .modern-dashboard__mini-stats span { overflow: hidden; color: #aaa; font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
 .modern-dashboard__mini-stats strong { overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
 .modern-dashboard__chart { width: 100%; height: 10.6rem; }
-.modern-dashboard__trend-panel .modern-dashboard__chart { height: 9.8rem; }
 .modern-dashboard__empty { min-height: 8rem; display: grid; place-items: center; margin: 0; padding: 1.25rem; color: var(--md-muted); font-size: .84rem; text-align: center; }
-.modern-dashboard__donut { height: 15rem; position: relative; }
-.modern-dashboard__donut > div:last-child { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
-.modern-dashboard__donut span, .modern-dashboard__donut strong, .modern-dashboard__donut small { display: block; }
-.modern-dashboard__donut span { color: #aaa; font-size: .75rem; }
-.modern-dashboard__donut strong { margin: .25rem 0; font-size: 1.65rem; }
-.modern-dashboard__donut small { color: var(--md-muted); font-size: .68rem; }
 
-.modern-dashboard__alarm-table { margin-top: .55rem; overflow: auto; }
-.modern-dashboard__alarm-table table { width: 100%; min-width: 33rem; border-collapse: separate; border-spacing: 0; color: #ddd; font-size: .75rem; }
-.modern-dashboard__alarm-table th, .modern-dashboard__alarm-table td { padding: .48rem .5rem; text-align: left; }
-.modern-dashboard__alarm-table thead th { border-block: 1px solid #ef5c5c; color: #f6f6f6; font-size: .69rem; font-weight: 700; }
-.modern-dashboard__alarm-table thead th:first-child { border-left: 1px solid #ef5c5c; border-radius: .45rem 0 0 .45rem; }
-.modern-dashboard__alarm-table thead th:last-child { border-right: 1px solid #ef5c5c; border-radius: 0 .45rem .45rem 0; }
-.modern-dashboard__alarm-table tbody td { border-bottom: 1px solid #303030; }
-.modern-dashboard__alarm-table tbody tr { transition: background .18s ease; }
-.modern-dashboard__alarm-table tbody tr:hover { background: #252525; }
-.modern-dashboard__alarm-table b, .modern-dashboard__alarm-table small { display: block; }
-.modern-dashboard__alarm-table small { margin-top: .15rem; color: #aaa; font-size: .63rem; }
-.modern-dashboard__alarm-table td:nth-child(1) { width: 25%; }
-.modern-dashboard__alarm-table td:nth-child(2) { width: 36%; }
-.modern-dashboard__alarm-table td:nth-child(3) { width: 22%; }
-.modern-dashboard__alarm-status { justify-self: start; border-radius: .7rem; padding: .18rem .38rem; font-size: .625rem; font-weight: 700; }
-.modern-dashboard__alarm-status--active { background: #3b2025; color: #ff8f9b; }
-.modern-dashboard__alarm-status--acknowledged { background: #353013; color: #e4c621; }
-.modern-dashboard__alarm-status--resolved { background: #173229; color: #5ad3a4; }
-
-.modern-dashboard__predictive-panel { min-height: 12.5rem; }
+.modern-dashboard__predictive-panel { min-height: 0; }
 .modern-dashboard__predictive-panel .modern-dashboard__panel-head h2 { display: flex; align-items: center; gap: .4rem; }
 .modern-dashboard__predictive-panel .modern-dashboard__panel-head > svg { color: #a78bfa; }
 .modern-dashboard__predictive-empty { min-height: 6.5rem; display: grid; place-items: center; margin: 0; color: var(--md-muted); font-size: .8rem; text-align: center; }
@@ -122,10 +91,9 @@
 .modern-dashboard__predictive-details dt { color: var(--md-muted); font-size: .61rem; }
 .modern-dashboard__predictive-details dd { margin-top: .15rem; font-size: .68rem; font-weight: 700; }
 
-.modern-dashboard__rail { display: grid; grid-template-rows: minmax(0, 1fr) auto auto auto; gap: .9rem; }
-.modern-dashboard__lines-panel { min-height: 20.5rem; }
-.modern-dashboard__products-panel { min-height: 10.5rem; }
-.modern-dashboard__line-list, .modern-dashboard__product-list { display: grid; gap: .55rem; margin-top: .7rem; }
+.modern-dashboard__rail { display: grid; grid-template-rows: auto auto; gap: .9rem; }
+.modern-dashboard__lines-panel { min-height: 0; }
+.modern-dashboard__line-list { display: grid; gap: .55rem; margin-top: .7rem; }
 .modern-dashboard__line-item { min-height: 4.5rem; display: grid; grid-template-columns: 2.5rem 1fr auto; align-items: center; gap: .6rem; padding: .45rem; border: 1px solid #303030; border-radius: .75rem; transition: border-color .18s ease, background .18s ease; }
 .modern-dashboard__line-item:hover { border-color: #555; background: #242424; }
 .modern-dashboard__line-icon { height: 3rem; display: grid; place-items: center; border-radius: .55rem; background: #292929; }
@@ -141,21 +109,16 @@
 .modern-dashboard__status--error { background: #371b22; color: #d44d62; }
 .modern-dashboard__status--maintenance { background: #353013; color: #e4c621; }
 .modern-dashboard__status--idle, .modern-dashboard__status--offline, .modern-dashboard__status--unknown { background: #303030; color: #bbb; }
-.modern-dashboard__product { min-height: 3.75rem; display: flex; align-items: center; gap: .6rem; padding: .5rem; border-radius: .65rem; background: linear-gradient(135deg, #2b2b2b, #1b1b1b); transition: background .18s ease, transform .18s ease; }
-.modern-dashboard__product:hover { background: linear-gradient(135deg, #363636, #242424); transform: translateY(-1px); }
-.modern-dashboard__product > span { width: 2.6rem; height: 2.6rem; display: grid; place-items: center; border-radius: .5rem; color: #ffb739; background: #3a321d; }
-.modern-dashboard__product b, .modern-dashboard__product small { display: block; }
-.modern-dashboard__product b { font-size: .82rem; }
-.modern-dashboard__product small { margin-top: .2rem; color: var(--md-muted); font-size: .69rem; }
-.modern-dashboard__rail-action { min-height: 2.6rem; display: flex; align-items: center; justify-content: center; gap: .45rem; border: 1px solid #555; border-radius: .75rem; background: #262626; font-size: .82rem; font-weight: 600; transition: border-color .18s ease, background .18s ease; }
-.modern-dashboard__rail-action:hover { border-color: var(--md-red); background: #302020; }
-.modern-dashboard__sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .modern-dashboard .recharts-cartesian-axis-tick-value { font-size: 10px; }
 
 @media (min-width: 1440px) {
   .modern-dashboard__intro {
     min-height: 88px;
     margin-bottom: 1rem;
+  }
+
+  .modern-dashboard--compact .modern-dashboard__intro {
+    min-height: 0;
   }
 
   .modern-dashboard__intro p {
@@ -182,7 +145,6 @@
 
   .modern-dashboard__kpi-grid,
   .modern-dashboard__layout,
-  .modern-dashboard__primary-grid,
   .modern-dashboard__rail {
     gap: 1.15rem;
   }
@@ -191,6 +153,10 @@
     min-height: 6.25rem;
     padding: 1.05rem 1.2rem;
     border-radius: 1.2rem;
+  }
+
+  .modern-dashboard--compact .modern-dashboard__kpi {
+    min-height: 5rem;
   }
 
   .modern-dashboard__kpi-icon {
@@ -225,21 +191,8 @@
     font-size: 1.125rem;
   }
 
-  .modern-dashboard__panel-head a,
-  .modern-dashboard__panel-head button,
-  .modern-dashboard__panel-head select {
-    min-height: 2.25rem;
-    font-size: .825rem;
-  }
-
-  .modern-dashboard__production-panel,
-  .modern-dashboard__defect-panel {
-    min-height: 20.6rem;
-  }
-
-  .modern-dashboard__trend-panel,
-  .modern-dashboard__alarms-panel {
-    min-height: 15.5rem;
+  .modern-dashboard__production-panel {
+    min-height: 18rem;
   }
 
   .modern-dashboard__mini-stats {
@@ -264,54 +217,16 @@
     height: 10.8rem;
   }
 
-  .modern-dashboard__trend-panel .modern-dashboard__chart {
-    height: 11.15rem;
-  }
-
-  .modern-dashboard__donut {
-    height: 17.5rem;
-  }
-
   .modern-dashboard__empty {
     font-size: .9rem;
   }
 
-  .modern-dashboard__donut span {
-    font-size: .8rem;
-  }
-
-  .modern-dashboard__donut strong {
-    font-size: 2rem;
-  }
-
-  .modern-dashboard__donut small {
-    font-size: .75rem;
-  }
-
-  .modern-dashboard__alarm-table table {
-    font-size: .75rem;
-  }
-
-  .modern-dashboard__alarm-table thead th {
-    font-size: .69rem;
-  }
-
-  .modern-dashboard__alarm-table small,
-  .modern-dashboard__alarm-status,
   .modern-dashboard__status {
     font-size: .625rem;
   }
 
   .modern-dashboard__lines-panel {
-    min-height: 21rem;
-  }
-
-  .modern-dashboard__products-panel {
-    min-height: 11.125rem;
-  }
-
-  .modern-dashboard__products-panel .modern-dashboard__empty {
-    min-height: 7.1rem;
+    min-height: 0;
   }
 
   .modern-dashboard__line-list {
@@ -335,19 +250,6 @@
     font-size: .69rem;
   }
 
-  .modern-dashboard__product b {
-    font-size: .82rem;
-  }
-
-  .modern-dashboard__product small {
-    font-size: .69rem;
-  }
-
-  .modern-dashboard__rail-action {
-    min-height: 2.375rem;
-    font-size: .82rem;
-  }
-
   .modern-dashboard .recharts-cartesian-axis-tick-value {
     font-size: 12px;
   }
@@ -355,23 +257,18 @@
 
 @media (max-width: 1100px) {
   .modern-dashboard__layout { grid-template-columns: 1fr; }
-  .modern-dashboard__rail { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto; }
+  .modern-dashboard__rail { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto; }
   .modern-dashboard__lines-panel { min-height: 0; }
-  .modern-dashboard__rail-action { grid-column: span 2; }
 }
 
 @media (max-width: 760px) {
   .modern-dashboard__intro { align-items: flex-start; flex-direction: column; gap: .85rem; padding-top: .35rem; }
   .modern-dashboard__search { width: 100%; margin-left: 0; }
   .modern-dashboard__kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .modern-dashboard__primary-grid { grid-template-columns: 1fr; grid-template-areas: "production" "defect" "trend" "alarms"; }
   .modern-dashboard__panel { min-height: 0; }
-  .modern-dashboard__production-panel, .modern-dashboard__defect-panel { min-height: 17rem; }
-  .modern-dashboard__trend-panel, .modern-dashboard__alarms-panel { min-height: 13rem; }
+  .modern-dashboard__production-panel { min-height: 15rem; }
   .modern-dashboard__mini-stats { overflow-x: auto; grid-template-columns: repeat(3, minmax(8.25rem, 1fr)); padding-bottom: .15rem; }
   .modern-dashboard__rail { grid-template-columns: 1fr; }
-  .modern-dashboard__rail-action { grid-column: auto; }
-  .modern-dashboard__alarm-table { margin-inline: -.15rem; }
   .modern-dashboard__predictive-details dl { grid-template-columns: 1fr; }
 }
 
@@ -513,8 +410,7 @@
   background: rgb(255 70 100 / 9%);
 }
 
-.modern-dashboard__kpi-grid,
-.modern-dashboard__primary-grid {
+.modern-dashboard__kpi-grid {
   grid-auto-flow: dense;
 }
 
@@ -610,10 +506,6 @@
   gap: 1rem;
 }
 
-.modern-dashboard__primary-grid {
-  gap: 1rem;
-}
-
 .modern-dashboard__panel {
   overflow: hidden;
   border-radius: 20px;
@@ -638,24 +530,6 @@
   letter-spacing: -0.02em;
 }
 
-.modern-dashboard__panel-head a,
-.modern-dashboard__panel-head button,
-.modern-dashboard__panel-head select {
-  border: 1px solid rgb(170 206 232 / 14%);
-  border-radius: 10px;
-  background: rgb(255 255 255 / 5%);
-  color: rgb(235 243 251 / 72%);
-  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease;
-}
-
-.modern-dashboard__panel-head a:hover,
-.modern-dashboard__panel-head button:hover,
-.modern-dashboard__panel-head button.is-active {
-  border-color: rgb(121 220 255 / 38%);
-  background: rgb(121 220 255 / 10%);
-  color: #fff;
-}
-
 .modern-dashboard__mini-stats > div {
   border-color: rgb(170 206 232 / 13%);
   border-radius: 13px;
@@ -666,9 +540,7 @@
   color: var(--md-cyan);
 }
 
-.modern-dashboard__mini-stats span,
-.modern-dashboard__donut span,
-.modern-dashboard__donut small {
+.modern-dashboard__mini-stats span {
   color: var(--md-muted);
 }
 
@@ -680,52 +552,15 @@
   color: var(--md-muted);
 }
 
-.modern-dashboard__alarm-table table {
-  color: rgb(235 243 251 / 76%);
-}
-
-.modern-dashboard__alarm-table thead th {
-  border-color: rgb(121 220 255 / 42%);
-  color: rgb(235 243 251 / 82%);
-}
-
-.modern-dashboard__alarm-table tbody td {
-  border-bottom-color: rgb(170 206 232 / 10%);
-}
-
-.modern-dashboard__alarm-table tbody tr:hover {
-  background: rgb(121 220 255 / 6%);
-}
-
-.modern-dashboard__alarm-status--active {
-  border: 1px solid rgb(255 70 100 / 22%);
-  background: rgb(255 70 100 / 11%);
-  color: #ff8ca0;
-}
-
-.modern-dashboard__alarm-status--acknowledged {
-  border: 1px solid rgb(244 190 78 / 22%);
-  background: rgb(244 190 78 / 11%);
-  color: #ffd479;
-}
-
-.modern-dashboard__alarm-status--resolved {
-  border: 1px solid rgb(99 216 174 / 22%);
-  background: rgb(99 216 174 / 11%);
-  color: #7be0bc;
-}
-
 .modern-dashboard__predictive-alert,
-.modern-dashboard__line-item,
-.modern-dashboard__product {
+.modern-dashboard__line-item {
   border-color: rgb(170 206 232 / 12%);
   background: rgb(255 255 255 / 4%);
   transition: border-color 220ms ease, background-color 220ms ease, transform 220ms ease, box-shadow 220ms ease;
 }
 
 .modern-dashboard__predictive-alert:hover,
-.modern-dashboard__line-item:hover,
-.modern-dashboard__product:hover {
+.modern-dashboard__line-item:hover {
   border-color: rgb(121 220 255 / 34%);
   background: rgb(121 220 255 / 8%);
   box-shadow: 0 12px 24px rgb(0 0 0 / 14%);
@@ -757,27 +592,6 @@
   border: 1px solid rgb(244 190 78 / 20%);
   background: rgb(244 190 78 / 10%);
   color: #ffd479;
-}
-
-.modern-dashboard__product > span {
-  color: var(--md-cyan);
-  background: rgb(121 220 255 / 10%);
-}
-
-.modern-dashboard__rail-action {
-  min-height: 3rem;
-  border-color: rgb(121 220 255 / 24%);
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgb(121 220 255 / 9%), rgb(255 70 100 / 7%));
-  color: #f4f8fc;
-  transition: border-color 220ms ease, background-color 220ms ease, transform 220ms ease, box-shadow 220ms ease;
-}
-
-.modern-dashboard__rail-action:hover {
-  border-color: rgb(121 220 255 / 55%);
-  background: linear-gradient(135deg, rgb(121 220 255 / 16%), rgb(255 70 100 / 10%));
-  box-shadow: 0 14px 28px rgb(0 0 0 / 18%);
-  transform: translateY(-2px);
 }
 
 @media (max-width: 1100px) {
@@ -849,9 +663,7 @@
 @media (prefers-reduced-motion: reduce) {
   .modern-dashboard__kpi,
   .modern-dashboard__panel,
-  .modern-dashboard__line-item,
-  .modern-dashboard__product,
-  .modern-dashboard__rail-action {
+  .modern-dashboard__line-item {
     transition: none;
   }
 }
