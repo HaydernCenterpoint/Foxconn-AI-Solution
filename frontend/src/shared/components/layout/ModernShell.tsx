@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  Activity,
   ArrowUpRight,
   Bell,
   Bot,
@@ -20,7 +19,6 @@ import {
   MonitorCog,
   RefreshCw,
   Settings2,
-  ShieldAlert,
   ShieldCheck,
   Tv,
   Users,
@@ -83,9 +81,7 @@ const viewerNavigation: ShellNavigationItem[] = [
   { to: '/', labelKey: 'navigation.overview', icon: LayoutDashboard },
   { to: '/lines', labelKey: 'navigation.productionLines', icon: Factory },
   { to: '/machines', labelKey: 'navigation.equipment', icon: MonitorCog },
-  { to: '/assets', labelKey: 'assetBrowser.title', icon: DatabaseZap },
   { to: '/alarms', labelKey: 'navigation.alarms', icon: Bell },
-  { to: '/alerts', labelKey: 'navigation.alerts', icon: ShieldAlert },
   { to: '/production-analysis', labelKey: 'navigation.productionAnalysis', icon: FileText },
   { to: '/slideshow', labelKey: 'common.mode.slideshow', icon: Tv },
   { to: '/settings', labelKey: 'navigation.settings', icon: Settings2 },
@@ -95,11 +91,8 @@ const adminNavigation: ShellNavigationItem[] = [
   { to: '/admin', labelKey: 'navigation.overview', icon: LayoutDashboard },
   { to: '/admin/lines', labelKey: 'navigation.productionLines', icon: Factory },
   { to: '/admin/machines', labelKey: 'navigation.equipment', icon: MonitorCog },
-  { to: '/admin/assets', labelKey: 'assetBrowser.title', icon: DatabaseZap },
   { to: '/admin/alarms', labelKey: 'navigation.alarms', icon: Bell },
-  { to: '/admin/alerts', labelKey: 'navigation.alerts', icon: ShieldAlert },
   { to: '/admin/reports', labelKey: 'navigation.reports', icon: FileText },
-  { to: '/admin/system', labelKey: 'titles.system', icon: Activity },
   { to: '/admin/settings', labelKey: 'navigation.settings', icon: Settings2 },
 ];
 

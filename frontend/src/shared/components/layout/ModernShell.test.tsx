@@ -175,19 +175,6 @@ describe('ModernShell', () => {
     expect(logo.getAttribute('src')).toContain('Foxconn_Industrial_Internet');
   });
 
-  it('links operations users to the system and connector monitor', () => {
-    useAuthStore.setState({
-      token: 'token',
-      username: 'engineer',
-      role: 'ENGINEER',
-      isAuthenticated: true,
-    });
-
-    const { container } = renderAdminShell();
-
-    expect(container.querySelector('a[href="/admin/system"]')).not.toBeNull();
-  });
-
   it('provides a Foxconn AI link to the configured assistant', () => {
     renderViewerShell();
 
