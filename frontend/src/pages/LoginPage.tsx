@@ -1,7 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,7 +17,7 @@ import { Surface } from '../shared/components/ui/Surface';
 import { useAuthStore } from '../shared/store/auth.store';
 import './login-page.css';
 
-gsap.registerPlugin(useGSAP, ScrollTrigger);
+gsap.registerPlugin(useGSAP);
 
 interface LoginFormData {
   username: string;
@@ -54,9 +53,8 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
-    setFocus,
-    trigger,
     formState: { errors, isSubmitted },
+    trigger,
   } = useForm<LoginFormData>({
     resolver: zodResolver(schema),
   });
@@ -71,47 +69,12 @@ export default function LoginPage() {
     const page = pageRef.current;
     if (!page || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    gsap.timeline({ defaults: { duration: 0.8, ease: 'power3.out' } })
-      .from('.login-stack-card', { opacity: 0, y: 44, stagger: 0.1 })
-      .from('.login-hero__copy', { opacity: 0, y: 28 }, '-=0.48');
-
-    gsap.fromTo('.login-hero__image',
-      { opacity: 0.6, scale: 1.08 },
-      { duration: 1.8, ease: 'power2.out', opacity: 1, scale: 1 },
-    );
-
-    const scroller = page.parentElement?.parentElement;
-    if (scroller instanceof HTMLElement) {
-      gsap.to('.login-hero__image', {
-        ease: 'none',
-        opacity: 0.35,
-        scale: 1.04,
-        scrollTrigger: {
-          trigger: page,
-          scroller,
-          start: 'top top',
-          end: 'bottom top',
-          scrub: 0.7,
-        },
-      });
-
-      gsap.fromTo('.login-hero__word',
-        { opacity: 0.18, y: 10 },
-        {
-          opacity: 1,
-          y: 0,
-          ease: 'none',
-          stagger: 0.04,
-          scrollTrigger: {
-            trigger: '.login-hero__lede',
-            scroller,
-            start: 'top 86%',
-            end: 'bottom 56%',
-            scrub: 0.65,
-          },
-        },
-      );
-    }
+    gsap.from('.login-card', {
+      opacity: 0,
+      y: 18,
+      duration: 0.55,
+      ease: 'power3.out',
+    });
   }, { scope: pageRef });
 
   const mutation = useMutation({
@@ -131,80 +94,30 @@ export default function LoginPage() {
 
   const errorMessage = serverError || (sessionMessage ? t(sessionMessage, { defaultValue: sessionMessage }) : '');
   const isBusy = mutation.isPending;
-  const platformModules = [t('navigation.overview'), t('navigation.fiiAssistant'), t('navigation.fiiDataFusion')];
-  const heroDescription = t('common.systemDescription');
-  const heroWords = heroDescription.split(/\s+/);
-  const proofLines = [heroDescription, t('auth.subtitle'), t('common.systemName')];
 
   return (
     <AuthScreen showLanguageControl fullBleed>
-      <main ref={pageRef} className="login-experience grid grid-flow-dense lg:grid-cols-12" aria-labelledby="login-heading">
-        <section className="login-hero login-stack-card lg:col-span-7">
-          <div className="login-hero__image" aria-hidden="true" />
-          <div className="login-hero__wash" aria-hidden="true" />
-
-          <div className="login-hero__copy">
-            <div className="login-hero__logo-frame">
-              <img src={logoUrl} alt={t('common.logoAlt')} className="login-hero__logo" />
-            </div>
-            <h1 id="login-heading" className="login-hero__title max-w-6xl">
-              <span>{t('common.appName')}</span>
-              <span className="login-hero__title-mark" aria-hidden="true" />
-            </h1>
-            <p className="login-hero__lede" aria-label={heroDescription}>
-              {heroWords.map((word, index) => (
-                <span className="login-hero__word" key={`${word}-${index}`}>
-                  {word}{index < heroWords.length - 1 ? ' ' : ''}
-                </span>
-              ))}
-            </p>
-
-            <div className="login-hero__actions">
-              <Button size="lg" className="login-hero__primary" onClick={() => setFocus('username')}>
-                {t('auth.submit')}
-              </Button>
-              <Button
-                variant="secondary"
-                size="lg"
-                className="login-hero__secondary"
-                onClick={() => setShowSupportInfo(true)}
-              >
-                {t('auth.forgotPassword')}
-              </Button>
-            </div>
-
-            <div className="login-accordion" aria-hidden="true">
-              {platformModules.map((module) => (
-                <div className="login-accordion__item" key={module}>
-                  <span className="login-accordion__line" />
-                  <strong>{module}</strong>
-                </div>
-              ))}
-            </div>
-
-            <div className="login-feedback" aria-hidden="true">
-              <div className="login-feedback__track">
-                {proofLines.map((line) => <p key={line}>{line}</p>)}
+      <main
+        ref={pageRef}
+        className="login-experience"
+        aria-labelledby="login-heading"
+      >
+        <div className="login-stage">
+          <section className="login-card" aria-labelledby="login-form-heading">
+            <header className="login-card__brand">
+              <div className="login-card__logo-frame">
+                <img src={logoUrl} alt={t('common.logoAlt')} className="login-card__logo" />
               </div>
-            </div>
-          </div>
-
-          <div className="login-marquee" aria-hidden="true">
-            <div className="login-marquee__track">
-              {[...platformModules, ...platformModules].map((module, index) => (
-                <span key={`${module}-${index}`}>{module}</span>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="login-panel login-stack-card lg:col-span-5" aria-labelledby="login-form-heading">
-          <div className="login-panel__inner">
-            <header className="login-panel__header">
-              <p>{t('common.systemName')}</p>
-              <h2 id="login-form-heading">{t('auth.loginHeading')}</h2>
-              <span>{t('auth.subtitle')}</span>
+              <h1 id="login-heading" className="login-card__app-name">
+                {t('common.appName')}
+              </h1>
+              <p className="login-card__system">{t('common.systemName')}</p>
             </header>
+
+            <div className="login-card__intro">
+              <h2 id="login-form-heading">{t('auth.loginHeading')}</h2>
+              <p>{t('auth.subtitle')}</p>
+            </div>
 
             <form
               className="login-form"
@@ -297,13 +210,12 @@ export default function LoginPage() {
                 <p id={supportInfoId} role="status">{t('auth.contactAdminInfo')}</p>
               )}
             </div>
-          </div>
 
-          <footer className="login-panel__footer">
-            <span>{t('common.appName')}</span>
-            <span>{t('common.versionLabel')}</span>
-          </footer>
-        </section>
+            <footer className="login-card__footer">
+              <span>{t('common.versionLabel')}</span>
+            </footer>
+          </section>
+        </div>
       </main>
     </AuthScreen>
   );

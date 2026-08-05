@@ -58,16 +58,16 @@ describe('LoginPage', () => {
     renderLogin();
 
     const login = screen.getByRole('main', { name: 'Foxconn' });
-    expect(login).toHaveClass('grid-flow-dense');
+    expect(login).toHaveClass('login-experience');
     expect(login.parentElement).toHaveClass('min-h-[100dvh]', 'w-full');
     expect(login.parentElement).not.toHaveClass('px-4');
     expect(screen.getByRole('heading', { name: 'Sign in', level: 2 })).toBeInTheDocument();
+    expect(document.querySelector('form.login-form')).toBeTruthy();
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Forgot password?' })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Forgot password?' }));
     expect(screen.getByRole('status')).toHaveTextContent('Please contact the system administrator');
 
-    const signInButtons = screen.getAllByRole('button', { name: 'Sign in' });
-    fireEvent.click(signInButtons[signInButtons.length - 1]);
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
     await waitFor(() => expect(screen.getAllByRole('alert')).toHaveLength(2));
   });
