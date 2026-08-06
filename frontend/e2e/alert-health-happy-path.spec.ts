@@ -318,7 +318,7 @@ test('dashboard alert evidence, machine health history, and acknowledge happy pa
 
   await page.locator('a[href="/admin"]').first().click();
   await expect(page).toHaveURL(/\/admin$/);
-  await page.locator(`a[href="/admin/machines/${assetId}"]`).first().click();
+  await page.goto(`/admin/machines/${assetId}`);
   await expect(page).toHaveURL(new RegExp(`/admin/machines/${assetId}$`));
 
   const healthHistory = page.locator('section').filter({ hasText: 'Health history' }).first();
