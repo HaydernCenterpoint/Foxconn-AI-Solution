@@ -1,7 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useGSAP } from '@gsap/react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,8 +15,6 @@ import { Surface } from '../shared/components/ui/Surface';
 import { useAuthStore } from '../shared/store/auth.store';
 import './login-page.css';
 
-gsap.registerPlugin(useGSAP, ScrollTrigger);
-
 interface LoginFormData {
   username: string;
   password: string;
@@ -32,7 +27,6 @@ export default function LoginPage() {
   const [serverError, setServerError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showSupportInfo, setShowSupportInfo] = useState(false);
-  const pageRef = useRef<HTMLElement>(null);
   const usernameId = useId();
   const passwordId = useId();
   const usernameErrorId = useId();
@@ -40,10 +34,11 @@ export default function LoginPage() {
   const supportInfoId = useId();
 
   const schema = useMemo(
-    () => z.object({
-      username: z.string().trim().min(1, t('auth.validation.usernameRequired')),
-      password: z.string().min(1, t('auth.validation.passwordRequired')),
-    }),
+    () =>
+      z.object({
+        username: z.string().trim().min(1, t('auth.validation.usernameRequired')),
+        password: z.string().min(1, t('auth.validation.passwordRequired')),
+      }),
     [t],
   );
 
@@ -54,7 +49,6 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
-    setFocus,
     trigger,
     formState: { errors, isSubmitted },
   } = useForm<LoginFormData>({
@@ -66,53 +60,6 @@ export default function LoginPage() {
       void trigger();
     }
   }, [i18n.language, isSubmitted, trigger]);
-
-  useGSAP(() => {
-    const page = pageRef.current;
-    if (!page || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    gsap.timeline({ defaults: { duration: 0.8, ease: 'power3.out' } })
-      .from('.login-stack-card', { opacity: 0, y: 44, stagger: 0.1 })
-      .from('.login-hero__copy', { opacity: 0, y: 28 }, '-=0.48');
-
-    gsap.fromTo('.login-hero__image',
-      { opacity: 0.6, scale: 1.08 },
-      { duration: 1.8, ease: 'power2.out', opacity: 1, scale: 1 },
-    );
-
-    const scroller = page.parentElement?.parentElement;
-    if (scroller instanceof HTMLElement) {
-      gsap.to('.login-hero__image', {
-        ease: 'none',
-        opacity: 0.35,
-        scale: 1.04,
-        scrollTrigger: {
-          trigger: page,
-          scroller,
-          start: 'top top',
-          end: 'bottom top',
-          scrub: 0.7,
-        },
-      });
-
-      gsap.fromTo('.login-hero__word',
-        { opacity: 0.18, y: 10 },
-        {
-          opacity: 1,
-          y: 0,
-          ease: 'none',
-          stagger: 0.04,
-          scrollTrigger: {
-            trigger: '.login-hero__lede',
-            scroller,
-            start: 'top 86%',
-            end: 'bottom 56%',
-            scrub: 0.65,
-          },
-        },
-      );
-    }
-  }, { scope: pageRef });
 
   const mutation = useMutation({
     mutationFn: authApi.login,
@@ -131,78 +78,59 @@ export default function LoginPage() {
 
   const errorMessage = serverError || (sessionMessage ? t(sessionMessage, { defaultValue: sessionMessage }) : '');
   const isBusy = mutation.isPending;
-  const platformModules = [t('navigation.overview'), t('navigation.fiiAssistant'), t('navigation.fiiDataFusion')];
-  const heroDescription = t('common.systemDescription');
-  const heroWords = heroDescription.split(/\s+/);
-  const proofLines = [heroDescription, t('auth.subtitle'), t('common.systemName')];
+  const capabilities = [
+    t('auth.capabilities.liveVisibility'),
+    t('auth.capabilities.equipmentHealth'),
+    t('auth.capabilities.traceableOperations'),
+  ];
 
   return (
     <AuthScreen showLanguageControl fullBleed>
-      <main ref={pageRef} className="login-experience grid grid-flow-dense lg:grid-cols-12" aria-labelledby="login-heading">
-        <section className="login-hero login-stack-card lg:col-span-7">
-          <div className="login-hero__image" aria-hidden="true" />
-          <div className="login-hero__wash" aria-hidden="true" />
-
-          <div className="login-hero__copy">
-            <div className="login-hero__logo-frame">
-              <img src={logoUrl} alt={t('common.logoAlt')} className="login-hero__logo" />
+      <main className="login-experience" aria-labelledby="login-heading">
+        <aside className="login-brand" aria-labelledby="login-product-heading">
+          <div className="login-brand__content">
+            <div className="login-brand__identity">
+              <img src={logoUrl} alt={t('common.logoAlt')} className="login-brand__logo" />
+              <span className="login-brand__rule" aria-hidden="true" />
             </div>
-            <h1 id="login-heading" className="login-hero__title max-w-6xl">
-              <span>{t('common.appName')}</span>
-              <span className="login-hero__title-mark" aria-hidden="true" />
-            </h1>
-            <p className="login-hero__lede" aria-label={heroDescription}>
-              {heroWords.map((word, index) => (
-                <span className="login-hero__word" key={`${word}-${index}`}>
-                  {word}{index < heroWords.length - 1 ? ' ' : ''}
-                </span>
+
+            <div className="login-brand__copy">
+              <p className="login-brand__eyebrow">{t('common.systemName')}</p>
+              <h2 id="login-product-heading">{t('common.appName')}</h2>
+              <p>{t('common.systemDescription')}</p>
+            </div>
+
+            <ul className="login-brand__capabilities" aria-label={t('common.appName')}>
+              {capabilities.map((capability) => (
+                <li key={capability}>
+                  <span aria-hidden="true" />
+                  {capability}
+                </li>
               ))}
-            </p>
-
-            <div className="login-hero__actions">
-              <Button size="lg" className="login-hero__primary" onClick={() => setFocus('username')}>
-                {t('auth.submit')}
-              </Button>
-              <Button
-                variant="secondary"
-                size="lg"
-                className="login-hero__secondary"
-                onClick={() => setShowSupportInfo(true)}
-              >
-                {t('auth.forgotPassword')}
-              </Button>
-            </div>
-
-            <div className="login-accordion" aria-hidden="true">
-              {platformModules.map((module) => (
-                <div className="login-accordion__item" key={module}>
-                  <span className="login-accordion__line" />
-                  <strong>{module}</strong>
-                </div>
-              ))}
-            </div>
-
-            <div className="login-feedback" aria-hidden="true">
-              <div className="login-feedback__track">
-                {proofLines.map((line) => <p key={line}>{line}</p>)}
-              </div>
-            </div>
+            </ul>
           </div>
 
-          <div className="login-marquee" aria-hidden="true">
-            <div className="login-marquee__track">
-              {[...platformModules, ...platformModules].map((module, index) => (
-                <span key={`${module}-${index}`}>{module}</span>
-              ))}
-            </div>
-          </div>
-        </section>
+          <svg className="login-brand__line" viewBox="0 0 640 180" aria-hidden="true">
+            <path d="M26 130h588" className="login-brand__line-rail" />
+            <path d="M66 80h132v50H66zM244 56h112v74H244zM408 72h148v58H408z" className="login-brand__line-machine" />
+            <path d="M104 80V52h56v28M274 56V28h52v28M444 72V42h76v30" className="login-brand__line-detail" />
+            <circle cx="136" cy="148" r="12" className="login-brand__line-wheel" />
+            <circle cx="306" cy="148" r="12" className="login-brand__line-wheel" />
+            <circle cx="482" cy="148" r="12" className="login-brand__line-wheel" />
+            <circle cx="574" cy="148" r="12" className="login-brand__line-wheel" />
+            <path d="M26 148h588" className="login-brand__line-base" />
+          </svg>
+        </aside>
 
-        <section className="login-panel login-stack-card lg:col-span-5" aria-labelledby="login-form-heading">
+        <section className="login-panel" aria-labelledby="login-heading">
           <div className="login-panel__inner">
+            <div className="login-panel__mobile-identity">
+              <img src={logoUrl} alt={t('common.logoAlt')} />
+              <span aria-hidden="true" />
+            </div>
             <header className="login-panel__header">
               <p>{t('common.systemName')}</p>
-              <h2 id="login-form-heading">{t('auth.loginHeading')}</h2>
+              <h1 id="login-heading">{t('auth.loginHeading')}</h1>
               <span>{t('auth.subtitle')}</span>
             </header>
 
@@ -221,7 +149,7 @@ export default function LoginPage() {
               <div className="login-form__group">
                 <label htmlFor={usernameId}>{t('auth.username')}</label>
                 <div className="login-form__field">
-                  <UserRound size={18} aria-hidden="true" />
+                  <UserRound size={18} strokeWidth={1.75} aria-hidden="true" />
                   <input
                     {...register('username')}
                     id={usernameId}
@@ -235,14 +163,16 @@ export default function LoginPage() {
                   />
                 </div>
                 {errors.username && (
-                  <p id={usernameErrorId} className="login-form__error" role="alert">{errors.username.message}</p>
+                  <p id={usernameErrorId} className="login-form__error" role="alert">
+                    {errors.username.message}
+                  </p>
                 )}
               </div>
 
               <div className="login-form__group">
                 <label htmlFor={passwordId}>{t('auth.password')}</label>
                 <div className="login-form__field">
-                  <KeyRound size={18} aria-hidden="true" />
+                  <KeyRound size={18} strokeWidth={1.75} aria-hidden="true" />
                   <input
                     {...register('password')}
                     id={passwordId}
@@ -257,9 +187,14 @@ export default function LoginPage() {
                   <IconButton
                     type="button"
                     variant="ghost"
-                    size="sm"
                     className="login-form__visibility"
-                    icon={showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                    icon={
+                      showPassword ? (
+                        <EyeOff size={18} strokeWidth={1.75} aria-hidden="true" />
+                      ) : (
+                        <Eye size={18} strokeWidth={1.75} aria-hidden="true" />
+                      )
+                    }
                     label={showPassword ? t('common.aria.hidePassword') : t('common.aria.showPassword')}
                     aria-pressed={showPassword}
                     disabled={isBusy}
@@ -267,13 +202,15 @@ export default function LoginPage() {
                   />
                 </div>
                 {errors.password && (
-                  <p id={passwordErrorId} className="login-form__error" role="alert">{errors.password.message}</p>
+                  <p id={passwordErrorId} className="login-form__error" role="alert">
+                    {errors.password.message}
+                  </p>
                 )}
               </div>
 
               {errorMessage && (
                 <Surface variant="outlined" padding="sm" role="alert" className="login-form__server-error">
-                  <AlertCircle size={18} aria-hidden="true" />
+                  <AlertCircle size={18} strokeWidth={1.75} aria-hidden="true" />
                   <p>{errorMessage}</p>
                 </Surface>
               )}
@@ -294,7 +231,9 @@ export default function LoginPage() {
                 {t('auth.forgotPassword')}
               </Button>
               {showSupportInfo && (
-                <p id={supportInfoId} role="status">{t('auth.contactAdminInfo')}</p>
+                <p id={supportInfoId} role="status">
+                  {t('auth.contactAdminInfo')}
+                </p>
               )}
             </div>
           </div>

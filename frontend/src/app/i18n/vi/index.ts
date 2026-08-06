@@ -292,6 +292,11 @@ export const vi = {
     welcome: 'Chào mừng, {{name}}',
     forgotPassword: 'Bạn quên mật khẩu?',
     contactAdminInfo: 'Vui lòng liên hệ quản trị viên hệ thống để lấy lại mật khẩu.',
+    capabilities: {
+      liveVisibility: 'Theo dõi sản xuất trực tiếp',
+      equipmentHealth: 'Giám sát tình trạng thiết bị',
+      traceableOperations: 'Vận hành có thể truy xuất',
+    },
     validation: {
       usernameRequired: 'Vui lòng nhập tài khoản.',
       passwordRequired: 'Vui lòng nhập mật khẩu.',
