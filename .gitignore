@@ -75,3 +75,8 @@ factory-ai-platform/data-platform/docs/profile_telemetry_queries_local.*
 
 # Local repository-analysis output
 graphify-out/
+
+# Temp artifacts (not for PR)
+.preview/
+backend/publish-half-cdf/
+backend/Dockerfile.runtime

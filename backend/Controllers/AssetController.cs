@@ -38,7 +38,7 @@ public sealed class AssetController : ControllerBase
         }
 
         const string sql = """
-            SELECT a.id, a.type, a.name, a.code, a.metadata, a.created_at, a.updated_at
+            SELECT a.id, a.type, a.name, a.code, a.code AS external_id, a.metadata, a.created_at, a.updated_at
             FROM assets a
             WHERE (@q IS NULL OR a.name ILIKE '%' || @q || '%' OR a.code ILIKE '%' || @q || '%' OR a.metadata::text ILIKE '%' || @q || '%')
               AND (@type IS NULL OR a.type::text = @type)
@@ -72,7 +72,7 @@ public sealed class AssetController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Get(Guid id)
     {
-        const string sql = "SELECT id, type, name, code, metadata, created_at, updated_at FROM assets WHERE id = @id";
+        const string sql = "SELECT id, type, name, code, code AS external_id, metadata, created_at, updated_at FROM assets WHERE id = @id";
 
         using var connection = _dbService.CreateConnection();
         await connection.OpenAsync();
@@ -89,7 +89,7 @@ public sealed class AssetController : ControllerBase
     public async Task<IActionResult> Tree(
         [FromQuery, Range(1, 5000)] int limit = 1000)
     {
-        const string sql = "SELECT id, type, name, code, parent_id, metadata, created_at, updated_at FROM assets ORDER BY type, name, id LIMIT @row_limit";
+        const string sql = "SELECT id, type, name, code, code AS external_id, parent_id, metadata, created_at, updated_at FROM assets ORDER BY type, name, id LIMIT @row_limit";
 
         using var connection = _dbService.CreateConnection();
         await connection.OpenAsync();
@@ -107,10 +107,11 @@ public sealed class AssetController : ControllerBase
                 reader.GetString(1).ToUpperInvariant(),
                 reader.GetString(2),
                 reader.GetString(3),
-                JsonDocument.Parse(reader.GetString(5)).RootElement.Clone(),
-                reader.GetDateTime(6),
-                reader.GetDateTime(7));
-            parents[id] = reader.IsDBNull(4) ? null : reader.GetGuid(4);
+                reader.GetString(4),
+                JsonDocument.Parse(reader.GetString(6)).RootElement.Clone(),
+                reader.GetDateTime(7),
+                reader.GetDateTime(8));
+            parents[id] = reader.IsDBNull(5) ? null : reader.GetGuid(5);
         }
 
         if (nodes.Count > limit)
@@ -282,7 +283,7 @@ public sealed class AssetController : ControllerBase
             using (var command = new NpgsqlCommand("""
                 INSERT INTO assets (id, type, name, code, parent_id, metadata)
                 VALUES (@id, @type, @name, @code, @parent_id, @metadata)
-                RETURNING id, type, name, code, metadata, created_at, updated_at
+                RETURNING id, type, name, code, code AS external_id, metadata, created_at, updated_at
                 """, connection, transaction))
             {
                 command.Parameters.AddWithValue("id", id);
@@ -353,7 +354,7 @@ public sealed class AssetController : ControllerBase
                 UPDATE assets
                 SET name = @name, code = @code, metadata = @metadata, updated_at = CURRENT_TIMESTAMP
                 WHERE id = @id
-                RETURNING id, type, name, code, metadata, created_at, updated_at
+                RETURNING id, type, name, code, code AS external_id, metadata, created_at, updated_at
                 """, connection);
             command.Parameters.AddWithValue("id", id);
             command.Parameters.Add("name", NpgsqlDbType.Text).Value = request.Name.Trim();
@@ -460,20 +461,22 @@ public sealed class AssetController : ControllerBase
         type = reader.GetString(1).ToUpperInvariant(),
         name = reader.GetString(2),
         code = reader.GetString(3),
-        metadata = JsonDocument.Parse(reader.GetString(4)).RootElement.Clone(),
-        createdAt = reader.GetDateTime(5),
-        updatedAt = reader.GetDateTime(6),
+        externalId = reader.IsDBNull(4) ? reader.GetString(3) : reader.GetString(4),
+        metadata = JsonDocument.Parse(reader.GetString(5)).RootElement.Clone(),
+        createdAt = reader.GetDateTime(6),
+        updatedAt = reader.GetDateTime(7),
     };
 }
 
 public sealed class AssetTreeNode
 {
-    public AssetTreeNode(Guid id, string type, string name, string code, JsonElement metadata, DateTime createdAt, DateTime updatedAt)
+    public AssetTreeNode(Guid id, string type, string name, string code, string externalId, JsonElement metadata, DateTime createdAt, DateTime updatedAt)
     {
         Id = id;
         Type = type;
         Name = name;
         Code = code;
+        ExternalId = externalId;
         Metadata = metadata;
         CreatedAt = createdAt;
         UpdatedAt = updatedAt;
@@ -483,6 +486,7 @@ public sealed class AssetTreeNode
     public string Type { get; }
     public string Name { get; }
     public string Code { get; }
+    public string ExternalId { get; }
     public JsonElement Metadata { get; }
     public DateTime CreatedAt { get; }
     public DateTime UpdatedAt { get; }
