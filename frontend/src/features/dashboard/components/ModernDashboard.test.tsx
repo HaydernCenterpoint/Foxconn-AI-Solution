@@ -26,12 +26,8 @@ const viewModel = {
   lineStatuses: [
     { id: 'line-1', name: 'Assembly', status: 'active', machineCount: 2, producedQuantity: 700 },
   ],
-  pendingOrders: [
-    { id: '1002', machineId: 'machine-2', machineName: 'Welder B', severity: 'HIGH', message: 'Temperature exceeded limit', status: 'ACTIVE', createdAt: '2026-07-14T10:00:00Z' },
-  ],
-  topProducts: [
-    { id: 'machine-1', name: 'Press A', quantity: 400 },
-  ],
+  pendingOrders: [],
+  topProducts: [],
 } satisfies DashboardViewModel;
 
 const noChartViewModel = {
@@ -64,8 +60,8 @@ describe('ModernDashboard', () => {
 
     expect(screen.getByRole('heading', { name: 'Tổng quan sản xuất' })).toBeInTheDocument();
     expect(screen.getByText('1.200')).toBeInTheDocument();
-    expect(screen.getByText('Welder B')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Mở danh sách thiết bị' })).toHaveAttribute('href', '/admin/machines');
+    expect(screen.getByText('Assembly')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Assembly/i })).toHaveAttribute('href', '/admin/lines');
     expect(screen.queryByText('John Hardward')).not.toBeInTheDocument();
   });
 
