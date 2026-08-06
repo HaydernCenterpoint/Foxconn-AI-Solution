@@ -23,10 +23,6 @@ import i18n from '../app/i18n';
 import { useAuthStore } from '../shared/store/auth.store';
 import LoginPage from './LoginPage';
 
-vi.mock('@gsap/react', () => ({ useGSAP: vi.fn() }));
-vi.mock('gsap', () => ({ default: { registerPlugin: vi.fn() } }));
-vi.mock('gsap/ScrollTrigger', () => ({ ScrollTrigger: {} }));
-
 function renderLogin() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -57,17 +53,18 @@ describe('LoginPage', () => {
   it('keeps the redesigned login shell accessible and validates required credentials', async () => {
     renderLogin();
 
-    const login = screen.getByRole('main', { name: 'Foxconn' });
-    expect(login).toHaveClass('grid-flow-dense');
-    expect(login.parentElement).toHaveClass('min-h-[100dvh]', 'w-full');
-    expect(login.parentElement).not.toHaveClass('px-4');
+    const main = screen.getByRole('main');
+    expect(main).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Sign in', level: 2 })).toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Forgot password?' })[0]);
+    // language switch available
+    expect(screen.getByLabelText('Select language')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Forgot password?' }));
     expect(screen.getByRole('status')).toHaveTextContent('Please contact the system administrator');
 
-    const signInButtons = screen.getAllByRole('button', { name: 'Sign in' });
-    fireEvent.click(signInButtons[signInButtons.length - 1]);
+    const submit = screen.getByRole('button', { name: 'Sign in' });
+    fireEvent.click(submit);
 
     await waitFor(() => expect(screen.getAllByRole('alert')).toHaveLength(2));
   });

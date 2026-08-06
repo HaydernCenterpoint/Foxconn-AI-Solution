@@ -12,6 +12,7 @@ export interface AssetTreeNode {
   type: string;
   name: string;
   code: string;
+  externalId: string;
   metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
