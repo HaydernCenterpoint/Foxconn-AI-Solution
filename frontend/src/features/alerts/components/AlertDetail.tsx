@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { MaterialSymbol } from '../../../shared/components/ui/MaterialSymbol';
 import { useTranslation } from 'react-i18next';
-import { X, CheckCircle, ShieldCheck } from 'lucide-react';
+
 import { Badge, type BadgeVariant } from '../../../shared/components/ui/Badge';
 import { Button } from '../../../shared/components/ui/Button';
 import type { AlertDetail as AlertDetailType } from '../services/alerts.api';
@@ -68,7 +69,7 @@ export function AlertDetail({ alert, onClose, onAcknowledge, onResolve }: AlertD
             className="ml-4 rounded-lg p-1.5 text-text-muted transition-colors hover:bg-surface-3 hover:text-text-primary"
             aria-label={t('common.actions.close')}
           >
-            <X size={20} />
+            <MaterialSymbol name="close" size={20} />
           </button>
         </header>
 
@@ -202,7 +203,7 @@ export function AlertDetail({ alert, onClose, onAcknowledge, onResolve }: AlertD
             <Button
               variant="secondary"
               size="sm"
-              startIcon={<ShieldCheck size={16} />}
+              startIcon={<MaterialSymbol name="verified_user" size={16} />}
               onClick={() => onAcknowledge(alert.alertId)}
             >
               {t('alerts.acknowledge')}
@@ -212,7 +213,7 @@ export function AlertDetail({ alert, onClose, onAcknowledge, onResolve }: AlertD
             <Button
               variant="primary"
               size="sm"
-              startIcon={<CheckCircle size={16} />}
+              startIcon={<MaterialSymbol name="check_circle" size={16} />}
               onClick={handleResolve}
             >
               {t('alerts.resolve')}

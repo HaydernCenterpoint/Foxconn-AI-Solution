@@ -53,7 +53,7 @@
 .modern-dashboard--compact .modern-dashboard__lines-panel { min-height: 0; }
 .modern-dashboard__mini-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; margin: .8rem 0 .5rem; }
 .modern-dashboard__mini-stats > div { min-width: 0; min-height: 3.7rem; display: grid; grid-template-columns: 1.75rem 1fr; grid-template-rows: 1fr 1fr; align-items: center; gap: 0 .45rem; padding: .55rem; border: 1px solid var(--color-outline); border-radius: .75rem; background: var(--color-surface-container-high); }
-.modern-dashboard__mini-stats svg { grid-row: span 2; color: var(--color-primary); }
+.modern-dashboard__mini-stats svg, .modern-dashboard__mini-stats .material-symbol { grid-row: span 2; color: var(--color-primary); }
 .modern-dashboard__mini-stats span { overflow: hidden; color: #aaa; font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
 .modern-dashboard__mini-stats strong { overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
 .modern-dashboard__chart { width: 100%; height: 10.6rem; }
@@ -61,7 +61,7 @@
 
 .modern-dashboard__predictive-panel { min-height: 0; }
 .modern-dashboard__predictive-panel .modern-dashboard__panel-head h2 { display: flex; align-items: center; gap: .4rem; }
-.modern-dashboard__predictive-panel .modern-dashboard__panel-head > svg { color: #a78bfa; }
+.modern-dashboard__predictive-panel .modern-dashboard__panel-head > svg, .modern-dashboard__predictive-panel .modern-dashboard__panel-head > .material-symbol { color: #a78bfa; }
 .modern-dashboard__predictive-empty { min-height: 6.5rem; display: grid; place-items: center; margin: 0; color: var(--md-muted); font-size: .8rem; text-align: center; }
 .modern-dashboard__predictive-list { display: grid; gap: .45rem; margin-top: .7rem; }
 .modern-dashboard__predictive-alert { border: 1px solid #353535; border-radius: .7rem; background: #202020; }
@@ -163,7 +163,7 @@
     margin-right: 1.05rem;
   }
 
-  .modern-dashboard__kpi-icon svg {
+  .modern-dashboard__kpi-icon svg,   .modern-dashboard__kpi-icon .material-symbol {
     width: 24px;
     height: 24px;
   }
@@ -433,7 +433,7 @@
   background: var(--color-surface-container-high);
 }
 
-.modern-dashboard__mini-stats svg {
+.modern-dashboard__mini-stats svg, .modern-dashboard__mini-stats .material-symbol {
   color: var(--color-primary);
 }
 

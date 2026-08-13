@@ -1,22 +1,9 @@
 import { useState, type FormEvent } from 'react';
+import { MaterialSymbol } from '../shared/components/ui/MaterialSymbol';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { AxiosError } from 'axios';
-import {
-  Activity,
-  Check,
-  CircleAlert,
-  Edit3,
-  Eye,
-  MonitorCog,
-  Plus,
-  RefreshCw,
-  Search,
-  Server,
-  ShieldCheck,
-  Trash2,
-  WifiOff,
-} from 'lucide-react';
+
 import { useTranslation } from 'react-i18next';
 import {
   machinesApi,
@@ -244,7 +231,7 @@ export const MachineListPage = () => {
       <header className="machine-list-page__hero">
         <div className="machine-list-page__hero-copy">
           <span className="machine-list-page__eyebrow">
-            <MonitorCog aria-hidden="true" size={16} />
+            <MaterialSymbol name="display_settings" size={16} />
             {t('navigation.equipment')}
           </span>
           <h1>{t('machines.title')}</h1>
@@ -257,7 +244,7 @@ export const MachineListPage = () => {
             className="machine-list-page__primary-action"
             onClick={() => setShowAddForm(true)}
           >
-            <Plus aria-hidden="true" size={17} />
+            <MaterialSymbol name="add" size={17} />
             {t('machines.add')}
           </button>
         )}
@@ -265,26 +252,26 @@ export const MachineListPage = () => {
 
       <section className="machine-list-page__metrics" aria-label={t('machines.listTitle')}>
         <article>
-          <span className="machine-list-page__metric-icon"><MonitorCog aria-hidden="true" size={18} /></span>
+          <span className="machine-list-page__metric-icon"><MaterialSymbol name="display_settings" size={18} /></span>
           <div><small>{t('status.total')}</small><strong>{machines.length}</strong></div>
         </article>
         <article>
-          <span className="machine-list-page__metric-icon is-success"><Activity aria-hidden="true" size={18} /></span>
+          <span className="machine-list-page__metric-icon is-success"><MaterialSymbol name="monitoring" size={18} /></span>
           <div><small>{t('status.running')}</small><strong>{runningCount}</strong></div>
         </article>
         <article>
-          <span className="machine-list-page__metric-icon is-danger"><CircleAlert aria-hidden="true" size={18} /></span>
+          <span className="machine-list-page__metric-icon is-danger"><MaterialSymbol name="error" size={18} /></span>
           <div><small>{t('status.error')} / {t('status.offline')}</small><strong>{attentionCount}</strong></div>
         </article>
         <article>
-          <span className="machine-list-page__metric-icon is-warning"><ShieldCheck aria-hidden="true" size={18} /></span>
+          <span className="machine-list-page__metric-icon is-warning"><MaterialSymbol name="verified_user" size={18} /></span>
           <div><small>{t('machines.pending')}</small><strong>{pendingCount}</strong></div>
         </article>
       </section>
 
       <section className="machine-list-page__toolbar" aria-label={t('machines.filtersTitle')}>
         <label className="machine-list-page__search">
-          <Search aria-hidden="true" size={17} />
+          <MaterialSymbol name="search" size={17} />
           <input
             type="search"
             value={search}
@@ -419,17 +406,17 @@ export const MachineListPage = () => {
           </div>
         ) : isError ? (
           <div className="machine-list-page__empty-state is-error" role="alert">
-            <WifiOff aria-hidden="true" size={28} />
+            <MaterialSymbol name="wifi_off" size={28} />
             <h3>{t('machines.errorTitle')}</h3>
             <p>{t('machines.errorDescription')}</p>
             <button type="button" onClick={() => void refetch()}>
-              <RefreshCw aria-hidden="true" size={15} />
+              <MaterialSymbol name="refresh" size={15} />
               {t('common.aria.refresh')}
             </button>
           </div>
         ) : filteredMachines.length === 0 ? (
           <div className="machine-list-page__empty-state">
-            <MonitorCog aria-hidden="true" size={28} />
+            <MaterialSymbol name="display_settings" size={28} />
             <h3>{t('common.table.noData')}</h3>
           </div>
         ) : (
@@ -458,7 +445,7 @@ export const MachineListPage = () => {
                       <td>
                         <div className="machine-list-page__identity">
                           <span className={`machine-list-page__machine-icon is-${machineState}`}>
-                            <MonitorCog aria-hidden="true" size={18} />
+                            <MaterialSymbol name="display_settings" size={18} />
                           </span>
                           <span>
                             <strong>{tDynamic(machine.name)}</strong>
@@ -501,7 +488,7 @@ export const MachineListPage = () => {
                                 title={t('common.actions.approve')}
                                 aria-label={t('common.actions.approve')}
                               >
-                                <Check aria-hidden="true" size={13} />
+                                <MaterialSymbol name="check" size={13} />
                                 {t('common.actions.approve')}
                               </button>
                             ) : (
@@ -527,7 +514,7 @@ export const MachineListPage = () => {
                             title={t('common.actions.view')}
                             aria-label={t('common.actions.view')}
                           >
-                            <Eye aria-hidden="true" size={16} />
+                            <MaterialSymbol name="visibility" size={16} />
                           </button>
                           {canCreate && (
                             <>
@@ -537,7 +524,7 @@ export const MachineListPage = () => {
                                 title={t('common.actions.edit')}
                                 aria-label={t('common.actions.edit')}
                               >
-                                <Edit3 aria-hidden="true" size={16} />
+                                <MaterialSymbol name="edit" size={16} />
                               </button>
                               <button
                                 type="button"
@@ -550,7 +537,7 @@ export const MachineListPage = () => {
                                 title={t('common.actions.delete')}
                                 aria-label={t('common.actions.delete')}
                               >
-                                <Trash2 aria-hidden="true" size={16} />
+                                <MaterialSymbol name="delete" size={16} />
                               </button>
                             </>
                           )}
@@ -570,7 +557,7 @@ export const MachineListPage = () => {
           ? t('common.status.loading')
           : ''}
       </span>
-      <Server className="machine-list-page__decorative-server" aria-hidden="true" />
+      <MaterialSymbol name="dns" className="machine-list-page__decorative-server" />
     </div>
   );
 };

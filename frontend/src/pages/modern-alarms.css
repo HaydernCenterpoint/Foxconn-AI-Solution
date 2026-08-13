@@ -187,8 +187,8 @@
   font-weight: 600;
 }
 
-.modern-alarms__timestamp svg,
-.modern-alarms__handler svg { color: #a4a4a4; }
+.modern-alarms__timestamp svg, .modern-alarms__timestamp .material-symbol,
+.modern-alarms__handler svg, .modern-alarms__handler .material-symbol { color: #a4a4a4; }
 
 .modern-alarms__note {
   overflow: hidden;
@@ -234,7 +234,7 @@
   font-weight: 600;
 }
 
-.modern-alarms__empty svg { color: #777; }
+.modern-alarms__empty svg, .modern-alarms__empty .material-symbol { color: #777; }
 
 @keyframes modern-alarms-spin { to { transform: rotate(360deg); } }
 

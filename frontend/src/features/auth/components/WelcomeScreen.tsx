@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
+import { MaterialSymbol } from '../../../shared/components/ui/MaterialSymbol';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
+
 import { useTranslation } from 'react-i18next';
 import logoUrl from '../../../assets/Foxconn_Industrial_Internet.png';
 import { Button } from '../../../shared/components/ui/Button';
@@ -76,7 +77,7 @@ export function WelcomeScreen({ username, onComplete }: Props) {
               <Button
                 size="lg"
                 className="welcome-copy__next"
-                endIcon={<ArrowRight size={18} aria-hidden="true" />}
+                endIcon={<MaterialSymbol name="arrow_forward" size={18} />}
                 onClick={onComplete}
               >
                 {t('common.actions.next')}
@@ -112,7 +113,7 @@ export function WelcomeScreen({ username, onComplete }: Props) {
 
             <div className="welcome-stack-card welcome-progress-card" role="status" aria-live="polite">
               <div className="welcome-progress-card__status">
-                <span aria-hidden="true"><CheckCircle2 size={20} /></span>
+                <span aria-hidden="true"><MaterialSymbol name="check_circle" size={20} /></span>
                 <p>{t('common.loading')}</p>
               </div>
               <strong>{t('common.systemName')}</strong>

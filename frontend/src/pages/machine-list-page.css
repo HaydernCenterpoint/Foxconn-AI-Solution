@@ -594,7 +594,7 @@
 .machine-list-page__empty-state p { margin: 0; }
 .machine-list-page__empty-state h3 { color: #ddd; font-size: 14px; }
 .machine-list-page__empty-state p { max-width: 50ch; font-size: 11px; line-height: 1.5; }
-.machine-list-page__empty-state.is-error svg { color: #df777c; }
+.machine-list-page__empty-state.is-error svg, .machine-list-page__empty-state.is-error .material-symbol { color: #df777c; }
 
 .machine-list-page__empty-state button {
   display: inline-flex;

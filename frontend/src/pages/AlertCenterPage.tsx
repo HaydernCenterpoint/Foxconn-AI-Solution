@@ -1,15 +1,7 @@
 import { useState } from 'react';
+import { MaterialSymbol } from '../shared/components/ui/MaterialSymbol';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  AlertOctagon,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Download,
-  Info,
-  ShieldAlert,
-  User,
-} from 'lucide-react';
+
 import { useTranslation } from 'react-i18next';
 import { queryKeys } from '../app/queryKeys';
 import {
@@ -291,13 +283,13 @@ export default function AlertCenterPage() {
     string,
     { label: string; icon: React.ReactNode; variant: 'primary' | 'success' | 'warning' | 'error' | 'info' | 'neutral' }
   > = {
-    CRITICAL: { label: t('alertCenter.severityCritical'), icon: <ShieldAlert className="h-3.5 w-3.5" />, variant: 'error' },
-    EMERGENCY: { label: t('alertCenter.severityEmergency'), icon: <ShieldAlert className="h-3.5 w-3.5" />, variant: 'error' },
-    HIGH: { label: t('alertCenter.severityHigh'), icon: <AlertTriangle className="h-3.5 w-3.5" />, variant: 'warning' },
-    WARNING: { label: t('alertCenter.severityWarning'), icon: <AlertTriangle className="h-3.5 w-3.5" />, variant: 'warning' },
-    MEDIUM: { label: t('alertCenter.severityMedium'), icon: <AlertOctagon className="h-3.5 w-3.5" />, variant: 'info' },
-    INFO: { label: t('alertCenter.severityInfo'), icon: <Info className="h-3.5 w-3.5" />, variant: 'info' },
-    LOW: { label: t('alertCenter.severityLow'), icon: <Info className="h-3.5 w-3.5" />, variant: 'neutral' },
+    CRITICAL: { label: t('alertCenter.severityCritical'), icon: <MaterialSymbol name="gpp_maybe" className="h-3.5 w-3.5" />, variant: 'error' },
+    EMERGENCY: { label: t('alertCenter.severityEmergency'), icon: <MaterialSymbol name="gpp_maybe" className="h-3.5 w-3.5" />, variant: 'error' },
+    HIGH: { label: t('alertCenter.severityHigh'), icon: <MaterialSymbol name="warning" className="h-3.5 w-3.5" />, variant: 'warning' },
+    WARNING: { label: t('alertCenter.severityWarning'), icon: <MaterialSymbol name="warning" className="h-3.5 w-3.5" />, variant: 'warning' },
+    MEDIUM: { label: t('alertCenter.severityMedium'), icon: <MaterialSymbol name="report" className="h-3.5 w-3.5" />, variant: 'info' },
+    INFO: { label: t('alertCenter.severityInfo'), icon: <MaterialSymbol name="info" className="h-3.5 w-3.5" />, variant: 'info' },
+    LOW: { label: t('alertCenter.severityLow'), icon: <MaterialSymbol name="info" className="h-3.5 w-3.5" />, variant: 'neutral' },
   };
 
   const getSev = (severity: string) =>
@@ -332,7 +324,7 @@ export default function AlertCenterPage() {
             onClick={exportCsv}
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface-1 px-3 py-2 text-xs font-semibold text-text-secondary transition-colors hover:bg-surface-3"
           >
-            <Download className="h-3.5 w-3.5" aria-hidden="true" />
+            <MaterialSymbol name="download" className="h-3.5 w-3.5" />
             {t('alertCenter.exportCsv')}
           </button>
         </div>
@@ -532,7 +524,7 @@ export default function AlertCenterPage() {
                         <td className="px-6 py-4">
                           <div className="modern-alarms__timestamp">
                             <strong>
-                              <Clock className="h-3 w-3" />
+                              <MaterialSymbol name="schedule" className="h-3 w-3" />
                               {new Date(alert.timestamp).toLocaleTimeString(locale)}
                             </strong>
                             <span>{new Date(alert.timestamp).toLocaleDateString(locale)}</span>
@@ -542,7 +534,7 @@ export default function AlertCenterPage() {
                           {alert.acknowledged_by ? (
                             <div className="modern-alarms__handler">
                               <strong>
-                                <User className="h-3.5 w-3.5" />
+                                <MaterialSymbol name="person" className="h-3.5 w-3.5" />
                                 {alert.acknowledged_by}
                               </strong>
                             </div>
@@ -563,7 +555,7 @@ export default function AlertCenterPage() {
                                     setActionError('');
                                   }}
                                 >
-                                  <CheckCircle className="h-3.5 w-3.5" />
+                                  <MaterialSymbol name="check_circle" className="h-3.5 w-3.5" />
                                   {t('alertCenter.ackButton')}
                                 </button>
                               )}
@@ -577,7 +569,7 @@ export default function AlertCenterPage() {
                                     setActionError('');
                                   }}
                                 >
-                                  <CheckCircle className="h-3.5 w-3.5" />
+                                  <MaterialSymbol name="check_circle" className="h-3.5 w-3.5" />
                                   {t('alertCenter.resolveButton')}
                                 </button>
                               )}

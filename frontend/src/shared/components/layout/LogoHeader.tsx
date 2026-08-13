@@ -1,5 +1,6 @@
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+
 import { useTranslation } from 'react-i18next';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 import logoUrl from '../../../assets/Foxconn_Industrial_Internet.png';
 import { IconButton } from '../ui/IconButton';
 
@@ -26,7 +27,7 @@ export function LogoHeader({ collapsed, onToggle }: Props) {
       </div>
       {onToggle && (
         <IconButton
-          icon={collapsed ? <PanelLeftOpen size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
+          icon={collapsed ? <MaterialSymbol name="left_panel_open" size={18} /> : <MaterialSymbol name="left_panel_close" size={18} />}
           label={t('common.aria.toggleSidebar')}
           variant="ghost"
           onClick={onToggle}

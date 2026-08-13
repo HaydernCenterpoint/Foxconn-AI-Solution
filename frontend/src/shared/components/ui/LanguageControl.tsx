@@ -1,5 +1,6 @@
-import { Globe2 } from 'lucide-react';
+
 import { useId } from 'react';
+import { MaterialSymbol } from './MaterialSymbol';
 import { useTranslation } from 'react-i18next';
 import {
   changeLanguage,
@@ -24,7 +25,7 @@ export function LanguageControl({ compact = false, className = '' }: LanguageCon
   return (
     <label className={`language-control ${compact ? 'language-control--compact' : ''} ${className}`.trim()} htmlFor={controlId}>
       {!compact && <span className="language-control__label">{t('common.language.label')}</span>}
-      <Globe2 size={16} aria-hidden="true" className="language-control__icon" />
+      <MaterialSymbol name="language" size={16} className="language-control__icon" />
       <select
         id={controlId}
         className="language-control__select"

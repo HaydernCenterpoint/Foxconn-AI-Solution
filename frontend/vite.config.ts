@@ -38,9 +38,6 @@ export default defineConfig(({ command, mode }) => {
             if (id.includes('@xyflow/react')) {
               return 'vendor-flow';
             }
-            if (id.includes('lucide-react')) {
-              return 'vendor-icons';
-            }
             if (id.includes('react-hook-form') || id.includes('@hookform/resolvers') || id.includes('zod')) {
               return 'vendor-forms';
             }

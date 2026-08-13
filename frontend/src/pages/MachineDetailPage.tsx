@@ -1,7 +1,8 @@
 import React from 'react';
+import { MaterialSymbol } from '../shared/components/ui/MaterialSymbol';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft } from 'lucide-react';
+
 import { useTranslation } from 'react-i18next';
 import {
   CartesianGrid,
@@ -108,7 +109,7 @@ export const MachineDetailPage: React.FC = () => {
             onClick={() => navigate(-1)}
             title={t('common.actions.back', 'Quay lại')}
           >
-            <ArrowLeft aria-hidden="true" size={20} />
+            <MaterialSymbol name="arrow_back" size={20} />
           </button>
           <div>
             <p className="machine-detail__eyebrow">{t('machines.detail.machineCodeLabel', 'MÃ MÁY')}</p>

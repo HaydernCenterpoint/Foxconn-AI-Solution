@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { MaterialSymbol } from '../shared/components/ui/MaterialSymbol';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ExternalLink, Play, RotateCcw, Square } from 'lucide-react';
+
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getSimulationConfigs, resetSimulation, toggleSimulation } from '../features/simulation/services/simulation.api';
@@ -158,7 +159,7 @@ export const SimulationPage: React.FC = () => {
                 <Button
                   size="sm"
                   loading={isToggling}
-                  startIcon={config.enabled ? <Square size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}
+                  startIcon={config.enabled ? <MaterialSymbol name="stop" size={14} /> : <MaterialSymbol name="play_arrow" size={14} />}
                   onClick={() => toggleMutation.mutate(config.machineId)}
                 >
                   {config.enabled
@@ -169,7 +170,7 @@ export const SimulationPage: React.FC = () => {
                   variant="secondary"
                   size="sm"
                   disabled={isToggling || isResetting}
-                  startIcon={<RotateCcw size={14} aria-hidden="true" />}
+                  startIcon={<MaterialSymbol name="undo" size={14} />}
                   onClick={() => setResetTarget(config)}
                 >
                   {t('simulation.reset', { defaultValue: 'Reset' })}
@@ -177,7 +178,7 @@ export const SimulationPage: React.FC = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  startIcon={<ExternalLink size={14} aria-hidden="true" />}
+                  startIcon={<MaterialSymbol name="open_in_new" size={14} />}
                   onClick={() => navigate(`/machines/${config.machineId}`)}
                 >
                   {t('simulation.machineDetails', { defaultValue: 'Machine details' })}

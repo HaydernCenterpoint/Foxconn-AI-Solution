@@ -1,9 +1,10 @@
-import { ChevronDown } from 'lucide-react';
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { MaterialSymbol } from './MaterialSymbol';
 
 export interface DropdownOption<T = string | number> {
   value: T;
-  label: React.ReactNode;
+  label: ReactNode;
 }
 
 interface DropdownProps<T = string | number> {
@@ -148,7 +149,7 @@ export function Dropdown<T = string | number>({
           {labelPrefix && <span className="ui-dropdown__prefix">{labelPrefix}</span>}
           {selectedOption?.label}
         </span>
-        <ChevronDown size={16} className={`ui-dropdown__chevron ${isOpen ? 'is-open' : ''}`} aria-hidden="true" />
+        <MaterialSymbol name="expand_more" size={16} className={`ui-dropdown__chevron ${isOpen ? 'is-open' : ''}`} />
       </button>
 
       {isOpen && (

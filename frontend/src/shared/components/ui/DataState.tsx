@@ -1,5 +1,6 @@
-import { AlertCircle, Inbox } from 'lucide-react';
+
 import type { ReactNode } from 'react';
+import { MaterialSymbol } from './MaterialSymbol';
 
 type DataStateKind = 'loading' | 'empty' | 'error';
 
@@ -13,8 +14,8 @@ interface DataStateProps {
 }
 
 const DEFAULT_ICONS: Record<Exclude<DataStateKind, 'loading'>, ReactNode> = {
-  empty: <Inbox aria-hidden="true" />,
-  error: <AlertCircle aria-hidden="true" />,
+  empty: <MaterialSymbol name="inbox" />,
+  error: <MaterialSymbol name="error" />,
 };
 
 export function DataState({ kind, title, description, icon, action, className = '' }: DataStateProps) {

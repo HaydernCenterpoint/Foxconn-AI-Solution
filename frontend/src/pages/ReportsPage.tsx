@@ -1,21 +1,12 @@
 import { useMemo, useState } from 'react';
+import { MaterialSymbol } from '../shared/components/ui/MaterialSymbol';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { linesApi } from '../features/production-lines/services/lines.api';
 import { machinesApi } from '../features/machines/services/machines.api';
 import { api } from '../shared/services/apiClient';
 import { queryKeys } from '../app/queryKeys';
-import {
-  AlertTriangle,
-  Calendar,
-  CheckCircle2,
-  Clock,
-  Cpu,
-  Download,
-  FileText,
-  Layers,
-  TrendingUp,
-} from 'lucide-react';
+
 import {
   Area,
   AreaChart,
@@ -172,19 +163,19 @@ export default function ReportsPage() {
     <div className="reports-page">
       <header className="reports-page__header">
         <div>
-          <p className="reports-page__eyebrow"><FileText size={14} aria-hidden="true" /> {t('navigation.reports')}</p>
+          <p className="reports-page__eyebrow"><MaterialSymbol name="description" size={14} /> {t('navigation.reports')}</p>
           <h1>{t('reports.title')}</h1>
           <p className="reports-page__subtitle">{t('reports.subtitle')}</p>
         </div>
         <button type="button" onClick={handleExport} className="reports-page__export">
-          <Download size={16} aria-hidden="true" />
+          <MaterialSymbol name="download" size={16} />
           {t('reports.exportBtn')}
         </button>
       </header>
 
       <section className="reports-page__filters" aria-label={t('reports.title')}>
         <label className="reports-page__filter">
-          <span><Calendar size={15} aria-hidden="true" />{t('reports.filterTime')}</span>
+          <span><MaterialSymbol name="calendar_month" size={15} />{t('reports.filterTime')}</span>
           <select value={selectedTimeRange} onChange={(event) => setSelectedTimeRange(event.target.value)}>
             <option value="today">{t('reports.today')}</option>
             <option value="shift_morning">{t('reports.shiftMorning')}</option>
@@ -194,7 +185,7 @@ export default function ReportsPage() {
           </select>
         </label>
         <label className="reports-page__filter">
-          <span><Layers size={15} aria-hidden="true" />{t('reports.filterLine')}</span>
+          <span><MaterialSymbol name="layers" size={15} />{t('reports.filterLine')}</span>
           <select value={selectedLineId} onChange={(event) => {
             setSelectedLineId(event.target.value);
             setSelectedMachineId('all');
@@ -204,7 +195,7 @@ export default function ReportsPage() {
           </select>
         </label>
         <label className="reports-page__filter">
-          <span><Cpu size={15} aria-hidden="true" />{t('reports.filterMachine')}</span>
+          <span><MaterialSymbol name="memory" size={15} />{t('reports.filterMachine')}</span>
           <select value={selectedMachineId} onChange={(event) => setSelectedMachineId(event.target.value)}>
             <option value="all">{t('reports.allMachines')}</option>
             {filteredMachines.map((machine) => <option key={machine.id} value={machine.id}>{machine.name.toUpperCase()}</option>)}
@@ -214,27 +205,27 @@ export default function ReportsPage() {
 
       <section className="reports-page__metrics" aria-label={t('reports.title')}>
         <article className="reports-page__metric">
-          <span className="reports-page__metric-icon"><TrendingUp size={18} aria-hidden="true" /></span>
+          <span className="reports-page__metric-icon"><MaterialSymbol name="trending_up" size={18} /></span>
           <p>{t('reports.totalProduction')}</p>
           <strong>{metrics.totalProduction.toLocaleString()}</strong>
           <small>{t('reports.metrics.outputMeta', { unit: t('dashboardPage.pcsUnit'), uptime: '96.8' })}</small>
         </article>
         <article className="reports-page__metric is-success">
-          <span className="reports-page__metric-icon"><CheckCircle2 size={18} aria-hidden="true" /></span>
+          <span className="reports-page__metric-icon"><MaterialSymbol name="check_circle" size={18} /></span>
           <p>{t('reports.yield')}</p>
           <strong>{metrics.totalGood.toLocaleString()}</strong>
           <small>{metrics.yieldRate}%</small>
           <span className="reports-page__meter"><i style={{ width: `${yieldWidth}%` }} /></span>
         </article>
         <article className="reports-page__metric is-danger">
-          <span className="reports-page__metric-icon"><AlertTriangle size={18} aria-hidden="true" /></span>
+          <span className="reports-page__metric-icon"><MaterialSymbol name="warning" size={18} /></span>
           <p>{t('reports.scrap')}</p>
           <strong>{metrics.totalScrap.toLocaleString()}</strong>
           <small>{metrics.scrapRate}%</small>
           <span className="reports-page__meter"><i style={{ width: `${scrapWidth}%` }} /></span>
         </article>
         <article className="reports-page__metric is-amber">
-          <span className="reports-page__metric-icon"><Clock size={18} aria-hidden="true" /></span>
+          <span className="reports-page__metric-icon"><MaterialSymbol name="schedule" size={18} /></span>
           <p>{t('reports.uphSpeed')}</p>
           <strong>{metrics.avgSpeed.toLocaleString()}</strong>
           <small>{t('reports.metrics.speedMeta', { unit: t('dashboardPage.pcsUnit'), status: t('common.status.online') })}</small>

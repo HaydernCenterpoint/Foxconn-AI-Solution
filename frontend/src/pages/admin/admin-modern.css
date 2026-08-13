@@ -267,7 +267,7 @@
   white-space: nowrap;
 }
 
-.admin-page__record-count svg { color: var(--admin-red); }
+.admin-page__record-count svg, .admin-page__record-count .material-symbol { color: var(--admin-red); }
 
 .admin-audit-page__time,
 .admin-audit-page__user {
@@ -277,9 +277,9 @@
 }
 
 .admin-audit-page__time { color: var(--admin-muted); }
-.admin-audit-page__time svg { color: #858585; }
+.admin-audit-page__time svg, .admin-audit-page__time .material-symbol { color: #858585; }
 .admin-audit-page__user { color: var(--admin-text); font-weight: 600; }
-.admin-audit-page__user svg { color: #b0b0b0; }
+.admin-audit-page__user svg, .admin-audit-page__user .material-symbol { color: #b0b0b0; }
 .admin-audit-page__details { color: #c9c9c9; line-height: 1.45; }
 
 .admin-page__empty-state {
@@ -288,7 +288,7 @@
   color: var(--admin-muted);
 }
 
-.admin-page__empty-state svg {
+.admin-page__empty-state svg, .admin-page__empty-state .material-symbol {
   display: block;
   margin: 0 auto .7rem;
   color: #777;
@@ -370,7 +370,7 @@
   font-weight: 650;
 }
 
-.admin-modal__header h2 svg { color: var(--admin-red); }
+.admin-modal__header h2 svg, .admin-modal__header h2 .material-symbol { color: var(--admin-red); }
 .admin-modal__header button { color: var(--admin-muted); background: transparent; }
 .admin-modal__header button:hover { color: #fff; }
 
@@ -411,7 +411,7 @@
   position: relative;
 }
 
-.admin-modal__select-wrap svg {
+.admin-modal__select-wrap svg, .admin-modal__select-wrap .material-symbol {
   position: absolute;
   top: 50%;
   right: .65rem;

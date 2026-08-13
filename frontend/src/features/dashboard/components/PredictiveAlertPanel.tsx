@@ -1,5 +1,6 @@
-import { BrainCircuit, HeartPulse } from 'lucide-react';
+
 import { useTranslation } from 'react-i18next';
+import { MaterialSymbol } from '../../../shared/components/ui/MaterialSymbol';
 import type { AssetHealth, PredictiveAlert } from '../services/predictiveAlerts.api';
 
 interface PredictiveAlertPanelProps {
@@ -26,8 +27,8 @@ export function PredictiveAlertPanel({
   return (
     <section className="modern-dashboard__panel modern-dashboard__predictive-panel">
       <div className="modern-dashboard__panel-head">
-        <h2><BrainCircuit aria-hidden="true" size={17} /> {t('dashboardPage.modern.predictiveAlerts')}</h2>
-        <HeartPulse aria-label={t('dashboardPage.modern.healthScoreLabel')} size={17} />
+        <h2><MaterialSymbol name="psychology" size={17} /> {t('dashboardPage.modern.predictiveAlerts')}</h2>
+        <MaterialSymbol name="cardiology" size={17} label={t('dashboardPage.modern.healthScoreLabel')} />
       </div>
 
       {alerts.length === 0 ? (

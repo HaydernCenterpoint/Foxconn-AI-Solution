@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { Activity, ClipboardList, Database, Radio, RefreshCw, Server } from 'lucide-react';
+import { MaterialSymbol } from '../shared/components/ui/MaterialSymbol';
+
 import { useTranslation } from 'react-i18next';
 import { queryKeys } from '../app/queryKeys';
 import { queryTimings } from '../app/queryOptions';
@@ -222,7 +223,7 @@ export default function SystemPage() {
             variant="secondary"
             size="sm"
             loading={isRefreshing}
-            startIcon={<RefreshCw size={16} aria-hidden="true" />}
+            startIcon={<MaterialSymbol name="refresh" size={16} />}
             onClick={() => { void refresh(); }}
           >
             {t('common.actions.refresh')}
@@ -234,7 +235,7 @@ export default function SystemPage() {
         <StatCard
           label={t('systemMonitor.backendHealth')}
           value={healthQuery.isLoading ? '—' : health?.status ?? t('common.status.backendOffline')}
-          icon={<Server size={20} aria-hidden="true" />}
+          icon={<MaterialSymbol name="dns" size={20} />}
           accent={healthVariant(health?.status ?? 'unhealthy') === 'success' ? 'success' : healthVariant(health?.status ?? 'unhealthy') === 'warning' ? 'warning' : 'error'}
           hint={healthQuery.isError ? t('systemMonitor.healthUnavailable') : t('systemMonitor.healthHint')}
           loading={healthQuery.isLoading}
@@ -242,7 +243,7 @@ export default function SystemPage() {
         <StatCard
           label={t('systemMonitor.healthChecks')}
           value={healthQuery.isLoading ? '—' : String(health?.checks.length ?? 0)}
-          icon={<Database size={20} aria-hidden="true" />}
+          icon={<MaterialSymbol name="database" size={20} />}
           accent="info"
           hint={t('systemMonitor.healthChecksHint')}
           loading={healthQuery.isLoading}
@@ -250,7 +251,7 @@ export default function SystemPage() {
         <StatCard
           label={t('systemMonitor.liveClients')}
           value={liveQuery.isLoading ? '—' : String(liveSnapshots.length)}
-          icon={<Radio size={20} aria-hidden="true" />}
+          icon={<MaterialSymbol name="sensors" size={20} />}
           accent={liveQuery.isError ? 'error' : 'running'}
           hint={liveQuery.isError ? t('systemMonitor.telemetryUnavailable') : t('systemMonitor.liveClientsHint')}
           loading={liveQuery.isLoading}
@@ -258,7 +259,7 @@ export default function SystemPage() {
         <StatCard
           label={t('systemMonitor.logEntries')}
           value={logQuery.isLoading ? '—' : String(logSnapshots.length)}
-          icon={<ClipboardList size={20} aria-hidden="true" />}
+          icon={<MaterialSymbol name="assignment" size={20} />}
           accent={logQuery.isError ? 'error' : 'neutral'}
           hint={t('systemMonitor.logEntriesHint')}
           loading={logQuery.isLoading}
@@ -349,7 +350,7 @@ export default function SystemPage() {
             <h2 className="title-small text-text-primary">{t('systemMonitor.rawLog')}</h2>
             <p className="mt-1 text-xs text-text-muted">{t('systemMonitor.rawLogDescription')}</p>
           </div>
-          {!logQuery.isLoading && !logQuery.isError && <Activity size={18} className="text-text-muted" aria-hidden="true" />}
+          {!logQuery.isLoading && !logQuery.isError && <MaterialSymbol name="monitoring" size={18} className="text-text-muted" />}
         </div>
         {logQuery.isLoading ? (
           <DataState kind="loading" title={t('systemMonitor.loadingLog')} />

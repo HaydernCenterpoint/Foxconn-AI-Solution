@@ -1,5 +1,6 @@
-import { Search } from 'lucide-react';
+
 import { useTranslation } from 'react-i18next';
+import { MaterialSymbol } from '../../../shared/components/ui/MaterialSymbol';
 import { Dropdown } from '../../../shared/components/ui/Dropdown';
 import type { AlertFilters as AlertFiltersType } from '../services/alerts.api';
 
@@ -46,10 +47,10 @@ export function AlertFilters({ filters, onChange, searchQuery, onSearchChange }:
       />
 
       <div className="relative ml-auto min-w-[220px]">
-        <Search
+        <MaterialSymbol
+          name="search"
           size={16}
           className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
-          aria-hidden="true"
         />
         <input
           type="text"

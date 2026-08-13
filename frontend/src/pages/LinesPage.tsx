@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { MaterialSymbol } from '../shared/components/ui/MaterialSymbol';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, WifiOff, Plus } from 'lucide-react';
+
 import { linesApi, type LineRequest, type ProductionLine } from '../features/production-lines/services/lines.api';
 import { queryKeys } from '../app/queryKeys';
 import { queryTimings } from '../app/queryOptions';
@@ -82,7 +83,7 @@ function LineManagementPage() {
   if (isLoading) {
     return (
       <div className="modern-lines-page modern-lines-page--loading">
-        <Loader2 size={32} className="modern-lines-page__loading-icon animate-spin" />
+        <MaterialSymbol name="progress_activity" size={32} className="modern-lines-page__loading-icon animate-spin" />
       </div>
     );
   }
@@ -91,7 +92,7 @@ function LineManagementPage() {
     return (
       <div className="modern-lines-page">
         <EmptyState
-          icon={<WifiOff size={56} />}
+          icon={<MaterialSymbol name="wifi_off" size={56} />}
           title={t('linesPage.error.title')}
           description={t('linesPage.error.description')}
         />
@@ -124,7 +125,7 @@ function LineManagementPage() {
             onClick={() => setIsCreateModalOpen(true)}
             className="modern-lines-page__create-button"
           >
-            <Plus size={18} />
+            <MaterialSymbol name="add" size={18} />
             {t('linesPage.add', { defaultValue: 'Thêm dây chuyền' })}
           </button>
         )}
@@ -133,15 +134,15 @@ function LineManagementPage() {
       <div className="modern-lines-page__table-panel">
         <table className="modern-lines-page__table">
           <thead>
-            <tr className="border-b border-[#14356a] bg-[#101625]/85">
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-16">{t('linesPage.table.no')}</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider">{t('linesPage.table.name')}</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-28">{t('linesPage.table.machines')}</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-28">{t('linesPage.table.status')}</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-28">{t('linesPage.table.oee')}</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-36">{t('linesPage.table.production')}</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-32">{t('linesPage.table.uph')}</th>
-              <th className="px-6 py-4.5 text-[11px] font-black text-[#00ADB5] uppercase tracking-wider text-center w-28">{t('linesPage.table.actions')}</th>
+            <tr className="border-b border-outline bg-surface-container-high">
+              <th className="px-6 py-4.5 text-[11px] font-bold text-primary uppercase tracking-wider text-center w-16">{t('linesPage.table.no')}</th>
+              <th className="px-6 py-4.5 text-[11px] font-bold text-primary uppercase tracking-wider">{t('linesPage.table.name')}</th>
+              <th className="px-6 py-4.5 text-[11px] font-bold text-primary uppercase tracking-wider text-center w-28">{t('linesPage.table.machines')}</th>
+              <th className="px-6 py-4.5 text-[11px] font-bold text-primary uppercase tracking-wider text-center w-28">{t('linesPage.table.status')}</th>
+              <th className="px-6 py-4.5 text-[11px] font-bold text-primary uppercase tracking-wider text-center w-28">{t('linesPage.table.oee')}</th>
+              <th className="px-6 py-4.5 text-[11px] font-bold text-primary uppercase tracking-wider text-center w-36">{t('linesPage.table.production')}</th>
+              <th className="px-6 py-4.5 text-[11px] font-bold text-primary uppercase tracking-wider text-center w-32">{t('linesPage.table.uph')}</th>
+              <th className="px-6 py-4.5 text-[11px] font-bold text-primary uppercase tracking-wider text-center w-28">{t('linesPage.table.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -283,21 +284,21 @@ function LineRow({ index, line, onClick, onDelete, canDelete }: LineRowProps) {
   const numMachines = machines ? machines.length : 0;
 
   const rowBgClass = isError
-    ? 'hover:bg-rose-950/20 bg-rose-950/5'
-    : 'hover:bg-cyan-950/20';
+    ? 'hover:bg-error-container bg-error-container'
+    : 'hover:bg-surface-container-high';
 
   return (
     <tr
       onClick={onClick}
-      className={`modern-lines-page__row${isError ? ' modern-lines-page__row--error' : ''} border-b border-[#14356a]/40 cursor-pointer transition-all duration-200 ${rowBgClass}`}
+      className={`modern-lines-page__row${isError ? ' modern-lines-page__row--error' : ''} border-b border-outline cursor-pointer transition-all duration-200 ${rowBgClass}`}
     >
-      <td className="px-6 py-4.5 font-mono text-[#9CA3AF] text-center font-bold">
+      <td className="px-6 py-4.5 font-mono text-text-muted text-center font-bold">
         {String(index + 1).padStart(2, '0')}
       </td>
-      <td className="px-6 py-4.5 font-black text-[#EEEEEE] group-hover:text-cyan-400">
+      <td className="px-6 py-4.5 font-bold text-on-surface group-hover:text-primary">
         {tDynamic(line.name)}
       </td>
-      <td className="px-6 py-4.5 text-center font-bold text-slate-300 font-mono text-sm">
+      <td className="px-6 py-4.5 text-center font-bold text-on-surface-variant font-mono text-sm">
         {numMachines}
       </td>
       <td className="px-6 py-4.5 text-center">
@@ -305,14 +306,14 @@ function LineRow({ index, line, onClick, onDelete, canDelete }: LineRowProps) {
           {lineStatus}
         </Badge>
       </td>
-      <td className="px-6 py-4.5 font-mono font-black text-center text-cyan-400 text-sm">
+      <td className="px-6 py-4.5 font-mono font-bold text-center text-primary text-sm">
         {lineOee}%
       </td>
-      <td className="px-6 py-4.5 font-mono font-black text-center text-[#EEEEEE] text-sm">
-        {lineOutput.toLocaleString(locale)} <span className="text-[10px] font-bold text-[#9CA3AF]">{t('linesPage.units.pieces')}</span>
+      <td className="px-6 py-4.5 font-mono font-bold text-center text-on-surface text-sm">
+        {lineOutput.toLocaleString(locale)} <span className="text-[10px] font-bold text-text-muted">{t('linesPage.units.pieces')}</span>
       </td>
-      <td className="px-6 py-4.5 font-mono font-black text-center text-[#38BDF8] text-sm">
-        {lineUph} <span className="text-[10px] font-bold text-[#9CA3AF]">{t('linesPage.units.perHour')}</span>
+      <td className="px-6 py-4.5 font-mono font-bold text-center text-primary text-sm">
+        {lineUph} <span className="text-[10px] font-bold text-text-muted">{t('linesPage.units.perHour')}</span>
       </td>
       <td className="px-6 py-4.5 text-center flex items-center justify-center gap-2">
         <button

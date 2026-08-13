@@ -1,18 +1,7 @@
 import React, { useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import {
-  AlertTriangle,
-  ChevronDown,
-  Shield,
-  ShieldCheck,
-  Trash2,
-  UserCheck,
-  UserPlus,
-  Users,
-  X,
-  type LucideIcon,
-} from 'lucide-react';
+import { MaterialSymbol } from '../../shared/components/ui/MaterialSymbol';
 import { usersApi, type CreateUserRequest, type User } from '../../features/admin/services/users.api';
 import { useAuthStore } from '../../shared/store/auth.store';
 import './admin-modern.css';
@@ -20,14 +9,14 @@ import './admin-modern.css';
 type Role = CreateUserRequest['role'];
 
 interface RoleMeta {
-  icon: LucideIcon;
+  icon: string;
   tone: 'red' | 'amber' | 'neutral';
 }
 
 const ROLE_META: Record<Role, RoleMeta> = {
-  ADMIN: { icon: ShieldCheck, tone: 'red' },
-  ENGINEER: { icon: Shield, tone: 'amber' },
-  GUEST: { icon: UserCheck, tone: 'neutral' },
+  ADMIN: { icon: 'verified_user', tone: 'red' },
+  ENGINEER: { icon: 'shield', tone: 'amber' },
+  GUEST: { icon: 'person_check', tone: 'neutral' },
 };
 
 function extractErrorMessage(error: unknown): string | undefined {
@@ -136,7 +125,7 @@ export const UserManagementPage: React.FC = () => {
             setFormError('');
           }}
         >
-          <UserPlus aria-hidden="true" size={17} />
+          <MaterialSymbol name="person_add" size={17} />
           {t('pages.users.addAccount', 'Thêm tài khoản')}
         </button>
       </header>
@@ -170,7 +159,6 @@ export const UserManagementPage: React.FC = () => {
               {users.map((user, index) => {
                 const isCurrent = user.username === currentUsername;
                 const meta = ROLE_META[user.role];
-                const RoleIcon = meta.icon;
                 return (
                   <tr key={user.id}>
                     <td className="is-center admin-page__index">{index + 1}</td>
@@ -182,7 +170,7 @@ export const UserManagementPage: React.FC = () => {
                     </td>
                     <td>
                       <span className={`admin-page__badge admin-page__badge--${meta.tone}`}>
-                        <RoleIcon aria-hidden="true" size={14} />
+                        <MaterialSymbol name={meta.icon} size={14} />
                         {roleLabel(user.role)}
                       </span>
                     </td>
@@ -194,7 +182,7 @@ export const UserManagementPage: React.FC = () => {
                           onClick={() => setDeleteTarget(user)}
                           title={t('common.actions.delete', 'Xóa')}
                         >
-                          <Trash2 aria-hidden="true" size={15} />
+                          <MaterialSymbol name="delete" size={15} />
                         </button>
                       )}
                     </td>
@@ -210,8 +198,8 @@ export const UserManagementPage: React.FC = () => {
         <Modal>
           <div className="admin-modal" role="dialog" aria-modal="true" aria-labelledby="create-user-title">
             <header className="admin-modal__header">
-              <h2 id="create-user-title"><Users aria-hidden="true" size={18} /> {t('pages.users.createTitle', 'Thêm người dùng mới')}</h2>
-              <button type="button" onClick={() => setShowAddForm(false)} aria-label={t('common.actions.close', 'Đóng')}><X aria-hidden="true" size={18} /></button>
+              <h2 id="create-user-title"><MaterialSymbol name="group" size={18} /> {t('pages.users.createTitle', 'Thêm người dùng mới')}</h2>
+              <button type="button" onClick={() => setShowAddForm(false)} aria-label={t('common.actions.close', 'Đóng')}><MaterialSymbol name="close" size={18} /></button>
             </header>
             {formError && <p className="admin-modal__error">{formError}</p>}
             <form onSubmit={handleCreate} className="admin-modal__form">
@@ -243,7 +231,7 @@ export const UserManagementPage: React.FC = () => {
                     <option value="ENGINEER">{roleLabel('ENGINEER')} {t('pages.users.roleCode', { role: 'ENGINEER' })}</option>
                     <option value="GUEST">{roleLabel('GUEST')} {t('pages.users.roleCode', { role: 'GUEST' })}</option>
                   </select>
-                  <ChevronDown aria-hidden="true" size={15} />
+                  <MaterialSymbol name="expand_more" size={15} />
                 </span>
               </label>
               <footer className="admin-modal__actions">
@@ -261,7 +249,7 @@ export const UserManagementPage: React.FC = () => {
         <Modal>
           <div className="admin-modal admin-modal--danger" role="dialog" aria-modal="true" aria-labelledby="delete-user-title">
             <header className="admin-modal__header">
-              <h2 id="delete-user-title"><AlertTriangle aria-hidden="true" size={18} /> {t('pages.users.deleteConfirmTitle', 'Xác nhận xóa tài khoản')}</h2>
+              <h2 id="delete-user-title"><MaterialSymbol name="warning" size={18} /> {t('pages.users.deleteConfirmTitle', 'Xác nhận xóa tài khoản')}</h2>
             </header>
             <p className="admin-modal__copy">
               {t('pages.users.deleteWarning', 'Hành động này không thể hoàn tác. Bạn có chắc chắn muốn xóa tài khoản ')} <b>{deleteTarget.username}</b>?

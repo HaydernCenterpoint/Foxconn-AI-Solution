@@ -1,5 +1,6 @@
-import { BellRing } from 'lucide-react';
+
 import { useTranslation } from 'react-i18next';
+import { MaterialSymbol } from '../../../shared/components/ui/MaterialSymbol';
 import type { Alarm } from '../../alarms/services/alarms.api';
 import type { RecentAlarm } from '../services/dashboard.api';
 import { Badge, type BadgeVariant } from '../../../shared/components/ui/Badge';
@@ -43,7 +44,7 @@ export function ActiveAlarmPanel({
     <DashboardPanel
       title={t('dashboardPage.recentAlarmsTitle', { defaultValue: 'Recent alarm activity' })}
       description={t('dashboardPage.recentAlarmsDescription', { defaultValue: 'Current alarm records returned by the alarm and dashboard services.' })}
-      icon={<BellRing size={18} />}
+      icon={<MaterialSymbol name="notifications_active" size={18} />}
       className={`dashboard-analytics-grid__alarms ${className}`.trim()}
       actions={alarms.length > 0 ? <Badge variant="error">{alarms.length}</Badge> : undefined}
     >
