@@ -1,6 +1,6 @@
 ---
 tags: [architecture, map]
-updated: 2026-07-31
+updated: 2026-08-13
 ---
 
 # Architecture Map
@@ -40,3 +40,6 @@ flowchart LR
 5. Managed gate rejects HTTP/loopback and requires exactly 16 checks
 6. Secrets never enter git/appsettings/images
 7. Dual-write rollback remains available before production claim
+
+## Systems
+[[60 Systems/Systems]] · [[10 Project/Product Scope]] · [[10 Project/Repo Map]]
