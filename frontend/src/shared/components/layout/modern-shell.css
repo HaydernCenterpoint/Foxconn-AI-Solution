@@ -1,13 +1,13 @@
 .modern-shell {
-  --modern-shell-bg: #070707;
-  --modern-shell-panel: #1e1e1e;
-  --modern-shell-panel-strong: #252525;
-  --modern-shell-border: #383838;
-  --modern-shell-muted: #a4a4a4;
-  --modern-shell-text: #f5f5f5;
-  --modern-shell-accent: #ef4444;
-  --modern-shell-accent-strong: #ff6567;
-  --modern-shell-safe: #4ec798;
+  --modern-shell-bg: var(--color-background);
+  --modern-shell-panel: var(--color-surface-container);
+  --modern-shell-panel-strong: var(--color-surface-container-high);
+  --modern-shell-border: var(--color-outline);
+  --modern-shell-muted: var(--color-text-muted);
+  --modern-shell-text: var(--color-on-surface);
+  --modern-shell-accent: var(--color-primary);
+  --modern-shell-accent-strong: var(--color-primary-hover);
+  --modern-shell-safe: var(--color-running);
   box-sizing: border-box;
   display: grid;
   min-height: 100dvh;
@@ -133,41 +133,41 @@
 .modern-shell__nav-link {
   display: flex;
   min-width: 0;
-  min-height: 51px;
+  min-height: 48px;
   align-items: center;
   gap: 12px;
-  padding: 0 12px;
+  padding: 0 16px;
   border: 1px solid transparent;
-  border-radius: 14px;
-  color: #c7c7c7;
+  border-radius: 28px;
+  color: var(--color-on-surface-variant);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   text-decoration: none;
-  transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
+  transition: color 180ms ease, background-color 180ms ease;
 }
 
 .modern-shell__nav-link:hover {
-  border-color: #414141;
-  color: #fff;
-  background: #292929;
+  border-color: transparent;
+  color: var(--color-on-surface);
+  background: var(--color-surface-container-high);
 }
 
 .modern-shell__nav-link:active {
-  transform: scale(0.98);
+  transform: none;
 }
 
 .modern-shell__nav-link--active {
-  border-color: rgb(255 101 103 / 60%);
-  color: #fff;
-  background: var(--modern-shell-accent);
-  box-shadow: 0 8px 22px rgb(239 68 68 / 22%);
+  border-color: transparent;
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  box-shadow: none;
 }
 
 .modern-shell__nav-link--assistant {
   margin-top: 8px;
-  border-color: rgb(239 68 68 / 24%);
-  color: #f6f6f6;
-  background: rgb(239 68 68 / 7%);
+  border-color: transparent;
+  color: var(--color-on-surface);
+  background: var(--color-primary-light);
   font-size: 13px;
 }
 
@@ -186,9 +186,9 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgb(255 101 103 / 20%);
+  border: 1px solid var(--color-outline);
   border-radius: 12px;
-  background: rgb(255 255 255 / 6%);
+  background: var(--color-primary-light);
 }
 
 .modern-shell__nav-label-wrap {
@@ -211,8 +211,8 @@
 }
 
 .modern-shell__nav-link--assistant:hover {
-  border-color: rgb(255 101 103 / 52%);
-  background: rgb(239 68 68 / 14%);
+  border-color: transparent;
+  background: var(--color-surface-container-high);
 }
 
 .modern-shell__nav-label {
@@ -241,8 +241,8 @@
   justify-content: center;
   padding: 0 5px;
   border-radius: 999px;
-  color: #fff;
-  background: #f03e40;
+  color: var(--color-on-error, #fff);
+  background: var(--color-error);
   font-size: 9px;
   font-weight: 800;
   line-height: 1;
@@ -967,162 +967,142 @@
   }
 }
 
-/* Premium visual layer: glass surfaces, quiet grid lines, deliberate depth. */
+/* Material 3 / Google Blue chrome. Maps shell to theme tokens; no glass, no neon. */
 .modern-shell {
-  --modern-shell-bg: #050a10;
-  --modern-shell-panel: rgb(12 21 31 / 84%);
-  --modern-shell-panel-strong: rgb(17 29 42 / 92%);
-  --modern-shell-border: rgb(170 206 232 / 16%);
-  --modern-shell-muted: rgb(202 222 237 / 58%);
-  --modern-shell-text: #f5f9fd;
-  --modern-shell-accent: #ff4664;
-  --modern-shell-accent-strong: #79dcff;
-  --modern-shell-safe: #63d8ae;
   position: relative;
-  grid-template-columns: minmax(15rem, 17rem) minmax(0, 1fr);
-  gap: clamp(0.75rem, 1.35vw, 1.25rem);
+  grid-template-columns: 256px minmax(0, 1fr);
+  gap: 0;
   overflow: hidden;
-  padding: clamp(0.75rem, 1.35vw, 1.25rem);
-  background:
-    radial-gradient(circle at 6% 0%, rgb(67 172 255 / 13%), transparent 28%),
-    radial-gradient(circle at 100% 100%, rgb(255 56 91 / 11%), transparent 32%),
-    var(--modern-shell-bg);
-  font-family: 'Cabinet Grotesk', 'Google Sans', var(--font-family-sans), sans-serif;
+  padding: 0;
+  background: var(--color-background);
+  font-family: var(--font-family-sans);
 }
 
 .modern-shell::before {
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(rgb(255 255 255 / 2%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 2%) 1px, transparent 1px);
-  background-size: 64px 64px;
-  content: '';
-  mask-image: linear-gradient(to bottom, black, transparent 88%);
-  pointer-events: none;
+  content: none;
 }
 
 .modern-shell__sidebar,
 .modern-shell__header {
-  border-color: var(--modern-shell-border);
-  background:
-    linear-gradient(145deg, rgb(24 40 55 / 82%), rgb(9 17 27 / 92%)),
-    var(--modern-shell-panel);
-  box-shadow: 0 24px 70px rgb(0 0 0 / 24%), inset 0 1px rgb(255 255 255 / 9%);
-  backdrop-filter: blur(22px);
+  border-color: var(--color-outline);
+  background: var(--color-surface-container);
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .modern-shell__sidebar {
-  border-radius: 28px;
+  height: 100dvh;
+  border-right: 1px solid var(--color-outline);
+  border-radius: 0;
 }
 
 .modern-shell__brand-row {
-  padding: 22px 20px 18px;
+  padding: 16px 16px 12px;
 }
 
 .modern-shell__brand-logo {
-  filter: drop-shadow(0 10px 18px rgb(0 0 0 / 26%));
+  filter: none;
 }
 
 .modern-shell__nav-caption {
-  color: rgb(121 220 255 / 68%);
-  font-family: 'Cabinet Grotesk', 'Google Sans', var(--font-family-sans), sans-serif;
-  letter-spacing: 0.16em;
+  color: var(--color-text-muted);
+  font-family: var(--font-family-sans);
+  letter-spacing: 0.06em;
 }
 
 .modern-shell__navigation {
-  gap: 7px;
+  gap: 4px;
 }
 
 .modern-shell__nav-link {
   min-height: 48px;
   border-color: transparent;
-  border-radius: 15px;
-  color: rgb(223 236 247 / 68%);
-  transition: color 220ms ease, background-color 220ms ease, border-color 220ms ease, transform 220ms ease, box-shadow 220ms ease;
+  border-radius: 28px;
+  color: var(--color-on-surface-variant);
 }
 
 .modern-shell__nav-link:hover {
-  border-color: rgb(121 220 255 / 24%);
-  color: #fff;
-  background: linear-gradient(90deg, rgb(121 220 255 / 12%), rgb(255 255 255 / 3%));
-  transform: translateX(3px);
+  border-color: transparent;
+  color: var(--color-on-surface);
+  background: var(--color-surface-container-high);
+  transform: none;
 }
 
 .modern-shell__nav-link--active {
-  border-color: rgb(255 111 135 / 52%);
-  color: #fff;
-  background: linear-gradient(105deg, rgb(255 70 100 / 92%), rgb(177 32 69 / 78%));
-  box-shadow: 0 12px 28px rgb(224 35 73 / 24%), inset 0 1px rgb(255 255 255 / 20%);
+  border-color: transparent;
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  box-shadow: none;
 }
 
 .modern-shell__nav-link--active svg {
-  filter: drop-shadow(0 0 9px rgb(255 255 255 / 28%));
+  filter: none;
 }
 
 .modern-shell__nav-link--assistant {
-  border-color: rgb(121 220 255 / 20%);
-  background: linear-gradient(135deg, rgb(121 220 255 / 11%), rgb(255 70 100 / 5%));
+  border-color: transparent;
+  background: var(--color-primary-light);
 }
 
 .modern-shell__nav-link--assistant:hover {
-  border-color: rgb(121 220 255 / 48%);
-  background: linear-gradient(135deg, rgb(121 220 255 / 18%), rgb(255 70 100 / 9%));
+  border-color: transparent;
+  background: var(--color-surface-container-high);
 }
 
 .modern-shell__external-icon-wrap {
-  border-color: rgb(121 220 255 / 24%);
-  background: rgb(121 220 255 / 8%);
-  box-shadow: inset 0 1px rgb(255 255 255 / 10%);
+  border-color: var(--color-outline);
+  background: var(--color-primary-light);
+  box-shadow: none;
 }
 
 .modern-shell__external-icon-wrap svg {
-  color: var(--modern-shell-accent-strong);
+  color: var(--color-primary);
 }
 
 .modern-shell__service-group {
-  border-top-color: rgb(170 206 232 / 13%);
+  border-top-color: var(--color-outline);
 }
 
 .modern-shell__service-group-title {
-  color: rgb(202 222 237 / 44%);
+  color: var(--color-text-muted);
 }
 
 .modern-shell__sidebar-footer {
-  border-top-color: rgb(170 206 232 / 13%);
-  color: rgb(202 222 237 / 52%);
+  border-top-color: var(--color-outline);
+  color: var(--color-text-muted);
 }
 
 .modern-shell__status-dot {
-  box-shadow: 0 0 16px rgb(99 216 174 / 76%);
+  box-shadow: none;
 }
 
 .modern-shell__frame {
   position: relative;
   z-index: 1;
+  min-height: 100dvh;
+  background: var(--color-background);
 }
 
 .modern-shell__header {
-  min-height: 76px;
-  gap: 16px;
-  border-radius: 24px;
-  padding: 12px 14px 12px 22px;
-}
-
-.modern-shell__welcome {
-  min-width: 210px;
+  min-height: 64px;
+  gap: 12px;
+  border-radius: 0;
+  border-bottom: 1px solid var(--color-outline);
+  padding: 8px 16px;
 }
 
 .modern-shell__welcome span {
-  color: rgb(121 220 255 / 65%);
+  color: var(--color-text-muted);
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .modern-shell__welcome strong {
-  font-size: 18px;
-  letter-spacing: -0.03em;
+  font-size: 16px;
+  letter-spacing: 0;
+  font-weight: 500;
 }
 
 .modern-shell__date,
@@ -1130,76 +1110,61 @@
 .modern-shell__shift,
 .modern-shell__icon-button,
 .modern-shell__account-trigger {
-  border-color: rgb(170 206 232 / 15%);
-  background: rgb(255 255 255 / 5%);
-  box-shadow: inset 0 1px rgb(255 255 255 / 6%);
-}
-
-.modern-shell__date,
-.modern-shell__clock,
-.modern-shell__shift {
-  height: 44px;
+  border-color: var(--color-outline);
+  background: var(--color-surface-container-high);
+  box-shadow: none;
 }
 
 .modern-shell__clock svg,
 .modern-shell__shift-dot {
-  color: var(--modern-shell-accent-strong);
+  color: var(--color-primary);
 }
 
 .modern-shell__shift-dot {
-  box-shadow: 0 0 12px rgb(121 220 255 / 74%);
+  box-shadow: none;
 }
 
 .modern-shell__shift--day .modern-shell__shift-dot {
-  background: var(--modern-shell-safe);
-  box-shadow: 0 0 12px rgb(99 216 174 / 74%);
-}
-
-.modern-shell__icon-button,
-.modern-shell__account-trigger {
-  transition: border-color 220ms ease, color 220ms ease, background-color 220ms ease, transform 220ms ease, box-shadow 220ms ease;
+  background: var(--color-running);
+  box-shadow: none;
 }
 
 .modern-shell__icon-button:hover,
 .modern-shell__account-trigger:hover {
-  border-color: rgb(121 220 255 / 42%);
-  color: #fff;
-  background: rgb(121 220 255 / 12%);
-  box-shadow: 0 10px 22px rgb(0 0 0 / 18%), inset 0 1px rgb(255 255 255 / 12%);
+  border-color: var(--color-primary);
+  color: var(--color-on-surface);
+  background: var(--color-primary-light);
+  box-shadow: none;
 }
 
 .modern-shell__account-trigger {
-  min-height: 44px;
-  border-radius: 14px;
+  min-height: 40px;
+  border-radius: 20px;
 }
 
 .modern-shell__avatar {
-  border-color: rgb(121 220 255 / 36%);
-  background: linear-gradient(145deg, rgb(121 220 255 / 24%), rgb(255 70 100 / 28%));
-  box-shadow: 0 0 18px rgb(121 220 255 / 16%);
-}
-
-.modern-shell__account-copy strong {
-  letter-spacing: -0.02em;
+  border-color: var(--color-primary);
+  background: var(--color-accent-container);
+  box-shadow: none;
 }
 
 .modern-shell__popover {
-  border-color: rgb(170 206 232 / 20%);
-  border-radius: 18px;
-  background: rgb(10 20 30 / 96%);
-  box-shadow: 0 24px 60px rgb(0 0 0 / 42%), inset 0 1px rgb(255 255 255 / 10%);
-  backdrop-filter: blur(24px);
+  border-color: var(--color-outline);
+  border-radius: 12px;
+  background: var(--color-surface-container-high);
+  box-shadow: var(--shadow-3);
+  backdrop-filter: none;
 }
 
 .modern-shell__account-link:hover,
 .modern-shell__logout:hover,
 .modern-shell__notification:hover {
-  background: rgb(121 220 255 / 10%);
+  background: var(--color-primary-light);
 }
 
 .modern-shell__content {
   overflow: auto;
-  padding-top: clamp(0.9rem, 1.35vw, 1.25rem);
+  padding: 16px;
 }
 
 @media (max-width: 1040px) {

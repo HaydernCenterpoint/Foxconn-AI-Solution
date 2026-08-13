@@ -6,20 +6,20 @@
  */
 
 :root {
-  --surface-page: #f4f7fb;
+  --surface-page: #F8FAFD;
   --surface-raised: #ffffff;
-  --surface-subtle: #f8fafd;
+  --surface-subtle: #E9EEF6;
   --surface-inset: #eef3f8;
-  --surface-selected: #eaf1ff;
-  --text-strong: #10243e;
-  --text: #2b4057;
-  --text-muted: #6d8094;
+  --surface-selected: #D3E3FD;
+  --text-strong: #1F1F1F;
+  --text: #1F1F1F;
+  --text-muted: #444746;
   --border-subtle: #e1e9f1;
-  --border-strong: #c8d6e4;
-  --accent: #1764e8;
-  --accent-strong: #0d4fbe;
-  --accent-soft: #e7f0ff;
-  --accent-ring: rgb(23 100 232 / 19%);
+  --border-strong: #C4C7C5;
+  --accent: #0B57D0;
+  --accent-strong: #0842A0;
+  --accent-soft: #D3E3FD;
+  --accent-ring: rgb(11 87 208 / 19%);
   --success-soft: #e7f7ee;
   --warning-soft: #fff5dd;
   --danger-soft: #fff0ef;
@@ -44,13 +44,13 @@
   --line: var(--border-strong);
   --line-light: var(--border-subtle);
   --surface-soft: var(--surface-subtle);
-  --sidebar: #0b1930;
-  --sidebar-hover: #172a47;
+  --sidebar: #131314;
+  --sidebar-hover: #1E1F20;
   --success: #148553;
 
   color: var(--text-strong);
   background: var(--surface-page);
-  font-family: Inter, "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: "Google Sans", "Be Vietnam Pro", Roboto, "Noto Sans SC", "Segoe UI", system-ui, sans-serif;
 }
 
 html {
