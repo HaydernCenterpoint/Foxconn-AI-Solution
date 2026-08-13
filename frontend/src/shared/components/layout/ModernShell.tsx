@@ -379,6 +379,9 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
 
   return (
     <div className={`modern-shell${viewer ? ' modern-shell--viewer' : ''}`}>
+      <a className="modern-shell__skip-link" href="#main-content">
+        {t('common.aria.skipToContent')}
+      </a>
       <button
         type="button"
         className={`modern-shell__backdrop${mobileNavigationOpen ? ' modern-shell__backdrop--visible' : ''}`}
@@ -662,7 +665,7 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
           </div>
         </header>
 
-        <main className="modern-shell__content">
+        <main id="main-content" className="modern-shell__content" tabIndex={-1}>
           <Outlet />
         </main>
       </div>

@@ -46,6 +46,7 @@ export const zhCN = {
       showPassword: '显示密码',
       hidePassword: '隐藏密码',
       toggleSidebar: '收起或展开侧边栏',
+      skipToContent: '跳到主要内容',
       refresh: '刷新数据',
       logout: '退出登录',
     },

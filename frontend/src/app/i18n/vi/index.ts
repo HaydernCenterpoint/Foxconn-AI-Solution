@@ -46,6 +46,7 @@ export const vi = {
       showPassword: 'Hiện mật khẩu',
       hidePassword: 'Ẩn mật khẩu',
       toggleSidebar: 'Thu gọn hoặc mở rộng sidebar',
+      skipToContent: 'Bỏ qua đến nội dung chính',
       refresh: 'Tải lại dữ liệu',
       logout: 'Đăng xuất',
     },

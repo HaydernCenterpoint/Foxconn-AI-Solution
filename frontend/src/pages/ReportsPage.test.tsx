@@ -61,7 +61,7 @@ const reportData = {
     { hour: '09:00', output: 670 },
   ],
   defectChartData: [
-    { name: 'Dimension', value: 34, color: '#ef4444' },
+    { name: 'Dimension', value: 34, color: 'var(--color-error)' },
     { name: 'Surface', value: 26, color: '#f97316' },
   ],
   tableLogs: [

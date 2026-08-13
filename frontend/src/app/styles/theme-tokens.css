@@ -1,52 +1,53 @@
 /* ============================================================
-   ENTERPRISE DARK — SINGLE SOURCE OF TRUTH for design tokens.
-   Do NOT define @theme or --color-* anywhere else.
-   See frontend/THIET-KE-ENTERPRISE-DARK.md for the contract.
+   Material 3 / Google Blue — SINGLE SOURCE OF TRUTH for tokens.
+   Seed: #0B57D0. Do NOT define @theme or --color-* anywhere else.
+   See DESIGN.md.
    ============================================================ */
 @theme {
-  /* --- Accent & Brand --- */
-  --color-primary: #1C64F2;
-  --color-primary-hover: #3F83F8;
-  --color-primary-light: rgba(28, 100, 242, 0.15);
-  --color-on-primary: #FFFFFF;
+  /* --- Accent & Brand (M3 dark: light primary on dark surface) --- */
+  --color-primary: #A8C7FA;
+  --color-primary-hover: #D3E3FD;
+  --color-primary-light: rgba(168, 199, 250, 0.16);
+  --color-on-primary: #062E6F;
 
-  --color-secondary: #D00B27;
-  --color-secondary-hover: #E52E46;
-  --color-on-secondary: #FFFFFF;
+  --color-secondary: #F2B8B5;
+  --color-secondary-hover: #F9DEDC;
+  --color-on-secondary: #601410;
 
-  --color-accent: #1C64F2;
-  --color-accent-container: rgba(28, 100, 242, 0.15);
+  --color-accent: #A8C7FA;
+  --color-accent-container: #0842A0;
 
-  /* --- Background & Surface (opaque, flat) --- */
-  --color-background: #050B14;
-  --color-background-secondary: #0B1220;
-  --color-surface-container-lowest: #030712;
-  --color-surface-container-low: #0B1220;
-  --color-surface: #111A2E;
-  --color-surface-dim: #0D1524;
-  --color-surface-container: #111A2E;
-  --color-surface-container-high: #1B2740;
-  --color-surface-container-highest: #26344F;
+  /* --- Background & Surface (Google grey, not navy) --- */
+  --color-background: #131314;
+  --color-background-secondary: #1E1F20;
+  --color-surface-container-lowest: #0E0E0F;
+  --color-surface-container-low: #1B1B1C;
+  --color-surface: #1E1F20;
+  --color-surface-dim: #131314;
+  --color-surface-container: #1E1F20;
+  --color-surface-container-high: #282A2C;
+  --color-surface-container-highest: #333537;
 
   /* --- Text --- */
-  --color-on-surface: #F1F5F9;
-  --color-on-surface-variant: #94A3B8;
-  --color-text-primary: #F1F5F9;
-  --color-text-secondary: #94A3B8;
-  --color-text-muted: #64748B;
+  --color-on-surface: #E3E3E3;
+  --color-on-surface-variant: #C4C7C5;
+  --color-text-primary: #E3E3E3;
+  --color-text-secondary: #C4C7C5;
+  --color-text-muted: #8E918F;
 
   /* --- Border --- */
-  --color-outline: rgba(148, 163, 184, 0.14);
-  --color-outline-variant: rgba(28, 100, 242, 0.35);
-  --color-scrim: rgba(3, 7, 18, 0.64);
+  --color-outline: rgba(68, 71, 70, 0.88);
+  --color-outline-variant: rgba(168, 199, 250, 0.24);
+  --color-scrim: rgba(0, 0, 0, 0.52);
 
   /* --- Status (one color each) --- */
   --color-running: #10B981;
   --color-running-container: rgba(16, 185, 129, 0.15);
   --color-success: #10B981;
   --color-success-container: rgba(16, 185, 129, 0.15);
-  --color-error: #EF4444;
-  --color-error-container: rgba(239, 68, 68, 0.15);
+  --color-error: #B3261E;
+  --color-error-container: rgba(179, 38, 30, 0.16);
+  --color-on-error: #FFFFFF;
   --color-warn: #F59E0B;
   --color-warn-container: rgba(245, 158, 11, 0.15);
   --color-idle: #3B82F6;
@@ -58,9 +59,9 @@
   --color-maintenance: #8B5CF6;
   --color-maintenance-container: rgba(139, 92, 246, 0.15);
 
-  /* xyflow diagram edge colors (map to accent, no cyan) */
-  --color-edge: #1C64F2;
-  --color-edge-selected: #3B82F6;
+  /* xyflow diagram edge colors */
+  --color-edge: #A8C7FA;
+  --color-edge-selected: #D3E3FD;
 
   /* --- Shadows (soft black, no neon) --- */
   --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.25);
@@ -71,7 +72,7 @@
   --shadow-error: 0 0 12px rgba(239, 68, 68, 0.45);
 
   /* --- Typography --- */
-  --font-family-sans: 'Inter', 'Noto Sans', 'Noto Sans SC', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-family-sans: 'Google Sans', 'Be Vietnam Pro', 'Roboto', 'Noto Sans SC', system-ui, sans-serif;
   --font-family-mono: 'Roboto Mono', SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   --font-sans: var(--font-family-sans);
   --font-mono: var(--font-family-mono);
@@ -102,7 +103,7 @@
   --color-surface-4: var(--color-surface-container-high);
   --color-border: var(--color-outline);
   --color-border-subtle: rgba(148, 163, 184, 0.08);
-  --color-border-strong: rgba(28, 100, 242, 0.55);
+  --color-border-strong: rgba(168, 199, 250, 0.45);
 }
 
 /* Compat aliases (formerly in the deleted tokens.css) + focus ring.
@@ -133,5 +134,5 @@
   --shadow-small: var(--shadow-1);
   --shadow-medium: var(--shadow-4);
 
-  --focus-ring: 0 0 0 3px rgba(28, 100, 242, 0.45);
+  --focus-ring: 0 0 0 3px rgba(11, 87, 208, 0.40);
 }

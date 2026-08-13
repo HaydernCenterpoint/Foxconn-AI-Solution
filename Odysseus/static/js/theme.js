@@ -9,8 +9,8 @@ import { makeWindowDraggable } from './windowDrag.js';
 import { snapModalToZone } from './tileManager.js';
 
 export const THEMES = {
-  dark:       { bg:'#282c34', fg:'#9cdef2', panel:'#111111', border:'#355a66', red:'#e06c75' },
-  light:      { bg:'#f0ebe3', fg:'#5a5248', panel:'#faf6f0', border:'#d4cdc2', red:'#c47d5a' },
+  dark:       { bg:'#131314', fg:'#E3E3E3', panel:'#1E1F20', border:'#444746', red:'#F2B8B5' },
+  light:      { bg:'#F8FAFD', fg:'#1F1F1F', panel:'#FFFFFF', border:'#C4C7C5', red:'#B3261E' },
   midnight:   { bg:'#0d1117', fg:'#c9d1d9', panel:'#161b22', border:'#30363d', red:'#f85149' },
   paper:      { bg:'#faf8f5', fg:'#3b3836', panel:'#ffffff', border:'#d5d0c8', red:'#c5ac4a' },
   // Spicy / fun themes

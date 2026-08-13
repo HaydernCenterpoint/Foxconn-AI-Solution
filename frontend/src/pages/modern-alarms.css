@@ -1,6 +1,6 @@
 .modern-alarms {
-  color: #f8f8f8;
-  font-family: "Be Vietnam Pro", system-ui, sans-serif;
+  color: var(--color-on-surface);
+  font-family: var(--font-family-sans);
 }
 
 .modern-alarms__header {
@@ -21,7 +21,7 @@
   align-items: center;
   gap: 10px;
   margin: 0;
-  color: #f8f8f8;
+  color: var(--color-on-surface);
   font-size: clamp(1.5rem, 1.75vw, 2.25rem);
   font-weight: 700;
   line-height: 1.1;
@@ -31,13 +31,13 @@
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: #ef4444;
+  background: var(--color-error);
 }
 
 .modern-alarms__subtitle {
   max-width: 56rem;
   margin: 8px 0 0;
-  color: #b8b8b8;
+  color: var(--color-text-muted);
   font-size: 14px;
 }
 
@@ -106,7 +106,7 @@
   width: 32px;
   height: 32px;
   border: 3px solid #414141;
-  border-top-color: #ef4444;
+  border-top-color: var(--color-error);
   border-radius: 999px;
   animation: modern-alarms-spin .75s linear infinite;
 }
@@ -125,7 +125,7 @@
   padding: 14px 18px;
   border-bottom: 1px solid #3d3d3d;
   background: #242424;
-  color: #b8b8b8;
+  color: var(--color-text-muted);
   font-size: 11px;
   font-weight: 650;
   letter-spacing: .04em;
@@ -136,6 +136,7 @@
   padding: 14px 18px;
   border-bottom: 1px solid #303030;
   font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
 .modern-alarms__table tbody tr:last-child td { border-bottom: 0; }
@@ -150,7 +151,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #f8f8f8;
+  color: var(--color-on-surface);
   font-weight: 600;
 }
 
@@ -161,7 +162,7 @@
   background: #9b9b9b;
 }
 
-.modern-alarms__machine-dot.is-critical { background: #ef4444; }
+.modern-alarms__machine-dot.is-critical { background: var(--color-error); }
 .modern-alarms__machine-dot.is-high { background: #e7b950; }
 
 .modern-alarms__message { color: #c9c9c9; }

@@ -1,48 +1,45 @@
 :root[data-theme='light'] {
   color-scheme: light;
 
-  /* Page background */
-  --color-background: #F8FAFC;
-  --color-background-secondary: #F1F5F9;
+  /* Material 3 light, seed Google Blue #0B57D0 */
+  --color-background: #F8FAFD;
+  --color-background-secondary: #E9EEF6;
 
-  /* Surfaces */
   --color-surface: #FFFFFF;
-  --color-surface-dim: #F8FAFC;
+  --color-surface-dim: #F8FAFD;
   --color-surface-container-lowest: #FFFFFF;
-  --color-surface-container-low: #F8FAFC;
-  --color-surface-container: #F1F5F9;
-  --color-surface-container-high: #E2E8F0;
-  --color-surface-container-highest: #CBD5E1;
+  --color-surface-container-low: #F3F6FB;
+  --color-surface-container: #E9EEF6;
+  --color-surface-container-high: #DDE3EA;
+  --color-surface-container-highest: #C4C7C5;
 
-  /* Borders */
-  --color-outline: rgba(0, 45, 114, 0.15);
-  --color-outline-variant: rgba(0, 45, 114, 0.08);
+  --color-outline: rgba(116, 119, 117, 0.40);
+  --color-outline-variant: rgba(11, 87, 208, 0.18);
 
-  /* Text */
-  --color-on-surface: #0F172A;
-  --color-on-surface-variant: #475569;
-  --color-text-primary: #0F172A;
-  --color-text-secondary: #475569;
-  --color-text-muted: #64748B;
-  --color-scrim: rgba(15, 23, 42, 0.45);
+  --color-on-surface: #1F1F1F;
+  --color-on-surface-variant: #444746;
+  --color-text-primary: #1F1F1F;
+  --color-text-secondary: #444746;
+  --color-text-muted: #747775;
+  --color-scrim: rgba(31, 31, 31, 0.45);
 
-  /* Accent - Corporate Navy Blue (#002D72) */
-  --color-primary: #002D72;
-  --color-primary-hover: #001C46;
-  --color-primary-light: rgba(0, 45, 114, 0.08);
-  --color-accent: #002D72;
-  --color-accent-container: rgba(0, 45, 114, 0.08);
+  --color-primary: #0B57D0;
+  --color-primary-hover: #0842A0;
+  --color-primary-light: rgba(11, 87, 208, 0.10);
+  --color-on-primary: #FFFFFF;
+  --color-accent: #0B57D0;
+  --color-accent-container: #D3E3FD;
 
-  /* Secondary Accent - FII Crimson Red */
-  --color-secondary: #D00B27;
-  --color-secondary-hover: #A0081E;
+  --color-secondary: #B3261E;
+  --color-secondary-hover: #8C1D18;
+  --color-on-secondary: #FFFFFF;
 
   /* Shadows */
-  --shadow-1: 0 1px 2px rgba(0, 45, 114, 0.05);
-  --shadow-2: 0 2px 4px rgba(0, 45, 114, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-3: 0 4px 12px rgba(0, 45, 114, 0.10), 0 2px 4px rgba(0, 0, 0, 0.05);
-  --shadow-4: 0 12px 24px rgba(0, 45, 114, 0.12), 0 4px 8px rgba(0, 0, 0, 0.05);
-  --shadow-5: 0 20px 32px rgba(0, 45, 114, 0.15), 0 8px 16px rgba(0, 0, 0, 0.05);
+  --shadow-1: 0 1px 2px rgba(11, 87, 208, 0.06);
+  --shadow-2: 0 1px 3px rgba(31, 31, 31, 0.08), 0 1px 2px rgba(31, 31, 31, 0.04);
+  --shadow-3: 0 4px 12px rgba(31, 31, 31, 0.10);
+  --shadow-4: 0 8px 20px rgba(31, 31, 31, 0.12);
+  --shadow-5: 0 16px 32px rgba(31, 31, 31, 0.14);
 
   /* Status containers */
   --color-running-container: rgba(16, 185, 129, 0.12);

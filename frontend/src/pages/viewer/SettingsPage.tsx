@@ -30,7 +30,7 @@ function SettingSection({ icon, title, children }: SettingSectionProps) {
 }
 
 const themeOptions = [
-  { value: 'dark' as const, label: 'Dark', color: '#ef4444' },
+  { value: 'dark' as const, label: 'Dark', color: 'var(--color-background)' },
   { value: 'light' as const, label: 'Light', color: '#e4e4e4' },
 ];
 

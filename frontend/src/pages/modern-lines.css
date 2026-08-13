@@ -1,14 +1,14 @@
 .modern-lines-page {
-  --modern-lines-surface: #1d1d1d;
-  --modern-lines-raised: #252525;
-  --modern-lines-border: #3d3d3d;
-  --modern-lines-text: #f8f8f8;
-  --modern-lines-muted: #a4a4a4;
-  --modern-lines-accent: #ef4444;
+  --modern-lines-surface: var(--color-surface-container);
+  --modern-lines-raised: var(--color-surface-container-high);
+  --modern-lines-border: var(--color-outline);
+  --modern-lines-text: var(--color-on-surface);
+  --modern-lines-muted: var(--color-text-muted);
+  --modern-lines-accent: var(--color-primary);
   width: 100%;
   min-height: 100%;
   color: var(--modern-lines-text);
-  font-family: "Be Vietnam Pro", system-ui, sans-serif;
+  font-family: var(--font-family-sans);
 }
 
 .modern-lines-page *,
@@ -25,7 +25,7 @@
 }
 
 .modern-lines-page :is(a, button, input, select, textarea):focus-visible {
-  outline: 2px solid #ff6567;
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 

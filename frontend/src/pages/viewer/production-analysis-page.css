@@ -1,12 +1,12 @@
 .production-analysis {
-  --pa-surface: #1d1d1d;
-  --pa-raised: #242424;
-  --pa-border: #3d3d3d;
-  --pa-text: #f8f8f8;
-  --pa-muted: #a4a4a4;
-  --pa-red: #ef4444;
-  --pa-amber: #ffb739;
-  --pa-green: #38b785;
+  --pa-surface: var(--color-surface-container);
+  --pa-raised: var(--color-surface-container-high);
+  --pa-border: var(--color-outline);
+  --pa-text: var(--color-on-surface);
+  --pa-muted: var(--color-text-muted);
+  --pa-red: var(--color-primary);
+  --pa-amber: var(--color-warn);
+  --pa-green: var(--color-running);
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -16,7 +16,7 @@
   gap: .9rem;
   overflow-y: auto;
   color: var(--pa-text);
-  font-family: "Be Vietnam Pro", system-ui, sans-serif;
+  font-family: var(--font-family-sans);
 }
 
 .production-analysis *,
@@ -30,7 +30,7 @@
 }
 
 .production-analysis button:focus-visible {
-  outline: 2px solid #ff6567;
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 

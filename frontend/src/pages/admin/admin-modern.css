@@ -1,16 +1,16 @@
 .admin-page {
-  --admin-surface: #1d1d1d;
-  --admin-raised: #242424;
-  --admin-border: #3d3d3d;
-  --admin-text: #f8f8f8;
-  --admin-muted: #a4a4a4;
-  --admin-red: #ef4444;
-  --admin-green: #38b785;
-  --admin-amber: #ffb739;
+  --admin-surface: var(--color-surface-container);
+  --admin-raised: var(--color-surface-container-high);
+  --admin-border: var(--color-outline);
+  --admin-text: var(--color-on-surface);
+  --admin-muted: var(--color-text-muted);
+  --admin-red: var(--color-primary);
+  --admin-green: var(--color-running);
+  --admin-amber: var(--color-warn);
   width: 100%;
   min-width: 0;
   color: var(--admin-text);
-  font-family: "Be Vietnam Pro", system-ui, sans-serif;
+  font-family: var(--font-family-sans);
 }
 
 .admin-page *,
@@ -20,7 +20,7 @@
 }
 
 .admin-page :is(button, input, select):focus-visible {
-  outline: 2px solid #ff6567;
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 

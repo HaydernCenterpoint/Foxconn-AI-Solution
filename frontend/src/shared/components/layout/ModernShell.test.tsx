@@ -175,6 +175,14 @@ describe('ModernShell', () => {
     expect(logo.getAttribute('src')).toContain('Foxconn_Industrial_Internet');
   });
 
+  it('exposes a skip link to main content', () => {
+    renderViewerShell();
+
+    const skip = screen.getByRole('link', { name: 'Skip to main content' });
+    expect(skip).toHaveAttribute('href', '#main-content');
+    expect(document.getElementById('main-content')).not.toBeNull();
+  });
+
   it('links operations users to the system and connector monitor', () => {
     useAuthStore.setState({
       token: 'token',

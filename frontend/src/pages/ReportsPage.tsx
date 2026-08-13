@@ -249,15 +249,15 @@ export default function ReportsPage() {
               <AreaChart data={chartData} margin={{ top: 16, right: 16, left: -16, bottom: 0 }}>
                 <defs>
                   <linearGradient id="reports-area-red" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.32} />
-                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.32} />
+                    <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 4" stroke="#343434" vertical={false} />
                 <XAxis dataKey="hour" stroke="#9a9a9a" tickLine={false} axisLine={false} />
                 <YAxis stroke="#9a9a9a" tickLine={false} axisLine={false} width={36} />
-                <Tooltip cursor={{ stroke: '#ef4444', strokeWidth: 1 }} contentStyle={{ background: '#252525', border: '1px solid #4a4a4a', borderRadius: 10 }} />
-                <Area type="monotone" name={t('reports.totalProduction')} dataKey="output" stroke="#ef4444" strokeWidth={2.5} fill="url(#reports-area-red)" dot={{ stroke: '#ef4444', strokeWidth: 1.5, fill: '#1d1d1d', r: 3 }} />
+                <Tooltip cursor={{ stroke: 'var(--color-primary)', strokeWidth: 1 }} contentStyle={{ background: 'var(--color-surface-container-high)', border: '1px solid var(--color-outline)', borderRadius: 10 }} />
+                <Area type="monotone" name={t('reports.totalProduction')} dataKey="output" stroke="var(--color-primary)" strokeWidth={2.5} fill="url(#reports-area-red)" dot={{ stroke: 'var(--color-primary)', strokeWidth: 1.5, fill: 'var(--color-surface-container)', r: 3 }} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -272,7 +272,7 @@ export default function ReportsPage() {
                 <YAxis dataKey="name" type="category" stroke="#9a9a9a" tickLine={false} axisLine={false} width={78} />
                 <Tooltip cursor={{ fill: 'rgba(239, 68, 68, .08)' }} contentStyle={{ background: '#252525', border: '1px solid #4a4a4a', borderRadius: 10 }} />
                 <Bar dataKey="value" radius={[0, 5, 5, 0]}>
-                  {defectChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color || '#ef4444'} />)}
+                  {defectChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color || 'var(--color-error)'} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>

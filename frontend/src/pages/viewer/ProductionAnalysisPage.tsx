@@ -136,9 +136,9 @@ export const ProductionAnalysisPage = () => {
       .filter((machine) => machine.approvalStatus === 'APPROVED' || machine.approvalStatus === 'approved')
       .map((machine) => {
         const oee = machine.lastPlcData?.production?.oee ?? machine.lastPlcData?.tags?.oee ?? 0;
-        let color = '#ef4444';
-        if (oee >= 90) color = '#38b785';
-        else if (oee >= 75) color = '#ffb739';
+        let color = 'var(--color-error)';
+        if (oee >= 90) color = 'var(--color-running)';
+        else if (oee >= 75) color = 'var(--color-warn)';
 
         return { name: machine.name, oee, color };
       });
@@ -151,7 +151,7 @@ export const ProductionAnalysisPage = () => {
       station: t('productionAnalysisPage.station1', 'S05 Lắp ráp'),
       count: Math.round(totalScrap * 0.45),
       ratio: totalScrap > 0 ? 41.8 : 0,
-      color: '#ef4444',
+      color: 'var(--color-error)',
     },
     {
       type: t('productionAnalysisPage.defect2', 'Sai lệch lực ép nắp'),
@@ -255,8 +255,8 @@ export const ProductionAnalysisPage = () => {
                 <AreaChart data={hourlyOutputData} margin={{ top: 10, right: 10, left: -12, bottom: 0 }}>
                   <defs>
                     <linearGradient id="production-analysis-output" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#ef4444" stopOpacity="0.28" />
-                      <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+                      <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.28" />
+                      <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
                     </linearGradient>
                   </defs>
                   <CartesianGrid vertical={false} stroke="#343434" strokeDasharray="3 3" />
@@ -277,10 +277,10 @@ export const ProductionAnalysisPage = () => {
                     name={t('productionAnalysisPage.actualOutput', 'Sản lượng thực tế')}
                     type="monotone"
                     dataKey="actual"
-                    stroke="#ef4444"
+                    stroke="var(--color-primary)"
                     strokeWidth={2}
                     fill="url(#production-analysis-output)"
-                    dot={{ r: 3, stroke: '#ef4444', strokeWidth: 2, fill: '#1d1d1d' }}
+                    dot={{ r: 3, stroke: 'var(--color-primary)', strokeWidth: 2, fill: 'var(--color-surface-container)' }}
                   />
                   <Area
                     name={t('productionAnalysisPage.targetOutput', 'Sản lượng mục tiêu')}

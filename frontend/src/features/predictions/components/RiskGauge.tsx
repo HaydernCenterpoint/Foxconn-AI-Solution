@@ -14,10 +14,10 @@ interface RiskGaugeProps {
 }
 
 const LEVEL_COLORS: Record<string, string> = {
-  critical: '#ef4444',
-  high: '#f97316',
-  medium: '#eab308',
-  low: '#22c55e',
+  critical: 'var(--color-error)',
+  high: 'var(--color-warn)',
+  medium: 'var(--color-warn)',
+  low: 'var(--color-running)',
 };
 
 const LEVEL_BADGE: Record<string, BadgeVariant> = {
