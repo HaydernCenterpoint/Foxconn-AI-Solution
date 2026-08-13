@@ -1,10 +1,10 @@
 .reports-page {
-  --report-surface: #1d1d1d;
-  --report-raised: #252525;
-  --report-border: #3d3d3d;
-  --report-text: #f8f8f8;
-  --report-muted: #a4a4a4;
-  --report-red: #ef4444;
+  --report-surface: var(--color-surface-container);
+  --report-raised: var(--color-surface-container-high);
+  --report-border: var(--color-outline);
+  --report-text: var(--color-on-surface);
+  --report-muted: var(--color-text-muted);
+  --report-red: var(--color-primary);
   color: var(--report-text);
   display: flex;
   flex: 1;
@@ -12,7 +12,7 @@
   gap: 16px;
   min-width: 0;
   padding-bottom: 8px;
-  font-family: "Be Vietnam Pro", system-ui, sans-serif;
+  font-family: var(--font-family-sans);
 }
 
 .reports-page *,
@@ -160,7 +160,7 @@
 }
 
 .reports-page__metric.is-success::before { background: #38b785; }
-.reports-page__metric.is-danger::before { background: var(--report-red); }
+.reports-page__metric.is-danger::before { background: var(--color-error); }
 .reports-page__metric.is-amber::before { background: #ffb739; }
 
 .reports-page__metric-icon {
@@ -200,7 +200,7 @@
 }
 
 .reports-page__meter i { display: block; height: 100%; border-radius: inherit; background: #38b785; }
-.reports-page__metric.is-danger .reports-page__meter i { background: var(--report-red); }
+.reports-page__metric.is-danger .reports-page__meter i { background: var(--color-error); }
 
 .reports-page__charts { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 16px; }
 
@@ -248,7 +248,7 @@
 
 .reports-page__empty { display: grid; min-height: 220px; padding: 32px; place-items: center; color: var(--report-muted); font-size: 14px; font-weight: 600; text-align: center; }
 
-.reports-page :is(button, select):focus-visible { outline: 2px solid #ff6567; outline-offset: 2px; }
+.reports-page :is(button, select):focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 
 @media (max-width: 1180px) { .reports-page__metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .reports-page__charts { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .reports-page__header { align-items: flex-start; flex-direction: column; } .reports-page__export { width: 100%; } .reports-page__metrics { grid-template-columns: 1fr; } .reports-page__filter { flex-basis: 100%; } }

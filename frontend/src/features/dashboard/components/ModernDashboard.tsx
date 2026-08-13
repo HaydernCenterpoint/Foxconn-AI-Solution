@@ -241,7 +241,7 @@ export function ModernDashboard({
                   <Bar dataKey="current" fill="#777777" radius={[3, 3, 0, 0]}>
                     {chartData.map((point) => (
                       <Cell
-                        fill={point.current === hourlyPeak ? '#ef4444' : '#777777'}
+                        fill={point.current === hourlyPeak ? 'var(--color-primary)' : 'var(--color-text-muted)'}
                         key={point.name}
                       />
                     ))}

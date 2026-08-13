@@ -46,6 +46,7 @@ export const en = {
       showPassword: 'Show password',
       hidePassword: 'Hide password',
       toggleSidebar: 'Collapse or expand sidebar',
+      skipToContent: 'Skip to main content',
       refresh: 'Refresh data',
       logout: 'Sign out',
     },

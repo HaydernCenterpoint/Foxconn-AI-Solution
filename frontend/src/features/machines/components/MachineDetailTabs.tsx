@@ -496,15 +496,15 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                       <AreaChart data={chartHistory}>
                         <defs>
                           <linearGradient id="colorProdHome" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#343434" />
                         <XAxis dataKey="time" stroke="#b0b0b0" fontSize={9} tickLine={false} />
                         <YAxis stroke="#b0b0b0" fontSize={9} tickLine={false} />
                         <Tooltip contentStyle={{ background: '#232323', border: '1px solid #454545', borderRadius: '6px' }} />
-                        <Area type="monotone" dataKey="production" stroke="#ef4444" fillOpacity={1} fill="url(#colorProdHome)" />
+                        <Area type="monotone" dataKey="production" stroke="var(--color-primary)" fillOpacity={1} fill="url(#colorProdHome)" />
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
@@ -784,7 +784,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                       <XAxis dataKey="hour" stroke="#b0b0b0" fontSize={9} tickLine={false} />
                       <YAxis stroke="#b0b0b0" fontSize={9} tickLine={false} />
                       <Tooltip contentStyle={{ background: '#232323', border: '1px solid #454545', borderRadius: '6px' }} />
-                      <Bar dataKey="qty" fill="#ef4444" radius={[3, 3, 0, 0]} />
+                      <Bar dataKey="qty" fill="var(--color-primary)" radius={[3, 3, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

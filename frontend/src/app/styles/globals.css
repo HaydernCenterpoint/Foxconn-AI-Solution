@@ -1,8 +1,7 @@
 /* ============================================================
-   Enterprise Dark — global base + component classes.
+   Material 3 / Google Blue — global base + component classes.
    All colors reference tokens from theme-tokens.css.
-   "Normal = quiet": resting surfaces are flat; glow is reserved
-   for error/warn only. See THIET-KE-ENTERPRISE-DARK.md.
+   Resting surfaces are flat; glow is reserved for error/warn only.
    ============================================================ */
 html, body, #root {
   height: 100%;
@@ -1530,6 +1529,11 @@ option {
   color: var(--color-on-primary);
 }
 
+.ui-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 .ui-button__label {
   display: inline-flex;
   align-items: center;
@@ -1654,6 +1658,26 @@ option {
 .ui-data-state--loading .ui-data-state__icon {
   background: var(--color-primary-light);
   color: var(--color-primary);
+}
+
+.ui-data-state__skeleton {
+  display: grid;
+  width: min(100%, 22rem);
+  gap: var(--spacing-sm);
+}
+
+.ui-data-state__skeleton-bar {
+  display: block;
+  height: 0.75rem;
+  width: 100%;
+}
+
+.ui-data-state__skeleton-bar--mid {
+  width: 72%;
+}
+
+.ui-data-state__skeleton-bar--short {
+  width: 44%;
 }
 
 .ui-data-state__title,
@@ -1841,6 +1865,11 @@ option {
   border-radius: var(--radius-large);
   background: var(--color-surface);
   box-shadow: var(--shadow-5);
+}
+
+.ui-modal:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .ui-modal__header,
@@ -2080,11 +2109,35 @@ option {
 
 /* Flat replacement for the former cyber panel */
 .ui-tech-panel {
+  --tech-panel-border: var(--color-outline);
+  --tech-panel-background: var(--color-surface-container);
+  --tech-panel-accent: var(--color-primary);
   overflow: hidden;
   border: 1px solid var(--tech-panel-border);
-  border-radius: var(--radius-medium);
+  border-radius: var(--radius-large);
   background: var(--tech-panel-background);
   box-shadow: var(--shadow-1);
+}
+
+.ui-tech-panel--error {
+  --tech-panel-border: var(--color-error-container);
+  --tech-panel-background: var(--color-error-container);
+  --tech-panel-accent: var(--color-error);
+  border-left: 4px solid var(--color-error);
+}
+
+.ui-tech-panel--warning {
+  --tech-panel-border: var(--color-warn-container);
+  --tech-panel-background: var(--color-warn-container);
+  --tech-panel-accent: var(--color-warn);
+  border-left: 4px solid var(--color-warn);
+}
+
+.ui-tech-panel--info {
+  --tech-panel-border: var(--color-information-container);
+  --tech-panel-background: var(--color-information-container);
+  --tech-panel-accent: var(--color-information);
+  border-left: 4px solid var(--color-information);
 }
 
 .ui-tech-panel__header {

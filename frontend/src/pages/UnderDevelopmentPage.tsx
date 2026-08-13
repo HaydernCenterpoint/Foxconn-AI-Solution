@@ -8,7 +8,7 @@ export default function UnderDevelopmentPage({ title }: { title: string }) {
     <div className="flex min-h-[70dvh] w-full items-center justify-center p-6">
       <section className="w-full max-w-lg rounded-3xl border border-[#3b3b3b] bg-[#1e1e1e] p-8 text-center shadow-[0_20px_44px_rgba(0,0,0,0.24)] sm:p-10">
         <div className="mb-6 flex justify-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#ef4444]/45 bg-[#ef4444]/10 text-[#ff8a8c]">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/45 bg-primary-light text-primary">
             <Wrench className="h-8 w-8 stroke-[1.5]" />
           </div>
         </div>

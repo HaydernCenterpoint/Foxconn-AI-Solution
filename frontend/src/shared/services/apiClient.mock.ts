@@ -293,7 +293,7 @@ function getMockReport(): Record<string, unknown> {
     },
     chartData,
     defectChartData: [
-      { name: 'Kích thước', value: 128, color: '#ef4444' },
+      { name: 'Kích thước', value: 128, color: 'var(--color-error)' },
       { name: 'Bề mặt', value: 86, color: '#f59e0b' },
       { name: 'Mối hàn', value: 61, color: '#eab308' },
       { name: 'Lắp ráp', value: 39, color: '#22c55e' },

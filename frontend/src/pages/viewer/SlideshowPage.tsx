@@ -1002,7 +1002,7 @@ export const SlideshowPage = () => {
 
   if (isDashboardLoading || isLinesLoading) {
     return (
-      <div className="modern-slideshow__loading flex h-screen w-screen items-center justify-center bg-[#070707] text-[#ef4444]">
+      <div className="modern-slideshow__loading flex h-screen w-screen items-center justify-center bg-background text-primary">
         <div className="flex flex-col items-center gap-3">
           <RefreshCw className="h-10 w-10 animate-spin" />
           <span className="text-sm font-semibold tracking-wider uppercase">{t('dashboard.loading', 'Khởi tạo màn hình trình chiếu...')}</span>
@@ -1194,7 +1194,7 @@ export const SlideshowPage = () => {
                 `${selectedMetrics.yieldRate.toFixed(1)}%`,
                 'Tỷ lệ đạt',
                 'TỶ LỆ ĐẠT',
-                '#ef4444'
+                'var(--color-primary)'
               )}
               {renderMetricCard(
                 selectedMetrics.uph,
@@ -1208,7 +1208,7 @@ export const SlideshowPage = () => {
                 `${selectedMetrics.oee.toFixed(1)}%`,
                 'Hiệu suất thiết bị',
                 'OEE',
-                '#ef4444'
+                'var(--color-primary)'
               )}
             </div>
           </SlideshowFuturisticCard>
@@ -1230,7 +1230,7 @@ export const SlideshowPage = () => {
             <div className="flex-1 min-h-0 w-full flex flex-col justify-between">
               <div className="flex justify-center items-center gap-6 text-[12px] font-bold mb-2 select-none">
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 bg-[#ef4444] rounded-sm" />
+                  <div className="w-3 h-3 bg-primary rounded-sm" />
                   <span className="text-slate-300">{t('slideshow.outputPcs')}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -1247,7 +1247,7 @@ export const SlideshowPage = () => {
                     <XAxis dataKey="date" stroke="#a4a4a4" fontSize={12} tickLine={false} />
                     <YAxis yAxisId="left" stroke="#a4a4a4" fontSize={12} tickLine={false} />
                     <YAxis yAxisId="right" orientation="right" stroke="#a4a4a4" fontSize={12} tickLine={false} domain={[0, 150]} />
-                    <Bar yAxisId="left" dataKey="output" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={28} />
+                    <Bar yAxisId="left" dataKey="output" fill="var(--color-primary)" radius={[4, 4, 0, 0]} barSize={28} />
                     <Line yAxisId="right" dataKey="rate" stroke="#00e676" strokeWidth={1.8} dot={{ fill: '#00e676', r: 2.5 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
@@ -1279,7 +1279,7 @@ export const SlideshowPage = () => {
                   <PolarGrid stroke="rgba(255, 255, 255, 0.18)" />
                   <PolarAngleAxis dataKey="subject" stroke="#a4a4a4" fontSize={12} />
                   <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="rgba(255, 255, 255, 0.15)" tick={false} />
-                  <Radar name="Indicators" dataKey="score" stroke="#ef4444" fill="#ef4444" fillOpacity={0.22} />
+                  <Radar name="Indicators" dataKey="score" stroke="var(--color-primary)" fill="var(--color-primary)" fillOpacity={0.22} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>

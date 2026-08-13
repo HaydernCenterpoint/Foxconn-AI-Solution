@@ -1,32 +1,8 @@
 .machine-detail {
-  --color-primary: #ef4444;
-  --color-primary-hover: #f56565;
-  --color-primary-light: #3b2025;
-  --color-on-primary: #ffffff;
-  --color-surface: #1d1d1d;
-  --color-surface-dim: #242424;
-  --color-surface-1: #1d1d1d;
-  --color-surface-2: #242424;
-  --color-surface-3: #292929;
-  --color-surface-4: #303030;
-  --color-surface-container-lowest: #1d1d1d;
-  --color-surface-container-low: #202020;
-  --color-surface-container: #242424;
-  --color-surface-container-high: #292929;
-  --color-surface-container-highest: #303030;
-  --color-background: #050505;
-  --color-background-secondary: #121212;
-  --color-on-surface: #f8f8f8;
-  --color-on-surface-variant: #a4a4a4;
-  --color-outline: #3d3d3d;
-  --color-outline-variant: #555555;
-  --color-border: #3d3d3d;
-  --color-border-subtle: #454545;
-  --color-border-strong: #555555;
   width: 100%;
   min-width: 0;
-  color: #f8f8f8;
-  font-family: "Be Vietnam Pro", system-ui, sans-serif;
+  color: var(--color-on-surface);
+  font-family: var(--font-family-sans);
 }
 
 .machine-detail *,
@@ -36,7 +12,7 @@
 }
 
 .machine-detail :is(button, input, select, textarea):focus-visible {
-  outline: 2px solid #ff6567;
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
@@ -83,7 +59,7 @@
 }
 
 .machine-detail__back-button:hover {
-  border-color: #ef4444;
+  border-color: var(--color-primary);
   background: #302020;
 }
 
@@ -209,7 +185,7 @@
   width: 2.8rem;
   height: 2.8rem;
   border: 3px solid #3d3d3d;
-  border-top-color: #ef4444;
+  border-top-color: var(--color-primary);
   border-radius: 50%;
   animation: machine-detail-spin .8s linear infinite;
 }
@@ -243,9 +219,9 @@
 .machine-detail__primary-button {
   margin-top: 1rem;
   padding: .6rem .85rem;
-  border-color: #ef4444;
+  border-color: var(--color-primary);
   border-radius: .7rem;
-  background: #ef4444;
+  background: var(--color-primary);
   color: #fff;
   font-size: .82rem;
   font-weight: 650;
@@ -297,7 +273,7 @@
 }
 
 .machine-detail-tabs__alarm-icon {
-  color: #ef4444 !important;
+  color: var(--color-error) !important;
 }
 
 .machine-detail-tabs__alarm-count {
@@ -307,7 +283,7 @@
   place-items: center;
   padding: 0 .25rem;
   border-radius: 999px;
-  background: #ef4444;
+  background: var(--color-error);
   color: #fff;
   font-size: .62rem;
   font-weight: 700;
@@ -333,7 +309,7 @@
 
 .machine-detail-tabs [class*="text-[#2F7BFF]"],
 .machine-detail-tabs [class*="text-[#20DFF3]"] {
-  color: #ef4444 !important;
+  color: var(--color-primary) !important;
 }
 
 .machine-detail-tabs [class*="text-[#18d7ff]"],
@@ -360,7 +336,7 @@
 
 .machine-detail-tabs button[class*="bg-[#2F7BFF]"],
 .machine-detail-tabs button[class*="bg-[#20DFF3]"] {
-  background-color: #ef4444 !important;
+  background-color: var(--color-primary) !important;
 }
 
 .machine-detail-tabs [class*="bg-[#18d7ff]"],
@@ -399,7 +375,7 @@
 }
 
 .machine-detail-tabs [class*="border-t-[#2F7BFF]"] {
-  border-top-color: #ef4444 !important;
+  border-top-color: var(--color-primary) !important;
 }
 
 .machine-detail-tabs [class*="border-t-[#18d7ff]"] {
@@ -415,7 +391,7 @@
 }
 
 .machine-detail-tabs [class*="border-t-[#ff5c6c]"] {
-  border-top-color: #ef4444 !important;
+  border-top-color: var(--color-primary) !important;
 }
 
 .machine-detail-tabs [class*="hover:bg-[#20DFF3]"]:hover,
@@ -434,7 +410,7 @@
 }
 
 .machine-detail-tabs :is(input, select, textarea):focus {
-  border-color: #ef4444 !important;
+  border-color: var(--color-primary) !important;
 }
 
 .machine-detail-tabs table thead tr {
