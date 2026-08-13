@@ -43,6 +43,7 @@ param(
     [switch]$SkipOdysseus,
     [switch]$SkipTimescale,
     [switch]$SkipCepStaging,
+    [switch]$SkipFrontendBuild,
     [switch]$WithClientPlc
 )
 
@@ -372,9 +373,14 @@ function Start-LoggedProcess {
 
         $stdoutPath = Join-Path $runtimeLogs "$Name.out.log"
         $stderrPath = Join-Path $runtimeLogs "$Name.err.log"
+        $quotedArgs = foreach ($arg in $ArgumentList) {
+            $text = [string]$arg
+            if ($text -notmatch '[\s"]') { $text }
+            else { '"' + $text.Replace('"', '\"') + '"' }
+        }
         $startParameters = @{
             FilePath = $FilePath
-            ArgumentList = $ArgumentList
+            ArgumentList = ($quotedArgs -join ' ')
             WorkingDirectory = $WorkingDirectory
             RedirectStandardOutput = $stdoutPath
             RedirectStandardError = $stderrPath
@@ -647,6 +653,13 @@ $frontendEnvironment = @{
     VITE_ODYSSEUS_URL = $odysseusUrl
     VITE_FII_DATA_FUSION_URL = $odfWebUrl
 }
+$frontendProcess = @{
+    Name = 'frontend'
+    FilePath = $npm
+    WorkingDirectory = $repositoryRoot
+    Environment = $frontendEnvironment
+}
+
 $previousFrontendEnvironment = @{}
 try {
     foreach ($entry in $frontendEnvironment.GetEnumerator()) {
@@ -654,8 +667,21 @@ try {
         [Environment]::SetEnvironmentVariable($entry.Key, [string]$entry.Value, 'Process')
     }
 
-    Write-Host '[build] Operations UI production bundle' -ForegroundColor DarkCyan
-    & $npm --prefix $frontendRoot run build -- --mode full
+    if ($SkipFrontendBuild) {
+        Write-Host '[build] Operations UI vite bundle (skip tsc)' -ForegroundColor DarkCyan
+        $viteJs = Join-Path $frontendRoot 'node_modules/vite/bin/vite.js'
+        Push-Location $frontendRoot
+        try {
+            & node $viteJs build --mode full
+        }
+        finally {
+            Pop-Location
+        }
+    }
+    else {
+        Write-Host '[build] Operations UI production bundle' -ForegroundColor DarkCyan
+        & $npm --prefix $frontendRoot run build -- --mode full
+    }
     if ($LASTEXITCODE -ne 0) {
         throw "Frontend production build exited with code $LASTEXITCODE."
     }
@@ -666,12 +692,10 @@ finally {
     }
 }
 
-$frontendProcess = @{
-    Name = 'frontend'
-    FilePath = $npm
-    ArgumentList = @('--prefix', $frontendRoot, 'run', 'preview', '--', '--host', '127.0.0.1', '--port', [string]$FrontendPort, '--strictPort')
-    WorkingDirectory = $repositoryRoot
-}
+$frontendProcess.ArgumentList = @(
+    '--prefix', $frontendRoot, 'run', 'preview', '--',
+    '--host', '127.0.0.1', '--port', [string]$FrontendPort, '--strictPort'
+)
 $null = Start-LoggedProcess @frontendProcess
 Wait-HttpReady -Name 'Operations UI' -Uri $frontendUrl
 

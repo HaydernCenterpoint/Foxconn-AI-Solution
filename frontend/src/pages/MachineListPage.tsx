@@ -523,7 +523,7 @@ export const MachineListPage = () => {
                         <div className="machine-list-page__actions">
                           <button
                             type="button"
-                            onClick={() => navigate(`/machines/${machine.id}`)}
+                            onClick={() => navigate(machine.id)}
                             title={t('common.actions.view')}
                             aria-label={t('common.actions.view')}
                           >

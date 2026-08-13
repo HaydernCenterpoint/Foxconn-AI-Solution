@@ -132,7 +132,7 @@ Frontend (React SPA)
 
 **Release decision:** **NO-GO / staging candidate** — local evidence proves implementation behavior, not production readiness.
 
-**Integration W8:** ✅ local no-fixture closed at `046d98e` — disposable Docker stack passed migrations through `0006`, direct MQTT telemetry, PostgreSQL/Timescale/CEP checks, live alert acknowledgement, and Playwright 1/1. Evidence: `docs/release-evidence/2026-08-01-integration-w8-local.md`.
+**Integration W8:** ✅ local no-fixture closed 2026-08-13 — disposable Docker stack passed migrations through `0006`, direct MQTT telemetry, PostgreSQL/Timescale/CEP checks, live alert acknowledgement, and Playwright 1/1. Evidence: `docs/release-evidence/2026-08-01-integration-w8-local.md`.
 
 ### ClientPLC — WPF Desktop App
 
@@ -155,7 +155,7 @@ Agent C   [Asset schema+seed][Asset CRUD API][Health score][Access control]
 Agent D   [Mock API+UI shell][Asset Browser][Dashboards+Charts][E2E+Perf+Sec test]
 
 Checkpoint:  ▲Kickoff        ▲Sync W2        ▲Sync W5        ▲Integration W8  ▲Go-live W10
-             ✅ Done          ✅ Done          🟡 Local pass    ⬜ Planned        ⬜ Needs staging
+             ✅ Done          ✅ Done          🟡 Local pass    ✅ Local pass    ⬜ Needs staging
 ```
 
 ### Gate & tiêu chí ra quyết định
@@ -165,7 +165,7 @@ Checkpoint:  ▲Kickoff        ▲Sync W2        ▲Sync W5        ▲Integratio
 | Shared Contracts | Tuần 1–2 | Schema asset/telemetry/event, API convention versioned | ✅ Hoàn tất |
 | ODF Gate 2 | Trước Tuần 1 | Production-like rehearsal, rollback config, review artifact | ✅ Hoàn tất |
 | Sync W5 | Tuần 5–6 (hiện tại) | Event/alert + Asset CRUD + health trên integration path; UI dùng API thật; E2E happy-path pass | 🟡 Local pass — staging còn mở |
-| Integration W8 | Tuần 8 | PLC mock → data → event/AI → backend → UI end-to-end | ✅ Local pass — `046d98e`, managed staging remains separate |
+| Integration W8 | Tuần 8 | PLC mock → data → event/AI → backend → UI end-to-end | ✅ Local pass — 2026-08-13 evidence, managed staging remains separate |
 | Go-live W10 | Tuần 9–10 | Managed backup/restore, ingress, TLS/mTLS, secret delivery, retention, connector thật, reviewer độc lập | ⬜ Managed staging |
 
 ---
@@ -174,8 +174,7 @@ Checkpoint:  ▲Kickoff        ▲Sync W2        ▲Sync W5        ▲Integratio
 
 ### 5.1. Ngay bây giờ (Now)
 
-1. **Publish W8 review unit** — push `046d98e`, mở PR riêng và chờ CI/review; không gộp 42 staged WIP không liên quan
-2. **Handoff managed staging** — cấp hostname HTTPS, ingress CIDR, artifact root/hosts và deployment owner
+1. **Handoff managed staging** — cấp hostname HTTPS, ingress CIDR, artifact root/hosts và deployment owner
 
 ### 5.2. Managed staging (Then)
 
