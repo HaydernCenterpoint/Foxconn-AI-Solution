@@ -2,31 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
-  Activity,
-  ArrowUpRight,
-  Bell,
-  Bot,
-  CalendarDays,
-  ChevronDown,
-  ClipboardList,
-  Clock3,
-  DatabaseZap,
-  Factory,
-  FileText,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  MonitorCog,
-  RefreshCw,
-  Settings2,
-  ShieldAlert,
-  ShieldCheck,
-  Tv,
-  Users,
-  X,
-  type LucideIcon,
-} from 'lucide-react';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 import { queryKeys } from '../../../app/queryKeys';
 import { queryTimings } from '../../../app/queryOptions';
 import { queryClient } from '../../../app/queryClient';
@@ -48,7 +24,7 @@ interface ModernShellProps {
 interface ShellNavigationItem {
   to: string;
   labelKey: string;
-  icon: LucideIcon;
+  icon: string;
 }
 
 function resolveServiceUrl(envUrl: string | undefined, defaultPort: number): string {
@@ -80,32 +56,32 @@ function resolveServiceUrl(envUrl: string | undefined, defaultPort: number): str
 const DEMO_MODE = import.meta.env.MODE === 'demo';
 
 const viewerNavigation: ShellNavigationItem[] = [
-  { to: '/', labelKey: 'navigation.overview', icon: LayoutDashboard },
-  { to: '/lines', labelKey: 'navigation.productionLines', icon: Factory },
-  { to: '/machines', labelKey: 'navigation.equipment', icon: MonitorCog },
-  { to: '/assets', labelKey: 'assetBrowser.title', icon: DatabaseZap },
-  { to: '/alarms', labelKey: 'navigation.alarms', icon: Bell },
-  { to: '/alerts', labelKey: 'navigation.alerts', icon: ShieldAlert },
-  { to: '/production-analysis', labelKey: 'navigation.productionAnalysis', icon: FileText },
-  { to: '/slideshow', labelKey: 'common.mode.slideshow', icon: Tv },
-  { to: '/settings', labelKey: 'navigation.settings', icon: Settings2 },
+  { to: '/', labelKey: 'navigation.overview', icon: 'dashboard' },
+  { to: '/lines', labelKey: 'navigation.productionLines', icon: 'factory' },
+  { to: '/machines', labelKey: 'navigation.equipment', icon: 'display_settings' },
+  { to: '/assets', labelKey: 'assetBrowser.title', icon: 'database' },
+  { to: '/alarms', labelKey: 'navigation.alarms', icon: 'notifications' },
+  { to: '/alerts', labelKey: 'navigation.alerts', icon: 'gpp_maybe' },
+  { to: '/production-analysis', labelKey: 'navigation.productionAnalysis', icon: 'description' },
+  { to: '/slideshow', labelKey: 'common.mode.slideshow', icon: 'tv' },
+  { to: '/settings', labelKey: 'navigation.settings', icon: 'settings' },
 ];
 
 const adminNavigation: ShellNavigationItem[] = [
-  { to: '/admin', labelKey: 'navigation.overview', icon: LayoutDashboard },
-  { to: '/admin/lines', labelKey: 'navigation.productionLines', icon: Factory },
-  { to: '/admin/machines', labelKey: 'navigation.equipment', icon: MonitorCog },
-  { to: '/admin/assets', labelKey: 'assetBrowser.title', icon: DatabaseZap },
-  { to: '/admin/alarms', labelKey: 'navigation.alarms', icon: Bell },
-  { to: '/admin/alerts', labelKey: 'navigation.alerts', icon: ShieldAlert },
-  { to: '/admin/reports', labelKey: 'navigation.reports', icon: FileText },
-  { to: '/admin/system', labelKey: 'titles.system', icon: Activity },
-  { to: '/admin/settings', labelKey: 'navigation.settings', icon: Settings2 },
+  { to: '/admin', labelKey: 'navigation.overview', icon: 'dashboard' },
+  { to: '/admin/lines', labelKey: 'navigation.productionLines', icon: 'factory' },
+  { to: '/admin/machines', labelKey: 'navigation.equipment', icon: 'display_settings' },
+  { to: '/admin/assets', labelKey: 'assetBrowser.title', icon: 'database' },
+  { to: '/admin/alarms', labelKey: 'navigation.alarms', icon: 'notifications' },
+  { to: '/admin/alerts', labelKey: 'navigation.alerts', icon: 'gpp_maybe' },
+  { to: '/admin/reports', labelKey: 'navigation.reports', icon: 'description' },
+  { to: '/admin/system', labelKey: 'titles.system', icon: 'monitoring' },
+  { to: '/admin/settings', labelKey: 'navigation.settings', icon: 'settings' },
 ];
 
 const adminOnlyNavigation: ShellNavigationItem[] = [
-  { to: '/admin/users', labelKey: 'navigation.users', icon: Users },
-  { to: '/admin/audit-logs', labelKey: 'navigation.auditLogs', icon: ClipboardList },
+  { to: '/admin/users', labelKey: 'navigation.users', icon: 'group' },
+  { to: '/admin/audit-logs', labelKey: 'navigation.auditLogs', icon: 'assignment' },
 ];
 
 const FOCUSABLE_SIDEBAR_SELECTOR = [
@@ -408,7 +384,7 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
             aria-label={t('common.aria.close')}
             onClick={() => setMobileNavigationOpen(false)}
           >
-            <X size={18} aria-hidden="true" />
+            <MaterialSymbol name="close" size={18} />
           </button>
         </div>
 
@@ -418,7 +394,6 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
 
         <nav className="modern-shell__navigation" aria-label={t('common.aria.mainNavigation')}>
           {navigation.map((item) => {
-            const Icon = item.icon;
             const label = t(item.labelKey);
             const isAlarmRoute = item.to.endsWith('/alarms');
 
@@ -434,12 +409,16 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
                 }
                 onClick={() => setMobileNavigationOpen(false)}
               >
-                <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
-                <span className="modern-shell__nav-label">{label}</span>
-                {isAlarmRoute && activeAlarmCount > 0 && (
-                  <span className="modern-shell__nav-badge" aria-label={`${activeAlarmCount}`}>
-                    {activeAlarmCount > 99 ? '99+' : activeAlarmCount}
-                  </span>
+                {({ isActive }) => (
+                  <>
+                    <MaterialSymbol name={item.icon} size={18} filled={isActive} />
+                    <span className="modern-shell__nav-label">{label}</span>
+                    {isAlarmRoute && activeAlarmCount > 0 && (
+                      <span className="modern-shell__nav-badge" aria-label={`${activeAlarmCount}`}>
+                        {activeAlarmCount > 99 ? '99+' : activeAlarmCount}
+                      </span>
+                    )}
+                  </>
                 )}
               </NavLink>
             );
@@ -458,13 +437,13 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
               onClick={() => setMobileNavigationOpen(false)}
             >
               <span className="modern-shell__external-icon-wrap">
-                <Bot size={20} strokeWidth={2.1} aria-hidden="true" />
+                <MaterialSymbol name="smart_toy" size={20} />
               </span>
               <span className="modern-shell__nav-label-wrap">
                 <span className="modern-shell__nav-label">{t('navigation.fiiAssistant')}</span>
                 <small className="modern-shell__external-subtitle">{t('navigation.fiiAssistantHint')}</small>
               </span>
-              <ArrowUpRight className="modern-shell__nav-external-icon" size={15} strokeWidth={1.9} aria-hidden="true" />
+              <MaterialSymbol name="open_in_new" className="modern-shell__nav-external-icon" size={15} />
             </a>
 
             <a
@@ -477,13 +456,13 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
               onClick={() => setMobileNavigationOpen(false)}
             >
               <span className="modern-shell__external-icon-wrap">
-                <DatabaseZap size={20} strokeWidth={2.1} aria-hidden="true" />
+                <MaterialSymbol name="hub" size={20} />
               </span>
               <span className="modern-shell__nav-label-wrap">
                 <span className="modern-shell__nav-label">{t('navigation.fiiDataFusion')}</span>
                 <small className="modern-shell__external-subtitle">{t('navigation.fiiDataFusionHint')}</small>
               </span>
-              <ArrowUpRight className="modern-shell__nav-external-icon" size={15} strokeWidth={1.9} aria-hidden="true" />
+              <MaterialSymbol name="open_in_new" className="modern-shell__nav-external-icon" size={15} />
             </a>
           </div>
 
@@ -510,7 +489,7 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
             aria-expanded={mobileNavigationOpen}
             onClick={() => setMobileNavigationOpen(true)}
           >
-            <Menu size={19} aria-hidden="true" />
+            <MaterialSymbol name="menu" size={19} />
           </button>
 
           <div className="modern-shell__welcome">
@@ -523,11 +502,11 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
             aria-label={`${formattedDate}, ${formattedTime}. ${shiftStatus.label}: ${shiftStatus.schedule}`}
           >
             <span className="modern-shell__date">
-              <CalendarDays size={16} strokeWidth={1.75} aria-hidden="true" />
+              <MaterialSymbol name="calendar_month" size={16} />
               {formattedDate}
             </span>
             <time className="modern-shell__clock" dateTime={currentTime.toISOString()}>
-              <Clock3 size={17} strokeWidth={1.75} aria-hidden="true" />
+              <MaterialSymbol name="schedule" size={17} />
               {formattedTime}
             </time>
             <span className={`modern-shell__shift modern-shell__shift--${shiftStatus.tone}`}>
@@ -548,7 +527,7 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
               disabled={isRefreshing}
               onClick={() => void handleRefresh()}
             >
-              <RefreshCw size={18} strokeWidth={1.75} aria-hidden="true" />
+              <MaterialSymbol name="refresh" size={18} />
             </button>
 
             <LanguageSelector compact className="modern-shell__language-selector" />
@@ -564,7 +543,7 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
                   setAccountOpen(false);
                 }}
               >
-                <Bell size={18} strokeWidth={1.75} aria-hidden="true" />
+                <MaterialSymbol name="notifications" size={18} />
                 {unreadNotifications > 0 && (
                   <span className="modern-shell__notification-count" aria-hidden="true">
                     {unreadNotifications > 99 ? '99+' : unreadNotifications}
@@ -620,7 +599,7 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
                   <strong>{displayName}</strong>
                   <small>{roleLabel}</small>
                 </span>
-                <ChevronDown size={15} aria-hidden="true" />
+                <MaterialSymbol name="expand_more" size={15} />
               </button>
 
               {accountOpen && (
@@ -638,7 +617,7 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
                     className="modern-shell__account-link"
                     onClick={() => setAccountOpen(false)}
                   >
-                    <Settings2 size={16} aria-hidden="true" />
+                    <MaterialSymbol name="settings" size={16} />
                     <span>{t('navigation.settings')}</span>
                   </NavLink>
 
@@ -648,14 +627,14 @@ export function ModernShell({ viewer = false }: ModernShellProps) {
                       className="modern-shell__account-link"
                       onClick={() => setAccountOpen(false)}
                     >
-                      <ShieldCheck size={16} aria-hidden="true" />
+                      <MaterialSymbol name="verified_user" size={16} />
                       <span>{t('navigation.users')}</span>
                     </NavLink>
                   )}
 
                   {isAuthenticated && (
                     <button type="button" className="modern-shell__logout" onClick={() => void handleLogout()}>
-                      <LogOut size={16} aria-hidden="true" />
+                      <MaterialSymbol name="logout" size={16} />
                       <span>{t('common.actions.logout')}</span>
                     </button>
                   )}

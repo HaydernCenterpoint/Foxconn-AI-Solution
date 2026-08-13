@@ -2,7 +2,7 @@
 
 ## Source of truth
 - Status: Active
-- Last refreshed: 2026-08-12
+- Last refreshed: 2026-08-13
 - Primary product surfaces: Operations (`frontend/`), ODF Explorer/Canvas, Odysseus chrome
 - Evidence reviewed: `theme-tokens.css`, `modern-shell.css`, ODF `premium.css`, Odysseus `style.css`
 - Direction: **Google Material 3** (Cloud Console + Gemini dark), not Cyber Industrial, not charcoal/red ModernShell
@@ -14,7 +14,7 @@
 
 ## Product goals
 - Goals: one Material 3 token family across Operations, ODF, Odysseus chrome.
-- Non-goals: `@material/web` rewrite; Lucide → Material Symbols in this pass; restyle Odysseus 40k-line editor; merge three SPAs; Google logo.
+- Non-goals: `@material/web` rewrite; restyle Odysseus 40k-line editor; merge three SPAs; Google logo.
 - Success: shell looks like Cloud Console / Gemini, not a sci-fi HUD.
 
 ## Personas and jobs
@@ -81,9 +81,9 @@ Status (unchanged function): running `#10B981`, warn `#F59E0B`, idle `#8AB4F8`, 
 ## Components
 - Reuse: `theme-tokens.css` names. Repoint hex to M3 Google.
 - Change: `modern-shell.css` maps `--modern-shell-*` to tokens; delete glass/red premium layer.
-- Later: Material Symbols icon pass.
-- Done: ODF `--accent: #0B57D0`; Odysseus default `dark`/`light` + `:root` chrome.
-- Icons: keep Lucide this pass.
+- Later: Material Symbols on remaining page Lucide icons.
+- Done: ODF `--accent: #0B57D0`; Odysseus default `dark`/`light` + `:root` chrome; Operations chrome uses Material Symbols.
+- Icons: Material Symbols Outlined on Operations shell; Lucide remains on pages this pass.
 
 ## Accessibility
 - WCAG AA. Focus ring `0 0 0 3px rgba(11, 87, 208, 0.40)`.
@@ -106,4 +106,5 @@ Status (unchanged function): running `#10B981`, warn `#F59E0B`, idle `#8AB4F8`, 
 ## Open questions
 - [x] Visual family: Google Material 3.
 - [x] ODF + Odysseus token pass (after Operations shell).
-- [ ] Material Symbols icon pass.
+- [x] Material Symbols on Operations chrome (ModernShell).
+- [ ] Material Symbols on remaining Operations pages.
