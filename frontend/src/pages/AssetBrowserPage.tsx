@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
+import { MaterialSymbol } from '../shared/components/ui/MaterialSymbol';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Boxes, FileText, FolderTree, Pencil, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
+
 import { useTranslation } from 'react-i18next';
 import { queryKeys } from '../app/queryKeys';
 import { alarmsApi } from '../features/alarms/services/alarms.api';
@@ -100,7 +101,7 @@ function AssetTree({
               aria-pressed={selected}
               onClick={() => onSelect(node.id)}
             >
-              <Boxes size={16} aria-hidden="true" className="shrink-0" />
+              <MaterialSymbol name="inventory_2" size={16} className="shrink-0" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium">{node.name}</span>
                 <span className="block truncate font-mono text-xs text-text-muted">{node.code}</span>
@@ -309,7 +310,7 @@ export default function AssetBrowserPage() {
             variant="secondary"
             size="sm"
             loading={treeQuery.isFetching}
-            startIcon={<RefreshCw size={16} aria-hidden="true" />}
+            startIcon={<MaterialSymbol name="refresh" size={16} />}
             onClick={() => { void refreshTree(); }}
           >
             {t('common.actions.refresh')}
@@ -324,11 +325,11 @@ export default function AssetBrowserPage() {
               <h2 className="title-small text-text-primary">{t('assetBrowser.treeTitle')}</h2>
               <p className="mt-1 text-xs text-text-muted">{t('assetBrowser.treeDescription')}</p>
             </div>
-            <FolderTree size={18} aria-hidden="true" className="text-text-muted" />
+            <MaterialSymbol name="account_tree" size={18} className="text-text-muted" />
           </div>
           <div className="border-b border-border px-4 py-3">
             <label className="flex items-center gap-2 rounded-lg border border-border bg-surface-container-low px-3 py-2">
-              <Search size={16} aria-hidden="true" className="text-text-muted" />
+              <MaterialSymbol name="search" size={16} className="text-text-muted" />
               <span className="sr-only">{t('assetBrowser.search')}</span>
               <input
                 value={search}
@@ -438,12 +439,12 @@ export default function AssetBrowserPage() {
                   <p className="mt-3 text-xs text-text-muted">{t('assetBrowser.roleDenied')}</p>
                 ) : (
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Button size="sm" variant="secondary" startIcon={<Plus size={14} aria-hidden="true" />} onClick={beginCreateSensor}>
+                    <Button size="sm" variant="secondary" startIcon={<MaterialSymbol name="add" size={14} />} onClick={beginCreateSensor}>
                       {t('assetBrowser.createSensor')}
                     </Button>
                     {isCatalogOwned && (
                       <>
-                        <Button size="sm" variant="secondary" startIcon={<Pencil size={14} aria-hidden="true" />} onClick={beginEdit}>
+                        <Button size="sm" variant="secondary" startIcon={<MaterialSymbol name="edit" size={14} />} onClick={beginEdit}>
                           {t('assetBrowser.editAsset')}
                         </Button>
                         {selectedAsset.type !== 'PLANT' && (
@@ -451,7 +452,7 @@ export default function AssetBrowserPage() {
                             size="sm"
                             variant="secondary"
                             loading={deleteMutation.isPending}
-                            startIcon={<Trash2 size={14} aria-hidden="true" />}
+                            startIcon={<MaterialSymbol name="delete" size={14} />}
                             onClick={() => { void deleteMutation.mutateAsync(); }}
                           >
                             {t('assetBrowser.deleteAsset')}
@@ -579,7 +580,7 @@ export default function AssetBrowserPage() {
                     <h3 className="text-sm font-semibold text-text-primary">{t('assetBrowser.documents')}</h3>
                     <p className="mt-1 text-xs text-text-muted">{t('assetBrowser.documentsDescription')}</p>
                   </div>
-                  <FileText size={18} aria-hidden="true" className="text-text-muted" />
+                  <MaterialSymbol name="description" size={18} className="text-text-muted" />
                 </div>
                 <div className="mt-3">
                   {documentsQuery.isLoading ? (
@@ -597,7 +598,7 @@ export default function AssetBrowserPage() {
                     <ul className="divide-y divide-border rounded-lg border border-border">
                       {documentsQuery.data?.map((document) => (
                         <li key={`${document.relationship}-${document.documentId}`} className="flex items-center gap-3 px-3 py-3">
-                          <FileText size={16} aria-hidden="true" className="shrink-0 text-text-muted" />
+                          <MaterialSymbol name="description" size={16} className="shrink-0 text-text-muted" />
                           <span className="min-w-0 flex-1">
                             <span className="block truncate font-mono text-sm text-text-primary">{document.documentId}</span>
                             <span className="block text-xs text-text-muted">{formatDate(document.createdAt, i18n.language)}</span>

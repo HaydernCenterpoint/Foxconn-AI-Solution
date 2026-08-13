@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
+import { MaterialSymbol } from '../../../shared/components/ui/MaterialSymbol';
 import { useGSAP } from '@gsap/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import gsap from 'gsap';
@@ -17,25 +18,7 @@ import {
   useEdgesState,
   useNodesState,
 } from '@xyflow/react';
-import {
-  Activity,
-  ArrowLeft,
-  Check,
-  ChevronDown,
-  ChevronUp,
-  CircleDot,
-  Cpu,
-  GitBranch,
-  Link2,
-  Maximize2,
-  Minus,
-  MousePointer2,
-  Network,
-  Plus,
-  RefreshCw,
-  Save,
-  Trash2,
-} from 'lucide-react';
+
 import { useTranslation } from 'react-i18next';
 import { linesApi } from '../services/lines.api';
 import { machinesApi, type Machine } from '../../machines/services/machines.api';
@@ -483,17 +466,17 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
 
   const headerActions = (
     <div className="line-flow-workspace__actions">
-      {onClose && <Button variant="secondary" size="sm" startIcon={<ArrowLeft size={16} aria-hidden="true" />} onClick={onClose}>{t('common.actions.back', { defaultValue: 'Back' })}</Button>}
+      {onClose && <Button variant="secondary" size="sm" startIcon={<MaterialSymbol name="arrow_back" size={16} />} onClick={onClose}>{t('common.actions.back', { defaultValue: 'Back' })}</Button>}
       {isEditing ? (
         <>
           <Button variant="secondary" size="sm" disabled={saveMutation.isPending} onClick={cancelEditing}>{t('common.actions.cancel', { defaultValue: 'Cancel' })}</Button>
-          <Button size="sm" loading={saveMutation.isPending} startIcon={<Save size={16} aria-hidden="true" />} onClick={() => saveMutation.mutate()}>{t('flowDesigner.toolbar.save', { defaultValue: 'Save flow' })}</Button>
+          <Button size="sm" loading={saveMutation.isPending} startIcon={<MaterialSymbol name="save" size={16} />} onClick={() => saveMutation.mutate()}>{t('flowDesigner.toolbar.save', { defaultValue: 'Save flow' })}</Button>
         </>
       ) : canConfigure ? (
         <Button
           size="sm"
           disabled={lineMachinesQuery.isLoading || linesQuery.isLoading || !currentLine}
-          startIcon={<Network size={16} aria-hidden="true" />}
+          startIcon={<MaterialSymbol name="lan" size={16} />}
           onClick={startEditing}
         >
           {t('flowDesigner.edit', { defaultValue: 'Edit flow' })}
@@ -538,7 +521,7 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
           <div className="line-flow-workspace__title-row">
             <h1>{currentLine ? tDynamic(currentLine.name) : t('flowDesigner.title', { defaultValue: 'Production line flow' })}</h1>
             <span className="line-flow-workspace__refresh">
-              <RefreshCw size={13} aria-hidden="true" />
+              <MaterialSymbol name="refresh" size={13} />
               {t('flowDesigner.workspace.liveRefresh', { defaultValue: 'Live · 2s' })}
             </span>
           </div>
@@ -556,28 +539,28 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
         aria-label={t('flowDesigner.workspace.summary', { defaultValue: 'Line summary' })}
       >
         <article className="line-flow-metric">
-          <span className="line-flow-metric__icon"><Network size={17} aria-hidden="true" /></span>
+          <span className="line-flow-metric__icon"><MaterialSymbol name="lan" size={17} /></span>
           <span className="line-flow-metric__copy">
             <span>{t('flowDesigner.workspace.stations', { defaultValue: 'Stations' })}</span>
             <strong>{displayNodes.length}</strong>
           </span>
         </article>
         <article className="line-flow-metric">
-          <span className="line-flow-metric__icon line-flow-metric__icon--positive"><Cpu size={17} aria-hidden="true" /></span>
+          <span className="line-flow-metric__icon line-flow-metric__icon--positive"><MaterialSymbol name="memory" size={17} /></span>
           <span className="line-flow-metric__copy">
             <span>{t('flowDesigner.workspace.plcOnline', { defaultValue: 'PLC connected' })}</span>
             <strong>{connectedStationCount}<small>/{displayNodes.length}</small></strong>
           </span>
         </article>
         <article className="line-flow-metric">
-          <span className="line-flow-metric__icon"><GitBranch size={17} aria-hidden="true" /></span>
+          <span className="line-flow-metric__icon"><MaterialSymbol name="account_tree" size={17} /></span>
           <span className="line-flow-metric__copy">
             <span>{t('flowDesigner.workspace.connections', { defaultValue: 'Connections' })}</span>
             <strong>{displayEdges.length}</strong>
           </span>
         </article>
         <article className="line-flow-metric">
-          <span className="line-flow-metric__icon line-flow-metric__icon--accent"><Activity size={17} aria-hidden="true" /></span>
+          <span className="line-flow-metric__icon line-flow-metric__icon--accent"><MaterialSymbol name="monitoring" size={17} /></span>
           <span className="line-flow-metric__copy">
             <span>{t('flowDesigner.workspace.reportedOutput', { defaultValue: 'Reported output' })}</span>
             <strong>{reportedOutput.toLocaleString(locale)}</strong>
@@ -589,7 +572,7 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
         <section className="line-flow-canvas" aria-labelledby="line-flow-canvas-title">
           <div className="line-flow-canvas__header">
             <div className="line-flow-canvas__heading">
-              <span className="line-flow-canvas__heading-icon"><CircleDot size={15} aria-hidden="true" /></span>
+              <span className="line-flow-canvas__heading-icon"><MaterialSymbol name="radio_button_checked" size={15} /></span>
               <span>
                 <h2 id="line-flow-canvas-title">{t('flowDesigner.workspace.canvasTitle', { defaultValue: 'Line topology' })}</h2>
                 <p>{t('flowDesigner.workspace.canvasDescription', { defaultValue: 'Select a station to inspect live signals and sequence.' })}</p>
@@ -605,7 +588,7 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
 
           {isEditing && (
             <div className="line-flow-canvas__hint">
-              <Link2 size={15} aria-hidden="true" />
+              <MaterialSymbol name="link" size={15} />
               <span>{t('flowDesigner.editHint', { defaultValue: 'Connect station handles on the canvas or use the selected station panel. Positions are recalculated from saved connections.' })}</span>
             </div>
           )}
@@ -613,13 +596,13 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
           <div className="line-flow-canvas__stage">
             {displayNodes.length === 0 ? (
               <div className="line-flow-canvas__empty">
-                <span><Network size={24} aria-hidden="true" /></span>
+                <span><MaterialSymbol name="lan" size={24} /></span>
                 <h3>{t('flowDesigner.empty.title', { defaultValue: 'No stations assigned to this line' })}</h3>
                 <p>{canAddRemove && isEditing
                   ? t('flowDesigner.empty.editDescription', { defaultValue: 'Open the station library to add an available machine.' })
                   : t('flowDesigner.empty.description', { defaultValue: 'No station assignments were returned for this production line.' })}</p>
                 {canAddRemove && isEditing && (
-                  <Button size="sm" startIcon={<Plus size={14} aria-hidden="true" />} onClick={() => setLibraryOpen(true)}>
+                  <Button size="sm" startIcon={<MaterialSymbol name="add" size={14} />} onClick={() => setLibraryOpen(true)}>
                     {t('flowDesigner.workspace.openLibrary', { defaultValue: 'Open station library' })}
                   </Button>
                 )}
@@ -647,9 +630,9 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
               >
                 <Background color="#3b4c68" gap={22} size={1} />
                 <Panel position="bottom-right" className="line-flow-canvas__controls">
-                  <Button variant="secondary" size="sm" aria-label={t('common.actions.zoomOut', { defaultValue: 'Zoom out' })} title={t('common.actions.zoomOut', { defaultValue: 'Zoom out' })} onClick={() => flowInstance?.zoomOut()}><Minus size={15} aria-hidden="true" /></Button>
-                  <Button variant="secondary" size="sm" aria-label={t('common.actions.fitView', { defaultValue: 'Fit flow' })} title={t('common.actions.fitView', { defaultValue: 'Fit flow' })} onClick={() => flowInstance?.fitView({ padding: 0.28, maxZoom: 0.95 })}><Maximize2 size={15} aria-hidden="true" /></Button>
-                  <Button variant="secondary" size="sm" aria-label={t('common.actions.zoomIn', { defaultValue: 'Zoom in' })} title={t('common.actions.zoomIn', { defaultValue: 'Zoom in' })} onClick={() => flowInstance?.zoomIn()}><Plus size={15} aria-hidden="true" /></Button>
+                  <Button variant="secondary" size="sm" aria-label={t('common.actions.zoomOut', { defaultValue: 'Zoom out' })} title={t('common.actions.zoomOut', { defaultValue: 'Zoom out' })} onClick={() => flowInstance?.zoomOut()}><MaterialSymbol name="remove" size={15} /></Button>
+                  <Button variant="secondary" size="sm" aria-label={t('common.actions.fitView', { defaultValue: 'Fit flow' })} title={t('common.actions.fitView', { defaultValue: 'Fit flow' })} onClick={() => flowInstance?.fitView({ padding: 0.28, maxZoom: 0.95 })}><MaterialSymbol name="open_in_full" size={15} /></Button>
+                  <Button variant="secondary" size="sm" aria-label={t('common.actions.zoomIn', { defaultValue: 'Zoom in' })} title={t('common.actions.zoomIn', { defaultValue: 'Zoom in' })} onClick={() => flowInstance?.zoomIn()}><MaterialSymbol name="add" size={15} /></Button>
                 </Panel>
               </ReactFlow>
             )}
@@ -751,7 +734,7 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
                           <label key={node.id}>
                             <input type="checkbox" checked={isConnected} onChange={(event) => toggleConnection(selectedMachine.id, node.id, event.target.checked)} />
                             <span>{targetMachine ? tDynamic(targetMachine.name) : node.data.name}</span>
-                            {isConnected && <Check size={14} aria-hidden="true" />}
+                            {isConnected && <MaterialSymbol name="check" size={14} />}
                           </label>
                         );
                       })}
@@ -764,7 +747,7 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
                     variant="danger"
                     size="sm"
                     className="line-flow-inspector__remove"
-                    startIcon={<Trash2 size={15} aria-hidden="true" />}
+                    startIcon={<MaterialSymbol name="delete" size={15} />}
                     onClick={() => setRemoveTargetId(selectedMachine.id)}
                   >
                     {t('flowDesigner.removeStation', { defaultValue: 'Remove from line' })}
@@ -773,7 +756,7 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
               </div>
             ) : (
               <div className="line-flow-inspector__empty">
-                <span><MousePointer2 size={22} aria-hidden="true" /></span>
+                <span><MaterialSymbol name="arrow_selector_tool" size={22} /></span>
                 <h3>{t('flowDesigner.workspace.selectTitle', { defaultValue: 'Choose a station' })}</h3>
                 <p>{t('flowDesigner.workspace.selectDescription', { defaultValue: 'Select any station card on the canvas to see connectivity, output and runtime details.' })}</p>
                 <ol>
@@ -796,7 +779,7 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
                     <strong>{t('flowDesigner.stationLibrary', { defaultValue: 'Available stations' })}</strong>
                     <small>{t('flowDesigner.workspace.libraryCount', { count: availableMachines.length, defaultValue: '{{count}} ready to add' })}</small>
                   </span>
-                  {libraryOpen ? <ChevronUp size={17} aria-hidden="true" /> : <ChevronDown size={17} aria-hidden="true" />}
+                  {libraryOpen ? <MaterialSymbol name="expand_less" size={17} /> : <MaterialSymbol name="expand_more" size={17} />}
                 </button>
                 {libraryOpen && (
                   <div id="line-flow-station-library" className="line-flow-library__content">
@@ -814,7 +797,7 @@ export function DiagramEditor({ lineId, readOnly = false, onClose, hideSidebar =
                               <strong>{tDynamic(machine.name)}</strong>
                               <small>{machine.machineCode || machine.id}</small>
                             </span>
-                            <Button size="sm" startIcon={<Plus size={14} aria-hidden="true" />} onClick={() => addMachineToDraft(machine)}>
+                            <Button size="sm" startIcon={<MaterialSymbol name="add" size={14} />} onClick={() => addMachineToDraft(machine)}>
                               {t('common.actions.add', { defaultValue: 'Add' })}
                             </Button>
                           </div>

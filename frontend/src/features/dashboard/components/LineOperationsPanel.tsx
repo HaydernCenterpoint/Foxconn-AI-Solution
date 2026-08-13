@@ -1,5 +1,6 @@
-import { Factory } from 'lucide-react';
+
 import { useMemo } from 'react';
+import { MaterialSymbol } from '../../../shared/components/ui/MaterialSymbol';
 import { useTranslation } from 'react-i18next';
 import type { Machine } from '../../machines/services/machines.api';
 import type { ProductionLine } from '../../production-lines/services/lines.api';
@@ -154,7 +155,7 @@ export function LineOperationsPanel({
     <DashboardPanel
       title={title}
       description={description}
-      icon={<Factory size={18} />}
+      icon={<MaterialSymbol name="factory" size={18} />}
       actions={line && machines.length > 0 ? <StatusBadge status={status} /> : undefined}
     >
       {renderState()}

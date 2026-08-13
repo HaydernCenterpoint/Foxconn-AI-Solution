@@ -1,5 +1,6 @@
-import { AlertTriangle } from 'lucide-react';
+
 import { useTranslation } from 'react-i18next';
+import { MaterialSymbol } from '../../../shared/components/ui/MaterialSymbol';
 import { useQuery } from '@tanstack/react-query';
 
 import { queryKeys } from '../../../app/queryKeys';
@@ -117,7 +118,7 @@ export function RiskGauge({ assetId }: RiskGaugeProps) {
         {/* Risk level badge */}
         <div className="flex items-center gap-2">
           <Badge variant={badgeVariant} size="sm">
-            <AlertTriangle size={12} aria-hidden="true" className="mr-1 inline" />
+            <MaterialSymbol name="warning" size={12} className="mr-1 inline" />
             {t(`predictions.level.${level}`, { defaultValue: risk.riskLevel })}
           </Badge>
         </div>

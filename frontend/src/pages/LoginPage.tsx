@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { MaterialSymbol } from '../shared/components/ui/MaterialSymbol';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -6,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
-import { AlertCircle, Eye, EyeOff, KeyRound, UserRound } from 'lucide-react';
+
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { authApi } from '../features/auth/services/auth.api';
@@ -221,7 +222,7 @@ export default function LoginPage() {
               <div className="login-form__group">
                 <label htmlFor={usernameId}>{t('auth.username')}</label>
                 <div className="login-form__field">
-                  <UserRound size={18} aria-hidden="true" />
+                  <MaterialSymbol name="person" size={18} />
                   <input
                     {...register('username')}
                     id={usernameId}
@@ -242,7 +243,7 @@ export default function LoginPage() {
               <div className="login-form__group">
                 <label htmlFor={passwordId}>{t('auth.password')}</label>
                 <div className="login-form__field">
-                  <KeyRound size={18} aria-hidden="true" />
+                  <MaterialSymbol name="key" size={18} />
                   <input
                     {...register('password')}
                     id={passwordId}
@@ -259,7 +260,7 @@ export default function LoginPage() {
                     variant="ghost"
                     size="sm"
                     className="login-form__visibility"
-                    icon={showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                    icon={showPassword ? <MaterialSymbol name="visibility_off" size={18} /> : <MaterialSymbol name="visibility" size={18} />}
                     label={showPassword ? t('common.aria.hidePassword') : t('common.aria.showPassword')}
                     aria-pressed={showPassword}
                     disabled={isBusy}
@@ -273,7 +274,7 @@ export default function LoginPage() {
 
               {errorMessage && (
                 <Surface variant="outlined" padding="sm" role="alert" className="login-form__server-error">
-                  <AlertCircle size={18} aria-hidden="true" />
+                  <MaterialSymbol name="error" size={18} />
                   <p>{errorMessage}</p>
                 </Surface>
               )}

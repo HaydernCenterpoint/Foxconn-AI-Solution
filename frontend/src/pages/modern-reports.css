@@ -43,7 +43,7 @@
   text-transform: uppercase;
 }
 
-.reports-page__eyebrow svg { color: var(--report-red); }
+.reports-page__eyebrow svg, .reports-page__eyebrow .material-symbol { color: var(--report-red); }
 
 .reports-page__header h1 {
   margin-top: 6px;
@@ -112,7 +112,7 @@
   text-transform: uppercase;
 }
 
-.reports-page__filter svg { color: var(--report-red); }
+.reports-page__filter svg, .reports-page__filter .material-symbol { color: var(--report-red); }
 
 .reports-page__filter select {
   width: 100%;

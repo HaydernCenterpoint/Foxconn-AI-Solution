@@ -1,7 +1,8 @@
 import { memo } from 'react';
+import { MaterialSymbol } from '../../../../shared/components/ui/MaterialSymbol';
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import { useTranslation } from 'react-i18next';
-import { Cpu, Database, Network } from 'lucide-react';
+
 import { StatusBadge } from '../../../../shared/components/ui/StatusBadge';
 import { useDynamicTranslation } from '../../../../shared/lib/translator';
 
@@ -34,7 +35,7 @@ function MachineNodeComponent({ data, selected }: MachineNodeProps) {
       <header className="line-flow-node__header">
         <span className="line-flow-node__sequence">#{sequenceLabel}</span>
         <span className="line-flow-node__machine-icon">
-          <Cpu size={17} aria-hidden="true" />
+          <MaterialSymbol name="memory" size={17} />
         </span>
         <div className="line-flow-node__identity">
           <strong>{tDynamic(data.name)}</strong>
@@ -44,7 +45,7 @@ function MachineNodeComponent({ data, selected }: MachineNodeProps) {
       </header>
       <dl className="line-flow-node__metrics">
         <div>
-          <dt><Network size={13} aria-hidden="true" />{t('machines.table.plcConnected', { defaultValue: 'PLC' })}</dt>
+          <dt><MaterialSymbol name="lan" size={13} />{t('machines.table.plcConnected', { defaultValue: 'PLC' })}</dt>
           <dd className={data.plcConnected ? 'line-flow-node__value--positive' : 'line-flow-node__value--muted'}>
             {data.plcConnected
               ? t('machines.plcConnected', { defaultValue: 'Connected' })
@@ -52,7 +53,7 @@ function MachineNodeComponent({ data, selected }: MachineNodeProps) {
           </dd>
         </div>
         <div>
-          <dt><Database size={13} aria-hidden="true" />{t('machines.productionCount', { defaultValue: 'Reported output' })}</dt>
+          <dt><MaterialSymbol name="database" size={13} />{t('machines.productionCount', { defaultValue: 'Reported output' })}</dt>
           <dd>{hasProductionCount ? data.productionCount!.toLocaleString() : '—'}</dd>
         </div>
         <div>

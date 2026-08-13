@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { Globe2, MonitorCog, Palette, ShieldCheck, UserRound, Wifi, WifiOff } from 'lucide-react';
+import { MaterialSymbol } from '../../shared/components/ui/MaterialSymbol';
+
 import { useTranslation } from 'react-i18next';
 import { queryKeys } from '../../app/queryKeys';
 import { AppearancePreferences, SettingsSection } from '../../features/admin/components/SettingsSection';
@@ -40,27 +41,27 @@ export function SettingsPage() {
         <StatCard
           label={t('settings.stats.backend')}
           value={backendValue}
-          icon={summaryQuery.isError ? <WifiOff size={18} /> : <Wifi size={18} />}
+          icon={summaryQuery.isError ? <MaterialSymbol name="wifi_off" size={18} /> : <MaterialSymbol name="wifi" size={18} />}
           accent={summaryQuery.isError ? 'error' : 'running'}
           loading={summaryQuery.isLoading}
         />
         <StatCard
           label={t('settings.stats.activeUser')}
           value={username || t('common.notAvailable')}
-          icon={<UserRound size={18} />}
+          icon={<MaterialSymbol name="person" size={18} />}
           accent="primary"
         />
         <StatCard
           label={t('settings.stats.role')}
           value={roleLabel}
-          icon={<ShieldCheck size={18} />}
+          icon={<MaterialSymbol name="verified_user" size={18} />}
           accent="info"
         />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <SettingsSection
-          icon={<UserRound size={20} />}
+          icon={<MaterialSymbol name="person" size={20} />}
           title={t('settings.profile.title')}
           description={t('settings.sections.account')}
         >
@@ -80,7 +81,7 @@ export function SettingsPage() {
         </SettingsSection>
 
         <SettingsSection
-          icon={<Globe2 size={20} />}
+          icon={<MaterialSymbol name="language" size={20} />}
           title={t('settings.language.title')}
           description={t('settings.language.hint')}
         >
@@ -88,7 +89,7 @@ export function SettingsPage() {
         </SettingsSection>
 
         <SettingsSection
-          icon={<Palette size={20} />}
+          icon={<MaterialSymbol name="palette" size={20} />}
           title={t('settings.sections.appearance')}
           description={t('settings.appearance.themeHint')}
         >
@@ -96,7 +97,7 @@ export function SettingsPage() {
         </SettingsSection>
 
         <SettingsSection
-          icon={<MonitorCog size={20} />}
+          icon={<MaterialSymbol name="display_settings" size={20} />}
           title={t('settings.sections.system')}
           description={t('settings.system.frontendVersion')}
         >

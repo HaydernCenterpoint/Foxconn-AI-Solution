@@ -8,12 +8,13 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react';
+import { MaterialSymbol } from '../../shared/components/ui/MaterialSymbol';
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { useNavigate, type NavigateFunction } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import './modern-slideshow.css';
-import { RefreshCw } from 'lucide-react';
+
 import {
   ComposedChart,
   Bar,
@@ -397,7 +398,6 @@ const SlideshowFuturisticCard = ({
     </div>
   );
 };
-
 
 const SlideshowHeader = ({
   selectedLineId,
@@ -876,7 +876,7 @@ export const SlideshowPage = () => {
           val: oeeVal,
           displayVal: `${oeeVal.toFixed(1)}%`,
           percent: oeeVal,
-          color: oeeVal >= 90 ? '#00e676' : (oeeVal >= 75 ? '#ffc107' : '#ff5c6c'),
+          color: oeeVal >= 90 ? 'var(--color-running)' : (oeeVal >= 75 ? 'var(--color-warn)' : 'var(--color-error)'),
         };
       });
 
@@ -887,7 +887,7 @@ export const SlideshowPage = () => {
           val: uphVal,
           displayVal: `${uphVal} UPH`,
           percent: uphVal,
-          color: '#2F7BFF',
+          color: 'var(--color-primary)',
         };
       });
 
@@ -908,7 +908,7 @@ export const SlideshowPage = () => {
           val: oeeVal,
           displayVal: `${oeeVal.toFixed(1)}%`,
           percent: oeeVal,
-          color: oeeVal >= 90 ? '#00e676' : (oeeVal >= 75 ? '#ffc107' : '#ff5c6c'),
+          color: oeeVal >= 90 ? 'var(--color-running)' : (oeeVal >= 75 ? 'var(--color-warn)' : 'var(--color-error)'),
         };
       });
 
@@ -919,7 +919,7 @@ export const SlideshowPage = () => {
           val: uphVal,
           displayVal: `${uphVal} UPH`,
           percent: uphVal,
-          color: '#2F7BFF',
+          color: 'var(--color-primary)',
         };
       });
 
@@ -984,7 +984,6 @@ export const SlideshowPage = () => {
     ];
   }, [selectedMetrics]);
 
-
   const renderMetricCard = (value: number, centerText: string, text: string, label: string, color: string) => {
     const progress = Math.max(0, Math.min(100, value));
 
@@ -1004,7 +1003,7 @@ export const SlideshowPage = () => {
     return (
       <div className="modern-slideshow__loading flex h-screen w-screen items-center justify-center bg-background text-primary">
         <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="h-10 w-10 animate-spin" />
+          <MaterialSymbol name="refresh" className="h-10 w-10 animate-spin" />
           <span className="text-sm font-semibold tracking-wider uppercase">{t('dashboard.loading', 'Khởi tạo màn hình trình chiếu...')}</span>
         </div>
       </div>
@@ -1015,76 +1014,7 @@ export const SlideshowPage = () => {
   const formattedDateTime = `${time.getFullYear()}-${String(time.getMonth() + 1).padStart(2, '0')}-${String(time.getDate()).padStart(2, '0')} ${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}:${String(time.getSeconds()).padStart(2, '0')}`;
 
   return (
-    <div
-      className="modern-slideshow fixed inset-0 h-screen w-screen text-[#c1d3ee] flex flex-col overflow-hidden font-sans select-none z-[999]"
-      style={{
-        background: '#070707'
-      }}
-    >
-      <style>{`
-        .cyber-header {
-          position: relative;
-          background: linear-gradient(180deg, rgba(16, 29, 61, 0.9) 0%, rgba(7, 13, 30, 0.9) 100%);
-          border-bottom: 2px solid #14356a;
-          box-shadow: 0 0 15px rgba(20, 53, 106, 0.4);
-        }
-        .cyber-panel {
-          background: rgba(10, 17, 39, 0.85);
-          border: 1px solid #14356a;
-          box-shadow: inset 0 0 10px rgba(20, 53, 106, 0.3);
-          position: relative;
-        }
-        .cyber-panel::before {
-          content: '';
-          position: absolute;
-          top: 0; left: 0;
-          width: 8px; height: 8px;
-          border-top: 2px solid #00f0ff;
-          border-left: 2px solid #00f0ff;
-        }
-        .cyber-panel::after {
-          content: '';
-          position: absolute;
-          bottom: 0; right: 0;
-          width: 8px; height: 8px;
-          border-bottom: 2px solid #00f0ff;
-          border-right: 2px solid #00f0ff;
-        }
-        .cyber-panel-title {
-          font-weight: 900;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          color: #00f0ff;
-          border-bottom: 1px solid rgba(20, 53, 106, 0.5);
-          padding-bottom: 6px;
-          margin-bottom: 10px;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 15px;
-        }
-        .custom-select {
-          background: #0f1c3f;
-          border: 1px solid #1d3e7a;
-          color: #00f0ff;
-          border-radius: 4px;
-          outline: none;
-          cursor: pointer;
-        }
-        .scrollable-content::-webkit-scrollbar {
-          width: 4px;
-        }
-        .scrollable-content::-webkit-scrollbar-track {
-          background: rgba(20, 53, 106, 0.1);
-        }
-        .scrollable-content::-webkit-scrollbar-thumb {
-          background: #14356a;
-          border-radius: 2px;
-        }
-        .slideshow-diagram-container .flex.items-center.justify-between.px-6.py-4 {
-          display: none !important;
-        }
-      `}</style>
+    <div className="modern-slideshow fixed inset-0 h-screen w-screen flex flex-col overflow-hidden font-sans select-none z-[999]">
 
       <SlideshowHeader
         selectedLineId={selectedLineId}
@@ -1187,7 +1117,7 @@ export const SlideshowPage = () => {
                 outputProgress.text,
                 outputProgress.subtext,
                 'SẢN LƯỢNG',
-                '#4ec798'
+                'var(--color-running)'
               )}
               {renderMetricCard(
                 selectedMetrics.yieldRate,
@@ -1201,7 +1131,7 @@ export const SlideshowPage = () => {
                 `${selectedMetrics.uph}`,
                 'Đơn vị / giờ',
                 'UPH',
-                '#ff8a8c'
+                'var(--color-primary)'
               )}
               {renderMetricCard(
                 selectedMetrics.oee,
@@ -1244,18 +1174,16 @@ export const SlideshowPage = () => {
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} className="pointer-events-none">
                   <ComposedChart data={outputChartData} margin={{ top: 25, right: 25, left: 10, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255, 255, 255, 0.12)" />
-                    <XAxis dataKey="date" stroke="#a4a4a4" fontSize={12} tickLine={false} />
-                    <YAxis yAxisId="left" stroke="#a4a4a4" fontSize={12} tickLine={false} />
-                    <YAxis yAxisId="right" orientation="right" stroke="#a4a4a4" fontSize={12} tickLine={false} domain={[0, 150]} />
+                    <XAxis dataKey="date" stroke="var(--color-text-muted)" fontSize={12} tickLine={false} />
+                    <YAxis yAxisId="left" stroke="var(--color-text-muted)" fontSize={12} tickLine={false} />
+                    <YAxis yAxisId="right" orientation="right" stroke="var(--color-text-muted)" fontSize={12} tickLine={false} domain={[0, 150]} />
                     <Bar yAxisId="left" dataKey="output" fill="var(--color-primary)" radius={[4, 4, 0, 0]} barSize={28} />
-                    <Line yAxisId="right" dataKey="rate" stroke="#00e676" strokeWidth={1.8} dot={{ fill: '#00e676', r: 2.5 }} />
+                    <Line yAxisId="right" dataKey="rate" stroke="var(--color-running)" strokeWidth={1.8} dot={{ fill: 'var(--color-running)', r: 2.5 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </div>
           </SlideshowFuturisticCard>
-
-
 
         </div>
 
@@ -1277,7 +1205,7 @@ export const SlideshowPage = () => {
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} className="pointer-events-none">
                 <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
                   <PolarGrid stroke="rgba(255, 255, 255, 0.18)" />
-                  <PolarAngleAxis dataKey="subject" stroke="#a4a4a4" fontSize={12} />
+                  <PolarAngleAxis dataKey="subject" stroke="var(--color-text-muted)" fontSize={12} />
                   <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="rgba(255, 255, 255, 0.15)" tick={false} />
                   <Radar name="Indicators" dataKey="score" stroke="var(--color-primary)" fill="var(--color-primary)" fillOpacity={0.22} />
                 </RadarChart>

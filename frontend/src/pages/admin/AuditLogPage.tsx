@@ -1,7 +1,8 @@
 import React from 'react';
+import { MaterialSymbol } from '../../shared/components/ui/MaterialSymbol';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Activity, Calendar, ClipboardList, User } from 'lucide-react';
+
 import { auditLogsApi } from '../../features/admin/services/auditLogs.api';
 import { useDynamicTranslation } from '../../shared/lib/translator';
 import './admin-modern.css';
@@ -58,7 +59,7 @@ export const AuditLogPage: React.FC = () => {
           <h1>{t('titles.auditLogs', 'Nhật ký hệ thống')}</h1>
         </div>
         <div className="admin-page__record-count">
-          <ClipboardList aria-hidden="true" size={17} />
+          <MaterialSymbol name="assignment" size={17} />
           {t('pages.auditLogs.recordsCount', '{{count}} bản ghi', { count: logs.length })}
         </div>
       </header>
@@ -80,14 +81,14 @@ export const AuditLogPage: React.FC = () => {
                 <tr key={log.id}>
                   <td className="admin-page__index">#{log.id}</td>
                   <td>
-                    <span className="admin-audit-page__time"><Calendar aria-hidden="true" size={14} /> {new Date(log.createdAt).toLocaleString(locale)}</span>
+                    <span className="admin-audit-page__time"><MaterialSymbol name="calendar_month" size={14} /> {new Date(log.createdAt).toLocaleString(locale)}</span>
                   </td>
                   <td>
-                    <span className="admin-audit-page__user"><User aria-hidden="true" size={14} /> {log.username}</span>
+                    <span className="admin-audit-page__user"><MaterialSymbol name="person" size={14} /> {log.username}</span>
                   </td>
                   <td>
                     <span className={`admin-page__badge admin-page__badge--${actionTone(log.action)}`}>
-                      <Activity aria-hidden="true" size={13} />
+                      <MaterialSymbol name="monitoring" size={13} />
                       {log.action}
                     </span>
                   </td>
@@ -96,7 +97,7 @@ export const AuditLogPage: React.FC = () => {
               )) : (
                 <tr>
                   <td colSpan={5} className="admin-page__empty-state">
-                    <ClipboardList aria-hidden="true" size={36} />
+                    <MaterialSymbol name="assignment" size={36} />
                     <p>{t('pages.auditLogs.empty', 'Chưa có nhật ký hoạt động nào')}</p>
                   </td>
                 </tr>

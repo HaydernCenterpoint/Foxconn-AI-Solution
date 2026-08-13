@@ -3,17 +3,7 @@ import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
-  Box,
-  CircleAlert,
-  Factory,
-  Gauge,
-  PackageCheck,
-  Search,
-  ShoppingBag,
-  Wrench,
-  type LucideIcon,
-} from 'lucide-react';
+import { MaterialSymbol } from '../../../shared/components/ui/MaterialSymbol';
 import {
   Bar,
   BarChart,
@@ -48,14 +38,14 @@ interface ModernDashboardProps {
 }
 
 interface KpiMeta {
-  icon: LucideIcon;
+  icon: string;
   accent: 'red' | 'amber' | 'lime';
 }
 
 const KPI_META: Record<DashboardKpiCard['id'], KpiMeta> = {
-  'total-production': { icon: Wrench, accent: 'red' },
-  'production-efficiency': { icon: Gauge, accent: 'amber' },
-  'active-alarms': { icon: CircleAlert, accent: 'lime' },
+  'total-production': { icon: 'build', accent: 'red' },
+  'production-efficiency': { icon: 'speed', accent: 'amber' },
+  'active-alarms': { icon: 'error', accent: 'lime' },
 };
 
 const KPI_LABEL_KEYS: Record<DashboardKpiCard['id'], string> = {
@@ -164,7 +154,7 @@ export function ModernDashboard({
           <span>{username || t('dashboardPage.modern.operator')}</span>
         </div>
         <label className="modern-dashboard__search">
-          <Search aria-hidden="true" size={17} />
+          <MaterialSymbol name="search" size={17} />
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -183,7 +173,6 @@ export function ModernDashboard({
       <div className="modern-dashboard__kpi-grid">
         {viewModel.kpis.map((kpi) => {
           const meta = KPI_META[kpi.id];
-          const Icon = meta.icon;
           const unit = kpi.unit === '%'
             ? '%'
             : kpi.unit === 'alarms'
@@ -192,7 +181,7 @@ export function ModernDashboard({
 
           return (
             <article className={`modern-dashboard__kpi modern-dashboard__kpi--${meta.accent}`} key={kpi.id}>
-              <span className="modern-dashboard__kpi-icon"><Icon aria-hidden="true" size={20} /></span>
+              <span className="modern-dashboard__kpi-icon"><MaterialSymbol name={meta.icon} size={20} /></span>
               <div>
                 <h2>{t(KPI_LABEL_KEYS[kpi.id])}</h2>
                 <strong>{formatNumber(kpi.value, locale)}{kpi.unit === '%' ? '%' : ''}</strong>
@@ -207,17 +196,17 @@ export function ModernDashboard({
         <Panel title={t('dashboardPage.modern.productionByHour')} className="modern-dashboard__production-panel">
           <div className="modern-dashboard__mini-stats">
             <div>
-              <Box aria-hidden="true" />
+              <MaterialSymbol name="inventory_2" />
               <span>{t('dashboardPage.modern.hourlyPeak')}</span>
               <strong>{formatNumber(hourlyPeak, locale)} {t('dashboardPage.modern.unit')}</strong>
             </div>
             <div>
-              <PackageCheck aria-hidden="true" />
+              <MaterialSymbol name="inventory" />
               <span>{t('dashboardPage.modern.goodTotal')}</span>
               <strong>{formatNumber(viewModel.defects.nonDefectiveTotal, locale)} {t('dashboardPage.modern.unit')}</strong>
             </div>
             <div>
-              <ShoppingBag aria-hidden="true" />
+              <MaterialSymbol name="shopping_bag" />
               <span>{t('dashboardPage.modern.totalLines')}</span>
               <strong>{formatNumber(activeLineCount, locale)} {t('dashboardPage.modern.activeLines')}</strong>
             </div>
@@ -258,7 +247,7 @@ export function ModernDashboard({
               <div className="modern-dashboard__line-list">
                 {visibleLines.slice(0, 4).map((line) => (
                   <Link className="modern-dashboard__line-item" to={linesRoute} key={line.id}>
-                    <span className={`modern-dashboard__line-icon modern-dashboard__line-icon--${line.status}`}><Factory aria-hidden="true" size={19} /></span>
+                    <span className={`modern-dashboard__line-icon modern-dashboard__line-icon--${line.status}`}><MaterialSymbol name="factory" size={19} /></span>
                     <span><b>{line.name}</b><small>{formatNumber(line.producedQuantity, locale)} {t('dashboardPage.modern.unit')} · {line.machineCount} {t('navigation.equipment')}</small></span>
                     <em className={`modern-dashboard__status modern-dashboard__status--${line.status}`}>{t(STATUS_LABEL_KEYS[line.status])}</em>
                   </Link>

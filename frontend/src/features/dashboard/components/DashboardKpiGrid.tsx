@@ -1,5 +1,6 @@
-import { Activity, AlertTriangle, Factory, Wifi } from 'lucide-react';
+
 import { useTranslation } from 'react-i18next';
+import { MaterialSymbol } from '../../../shared/components/ui/MaterialSymbol';
 import type { DashboardSummary } from '../services/dashboard.api';
 import type { Machine } from '../../machines/services/machines.api';
 import { Button } from '../../../shared/components/ui/Button';
@@ -40,10 +41,10 @@ export function DashboardKpiGrid({
   if (isLoading) {
     return (
       <div className="dashboard-kpi-grid" aria-busy="true">
-        <StatCard label={labels.production} value="" icon={<Factory size={20} />} loading />
-        <StatCard label={labels.oee} value="" icon={<Activity size={20} />} loading />
-        <StatCard label={labels.alarms} value="" icon={<AlertTriangle size={20} />} loading />
-        <StatCard label={labels.connectivity} value="" icon={<Wifi size={20} />} loading />
+        <StatCard label={labels.production} value="" icon={<MaterialSymbol name="factory" size={20} />} loading />
+        <StatCard label={labels.oee} value="" icon={<MaterialSymbol name="monitoring" size={20} />} loading />
+        <StatCard label={labels.alarms} value="" icon={<MaterialSymbol name="warning" size={20} />} loading />
+        <StatCard label={labels.connectivity} value="" icon={<MaterialSymbol name="wifi" size={20} />} loading />
       </div>
     );
   }
@@ -79,7 +80,7 @@ export function DashboardKpiGrid({
         label={labels.production}
         value={formatNumber(summary.totalProduction)}
         hint={t('dashboardPage.summarySource', { defaultValue: 'Dashboard summary' })}
-        icon={<Factory size={20} aria-hidden="true" />}
+        icon={<MaterialSymbol name="factory" size={20} />}
         accent="primary"
       />
       <StatCard
@@ -93,7 +94,7 @@ export function DashboardKpiGrid({
               defaultValue: '{{count}} reporting machines',
               count: approvedMachines.filter((machine) => averageMachineMetric([machine], 'oee') !== undefined).length,
             })}
-        icon={<Activity size={20} aria-hidden="true" />}
+        icon={<MaterialSymbol name="monitoring" size={20} />}
         accent="running"
         loading={isMachinesLoading}
       />
@@ -101,7 +102,7 @@ export function DashboardKpiGrid({
         label={labels.alarms}
         value={formatNumber(summary.activeAlarms)}
         hint={t('dashboardPage.recentAlarmActivity', { defaultValue: 'From the dashboard service' })}
-        icon={<AlertTriangle size={20} aria-hidden="true" />}
+        icon={<MaterialSymbol name="warning" size={20} />}
         accent={summary.activeAlarms > 0 ? 'error' : 'neutral'}
       />
       <StatCard
@@ -112,7 +113,7 @@ export function DashboardKpiGrid({
           running: summary.running,
           total: summary.totalMachines,
         })}
-        icon={<Wifi size={20} aria-hidden="true" />}
+        icon={<MaterialSymbol name="wifi" size={20} />}
         accent="info"
       />
     </div>

@@ -1,9 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import {
-  Globe,
-  Palette,
-  UserRound,
-} from 'lucide-react';
+import { MaterialSymbol } from '../../shared/components/ui/MaterialSymbol';
+
 import { LanguageSelector } from '../../shared/components/i18n/LanguageSelector';
 import { useAuthStore } from '../../shared/store/auth.store';
 import { useUiStore } from '../../shared/store/ui.store';
@@ -48,7 +45,7 @@ export default function SettingsPage() {
 
       <div className="modern-settings__grid">
         {/* User Profile */}
-        <SettingSection icon={<UserRound size={18} />} title={t('settings.profile.title', 'Thông tin người dùng')}>
+        <SettingSection icon={<MaterialSymbol name="person" size={18} />} title={t('settings.profile.title', 'Thông tin người dùng')}>
           <div className="modern-settings__list">
             <div className="modern-settings__row">
               <span>{t('settings.profile.username', 'Tài khoản')}</span>
@@ -64,7 +61,7 @@ export default function SettingsPage() {
         </SettingSection>
 
         {/* Display / Language */}
-        <SettingSection icon={<Globe size={18} />} title={t('settings.language.title', 'Ngôn ngữ & Hiển thị')}>
+        <SettingSection icon={<MaterialSymbol name="language" size={18} />} title={t('settings.language.title', 'Ngôn ngữ & Hiển thị')}>
           <div className="space-y-4">
             <div>
               <label className="modern-settings__label">
@@ -76,7 +73,7 @@ export default function SettingsPage() {
         </SettingSection>
 
         {/* Theme Settings */}
-        <SettingSection icon={<Palette size={18} />} title={t('settings.theme.title', 'Giao diện ứng dụng')}>
+        <SettingSection icon={<MaterialSymbol name="palette" size={18} />} title={t('settings.theme.title', 'Giao diện ứng dụng')}>
           <div>
             <label className="modern-settings__label">
               {t('settings.theme.selectLabel', 'Tông màu chủ đạo')}

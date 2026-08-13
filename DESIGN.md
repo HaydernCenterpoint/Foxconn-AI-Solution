@@ -81,9 +81,8 @@ Status (unchanged function): running `#10B981`, warn `#F59E0B`, idle `#8AB4F8`, 
 ## Components
 - Reuse: `theme-tokens.css` names. Repoint hex to M3 Google.
 - Change: `modern-shell.css` maps `--modern-shell-*` to tokens; delete glass/red premium layer.
-- Later: Material Symbols on remaining page Lucide icons.
-- Done: ODF `--accent: #0B57D0`; Odysseus default `dark`/`light` + `:root` chrome; Operations chrome uses Material Symbols.
-- Icons: Material Symbols Outlined on Operations shell; Lucide remains on pages this pass.
+- Done: ODF `--accent: #0B57D0`; Odysseus default `dark`/`light` + `:root` chrome; Operations chrome and pages use Material Symbols.
+- Icons: Material Symbols Outlined. Do not add `@material/web`.
 
 ## Accessibility
 - WCAG AA. Focus ring `0 0 0 3px rgba(11, 87, 208, 0.40)`.
@@ -107,4 +106,4 @@ Status (unchanged function): running `#10B981`, warn `#F59E0B`, idle `#8AB4F8`, 
 - [x] Visual family: Google Material 3.
 - [x] ODF + Odysseus token pass (after Operations shell).
 - [x] Material Symbols on Operations chrome (ModernShell).
-- [ ] Material Symbols on remaining Operations pages.
+- [x] Material Symbols on remaining Operations pages.

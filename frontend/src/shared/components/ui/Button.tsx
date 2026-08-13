@@ -1,5 +1,6 @@
-import { LoaderCircle } from 'lucide-react';
+
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { MaterialSymbol } from './MaterialSymbol';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -36,7 +37,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       aria-busy={loading || undefined}
       className={`ui-button ui-button--${variant} ui-button--${size} ${className}`.trim()}
     >
-      {loading ? <LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> : startIcon}
+      {loading ? <MaterialSymbol name="progress_activity" size={16} className="animate-spin" /> : startIcon}
       {children && <span className="ui-button__label">{children}</span>}
       {!loading && endIcon}
     </button>

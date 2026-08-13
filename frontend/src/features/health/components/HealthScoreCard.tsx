@@ -1,5 +1,6 @@
-import { RefreshCw } from 'lucide-react';
+
 import { useTranslation } from 'react-i18next';
+import { MaterialSymbol } from '../../../shared/components/ui/MaterialSymbol';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { queryKeys } from '../../../app/queryKeys';
@@ -82,7 +83,7 @@ export function HealthScoreCard({ assetId }: HealthScoreCardProps) {
           variant="ghost"
           size="sm"
           loading={computeMutation.isPending}
-          startIcon={<RefreshCw size={14} aria-hidden="true" />}
+          startIcon={<MaterialSymbol name="refresh" size={14} />}
           onClick={() => computeMutation.mutate()}
         >
           {t('common.actions.refresh')}

@@ -1,5 +1,6 @@
-import { ChevronDown, ChevronUp, LoaderCircle } from 'lucide-react';
+
 import type { ReactNode } from 'react';
+import { MaterialSymbol } from './MaterialSymbol';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -37,7 +38,7 @@ export function EmptyState({
             aria-expanded={expanded}
           >
             <span>{expanded ? t('common.actions.collapse') : t('common.actions.expand')}</span>
-            {expanded ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+            {expanded ? <MaterialSymbol name="expand_less" size={16} /> : <MaterialSymbol name="expand_more" size={16} />}
           </button>
           {expanded && <p className="ui-empty-state__description">{description}</p>}
         </>
@@ -65,7 +66,7 @@ export function LoadingState() {
 
   return (
     <section className="ui-loading-state" role="status" aria-live="polite">
-      <LoaderCircle className="ui-loading-state__icon animate-spin" aria-hidden="true" />
+      <MaterialSymbol name="progress_activity" className="ui-loading-state__icon animate-spin" />
       <span>{t('common.status.loading')}</span>
     </section>
   );

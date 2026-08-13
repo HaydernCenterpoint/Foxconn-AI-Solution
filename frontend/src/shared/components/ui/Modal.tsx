@@ -1,5 +1,6 @@
-import { X } from 'lucide-react';
+
 import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { MaterialSymbol } from './MaterialSymbol';
 import { useTranslation } from 'react-i18next';
 import { IconButton } from './IconButton';
 
@@ -143,7 +144,7 @@ export function Modal({
           </div>
           <IconButton
             ref={closeButtonRef}
-            icon={<X size={20} aria-hidden="true" />}
+            icon={<MaterialSymbol name="close" size={20} />}
             label={t('common.aria.close')}
             variant="ghost"
             onClick={onClose}

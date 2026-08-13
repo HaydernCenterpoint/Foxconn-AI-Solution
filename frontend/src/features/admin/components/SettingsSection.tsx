@@ -1,5 +1,6 @@
-import { Check, Moon, Sun } from 'lucide-react';
+
 import type { ReactNode } from 'react';
+import { MaterialSymbol } from '../../../shared/components/ui/MaterialSymbol';
 import { useTranslation } from 'react-i18next';
 import { useUiStore } from '../../../shared/store/ui.store';
 import { Surface } from '../../../shared/components/ui/Surface';
@@ -43,8 +44,8 @@ export function AppearancePreferences() {
   const setReducedMotion = useUiStore((state) => state.setReducedMotion);
 
   const themeOptions = [
-    { value: 'dark' as const, label: t('settings.appearance.dark'), icon: <Moon size={18} aria-hidden="true" /> },
-    { value: 'light' as const, label: t('settings.appearance.light'), icon: <Sun size={18} aria-hidden="true" /> },
+    { value: 'dark' as const, label: t('settings.appearance.dark'), icon: <MaterialSymbol name="dark_mode" size={18} /> },
+    { value: 'light' as const, label: t('settings.appearance.light'), icon: <MaterialSymbol name="light_mode" size={18} /> },
   ];
 
   return (
@@ -77,7 +78,7 @@ export function AppearancePreferences() {
                   {option.icon}
                 </span>
                 <span className="min-w-0 flex-1 text-sm font-semibold">{option.label}</span>
-                {isSelected && <Check size={18} aria-hidden="true" />}
+                {isSelected && <MaterialSymbol name="check" size={18} />}
               </label>
             );
           })}

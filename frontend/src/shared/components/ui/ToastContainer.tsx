@@ -1,5 +1,6 @@
-import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
+
 import { useTranslation } from 'react-i18next';
+import { MaterialSymbol } from './MaterialSymbol';
 import { useUiStore } from '../../store/ui.store';
 
 const BORDER: Record<string, string> = {
@@ -17,10 +18,10 @@ export function ToastContainer() {
     <div className="ui-toast-container" aria-live="polite" aria-relevant="additions">
       {toasts.map((toast) => (
         <div key={toast.id} className={`ui-toast ui-toast--${BORDER[toast.type] ?? 'info'} toast-enter`} role="status">
-          {toast.type === 'success' && <CheckCircle2 size={18} className="ui-toast__icon ui-toast__icon--success" aria-hidden="true" />}
-          {toast.type === 'error' && <XCircle size={18} className="ui-toast__icon ui-toast__icon--error" aria-hidden="true" />}
-          {toast.type === 'info' && <Info size={18} className="ui-toast__icon ui-toast__icon--info" aria-hidden="true" />}
-          {toast.type === 'warn' && <AlertTriangle size={18} className="ui-toast__icon ui-toast__icon--warn" aria-hidden="true" />}
+          {toast.type === 'success' && <MaterialSymbol name="check_circle" size={18} className="ui-toast__icon ui-toast__icon--success" />}
+          {toast.type === 'error' && <MaterialSymbol name="cancel" size={18} className="ui-toast__icon ui-toast__icon--error" />}
+          {toast.type === 'info' && <MaterialSymbol name="info" size={18} className="ui-toast__icon ui-toast__icon--info" />}
+          {toast.type === 'warn' && <MaterialSymbol name="warning" size={18} className="ui-toast__icon ui-toast__icon--warn" />}
           <span className="ui-toast__message">{toast.message}</span>
           <button
             type="button"
@@ -29,7 +30,7 @@ export function ToastContainer() {
             aria-label={t('common.aria.close')}
             title={t('common.aria.close')}
           >
-            <X size={16} aria-hidden="true" />
+            <MaterialSymbol name="close" size={16} />
           </button>
         </div>
       ))}

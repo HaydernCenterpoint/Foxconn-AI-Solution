@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
+import { MaterialSymbol } from '../../../shared/components/ui/MaterialSymbol';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, ShieldAlert, AlertOctagon, Info } from 'lucide-react';
+
 import { queryKeys } from '../../../app/queryKeys';
 import { alertsApi, type Alert, type AlertDetail as AlertDetailType, type AlertFilters as AlertFiltersType } from '../services/alerts.api';
 import { AlertFilters } from './AlertFilters';
@@ -26,10 +27,10 @@ const SEVERITY_ACCENT: Record<string, 'error' | 'warning' | 'info' | 'neutral'> 
 };
 
 const SEVERITY_ICONS: Record<string, React.ReactNode> = {
-  critical: <ShieldAlert size={18} />,
-  high: <AlertTriangle size={18} />,
-  medium: <AlertOctagon size={18} />,
-  low: <Info size={18} />,
+  critical: <MaterialSymbol name="gpp_maybe" size={18} />,
+  high: <MaterialSymbol name="warning" size={18} />,
+  medium: <MaterialSymbol name="report" size={18} />,
+  low: <MaterialSymbol name="info" size={18} />,
 };
 
 function formatTimestamp(iso: string, locale: string): string {

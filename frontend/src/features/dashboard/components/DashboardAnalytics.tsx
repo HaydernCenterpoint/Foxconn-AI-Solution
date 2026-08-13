@@ -1,5 +1,6 @@
-import { BarChart3, ChartNoAxesCombined } from 'lucide-react';
+
 import { useMemo } from 'react';
+import { MaterialSymbol } from '../../../shared/components/ui/MaterialSymbol';
 import { useTranslation } from 'react-i18next';
 import {
   Bar,
@@ -39,7 +40,7 @@ export function ProductionTrendPanel({ hourlyData = [], isLoading, isError, onRe
     <DashboardPanel
       title={t('dashboardPage.hourlyProductionTitle', { defaultValue: 'Hourly production' })}
       description={t('dashboardPage.hourlyProductionDescription', { defaultValue: 'Reported by the dashboard service.' })}
-      icon={<ChartNoAxesCombined size={18} />}
+      icon={<MaterialSymbol name="show_chart" size={18} />}
       className="dashboard-analytics-grid__trend"
     >
       {isLoading ? (
@@ -118,7 +119,7 @@ export function MachineOeePanel({ machines = [], isLoading, isError, onRetry, tr
     <DashboardPanel
       title={t('dashboardPage.machineOeeTitle', { defaultValue: 'Station OEE comparison' })}
       description={t('dashboardPage.machineOeeDescription', { defaultValue: 'Only stations reporting a live OEE value are included.' })}
-      icon={<BarChart3 size={18} />}
+      icon={<MaterialSymbol name="bar_chart" size={18} />}
     >
       {isLoading ? (
         <DataState kind="loading" title={t('dashboardPage.loadingMachines', { defaultValue: 'Loading stations' })} />

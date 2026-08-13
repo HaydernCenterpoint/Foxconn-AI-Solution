@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { Check, ChevronDown, Globe } from 'lucide-react';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
+
 import { useTranslation } from 'react-i18next';
 import {
   changeLanguage,
@@ -118,15 +119,10 @@ export function LanguageSelector({ compact = false, className = '' }: Props) {
         aria-haspopup="listbox"
         aria-controls={listboxId}
       >
-        <Globe size={16} strokeWidth={1.8} aria-hidden="true" />
+        <MaterialSymbol name="language" size={16} />
         {!compact && <span className="language-selector__current-label">{currentOption.label}</span>}
         <span className="language-selector__code">{currentOption.shortLabel}</span>
-        <ChevronDown
-          size={14}
-          strokeWidth={1.8}
-          className={`language-selector__chevron${isOpen ? ' language-selector__chevron--open' : ''}`}
-          aria-hidden="true"
-        />
+        <MaterialSymbol name="expand_more" size={14} className={`language-selector__chevron${isOpen ? ' language-selector__chevron--open' : ''}`} />
       </button>
 
       <ul
@@ -159,7 +155,7 @@ export function LanguageSelector({ compact = false, className = '' }: Props) {
               <span className="language-selector__option-label">{option.label}</span>
               <span className="language-selector__option-end">
                 <span className="language-selector__code">{option.shortLabel}</span>
-                {isSelected && <Check size={15} strokeWidth={2.2} aria-hidden="true" />}
+                {isSelected && <MaterialSymbol name="check" size={15} />}
               </span>
             </li>
           );

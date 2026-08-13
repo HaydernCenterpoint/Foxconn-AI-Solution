@@ -1,23 +1,10 @@
 import React, { useState, useMemo } from 'react';
+import { MaterialSymbol } from '../../../shared/components/ui/MaterialSymbol';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { alarmsApi, type Alarm } from '../../alarms/services/alarms.api';
 import type { HourlyProduction, Machine } from '../services/machines.api';
 import type { PlcTelemetry, ProductionTelemetry } from '../../../shared/types/domain';
-import {
-  TrendingUp,
-  Cpu,
-  Activity,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Search,
-  Calendar,
-  Filter,
-  Info,
-  Zap,
-  Shield,
-  Clock3
-} from 'lucide-react';
+
 import {
   ResponsiveContainer,
   AreaChart,
@@ -403,11 +390,11 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
       {/* Navigation Tabs */}
       <div className="machine-detail-tabs__navigation flex border-b border-[#2F7BFF]/25 bg-surface-container-lowest/80 rounded-t-xl overflow-hidden">
         <button onClick={() => setActiveTab('dashboard')} className={tabClass('dashboard')}>
-          <Cpu className="w-4 h-4" />
+          <MaterialSymbol name="memory" className="w-4 h-4" />
           {t('machines.detail.tabHome', 'Trang chủ')}
         </button>
         <button onClick={() => setActiveTab('alarms')} className={tabClass('alarms')}>
-          <AlertTriangle className="w-4 h-4 text-[#ff5c6c]" />
+          <MaterialSymbol name="warning" className="w-4 h-4 text-[#ff5c6c]" />
           {t('machines.detail.tabErrors', 'Lỗi')}
           {activeAlarmsCount > 0 && (
             <span className="bg-[#ff5c6c] text-white font-black px-1.5 py-0.5 rounded-full text-[9px] animate-pulse">
@@ -416,11 +403,11 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
           )}
         </button>
         <button onClick={() => setActiveTab('analysis')} className={tabClass('analysis')}>
-          <Activity className="w-4 h-4" />
+          <MaterialSymbol name="monitoring" className="w-4 h-4" />
           {t('machines.detail.tabAnalysis', 'Phân tích sản lượng')}
         </button>
         <button onClick={() => setActiveTab('schedule')} className={tabClass('schedule')}>
-          <Calendar className="w-4 h-4" />
+          <MaterialSymbol name="calendar_month" className="w-4 h-4" />
           {t('machines.detail.tabSchedule', 'Lịch làm hàng')}
         </button>
       </div>
@@ -436,7 +423,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
               {/* Today's Output */}
               <div className="p-4 bg-surface-1 border-t-4 border-t-[#2F7BFF] border-border rounded-xl shadow-sm flex items-center gap-3">
                 <div className="p-2.5 rounded-full bg-[#2F7BFF]/10 text-[#2F7BFF]">
-                  <TrendingUp className="w-5 h-5" />
+                  <MaterialSymbol name="trending_up" className="w-5 h-5" />
                 </div>
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{t('machines.detail.prodCompleted', 'Today\'s Output')}</span>
@@ -446,7 +433,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
               {/* Yield */}
               <div className="p-4 bg-surface-1 border-t-4 border-t-[#38f26b] border-border rounded-xl shadow-sm flex items-center gap-3">
                 <div className="p-2.5 rounded-full bg-[#38f26b]/10 text-[#38f26b]">
-                  <CheckCircle className="w-5 h-5" />
+                  <MaterialSymbol name="check_circle" className="w-5 h-5" />
                 </div>
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{t('machines.detail.yieldTitle', 'Yield (%)')}</span>
@@ -456,7 +443,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
               {/* UPH */}
               <div className="p-4 bg-surface-1 border-t-4 border-t-[#ffc547] border-border rounded-xl shadow-sm flex items-center gap-3">
                 <div className="p-2.5 rounded-full bg-[#ffc547]/10 text-[#ffc547]">
-                  <Zap className="w-5 h-5" />
+                  <MaterialSymbol name="bolt" className="w-5 h-5" />
                 </div>
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{t('machines.detail.uphTitle', 'UPH')}</span>
@@ -466,7 +453,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
               {/* OEE */}
               <div className="p-4 bg-surface-1 border-t-4 border-t-[#18d7ff] border-border rounded-xl shadow-sm flex items-center gap-3">
                 <div className="p-2.5 rounded-full bg-[#18d7ff]/10 text-[#18d7ff]">
-                  <Activity className="w-5 h-5" />
+                  <MaterialSymbol name="monitoring" className="w-5 h-5" />
                 </div>
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{t('machines.detail.oeeTitle', 'OEE (%)')}</span>
@@ -476,7 +463,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
               {/* Total Alarms */}
               <div className="p-4 bg-surface-1 border-t-4 border-t-[#ff5c6c] border-border rounded-xl shadow-sm flex items-center gap-3">
                 <div className="p-2.5 rounded-full bg-[#ff5c6c]/10 text-[#ff5c6c]">
-                  <AlertTriangle className="w-5 h-5" />
+                  <MaterialSymbol name="warning" className="w-5 h-5" />
                 </div>
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{t('kpi.activeAlarms', 'Total Alarms')}</span>
@@ -552,7 +539,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                     ))}
                     {machineAlarms.length === 0 && (
                       <div className="h-40 flex flex-col items-center justify-center gap-2 border border-dashed border-border/40 rounded-lg">
-                        <Info className="w-6 h-6 text-slate-500" />
+                        <MaterialSymbol name="info" className="w-6 h-6 text-slate-500" />
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('common.noData')}</span>
                       </div>
                     )}
@@ -617,7 +604,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
             <div className="bg-surface-1 border border-border rounded-xl overflow-hidden shadow-md">
               <div className="p-4 bg-slate-900/40 border-b border-border/80 flex items-center justify-between">
                 <h3 className="font-extrabold text-white text-xs uppercase tracking-wider flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-[#ffc547]" />
+                  <MaterialSymbol name="warning" className="w-4 h-4 text-[#ffc547]" />
                   {t('alarms.historyTitle', 'Lịch sử cảnh báo thiết bị')}
                 </h3>
               </div>
@@ -704,7 +691,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
             {/* Search filter form */}
             <form onSubmit={handleOeeSearch} className="p-4 bg-surface-1 border border-border rounded-xl flex flex-wrap items-center gap-6 shadow-sm">
               <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-[#20DFF3]" />
+                <MaterialSymbol name="calendar_month" className="w-4 h-4 text-[#20DFF3]" />
                 <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">{t('oee.date', 'Ngày')}:</span>
                 <input
                   type="date"
@@ -714,7 +701,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                 />
               </div>
               <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-[#20DFF3]" />
+                <MaterialSymbol name="filter_list" className="w-4 h-4 text-[#20DFF3]" />
                 <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">{t('oee.shift', 'Ca')}:</span>
                 <select
                   value={queryShift}
@@ -731,7 +718,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                 disabled={isQuerying}
                 className="px-5 py-1.5 bg-[#2F7BFF] hover:bg-[#20DFF3] disabled:bg-slate-800 hover:text-slate-950 text-white font-black rounded text-xs uppercase tracking-wider transition-all duration-300 flex items-center gap-2"
               >
-                <Search className="w-3.5 h-3.5" />
+                <MaterialSymbol name="search" className="w-3.5 h-3.5" />
                 {isQuerying ? t('common.status.loading', 'Đang tải...') : t('oee.search', 'Tìm kiếm')}
               </button>
             </form>
@@ -868,7 +855,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
             <div className="p-4 bg-surface-1 border border-border rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-[#20DFF3]" />
+                  <MaterialSymbol name="filter_list" className="w-4 h-4 text-[#20DFF3]" />
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('common.filter', 'Bộ lọc')}:</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -943,7 +930,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                               onClick={() => setSelectedUnit(unit)}
                               className="p-1 text-[#20DFF3] hover:text-white rounded border border-[#20DFF3]/20 hover:bg-[#20DFF3]/10 transition-all"
                             >
-                              <Info className="w-3.5 h-3.5" />
+                              <MaterialSymbol name="info" className="w-3.5 h-3.5" />
                             </button>
                           </td>
                         </tr>
@@ -969,7 +956,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full bg-[#07112F] border border-[#2F7BFF]/40 rounded-2xl overflow-hidden shadow-2xl" style={{ minWidth: '380px', maxWidth: '480px' }}>
             <div className="p-5 border-b border-border/80 flex items-center gap-3">
-              <AlertTriangle className={`w-5 h-5 ${actionType === 'ack' ? 'text-[#ffc547]' : 'text-[#38f26b]'}`} />
+              <MaterialSymbol name="warning" className={`w-5 h-5 ${actionType === 'ack' ? 'text-[#ffc547]' : 'text-[#38f26b]'}`} />
               <h3 className="font-extrabold text-white text-sm uppercase tracking-wider">
                 {actionType === 'ack' ? t('alarms.modal.ackTitle', 'Xác nhận cảnh báo') : t('alarms.modal.resolveTitle', 'Khắc phục cảnh báo')}
               </h3>
@@ -1029,7 +1016,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
           <div className="w-full bg-[#07112F] border border-[#2F7BFF]/40 rounded-2xl overflow-hidden shadow-2xl" style={{ minWidth: '450px', maxWidth: '600px' }}>
             <div className="p-5 border-b border-border/80 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-[#20DFF3]" />
+                <MaterialSymbol name="shield" className="w-5 h-5 text-[#20DFF3]" />
                 <h3 className="font-extrabold text-white text-sm uppercase tracking-wider">
                   {t('unitHistory.detail.title', 'Chi tiết bản ghi sản xuất')}
                 </h3>
@@ -1038,7 +1025,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
                 onClick={() => setSelectedUnit(null)}
                 className="text-slate-400 hover:text-white transition-colors"
               >
-                <XCircle className="w-5 h-5" />
+                <MaterialSymbol name="cancel" className="w-5 h-5" />
               </button>
             </div>
             <div className="p-5 space-y-6">
@@ -1067,7 +1054,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
               {/* Measurements */}
               <div className="space-y-3">
                 <h4 className="font-black text-white text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-                  <Clock3 className="w-3.5 h-3.5 text-[#ffc547]" />
+                  <MaterialSymbol name="schedule" className="w-3.5 h-3.5 text-[#ffc547]" />
                   {t('unitHistory.detail.metricsTitle', 'Thông số chu kỳ máy')}
                 </h4>
                 <div className="grid grid-cols-2 gap-3 text-xs">
@@ -1087,7 +1074,7 @@ export const MachineDetailTabs: React.FC<MachineDetailTabsProps> = ({
               {/* Robot parts */}
               <div className="space-y-3">
                 <h4 className="font-black text-white text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 text-[#18d7ff]" />
+                  <MaterialSymbol name="bolt" className="w-3.5 h-3.5 text-[#18d7ff]" />
                   {t('unitHistory.detail.robotTitle', 'Dữ liệu Robot tay máy')}
                 </h4>
                 <div className="grid grid-cols-2 gap-3 text-xs">

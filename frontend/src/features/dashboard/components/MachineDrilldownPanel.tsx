@@ -1,5 +1,6 @@
-import { Activity, Clock3 } from 'lucide-react';
+
 import { useMemo } from 'react';
+import { MaterialSymbol } from '../../../shared/components/ui/MaterialSymbol';
 import { useTranslation } from 'react-i18next';
 import {
   CartesianGrid,
@@ -49,7 +50,7 @@ export function MachineDrilldownPanel({
       <DashboardPanel
         title={t('dashboardPage.machineDetailsTitle', { defaultValue: 'Station details' })}
         description={t('dashboardPage.machineDetailsDescription', { defaultValue: 'Select a station to inspect its reported telemetry.' })}
-        icon={<Activity size={18} />}
+        icon={<MaterialSymbol name="monitoring" size={18} />}
       >
         <DataState
           kind="empty"
@@ -163,7 +164,7 @@ export function MachineDrilldownPanel({
     <DashboardPanel
       title={translateName(machine.name)}
       description={machine.machineCode ?? machine.clientId ?? machine.id}
-      icon={<Activity size={18} />}
+      icon={<MaterialSymbol name="monitoring" size={18} />}
       actions={<StatusBadge status={machine.status} />}
     >
       <div className="dashboard-detail__meta">
@@ -197,7 +198,7 @@ export function MachineDrilldownPanel({
               <h3 className="dashboard-history__title">
                 {t('dashboardPage.machineHourlyOutput', { defaultValue: 'Hourly output' })}
               </h3>
-              <span className="dashboard-history__label"><Clock3 size={14} aria-hidden="true" /> {t('dashboardPage.sourceMachineApi', { defaultValue: 'Machine API' })}</span>
+              <span className="dashboard-history__label"><MaterialSymbol name="schedule" size={14} /> {t('dashboardPage.sourceMachineApi', { defaultValue: 'Machine API' })}</span>
             </div>
             {historyState()}
           </section>

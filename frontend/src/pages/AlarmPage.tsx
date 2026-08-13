@@ -1,16 +1,8 @@
 import { useState } from 'react';
+import { MaterialSymbol } from '../shared/components/ui/MaterialSymbol';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { alarmsApi, type Alarm } from '../features/alarms/services/alarms.api';
-import {
-  CheckCircle,
-  User,
-  Clock,
-  AlertOctagon,
-  ShieldAlert,
-  AlertTriangle,
-  Info,
-  BellOff,
-} from 'lucide-react';
+
 import { useTranslation } from 'react-i18next';
 import { useDynamicTranslation } from '../shared/lib/translator';
 import { Modal } from '../shared/components/ui/Modal';
@@ -96,10 +88,10 @@ export const AlarmPage = () => {
   };
 
   const severityConfig: Record<string, { label: string; icon: React.ReactNode; variant: 'primary' | 'success' | 'warning' | 'error' | 'info' | 'neutral' }> = {
-    CRITICAL: { label: 'Nghiêm trọng', icon: <ShieldAlert className="h-3.5 w-3.5" />, variant: 'error' },
-    HIGH: { label: 'Cao', icon: <AlertTriangle className="h-3.5 w-3.5" />, variant: 'warning' },
-    MEDIUM: { label: 'Trung bình', icon: <AlertOctagon className="h-3.5 w-3.5" />, variant: 'info' },
-    LOW: { label: 'Thấp', icon: <Info className="h-3.5 w-3.5" />, variant: 'neutral' },
+    CRITICAL: { label: 'Nghiêm trọng', icon: <MaterialSymbol name="gpp_maybe" className="h-3.5 w-3.5" />, variant: 'error' },
+    HIGH: { label: 'Cao', icon: <MaterialSymbol name="warning" className="h-3.5 w-3.5" />, variant: 'warning' },
+    MEDIUM: { label: 'Trung bình', icon: <MaterialSymbol name="report" className="h-3.5 w-3.5" />, variant: 'info' },
+    LOW: { label: 'Thấp', icon: <MaterialSymbol name="info" className="h-3.5 w-3.5" />, variant: 'neutral' },
   };
 
   const getSev = (s: string) => severityConfig[s.toUpperCase()] ?? severityConfig.LOW;
@@ -263,7 +255,7 @@ export const AlarmPage = () => {
                       <td className="px-6 py-4">
                         <div className="modern-alarms__timestamp">
                           <strong>
-                            <Clock className="h-3 w-3" />
+                            <MaterialSymbol name="schedule" className="h-3 w-3" />
                             {new Date(alarm.createdAt).toLocaleTimeString(locale)}
                           </strong>
                           <span>{new Date(alarm.createdAt).toLocaleDateString(locale)}</span>
@@ -273,7 +265,7 @@ export const AlarmPage = () => {
                         {alarm.acknowledgedBy ? (
                           <div className="modern-alarms__handler">
                             <strong>
-                              <User className="h-3.5 w-3.5" />
+                              <MaterialSymbol name="person" className="h-3.5 w-3.5" />
                               {alarm.acknowledgedBy}
                             </strong>
                             {alarm.notes && (
@@ -305,7 +297,7 @@ export const AlarmPage = () => {
                             )}
                             {alarm.status === 'RESOLVED' && (
                               <span className="modern-alarms__closed">
-                                <CheckCircle className="h-4 w-4" /> {t('alarms.closed', 'Đã đóng')}
+                                <MaterialSymbol name="check_circle" className="h-4 w-4" /> {t('alarms.closed', 'Đã đóng')}
                               </span>
                             )}
                           </div>
@@ -317,7 +309,7 @@ export const AlarmPage = () => {
                   <tr>
                     <td colSpan={canAcknowledge ? 7 : 6}>
                       <div className="modern-alarms__empty">
-                        <BellOff className="h-12 w-12" />
+                        <MaterialSymbol name="notifications_off" className="h-12 w-12" />
                         <p>{t('alarms.empty', 'Không có cảnh báo phù hợp với bộ lọc')}</p>
                       </div>
                     </td>

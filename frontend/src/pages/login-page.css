@@ -33,11 +33,7 @@
 }
 
 .login-hero__image {
-  background-image: url('https://picsum.photos/seed/foxconn-smart-factory/1920/1080');
-  background-position: center;
-  background-size: cover;
-  filter: grayscale(0.85) contrast(1.25) saturate(0.72);
-  transform-origin: center;
+  background: var(--color-surface-dim);
 }
 
 .login-hero__wash {
@@ -100,7 +96,7 @@
   min-height: 3rem;
   border-radius: 999px;
   padding-inline: 1.35rem;
-  transition: transform 240ms ease, background-color 240ms ease, border-color 240ms ease;
+  transition: background-color 240ms ease, border-color 240ms ease;
 }
 
 .login-hero .login-hero__primary {
@@ -116,7 +112,7 @@
 
 .login-hero .login-hero__primary:hover,
 .login-hero .login-hero__secondary:hover {
-  transform: translateY(-2px);
+  transform: none;
 }
 
 .login-hero .login-hero__primary:hover {
@@ -148,7 +144,6 @@
   border-radius: 0.75rem;
   background: rgba(8, 17, 32, 0.54);
   padding: 0.85rem;
-  backdrop-filter: blur(0.75rem);
   transition: flex 500ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 300ms ease;
 }
 
@@ -162,7 +157,7 @@
   height: 1.75rem;
   flex: 0 0 auto;
   border-radius: 999px;
-  background: #e30a32;
+  background: var(--color-primary);
 }
 
 .login-accordion__item strong {
@@ -226,7 +221,7 @@
   height: 0.25rem;
   border-radius: 50%;
   margin: 0 1.5rem;
-  background: #e30a32;
+  background: var(--color-primary);
   content: '';
 }
 
@@ -248,7 +243,7 @@
 
 .login-panel__header p {
   margin: 0 0 1.25rem;
-  color: #d80d2f;
+  color: var(--color-primary);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -291,7 +286,7 @@
   position: relative;
 }
 
-.login-form__field > svg:first-child {
+.login-form__field > svg:first-child, .login-form__field > .material-symbol:first-child {
   position: absolute;
   top: 50%;
   left: 1rem;
@@ -327,7 +322,7 @@
 }
 
 .login-panel .login-form__field .field[aria-invalid='true'] {
-  border-color: #d80d2f;
+  border-color: var(--color-error);
 }
 
 .login-form__visibility {
@@ -368,9 +363,9 @@
 .login-panel .login-submit {
   width: 100%;
   min-height: 3.25rem;
-  border-color: #d80d2f;
+  border-color: var(--color-error);
   border-radius: 0.75rem;
-  background: #d80d2f;
+  background: var(--color-primary);
   box-shadow: 0 0.75rem 1.75rem rgba(216, 13, 47, 0.2);
   color: #fff;
   transition: transform 240ms ease, box-shadow 240ms ease, background-color 240ms ease;
@@ -526,12 +521,12 @@
 }
 
 .login-hero__image {
-  opacity: 0.5;
-  filter: grayscale(0.72) contrast(1.08) saturate(0.55);
+  opacity: 1;
+  filter: none;
 }
 
 .login-hero__wash {
-  background: linear-gradient(125deg, rgb(19 19 20 / 48%), var(--color-background) 86%);
+  background: var(--color-background);
 }
 
 .login-hero__copy {
@@ -689,7 +684,7 @@
   border-color: var(--color-error);
 }
 
-.login-form__field > svg:first-child,
+.login-form__field > svg:first-child, .login-form__field > .material-symbol:first-child,
 .login-form__visibility {
   color: var(--color-text-muted);
 }

@@ -1,14 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import {
-  AlertCircle,
-  BarChart2,
-  CalendarDays,
-  CheckCircle2,
-  TrendingUp,
-  type LucideIcon,
-} from 'lucide-react';
+import { MaterialSymbol } from '../../shared/components/ui/MaterialSymbol';
 import {
   Area,
   AreaChart,
@@ -55,7 +48,7 @@ interface AnalysisMachine {
 
 interface AnalysisPanelProps {
   title: string;
-  icon: LucideIcon;
+  icon: string;
   tone?: PanelTone;
   className?: string;
   children: ReactNode;
@@ -63,7 +56,7 @@ interface AnalysisPanelProps {
 
 function AnalysisPanel({
   title,
-  icon: Icon,
+  icon,
   tone = 'red',
   className = '',
   children,
@@ -72,7 +65,7 @@ function AnalysisPanel({
     <section className={`production-analysis__panel ${className}`}>
       <header className="production-analysis__panel-head">
         <span className={`production-analysis__panel-icon production-analysis__panel-icon--${tone}`}>
-          <Icon aria-hidden="true" size={18} />
+          <MaterialSymbol name={icon} size={18} />
         </span>
         <h2>{title}</h2>
       </header>
@@ -237,7 +230,7 @@ export const ProductionAnalysisPage = () => {
             ))}
           </div>
           <span className="production-analysis__date">
-            <CalendarDays aria-hidden="true" size={15} />
+            <MaterialSymbol name="calendar_month" size={15} />
             {dateLabel}
           </span>
         </div>
@@ -247,7 +240,7 @@ export const ProductionAnalysisPage = () => {
         <div className="production-analysis__top-grid">
           <AnalysisPanel
             title={t('productionAnalysisPage.hourlyTitle', 'SẢN LƯỢNG HÔM NAY VS MỤC TIÊU (THEO GIỜ)')}
-            icon={TrendingUp}
+            icon="trending_up"
             className="production-analysis__output-panel"
           >
             <div className="production-analysis__chart production-analysis__chart--output">
@@ -298,7 +291,7 @@ export const ProductionAnalysisPage = () => {
 
           <AnalysisPanel
             title={t('productionAnalysisPage.oeeAnalysisTitle', 'PHÂN TÍCH CHI TIẾT OEE')}
-            icon={BarChart2}
+            icon="bar_chart"
             tone="amber"
             className="production-analysis__oee-panel"
           >
@@ -330,7 +323,7 @@ export const ProductionAnalysisPage = () => {
         <div className="production-analysis__bottom-grid">
           <AnalysisPanel
             title={t('productionAnalysisPage.paretoTitle', 'PHÂN TÍCH PARETO PHẾ PHẨM')}
-            icon={AlertCircle}
+            icon="error"
             className="production-analysis__pareto-panel"
           >
             <p className="production-analysis__panel-copy">
@@ -367,7 +360,7 @@ export const ProductionAnalysisPage = () => {
 
           <AnalysisPanel
             title={t('productionAnalysisPage.compareOeeTitle', 'SO SÁNH HIỆU SUẤT OEE CÁC TRẠM')}
-            icon={CheckCircle2}
+            icon="check_circle"
             tone="green"
             className="production-analysis__station-panel"
           >

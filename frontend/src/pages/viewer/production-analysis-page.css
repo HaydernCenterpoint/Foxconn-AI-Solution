@@ -115,7 +115,7 @@
   white-space: nowrap;
 }
 
-.production-analysis__date svg {
+.production-analysis__date svg, .production-analysis__date .material-symbol {
   color: var(--pa-muted);
 }
 
