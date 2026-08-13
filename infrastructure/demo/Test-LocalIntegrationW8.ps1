@@ -19,7 +19,7 @@ param(
     [int]$CepStagingPort = 58086,
 
     [ValidateRange(30, 600)]
-    [int]$WaitTimeoutSeconds = 240
+    [int]$WaitTimeoutSeconds = 360
 )
 
 Set-StrictMode -Version Latest
@@ -151,14 +151,23 @@ function Invoke-LoggedProcess {
         return [int]$process.ExitCode
     }
 
-    # Short-lived path: Start-Process argv array + file redirect (cmd quoting breaks -Command).
+    # Short-lived path: quote each argv token. PS 5.1 Start-Process joins the array with spaces
+    # and does not quote; a single ArgumentList string gets wrapped again and breaks -Command.
+        $quotedArgs = @(foreach ($arg in $ArgumentList) {
+            $text = [string]$arg
+            if ($text -notmatch '[\s"]') { $text }
+            else { '"' + $text.Replace('"', '\"') + '"' }
+        })
         $stdoutPath = "$LogPath.stdout.tmp"
         $stderrPath = "$LogPath.stderr.tmp"
         Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
-        Add-Content -LiteralPath $LogPath -Encoding utf8 -Value ("[start] {0} {1}" -f $FilePath, $argString)
-        $process = Start-Process -FilePath $FilePath -ArgumentList $ArgumentList `
-            -WorkingDirectory $repositoryRoot -NoNewWindow -Wait -PassThru `
+        Add-Content -LiteralPath $LogPath -Encoding utf8 -Value ("[start] {0} {1}" -f $FilePath, ($quotedArgs -join ' '))
+        $process = Start-Process -FilePath $FilePath -ArgumentList $quotedArgs `
+            -WorkingDirectory $repositoryRoot -NoNewWindow -PassThru `
             -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+        # ponytail: -Wait never returns if VBCSCompiler/Playwright inherit the redirected pipes
+        while (-not $process.HasExited) { Start-Sleep -Seconds 1 }
+        $process.WaitForExit(5000) | Out-Null
         foreach ($path in @($stdoutPath, $stderrPath)) {
             if (Test-Path -LiteralPath $path) {
                 Get-Content -LiteralPath $path -ErrorAction SilentlyContinue |
@@ -206,7 +215,7 @@ function Write-Report {
         '',
         '## Exact verification commands',
         '',
-        "1. Start-FullDemo.ps1 -BackendPort $BackendPort -FrontendPort $FrontendPort -MqttPort $MqttPort -TimescalePort $TimescalePort -TimescaleProjectName $timescaleProjectName -CepStagingPort $CepStagingPort -SkipOpenDataFusion -SkipFusionAdapter -SkipOdysseus; see [$startLog](/$startLogLink).",
+        "1. Start-FullDemo.ps1 -BackendPort $BackendPort -FrontendPort $FrontendPort -MqttPort $MqttPort -TimescalePort $TimescalePort -TimescaleProjectName $timescaleProjectName -CepStagingPort $CepStagingPort -SkipOpenDataFusion -SkipFusionAdapter -SkipOdysseus -SkipFrontendBuild; see [$startLog](/$startLogLink).",
         "2. Test-FullDemo.ps1 -TriggerPhase2Alerts -BackendPort $BackendPort -FrontendPort $FrontendPort -MqttPort $MqttPort -CepStagingPort $CepStagingPort -SkipOpenDataFusion -SkipOdysseus; see [$testLog](/$testLogLink).",
         "3. npm --prefix frontend run e2e:live with FII_LIVE_E2E=1, real local cookie login, machine ID, and alert title; see [$browserLog](/$browserLogLink).",
         '',
@@ -304,7 +313,8 @@ INSERT INTO users (username, password, role) VALUES ('w8admin', '$adminHash', 'A
             '-TimescaleProjectName', $timescaleProjectName,
             '-CepStagingPort', [string]$CepStagingPort,
             '-WaitTimeoutSeconds', [string]$WaitTimeoutSeconds,
-            '-SkipOpenDataFusion', '-SkipFusionAdapter', '-SkipOdysseus'
+            '-SkipOpenDataFusion', '-SkipFusionAdapter', '-SkipOdysseus',
+            '-SkipFrontendBuild'
         )
         $startExit = Invoke-LoggedProcess -FilePath $powershell -ArgumentList $startArguments -LogPath $startLog `
                     -ReadyTimeoutSeconds $WaitTimeoutSeconds `
