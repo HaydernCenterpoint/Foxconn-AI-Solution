@@ -1,7 +1,7 @@
 ---
 tags: [actions, next]
 priority: P0
-updated: 2026-07-31
+updated: 2026-08-13
 ---
 
 # Next Actions
@@ -41,6 +41,9 @@ Success criteria:
 - [ ] Operator can acknowledge alert
 - [ ] Asset health returns score/history
 - [ ] Browser live e2e passes without API fixtures
+
+## P0 — Local W8 (when Docker/secrets exist)
+[[40 Runbooks/Local W8 Integration]] already passed once on a disposable stack. Re-run only to prove *this* machine.
 
 ## P1 — Managed staging
 Use [[40 Runbooks/Operator Package]]
