@@ -228,7 +228,8 @@
   white-space: normal;
 }
 
-.modern-shell__external-icon-wrap svg {
+.modern-shell__external-icon-wrap svg,
+.modern-shell__external-icon-wrap .material-symbol {
   color: var(--modern-shell-accent-strong);
 }
 
@@ -399,7 +400,8 @@
   white-space: nowrap;
 }
 
-.modern-shell__clock svg {
+.modern-shell__clock svg,
+.modern-shell__clock .material-symbol {
   color: var(--modern-shell-accent-strong);
 }
 
@@ -489,7 +491,8 @@
   opacity: 0.72;
 }
 
-.modern-shell__icon-button--refreshing svg {
+.modern-shell__icon-button--refreshing svg,
+.modern-shell__icon-button--refreshing .material-symbol {
   animation: modern-shell-spin 700ms linear infinite;
 }
 
@@ -954,7 +957,8 @@
   }
 
   .modern-shell__account-copy,
-  .modern-shell__account-trigger > svg {
+  .modern-shell__account-trigger > svg,
+  .modern-shell__account-trigger > .material-symbol {
     display: none;
   }
 
@@ -1058,7 +1062,8 @@
   box-shadow: none;
 }
 
-.modern-shell__nav-link--active svg {
+.modern-shell__nav-link--active svg,
+.modern-shell__nav-link--active .material-symbol {
   filter: none;
 }
 
@@ -1078,7 +1083,8 @@
   box-shadow: none;
 }
 
-.modern-shell__external-icon-wrap svg {
+.modern-shell__external-icon-wrap svg,
+.modern-shell__external-icon-wrap .material-symbol {
   color: var(--color-primary);
 }
 
@@ -1139,6 +1145,7 @@
 }
 
 .modern-shell__clock svg,
+.modern-shell__clock .material-symbol,
 .modern-shell__shift-dot {
   color: var(--color-primary);
 }
@@ -1361,7 +1368,8 @@
 
   .modern-shell__shift small,
   .modern-shell__account-copy,
-  .modern-shell__account-trigger > svg {
+  .modern-shell__account-trigger > svg,
+  .modern-shell__account-trigger > .material-symbol {
     display: none;
   }
 
